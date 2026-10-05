@@ -251,15 +251,25 @@ test('ダッシュは1マスごとに1ターン進み、敵も毎回1回行動�
   eq(r.stop, 'wall'); eq(run.player.x, 21); eq(run.turn - t0, r.n); eq(r.n, 16);
   eq(e.acts, r.n, 'enemy acted once per step');
 });
-test('ダッシュ：敵が見えたら止まる／押した先の敵には自動攻撃しない', () => {
-  const S = newRun(61); bigRoomFloor(S);
-  const e = addEnemy(S, 'frog', 15, 12);
-  let out = G.dashStep(S, 'right');
-  eq(out.stop, 'enemy'); eq(S.run.player.x, 6);
-  e.x = 7; e.y = 5; G.updateVision(S.run);
-  const t = S.run.turn;
-  out = G.dashStep(S, 'right');
-  eq(out.stop, 'attackBlocked'); eq(e.hp, 999); eq(S.run.turn, t, 'no turn');
+test('ダッシュ：新しく敵が見えたら止まり、押した先の敵には自動攻撃しない', () => {
+  const S = newRun(61); corridorFloor(S);
+  const run = S.run;
+  const e = addEnemy(S, 'frog', 30, 8); e.sleep = 99;
+  run.player.x = 27; run.player.y = 8; G.updateVision(run);
+  let ctx = G.dashContext(S), out;
+  do { out = G.dashStep(S, 'right', ctx); } while (!out.stop);
+  eq(out.stop, 'enemy'); eq(run.player.x, 29);
+  const t = run.turn;
+  out = G.dashStep(S, 'right', G.dashContext(S));
+  eq(out.stop, 'attackBlocked'); eq(e.hp, 999); eq(run.turn, t);
+});
+test('ダッシュ：安全停止のあと押し直すと、すでに見えている敵では止まらず進める（動けなくならない）', () => {
+  const S = newRun(69); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 15, 12); e.sleep = 99;
+  // 旧仕様なら毎回「敵が見えた」で止まっていた状況
+  const ctx = G.dashContext(S); let out, n = 0;
+  do { out = G.dashStep(S, 'right', ctx); n++; } while (!out.stop && n < 40);
+  eq(out.stop, 'wall'); eq(S.run.player.x, 21); eq(n, 16);
 });
 test('ダッシュ：通路の分かれ道・部屋の出入りで止まる', () => {
   const S = newRun(62); corridorFloor(S);
@@ -281,15 +291,67 @@ test('ダッシュ：足元の道具・階段で止まる', () => {
   r = dashUntilStop(S, 'down');
   eq(r.stop, 'stairs'); eq(run.player.y, 9);
 });
-test('ダッシュ：被ダメージ・HP危険域・満腹度危険域で止まる', () => {
+test('ダッシュ：被ダメージ・HP/満腹度が新たに危険域になると止まる。危険域から押し直すと進める', () => {
   const S = newRun(64); bigRoomFloor(S);
   const p = S.run.player;
   p.hunger = 0; p.starveAcc = 1; p.hp = 25;
-  let out = G.dashStep(S, 'right'); eq(out.stop, 'damage');
-  p.hunger = 50; p.hp = 5;
-  out = G.dashStep(S, 'right'); eq(out.stop, 'danger');
-  p.hp = p.maxhp; p.hunger = 8;
-  out = G.dashStep(S, 'right'); eq(out.stop, 'danger');
+  let out = G.dashStep(S, 'right', G.dashContext(S)); eq(out.stop, 'damage');
+  p.hunger = 50; p.hp = 10;
+  let ctx = G.dashContext(S);  // 開始時点で危険域でない
+  p.hp = 9; ctx.danger = false;
+  out = G.dashStep(S, 'right', ctx); eq(out.stop, 'danger', 'newly dangerous');
+  // すでに危険域から押し直した場合は進み続ける（壁まで）
+  ctx = G.dashContext(S); assert(ctx.danger);
+  const x = p.x; let n = 0;
+  do { out = G.dashStep(S, 'right', ctx); n++; } while (!out.stop && n < 30);
+  assert(p.x > x + 3, 'keeps moving'); eq(out.stop, 'wall');
+  p.hp = p.maxhp; p.hunger = 11; p.hungerAcc = D.PLAYER.hungerTurns - 1; p.x = 3; G.updateVision(S.run);
+  out = G.dashStep(S, 'right', G.dashContext(S)); eq(out.stop, 'danger', 'hunger hits 10');
+});
+test('ダッシュの1歩ごとに敵が1回ずつ行動し、満腹度も減る（省略しない）', () => {
+  const S = newRun(66); bigRoomFloor(S);
+  const run = S.run; const m = run.map;
+  m.tiles[20 * m.w + 30] = DG.FLOOR; m.rooms.push({ id: 1, x: 30, y: 20, w: 1, h: 1 });
+  const e = addEnemy(S, 'frog', 30, 20);
+  run.player.x = 3; run.player.y = 4; run.player.hungerAcc = 0; G.updateVision(run);
+  const ctx = G.dashContext(S); let out, n = 0;
+  do { out = G.dashStep(S, 'right', ctx); if (out.res.consumed) n++; } while (!out.stop);
+  eq(e.acts, n); eq(run.turn, n); eq(run.player.hunger, 100 - Math.floor(n / D.PLAYER.hungerTurns));
+});
+console.log('通常移動の長押し');
+test('長押し：隣に敵が来たら止まる・攻撃になったら止まる（攻撃を繰り返さない）', () => {
+  const S = newRun(67); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 9, 5); e.sleep = 99;
+  let r = G.act(S, { type: 'move', dir: 'right' }); eq(G.walkCheck(S, 'right', r), null);
+  r = G.act(S, { type: 'move', dir: 'right' }); eq(G.walkCheck(S, 'right', r), null);
+  r = G.act(S, { type: 'move', dir: 'right' }); eq(G.walkCheck(S, 'right', r), 'near'); eq(S.run.player.x, 8);
+  r = G.act(S, { type: 'move', dir: 'right' }); eq(G.walkCheck(S, 'right', r), 'attackBlocked', 'attack stops hold');
+  r = G.act(S, { type: 'move', dir: 'upleft' }); eq(G.walkCheck(S, 'upleft', r), null, 'diagonal walk ok');
+});
+console.log('持ち物の整理');
+test('整理：種類順・同種は基本種類と強化値順。何度押しても同じ。数・強化値・装備・貸出は変わらない', () => {
+  const S = G.newState();
+  const mk = (id, ex) => G.makeItem(S, id, ex);
+  const bag = [mk('golden_lotus'), mk('herb'), mk('amber_shard'), mk('return_scroll'), mk('bronze_sword', { plus: 1 }), mk('banana'),
+    mk('turtle_shield', { eq: true }), mk('sleep_incense'), mk('wood_sword'), mk('antidote'), mk('bronze_sword', { plus: 3, eq: true }), mk('loan_rice'), mk('thunder_staff', { charges: 2 })];
+  const before = JSON.stringify(bag.slice().sort((a, b) => a.uid - b.uid));
+  G.sortItems(bag);
+  const types = bag.map((i) => G.def(i).type);
+  eq(types.join(','), 'weapon,weapon,weapon,shield,food,food,heal,cure,sleep,staff,return,material,treasure');
+  eq(bag[0].id, 'wood_sword'); eq(bag[1].plus, 3); eq(bag[2].plus, 1);
+  const once = bag.map((i) => i.uid).join();
+  G.sortItems(bag); G.sortItems(bag);
+  eq(bag.map((i) => i.uid).join(), once, 'stable');
+  eq(JSON.stringify(bag.slice().sort((a, b) => a.uid - b.uid)), before, 'attributes unchanged');
+  assert(bag.find((i) => i.plus === 3).eq && bag.find((i) => i.id === 'turtle_shield').eq, 'equipment kept');
+});
+test('探索中の整理はターンを消費しない（敵も動かない）', () => {
+  const S = newRun(68); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 15, 10);
+  S.run.bag.push(G.makeItem(S, 'herb'), G.makeItem(S, 'bronze_sword'));
+  const t = S.run.turn;
+  G.sortItems(S.run.bag);
+  eq(S.run.turn, t); eq(e.acts, 0); eq(S.run.bag[0].id, 'bronze_sword');
 });
 test('ダッシュ：帰還地点で止まる', () => {
   const S = newRun(65); bigRoomFloor(S);

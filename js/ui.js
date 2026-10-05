@@ -41,7 +41,7 @@
   function save() { if (UI.started) SV.save(UI.S); }
 
   function showScreen(name) {
-    if (UI.stopDash) UI.stopDash();
+    if (UI.stopHold) UI.stopHold();
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
     AU.playBgm(name === 'dungeon' ? (UI.S.run && D.FLOORS[UI.S.run.floor].boss ? 'boss' : 'dungeon') : 'village');
@@ -99,7 +99,7 @@
     $('modal-root').appendChild(back);
     const body = m.querySelector('.modal-body');
     if (typeof opts.html === 'string') body.innerHTML = opts.html; else if (opts.html) body.appendChild(opts.html);
-    if (UI.stopDash) UI.stopDash();
+    if (UI.stopHold) UI.stopHold();
     const handle = { el: m, body, back, opts, close };
     // モーダルを開いたタップの「後から来るclick」で誤って閉じたり押したりしないよう、
     // モーダル内で押し始めた操作（またはキーボード）だけを受け付ける
@@ -187,13 +187,15 @@
     <p>たけを操作して遺跡（地下30階）を探索し、最深部の「願いの宝珠」を村へ持ち帰ろう。10階と20階には強い守り手がいる。拾ったお宝はサイの店で売って村を発展させよう。</p>
     <h3>操作</h3>
     <ul>
-      <li><b>方向ボタン</b>（3×3）：8方向に1マス移動。斜めも1ターン。敵のいる方向へ動くと攻撃（斜めの敵にも攻撃できる）。</li>
+      <li><b>方向ボタン</b>（3×3）：8方向に1マス移動。斜めも1ターン。押し続けると連続で進む（敵が隣に来た・道具や階段の上などで止まる）。</li>
+      <li>敵のいる方向へ動くと攻撃（斜めの敵にも攻撃できる）。押しっぱなしで攻撃を繰り返すことはない。</li>
       <li>壁の角をはさんだ斜めには移動・攻撃できない（敵も同じ）。</li>
-      <li><b>中央の「待つ」</b>（スペース）：その場で1ターン休む。</li>
+      <li><b>中央の「向き」</b>（PCはF）：オンにすると、方向ボタンで向きだけ変わる（移動・攻撃なし、時間も進まない）。杖などはこの向きに使う。もう一度押すと移動に戻る。</li>
+      <li><b>足踏み</b>（スペース）：その場で1ターンだけ待つ。</li>
       <li>PC：矢印キー/WASDで上下左右、Q・E・Z・C（またはテンキー7・9・1・3）で斜め。</li>
-      <li><b>ダッシュ</b>（PCはX）：オンにして方向ボタンを押し続けると、その方向へ連続で進む（1マスごとに1ターン）。指を離すとすぐ止まる。敵が見えた・ダメージ・壁・分かれ道・道具・階段・帰還地点・HPや満腹度が危ないときは自動で止まり、押し直すまで再開しない。敵には自動で攻撃しない。</li>
+      <li><b>ダッシュ</b>（PCはX）：オンにして方向ボタンを押し続けると、その方向へ速く進む（1マスごとに1ターン）。指を離すとすぐ止まる。新しい敵・ダメージ・敵が隣・壁・分かれ道・道具・階段・帰還地点・HPや満腹度の危険で自動で止まり、止まった理由が表示される。押し直すと再び進む。</li>
       <li><b>足元</b>（Enter）：階段を降りる・道具を拾う・帰還する。</li>
-      <li><b>道具</b>（I）：使う・装備する・置く。<b>メニュー</b>（Esc）：地図・説明・音。</li>
+      <li><b>道具</b>（I）：使う・装備する・置く・整理。<b>メニュー</b>（Esc）：地図・説明・音。</li>
     </ul>
     <h3>ターン</h3>
     <ul>
@@ -413,13 +415,16 @@
   // ---- 倉庫 ----
   function openStorage(tab) {
     const V = UI.S.village;
-    const h = modal({ title: '倉庫', right: G.storageSize(V) + '枠', tabs: true, buttons: [{ label: '閉じる' }] });
+    const h = modal({ title: '倉庫', right: G.storageSize(V) + '枠', tabs: true, buttons: [
+      { label: '整理', keep: true, onClick: () => { sortList(tab === 'in' ? V.bag : V.storage); render(tab); } },
+      { label: '閉じる' }] });
     const tabs = h.el.querySelector('.tabs');
     tabs.innerHTML = '<button data-t="in">預ける</button><button data-t="out">取り出す</button>';
     tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { AU.sfx('tap'); render(b.dataset.t); }));
     function render(t) {
+      tab = t;
       tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
-      let html = `<p class="note">倉庫 ${V.storage.length}/${G.storageSize(V)}　バッグ ${V.bag.length}/${D.BAG_SIZE}</p><div class="list">`;
+      let html = `<p class="note">「整理」は${t === 'in' ? 'バッグ' : '倉庫'}を種類順に並べます。<br>倉庫 ${V.storage.length}/${G.storageSize(V)}　バッグ ${V.bag.length}/${D.BAG_SIZE}</p><div class="list">`;
       const list = t === 'in' ? V.bag : V.storage;
       if (!list.length) html += '<p>' + (t === 'in' ? 'バッグは空です。' : '倉庫は空です。') + '</p>';
       for (const it of list) html += itemRow(it, t === 'in' ? (G.canStore(it) ? '預ける' : '不可') : '出す', t === 'in' && !G.canStore(it) ? 'disabled' : '');
@@ -597,7 +602,9 @@
   // ---- 持ち物（村） ----
   function openVillageBag() {
     const V = UI.S.village;
-    const h = modal({ title: '持ち物', right: `${V.bag.length}/${D.BAG_SIZE}`, buttons: [{ label: '閉じる' }] });
+    const h = modal({ title: '持ち物', right: `${V.bag.length}/${D.BAG_SIZE}`, buttons: [
+      { label: '整理', keep: true, onClick: () => { sortList(V.bag); render(); } },
+      { label: '閉じる' }] });
     function render() {
       h.el.querySelector('h2 .right').textContent = `${V.bag.length}/${D.BAG_SIZE}`;
       let html = '<p class="note">タップで詳細。持ち物は探索に持っていく物です（倒れると失います）。</p><div class="list">';
@@ -689,26 +696,33 @@
         e.preventDefault();
         b.classList.add('pressed');
         try { b.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
-        pressDir(b.dataset.dir, 'ptr');
+        pressDir(b.dataset.dir, 'ptr:' + b.dataset.dir);
       });
-      const end = () => { b.classList.remove('pressed'); releaseDir('ptr'); };
+      const end = () => { b.classList.remove('pressed'); releaseDir('ptr:' + b.dataset.dir); };
       b.addEventListener('pointerup', end);
       b.addEventListener('pointercancel', end);
       b.addEventListener('lostpointercapture', end);
     }
     const act = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); if (UI.modals.length) return; AU.sfx('tap'); fn(); });
-    act('b-wait', () => doAct({ type: 'wait' }));
+    act('b-face', toggleFacing);
+    act('b-wait', () => { stopHold(); doAct({ type: 'wait' }); });
     act('b-items', openItems);
     act('b-menu', dungeonMenu);
     act('b-foot', footAction);
     act('b-dash', toggleDash);
     $('h-map').addEventListener('click', () => { cycleMap(); });
     $('log').addEventListener('click', () => { if (!UI.modals.length) showLog(); });
-    // 画面が隠れたら（アプリ切り替えなど）ダッシュを止める
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopDash(); });
-    window.addEventListener('blur', stopDash);
-    window.addEventListener('pagehide', stopDash);
-    updateDashButton();
+    // どこで指を離しても・画面が隠れても入力を確実に解除する
+    window.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse' || !e.buttons) releaseAllPointers(); });
+    window.addEventListener('pointercancel', releaseAllPointers);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stopHold(); });
+    window.addEventListener('blur', stopHold);
+    window.addEventListener('pagehide', stopHold);
+    updateModeButtons();
+  }
+  function releaseAllPointers() {
+    for (const b of document.querySelectorAll('#dpad .dir.pressed')) b.classList.remove('pressed');
+    if (UI.hold && UI.hold.source.startsWith('ptr:')) stopHold();
   }
 
   function cycleMap() {
@@ -718,59 +732,113 @@
     save();
   }
 
-  // ---- ダッシュ ----
-  const DASH_MS = 75;
+  // ---- 移動モード（通常・ダッシュ・向き変更） ----
+  const WALK_DELAY = 300, WALK_MS = 170, DASH_MS = 85;
+  UI.timing = { WALK_DELAY, WALK_MS, DASH_MS };
   function toggleDash() {
     UI.S.settings.dash = !UI.S.settings.dash;
-    stopDash();
-    updateDashButton();
+    if (UI.S.settings.dash) UI.facing = false;
+    stopHold();
+    updateModeButtons();
     toast(UI.S.settings.dash ? 'ダッシュ：オン' : 'ダッシュ：オフ');
     save();
   }
-  function updateDashButton() {
+  function toggleFacing() {
+    UI.facing = !UI.facing;
+    stopHold();
+    updateModeButtons();
+    toast(UI.facing ? '向き変更中：方向ボタンで向きだけ変わる' : '通常の移動に戻った');
+  }
+  function updateModeButtons() {
     const b = $('b-dash');
     const on = !!(UI.S && UI.S.settings.dash);
     b.classList.toggle('on', on);
     b.innerHTML = 'ダッシュ<small>' + (on ? 'オン' : 'オフ') + '</small>';
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const f = $('b-face');
+    f.classList.toggle('on', !!UI.facing);
+    f.innerHTML = UI.facing ? '向き<small>変更中</small>' : '向き';
+    f.setAttribute('aria-pressed', UI.facing ? 'true' : 'false');
+    $('dpad').classList.toggle('facing', !!UI.facing);
+    $('view').classList.toggle('facing', !!UI.facing);
+    RD.facingMode = !!UI.facing;
   }
-  // 方向入力：ダッシュがオフなら1回押すごとに1歩。オンなら押している間だけ連続移動。
+  /* 方向入力。
+   * 向き変更中：向きだけ変える（ターンも敵も進まない）。
+   * 通常：押した瞬間に1歩。300ms押し続けると約170msごとに連続移動。
+   * ダッシュ：押している間、約85msごとに1マス。
+   * どちらも指を離すと即停止し、入力はため込まない。安全停止したら押し直すまで再開しない。 */
   function pressDir(dir, source) {
     if (UI.modals.length) return;
-    if (!UI.S.settings.dash) { stopDash(); doAct({ type: 'move', dir }); return; }
-    startDash(dir, source);
-  }
-  function releaseDir(source) { if (UI.dash && UI.dash.source === source) stopDash(); }
-  function startDash(dir, source) {
-    stopDash();
+    stopHold();
     const run = UI.S.run;
     if (!run || run.over) return;
-    const st = { dir, source, timer: null, stopped: false };
-    UI.dash = st;
+    if (UI.facing) { faceDir(dir); return; }
+    const dash = !!UI.S.settings.dash;
+    const st = { dir, source, timer: null, stopped: false, dash, ctx: null };
+    UI.hold = st;
     const [dx, dy] = G.DIRS[dir];
-    // 押した方向に敵がいれば、その1回だけ通常の攻撃をして止まる（自動で攻撃し続けない）
-    if (G.enemyAt(run, run.player.x + dx, run.player.y + dy)) { doAct({ type: 'move', dir }); st.stopped = true; return; }
-    const tick = () => {
-      if (UI.dash !== st || st.stopped) return;
-      if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden) { stopDash(); return; }
-      const stop = doDashStep(dir);
+    // 押した方向に敵がいれば、その1回だけ攻撃して止まる（押しっぱなしで攻撃を繰り返さない）
+    if (G.enemyAt(run, run.player.x + dx, run.player.y + dy)) {
+      doAct({ type: 'move', dir });
+      st.stopped = true;
+      return;
+    }
+    if (dash) st.ctx = G.dashContext(UI.S);
+    RD.stepDur = dash ? DASH_MS : 120;
+    const tick = (first) => {
+      if (UI.hold !== st || st.stopped) return;
+      if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden || !UI.S.run || UI.S.run.over) { stopHold(); return; }
+      let stop;
+      if (dash) stop = doDashStep(dir, st.ctx);
+      else {
+        if (first) {
+          const now = performance.now();
+          if (now < UI.lockUntil) { stopHold(); return; } // 同じタップの二重入力は無視
+          UI.lockUntil = now + 90;
+        }
+        const logLen = UI.S.run.log.length;
+        const res = G.act(UI.S, { type: 'move', dir });
+        if (!res.consumed && !res.events.length) AU.sfx('bump');
+        afterAction(res, { type: 'move', dir }, logLen);
+        stop = G.walkCheck(UI.S, dir, res);
+      }
       if (stop) {
-        st.stopped = true; // 指を離して押し直すまで再開しない
-        if (['enemy', 'damage', 'danger', 'attackBlocked'].includes(stop)) toast('ダッシュ停止：' + G.DASH_STOP[stop]);
+        UI.lastStop = stop;
+        st.stopped = true; // 押し直すまで再開しない
+        if (!first || dash) showStop(stop, dash);
         return;
       }
-      st.timer = setTimeout(tick, DASH_MS);
+      if (!dash && !first) RD.stepDur = WALK_MS - 10;
+      st.timer = setTimeout(() => tick(false), dash ? DASH_MS : (first ? WALK_DELAY : WALK_MS));
     };
-    tick();
+    tick(true);
   }
-  function stopDash() { if (UI.dash) { clearTimeout(UI.dash.timer); UI.dash = null; } }
-  UI.stopDash = stopDash;
+  function releaseDir(source) { if (UI.hold && UI.hold.source === source) stopHold(); }
+  function stopHold() { if (UI.hold) { clearTimeout(UI.hold.timer); UI.hold = null; } }
+  UI.stopDash = stopHold; UI.stopHold = stopHold;
+  function faceDir(dir) {
+    const run = UI.S.run;
+    run.player.dir = dir;
+    G.act(UI.S, { type: 'face', dir });
+    AU.sfx('tap');
+    save();
+  }
+  // 停止理由を短く表示（不具合ではなく安全停止だと分かるように）
+  function showStop(reason, dash) {
+    if (reason === 'over' || (!dash && reason === 'wall')) return;
+    const el = $('stopnote');
+    el.textContent = (dash ? 'ダッシュ停止：' : '停止：') + (G.DASH_STOP[reason] || reason);
+    el.classList.add('show');
+    clearTimeout(UI.stopTimer);
+    UI.stopTimer = setTimeout(() => el.classList.remove('show'), 1400);
+  }
 
-  function doDashStep(dir) {
+  function doDashStep(dir, ctx) {
     const S = UI.S;
     if (!S.run || S.run.over || UI.modals.length) return 'over';
     const logLen = S.run.log.length;
-    const out = G.dashStep(S, dir);
+    const out = G.dashStep(S, dir, ctx);
     UI.lockUntil = performance.now() + 60;
     afterAction(out.res, { type: 'move', dir }, logLen);
     return out.stop;
@@ -793,9 +861,10 @@
       return;
     }
     if (e.repeat) return;
-    if (e.key === ' ' || e.key === '.' || e.code === 'Numpad5') { e.preventDefault(); doAct({ type: 'wait' }); }
+    if (e.key === ' ' || e.key === '.' || e.code === 'Numpad5') { e.preventDefault(); stopHold(); doAct({ type: 'wait' }); }
     else if (e.key === 'i' || e.key === 'I') openItems();
     else if (e.key === 'x' || e.key === 'X' || e.key === 'Shift') toggleDash();
+    else if (e.key === 'f' || e.key === 'F') toggleFacing();
     else if (e.key === 'Escape' || e.key === 'm' || e.key === 'M') dungeonMenu();
     else if (e.key === 'Enter') footAction();
   }
@@ -826,12 +895,12 @@
     save();
     updateHud();
     pushLog(logLen);
-    if (S.run && S.run.over) { stopDash(); setTimeout(handleRunOver, 350); return; }
-    if (res.floorChanged) { stopDash(); AU.playBgm(D.FLOORS[S.run.floor].boss ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階'); }
+    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, 350); return; }
+    if (res.floorChanged) { stopHold(); AU.playBgm(D.FLOORS[S.run.floor].boss ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階'); }
     // 階段などに乗ったら確認
     const ev = res.events;
-    if (ev.some((e) => e.t === 'onStairs')) { stopDash(); setTimeout(() => promptStairs(), 60); }
-    else if (ev.some((e) => e.t === 'onReturnPoint' || e.t === 'onPortal')) { stopDash(); setTimeout(() => promptReturnPoint(), 60); }
+    if (ev.some((e) => e.t === 'onStairs')) { stopHold(); setTimeout(() => promptStairs(), 60); }
+    else if (ev.some((e) => e.t === 'onReturnPoint' || e.t === 'onPortal')) { stopHold(); setTimeout(() => promptReturnPoint(), 60); }
   }
   UI.doAct = doAct;
 
@@ -966,17 +1035,30 @@
   function openItems() {
     const run = UI.S.run;
     if (!run || run.over || UI.modals.length) return;
-    stopDash();
-    const h = modal({ title: '道具', right: `${run.bag.length}/${D.BAG_SIZE}`, buttons: [{ label: '閉じる' }] });
-    let html = '<p class="note">道具を見ている間は時間が進みません。</p><div class="list">';
-    if (!run.bag.length) html += '<p>何も持っていない。</p>';
-    for (const it of run.bag) html += itemRow(it, '');
-    h.body.innerHTML = html + '</div>';
-    h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
-      AU.sfx('tap');
-      const it = run.bag.find((i) => i.uid === +r.dataset.uid);
-      if (it) itemDetail(it, h);
-    }));
+    stopHold();
+    const h = modal({ title: '道具', right: `${run.bag.length}/${D.BAG_SIZE}`, buttons: [
+      { label: '整理', keep: true, onClick: () => { sortList(run.bag); render(); } },
+      { label: '閉じる' }] });
+    function render() {
+      let html = '<p class="note">道具を見ている間は時間が進みません。「整理」もターンを使いません。</p><div class="list">';
+      if (!run.bag.length) html += '<p>何も持っていない。</p>';
+      for (const it of run.bag) html += itemRow(it, '');
+      h.body.innerHTML = html + '</div>';
+      // 選んだ品は表示位置ではなく uid で特定する（並び替えても取り違えない）
+      h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
+        AU.sfx('tap');
+        const it = run.bag.find((i) => i.uid === +r.dataset.uid);
+        if (it) itemDetail(it, h);
+      }));
+    }
+    render();
+  }
+  // 整理：種類順の安定した並び替え。数・強化値・装備・貸出などは変えない
+  function sortList(list) {
+    G.sortItems(list);
+    AU.sfx('pickup');
+    save();
+    if (UI.screen === 'village') updateVillageHud();
   }
 
   function itemDetail(it, listModal) {
@@ -1016,7 +1098,7 @@
 
   function dungeonMenu() {
     if (UI.modals.length) return;
-    stopDash();
+    stopHold();
     const run = UI.S.run;
     const p = run.player;
     const nextExp = D.EXP_TABLE[p.lvl + 1];

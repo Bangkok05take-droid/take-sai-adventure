@@ -114,6 +114,9 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
   });
 
   await test('十字ボタンで移動、壁への移動はターンを消費しない', async () => {
+    await p.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; r.floorItems = []; r.stairs = { x: 0, y: 0 }; r.returnPoint = null;
+      const room = TS.Dungeon.roomAt(r.map, r.player.x, r.player.y) || r.map.rooms[0];
+      r.player.x = room.x + 1; r.player.y = room.y + 2; TS.Game.updateVision(r); });
     let moved = 0, bumped = 0;
     for (const d of ['up', 'up', 'up', 'up', 'up', 'up', 'up', 'up', 'up', 'up']) {
       const b = await run();
@@ -183,22 +186,156 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(await p.$eval('#b-dash', (b) => !b.classList.contains('on')), 'dash off');
   });
 
-  await test('ダッシュがオフなら長押ししても1歩だけ（入力をため込まない）', async () => {
-    await p.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; TS.Game.updateVision(r); });
-    assert(await p.$eval('#b-dash', (b) => !b.classList.contains('on')));
-    const dirs = ['right', 'left', 'down', 'up'];
-    let moved = false;
-    for (const d of dirs) {
-      const b0 = await run();
-      await p.evaluate((d) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 9 })), d);
-      await p.waitForTimeout(900);
-      await p.evaluate((d) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 9 })), d);
-      const b1 = await run();
-      assert(b1.turn - b0.turn <= 1, 'one step only ' + JSON.stringify([b0, b1]));
-      if (b1.turn - b0.turn === 1) { moved = true; break; }
+  // ---- 操作（短押し・長押し・向き・足踏み・解除） ----
+  const openRoom = () => p.evaluate(() => {
+    const r = TS.UI.S.run; r.enemies = []; r.floorItems = []; r.returnPoint = null;
+    // 中央に広い空き部屋を作る（テスト用）
+    const m = r.map; const x0 = 8, y0 = 6, w = 17, h = 13;
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) m.tiles[y * m.w + x] = 1;
+    m.rooms.push({ id: 99, x: x0, y: y0, w, h });
+    r.stairs = { x: 1, y: 1 }; r.player.x = 16; r.player.y = 12; r.player.hp = r.player.maxhp = 999;
+    TS.Game.updateVision(r); TS.Render.resetLayer && TS.Render.resetLayer();
+  });
+  const pdown = (d, id = 11) => p.evaluate(([d, id]) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: id })), [d, id]);
+  const pup = (d, id = 11, type = 'pointerup') => p.evaluate(([d, id, type]) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id })), [d, id, type]);
+  const center = () => p.evaluate(() => { const r = TS.UI.S.run; r.enemies = r.enemies.filter((e) => e._keep); r.player.x = 16; r.player.y = 12; r.player.hp = r.player.maxhp; TS.Game.updateVision(r); });
+  const DIRS8 = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0], ['upleft', -1, -1], ['upright', 1, -1], ['downleft', -1, 1], ['downright', 1, 1]];
+
+  await test('8方向すべて：短く押すと1歩だけ（1ターン）', async () => {
+    await openRoom();
+    for (const [d, dx, dy] of DIRS8) {
+      await center(); await p.waitForTimeout(120);
+      const b = await run();
+      await pdown(d); await p.waitForTimeout(80); await pup(d); await p.waitForTimeout(400);
+      const a = await run();
+      assert(a.x === b.x + dx && a.y === b.y + dy && a.turn === b.turn + 1, d + JSON.stringify([b, a]));
     }
-    assert(moved, 'moved once');
-    if (await p.$('.modal')) { await p.tap('.modal-buttons button'); await p.waitForTimeout(100); }
+  });
+  await test('8方向すべて：長押しで300ms後から連続移動、離すと即停止（1マス1ターン）', async () => {
+    await openRoom();
+    for (const [d, dx, dy] of DIRS8) {
+      await center(); await p.waitForTimeout(150);
+      const b = await run();
+      await pdown(d); await p.waitForTimeout(820); await pup(d);
+      const a = await run();
+      const steps = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+      assert(steps >= 3 && steps <= 5, d + ' steps ' + steps + ' stop=' + await p.evaluate(() => TS.UI.lastStop) + JSON.stringify([b, a]));
+      assert(a.x - b.x === dx * steps && a.y - b.y === dy * steps && a.turn - b.turn === steps, d + JSON.stringify([b, a]));
+      await p.waitForTimeout(400);
+      const c = await run();
+      assert(c.turn === a.turn, d + ' stops on release');
+    }
+  });
+  await test('長押しの解除：キャンセル・画面外で離す・ウィンドウのフォーカス喪失・メニュー表示で止まる', async () => {
+    await openRoom();
+    const holdThen = async (fn) => {
+      await center(); await p.waitForTimeout(150);
+      await pdown('right'); await p.waitForTimeout(450);
+      await fn();
+      const a = await run(); await p.waitForTimeout(500); const b = await run();
+      await pup('right');
+      return a.turn === b.turn;
+    };
+    assert(await holdThen(() => pup('right', 11, 'pointercancel')), 'pointercancel');
+    assert(await holdThen(() => p.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 11 })))), 'pointerup outside');
+    assert(await holdThen(() => p.evaluate(() => window.dispatchEvent(new Event('blur')))), 'blur (app background)');
+    assert(await holdThen(() => p.evaluate(() => document.querySelector('#b-menu').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))), 'menu');
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
+  });
+  await test('長押し中に敵が隣に来たら止まり、押しっぱなしで攻撃を繰り返さない', async () => {
+    await openRoom();
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game; const e = G.makeEnemy(r, 'frog', 21, 12); e.sleep = 999; e.hp = e.maxhp = 999; e._keep = true; r.enemies.push(e); G.updateVision(r); });
+    await center(); await p.waitForTimeout(150);
+    const b = await run();
+    await pdown('right'); await p.waitForTimeout(1600);
+    const a = await run();
+    const ehp = await p.evaluate(() => TS.UI.S.run.enemies[0].hp);
+    await pup('right');
+    assert(a.x === 20 && ehp === 999, 'stopped next to enemy without attacking ' + JSON.stringify([a, ehp]));
+    // 押し直すと1回だけ攻撃
+    await pdown('right'); await p.waitForTimeout(900); await pup('right');
+    const t = await run();
+    assert(t.turn === a.turn + 1 && t.x === 20, 'one attack per press');
+    await p.evaluate(() => { TS.UI.S.run.enemies = []; });
+  });
+  await test('「向き」オン：方向ボタンで向きだけ変わり、ターン・敵・満腹度が進まない。「足踏み」は1ターン', async () => {
+    await openRoom(); await center();
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game; const e = G.makeEnemy(r, 'frog', 9, 7); e.hp = e.maxhp = 999; e._keep = true; r.enemies.push(e); G.updateVision(r); });
+    await p.tap('#b-face'); await p.waitForTimeout(150);
+    assert(await p.$eval('#b-face', (b) => b.classList.contains('on') && b.textContent.includes('変更中')), 'face mode shown');
+    assert(await p.isVisible('#facenote'), 'facenote');
+    const s0 = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hunger: TS.UI.S.run.player.hunger, acc: TS.UI.S.run.player.hungerAcc, acts: TS.UI.S.run.enemies[0].acts, x: TS.UI.S.run.player.x, y: TS.UI.S.run.player.y }));
+    for (const [d] of DIRS8) {
+      await pdown(d); await p.waitForTimeout(500); await pup(d); await p.waitForTimeout(40);
+      assert(await p.evaluate(() => TS.UI.S.run.player.dir) === d, 'faces ' + d);
+    }
+    await shot('25_face_mode');
+    const s1 = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hunger: TS.UI.S.run.player.hunger, acc: TS.UI.S.run.player.hungerAcc, acts: TS.UI.S.run.enemies[0].acts, x: TS.UI.S.run.player.x, y: TS.UI.S.run.player.y }));
+    assert(JSON.stringify(s0) === JSON.stringify(s1), 'nothing advanced ' + JSON.stringify([s0, s1]));
+    // 向きは杖に反映される
+    await pdown('upleft'); await pup('upleft');
+    const hit = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game; const e = r.enemies[0]; e.x = r.player.x - 3; e.y = r.player.y - 3; G.updateVision(r);
+      const st = G.makeItem(S, 'thunder_staff', { charges: 2 }); r.bag.push(st); G.act(S, { type: 'use', uid: st.uid }); r.bag.splice(r.bag.indexOf(st), 1); return e.hp; });
+    assert(hit === 969, 'staff used facing direction ' + hit);
+    await p.tap('#b-face'); await p.waitForTimeout(150);
+    assert(await p.$eval('#b-face', (b) => !b.classList.contains('on')), 'face off');
+    const b = await run();
+    await p.tap('#b-wait'); await p.waitForTimeout(200);
+    const a = await run();
+    assert(a.turn === b.turn + 1 && a.x === b.x && a.y === b.y, 'step in place = 1 turn');
+    await p.evaluate(() => { TS.UI.S.run.enemies = []; });
+  });
+  await test('ダッシュ：安全停止の理由を表示、押し直すと再開。通常⇔ダッシュの切替で速度が正しく、古い長押しが残らない', async () => {
+    await openRoom(); await center();
+    // 通常の長押しの速さ（約170ms/歩）
+    const speed = async (ms) => { await center(); await p.waitForTimeout(150); const b = await run(); await pdown('left'); await p.waitForTimeout(ms); await pup('left'); const a = await run(); return b.x - a.x; };
+    const walk = await speed(700);
+    await p.tap('#b-dash'); await p.waitForTimeout(100);
+    const dash = await speed(500);
+    assert(walk >= 2 && walk <= 4 && dash >= 5 && dash > walk, `walk ${walk} dash ${dash}`);
+    // 古い長押しが残らない：押したまま切替→何も動かない
+    await center(); await p.waitForTimeout(150);
+    await pdown('left'); await p.waitForTimeout(150);
+    await p.tap('#b-dash'); await p.waitForTimeout(50);
+    const a1 = await run(); await p.waitForTimeout(500); const a2 = await run();
+    await pup('left');
+    assert(a1.turn === a2.turn, 'old hold cleared on mode switch');
+    await p.tap('#b-dash'); await p.waitForTimeout(100);
+    // 安全停止（足元の道具）→ 理由表示 → 押し直すと再開
+    await center();
+    await p.evaluate(() => { const S = TS.UI.S, r = S.run; r.floorItems.push({ x: 13, y: 12, item: TS.Game.makeItem(S, 'herb') }); });
+    await pdown('left'); await p.waitForTimeout(700);
+    const st = await run();
+    const note = await p.textContent('#stopnote');
+    assert(st.x === 13 && /ダッシュ停止：足元に道具/.test(note), 'safe stop ' + JSON.stringify(st) + note);
+    await shot('26_dash_stop');
+    await p.waitForTimeout(300);
+    assert((await run()).x === 13, 'no auto restart');
+    await pup('left');
+    await pdown('left'); await p.waitForTimeout(250); await pup('left');
+    assert((await run()).x < 13, 'resumes after re-press');
+    await p.tap('#b-dash'); await p.waitForTimeout(100);
+  });
+  await test('整理：バッグと倉庫を種類順に並べ、数・強化値・装備は変わらず、ターンも進まない', async () => {
+    const before = await p.evaluate(() => {
+      const S = TS.UI.S, r = S.run, G = TS.Game;
+      r.bag.push(G.makeItem(S, 'golden_lotus'), G.makeItem(S, 'herb'), G.makeItem(S, 'bronze_sword', { plus: 2 }), G.makeItem(S, 'banana'));
+      return { turn: r.turn, ids: r.bag.map((i) => i.uid + ':' + i.id + ':' + i.plus + ':' + !!i.eq).sort().join(), eq: r.bag.filter((i) => i.eq).map((i) => i.uid).join() };
+    });
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await p.tap('.modal-buttons button >> text=整理'); await p.waitForTimeout(120);
+    await shot('27_sorted_bag');
+    const after = await p.evaluate(() => { const r = TS.UI.S.run; return { turn: r.turn, ids: r.bag.map((i) => i.uid + ':' + i.id + ':' + i.plus + ':' + !!i.eq).sort().join(), eq: r.bag.filter((i) => i.eq).map((i) => i.uid).join(), types: r.bag.map((i) => TS.Game.def(i).type) }; });
+    assert(after.turn === before.turn && after.ids === before.ids && after.eq === before.eq, 'unchanged attrs');
+    assert(after.types[0] === 'weapon' && after.types[after.types.length - 1] === 'treasure', after.types.join());
+    // 整理後に選んだ品の説明が正しい
+    const firstName = await p.evaluate(() => TS.Game.itemName(TS.UI.S.run.bag[0]));
+    await p.tap('.row >> nth=0'); await p.waitForTimeout(120);
+    const title = await p.textContent('#modal-root .back:last-child h2');
+    assert(title.includes(firstName.replace(/\[.*\]/, '').replace(/\+\d+$/, '')), 'detail matches ' + title + ' / ' + firstName);
+    await p.tap('.modal-buttons button >> text=戻る'); await p.waitForTimeout(80);
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(80);
+    await p.evaluate(() => { const r = TS.UI.S.run; r.bag = r.bag.filter((i) => !['golden_lotus', 'banana'].includes(i.id) || i.uid < 50); });
   });
 
   await test('道具メニューを開いている間は時間が進まない／道具を使うと1ターン', async () => {
@@ -322,6 +459,17 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await shot('15c_museum');
     await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
     assert(await p.evaluate(() => TS.UI.S.village.donated.golden_lotus === true), 'donated');
+    // 倉庫の整理
+    const sb = await p.evaluate(() => { const S = TS.UI.S, V = S.village, G = TS.Game;
+      V.storage.push(G.makeItem(S, 'jade_elephant'), G.makeItem(S, 'herb'), G.makeItem(S, 'iron_katana', { plus: 2 }));
+      return V.storage.map((i) => i.uid + ':' + i.plus).sort().join(); });
+    await p.tap('.fac[data-fac="storage"]'); await p.waitForTimeout(150);
+    await p.tap('.tabs button[data-t="out"]'); await p.waitForTimeout(80);
+    await p.tap('.modal-buttons button >> text=整理'); await p.waitForTimeout(100);
+    await shot('15d_storage_sorted');
+    const sa = await p.evaluate(() => ({ ids: TS.UI.S.village.storage.map((i) => i.uid + ':' + i.plus).sort().join(), first: TS.Game.def(TS.UI.S.village.storage[0]).type }));
+    assert(sa.ids === sb && sa.first === 'weapon', 'storage sorted ' + JSON.stringify(sa));
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
   });
 
   await test('倒れると原因と到達階を表示し、すぐ再挑戦できる', async () => {

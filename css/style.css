@@ -104,7 +104,7 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 #dpad .dir i { display: block; width: 40%; aspect-ratio: 1; margin: auto; background: #fff6e6; clip-path: polygon(50% 0%, 88% 70%, 62% 70%, 62% 100%, 38% 100%, 38% 70%, 12% 70%); transform: rotate(var(--r)); pointer-events: none; }
 #dpad .wait { font-size: 15px; font-weight: bold; padding: 0; border-radius: 50%; background: #3a2a40; }
 #actions { flex: 1; display: grid; grid-template-columns: 1fr; gap: 8px; max-width: 200px; align-self: stretch; align-content: center; }
-.act { min-height: 52px; font-size: clamp(14px, 4.3vw, 18px); font-weight: bold; padding: 4px 2px; white-space: nowrap; }
+.act { min-height: 46px; font-size: clamp(14px, 4.3vw, 18px); font-weight: bold; padding: 4px 2px; white-space: nowrap; }
 #b-dash { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
 #b-dash small { font-size: 12px; font-weight: bold; background: #2a1a2e; border-radius: 8px; padding: 1px 8px; margin-top: 2px; }
 #b-dash.on { background: #2e8b5a; }
@@ -202,3 +202,15 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 h3.sub { font-size: 16px; margin: 8px 0 4px; color: var(--accent); }
 .dish { font-size: 26px; width: 36px; text-align: center; }
 details summary { cursor: pointer; margin: 4px 0; }
+
+#b-face { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+#b-face small { font-size: 11px; background: #ffe04a; color: #2a1a2e; border-radius: 8px; padding: 1px 5px; margin-top: 2px; }
+#b-face.on { background: #2f6fd0; box-shadow: 0 0 0 3px #9ad0ff, 0 4px 0 #1a0f1c; }
+#dpad.facing .dir { background: #2f5a9a; }
+#stopnote { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); pointer-events: none; background: rgba(20, 10, 30, 0.85);
+  color: #ffe8a0; border-radius: 10px; padding: 4px 12px; font-size: 14px; font-weight: bold; opacity: 0; transition: opacity 0.15s; white-space: nowrap; }
+#stopnote.show { opacity: 1; }
+#facenote { position: absolute; top: 8px; right: 8px; pointer-events: none; background: #2f6fd0; color: #fff; border: 2px solid #9ad0ff;
+  border-radius: 10px; padding: 3px 10px; font-size: 14px; font-weight: bold; display: none; }
+#view.facing #facenote { display: block; }
+#actions { gap: 6px; }

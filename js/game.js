@@ -391,12 +391,19 @@
   /* 1マスだけ通常の移動をし（1ターン）、続けてよいかを判定する。
    * 戻り値 { res, stop }。stop が null 以外ならダッシュを止める（理由の文字列）。
    * 敵への自動攻撃はしない。 */
-  G.DASH_STOP = { enemy: '敵が見えた', attackBlocked: '前に敵がいる', damage: 'ダメージを受けた', wall: '壁の前', branch: '分かれ道',
-    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', danger: 'HP・満腹度に注意', room: '部屋の出入り', over: '探索終了' };
-  G.dashStep = function (S, dir) {
+  G.DASH_STOP = { enemy: '敵を発見', near: '敵が近い', attackBlocked: '前に敵がいる', damage: 'ダメージを受けた', wall: '壁の前', branch: '分かれ道',
+    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', danger: 'HP・満腹度が危険', room: '部屋の出入り', over: '探索終了', event: 'できごと' };
+  /* ダッシュ開始時の状況を記録する。すでに見えている敵や、すでに危険域であることでは
+   * 毎回止まらない（押し直せば必ず進める）。新しく起きたことだけで止まる。 */
+  G.dashContext = function (S) {
+    const run = S.run, p = run.player;
+    return { seen: G.visibleEnemies(run).map((e) => e.id), danger: p.hp <= p.maxhp * 0.3 || p.hunger <= 10, hunger: p.hunger };
+  };
+  G.dashStep = function (S, dir, ctx) {
     const run = S.run;
     const none = { res: { consumed: false, events: [] }, stop: 'over' };
     if (!run || run.over || !DIRS[dir]) return none;
+    ctx = ctx || G.dashContext(S);
     const p = run.player, [dx, dy] = DIRS[dir];
     if (!G.canStep(run.map, p.x, p.y, dx, dy)) { p.dir = dir; return { res: { consumed: false, events: [] }, stop: 'wall' }; }
     if (G.enemyAt(run, p.x + dx, p.y + dy)) return { res: { consumed: false, events: [] }, stop: 'attackBlocked' };
@@ -405,18 +412,24 @@
     const from = { x: p.x, y: p.y };
     const res = G.act(S, { type: 'move', dir });
     if (!res.consumed) return { res, stop: 'wall' };
-    return { res, stop: G.dashCheck(S, dir, hp, roomBefore, from, res) };
+    const stop = G.dashCheck(S, dir, hp, roomBefore, from, res, ctx);
+    for (const e of G.visibleEnemies(run)) if (!ctx.seen.includes(e.id)) ctx.seen.push(e.id);
+    return { res, stop };
   };
-  G.dashCheck = function (S, dir, hpBefore, roomBefore, from, res) {
+  G.dashCheck = function (S, dir, hpBefore, roomBefore, from, res, ctx) {
     const run = S.run, p = run.player;
+    ctx = ctx || { seen: [], danger: false };
     if (run.over) return 'over';
     const ev = res.events;
     if (p.hp < hpBefore || ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
-    if (G.visibleEnemies(run).length) return 'enemy';
+    if (G.visibleEnemies(run).some((e) => !ctx.seen.includes(e.id))) return 'enemy';
+    if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
     if (G.onStairs(run)) return 'stairs';
     if (G.onReturnPoint(run) || G.onPortal(run)) return 'returnPoint';
     if (G.itemAt(run, p.x, p.y) || ev.some((e) => e.t === 'pickup' || e.t === 'gold' || e.t === 'bagFull')) return 'item';
-    if (p.hp <= p.maxhp * 0.3 || p.hunger <= 10 || ev.some((e) => e.t === 'warn')) return 'danger';
+    const danger = p.hp <= p.maxhp * 0.3 || p.hunger <= 10;
+    if ((danger && !ctx.danger) || ev.some((e) => e.t === 'warn')) return 'danger';
+    if (ev.some((e) => e.t === 'telegraph' || e.t === 'steal' || e.t === 'levelup')) return 'event';
     if (G.roomForView(run, p.x, p.y) !== roomBefore) return 'room';
     const [dx, dy] = DIRS[dir];
     if (!G.canStep(run.map, p.x, p.y, dx, dy)) return 'wall';
@@ -432,6 +445,40 @@
       if (exits >= 2) return 'branch';
     }
     return null;
+  };
+
+  /* 通常移動の長押し：1歩ごとに続けてよいかを判定する。
+   * 敵が隣に来た・攻撃になる・ダメージ・道具・階段などで止める（押しっぱなしで攻撃を繰り返さない）。 */
+  G.walkCheck = function (S, dir, res) {
+    const run = S.run, p = run.player;
+    if (!run || run.over) return 'over';
+    if (!res.consumed) return 'wall';
+    const ev = res.events;
+    if (!ev.some((e) => e.t === 'move')) return 'attackBlocked'; // 攻撃や行動になった
+    if (ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
+    if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
+    if (G.onStairs(run)) return 'stairs';
+    if (G.onReturnPoint(run) || G.onPortal(run)) return 'returnPoint';
+    if (G.itemAt(run, p.x, p.y) || ev.some((e) => e.t === 'pickup' || e.t === 'gold' || e.t === 'bagFull')) return 'item';
+    if (ev.some((e) => e.t === 'warn' || e.t === 'telegraph' || e.t === 'steal' || e.t === 'levelup')) return 'event';
+    const [dx, dy] = DIRS[dir];
+    if (!G.canStep(run.map, p.x, p.y, dx, dy)) return 'wall';
+    if (G.enemyAt(run, p.x + dx, p.y + dy)) return 'attackBlocked';
+    return null;
+  };
+
+  // ---------- 持ち物の整理 ----------
+  // 種類の順：武器→盾→食料→回復→状態異常回復→攻撃・補助→帰還→素材→お宝
+  const SORT_GROUP = { weapon: 0, shield: 1, food: 2, heal: 3, cure: 4, sleep: 5, staff: 5, fire: 5, slow: 5, warp: 5, map: 5, return: 6, material: 7, treasure: 8, orb: 9 };
+  const ITEM_ORDER = Object.keys(D.ITEMS);
+  G.itemSortKey = (it) => [SORT_GROUP[G.def(it).type] ?? 9, ITEM_ORDER.indexOf(it.id), -(it.plus || 0), -(it.charges || 0), it.uid];
+  /* 安定した並び替え（同じ並びに対して何度押しても順序が変わらない）。
+   * 配列の中身（品物そのもの）は入れ替えるだけで、数・強化値・装備・貸出などは変えない。ターンも消費しない。 */
+  G.sortItems = function (list) {
+    const keyed = list.map((it) => ({ it, k: G.itemSortKey(it) }));
+    keyed.sort((a, b) => { for (let i = 0; i < a.k.length; i++) if (a.k[i] !== b.k[i]) return a.k[i] - b.k[i]; return 0; });
+    for (let i = 0; i < keyed.length; i++) list[i] = keyed[i].it;
+    return list;
   };
 
   // ---------- 道具 ----------

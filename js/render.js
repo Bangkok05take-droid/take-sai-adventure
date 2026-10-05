@@ -8,6 +8,26 @@
   const TILE = 32;
 
   RD.addFx = function (f) { f.t0 = performance.now(); RD.fx.push(f); };
+  RD.stepDur = 110; // 1マス分の移動を見せる時間（UIが歩き・ダッシュに合わせて設定）
+
+  // ---- 移動の補間（描画だけ。ターン処理とは独立） ----
+  const anims = {};
+  let animKey = '';
+  function lerpPos(id, x, y, now) {
+    let a = anims[id];
+    if (!a) a = anims[id] = { x, y, fx: x, fy: y, t0: 0, dur: 1 };
+    if (a.x !== x || a.y !== y) {
+      const c = interp(a, now);
+      const jump = Math.max(Math.abs(x - c.x), Math.abs(y - c.y)) > 1.6; // 階段・ワープなどは一瞬で
+      a.fx = jump ? x : c.x; a.fy = jump ? y : c.y; a.x = x; a.y = y; a.t0 = now; a.dur = RD.stepDur;
+    }
+    return interp(a, now);
+  }
+  function interp(a, now) {
+    const t = Math.max(0, Math.min(1, (now - a.t0) / a.dur));
+    return { x: a.fx + (a.x - a.fx) * t, y: a.fy + (a.y - a.fy) * t };
+  }
+  RD.moving = (now) => { const a = anims.p; return !!a && now - a.t0 < a.dur; };
   RD.noteMove = function () { RD.lastMove = performance.now(); };
 
   function fit(canvas) {
@@ -65,7 +85,10 @@
     const ts = Math.max(TILE, Math.floor(Math.min(W / 9.5, H / 7.5) / 16) * 16);
     const k = ts / TILE;
     const m = run.map, p = run.player;
-    const ox = Math.round(W / 2 - (p.x + 0.5) * ts), oy = Math.round(H / 2 - (p.y + 0.5) * ts);
+    const key = run.seed + ':' + run.floor;
+    if (key !== animKey) { for (const k of Object.keys(anims)) delete anims[k]; animKey = key; }
+    const pp = lerpPos('p', p.x, p.y, now);
+    const ox = Math.round(W / 2 - (pp.x + 0.5) * ts), oy = Math.round(H / 2 - (pp.y + 0.5) * ts);
     const x0 = Math.max(0, Math.floor(-ox / ts)), x1 = Math.min(m.w - 1, Math.ceil((W - ox) / ts));
     const y0 = Math.max(0, Math.floor(-oy / ts)), y1 = Math.min(m.h - 1, Math.ceil((H - oy) / ts));
     const L = getLayer(run);
@@ -108,7 +131,8 @@
     // 敵
     for (const e of run.enemies) {
       if (!G.isVisible(run, e.x, e.y)) continue;
-      let sx = ox + e.x * ts, sy = oy + e.y * ts;
+      const ep = lerpPos('e' + e.id, e.x, e.y, now);
+      let sx = Math.round(ox + ep.x * ts), sy = Math.round(oy + ep.y * ts);
       const l = lungeOffset(e.id, now, ts);
       sx += l[0]; sy += l[1];
       const frames = SP.enemyFrames(D.ENEMIES[e.type].sprite);
@@ -137,24 +161,30 @@
       const l = lungeOffset('p', now, ts);
       const set = SP.s.take[G.faceOf(p.dir)] || SP.s.take.down;
       const attacking = RD.fx.some((f) => f.t === 'lunge' && f.id === 'p' && now - f.t0 < 180);
-      const walking = now - RD.lastMove < 260;
+      const walking = now - RD.lastMove < Math.max(260, RD.stepDur * 2.2);
       const img = attacking ? set.atk : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
       const hurt = hitFx(p.x, p.y, 'player', now);
-      const sx = ox + p.x * ts + l[0] + (hurt ? Math.round(Math.sin(now / 18) * k * 2) : 0), sy = oy + p.y * ts + l[1];
+      const sx = Math.round(ox + pp.x * ts + l[0] + (hurt ? Math.sin(now / 18) * k * 2 : 0)), sy = Math.round(oy + pp.y * ts + l[1]);
       shadow(sx + ts / 2, sy + ts * 0.92, ts * 0.3);
       g.drawImage(img, sx, sy, ts, ts);
       if (hurt) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55; g.drawImage(img, sx, sy, ts, ts); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
       if (p.poison) { g.fillStyle = '#c070ff'; g.fillRect(sx + ts * 0.8, sy + ts * 0.1 + (fr(300, 2) ? k : 0), 3 * k, 3 * k); }
-      // 向きの小さな矢印
-      let [dx, dy] = G.DIRS[p.dir];
+      // 向きのマーカー（向き変更中は目の前のマスも光らせる）
+      const [ddx, ddy] = G.DIRS[p.dir];
+      if (RD.facingMode) {
+        g.strokeStyle = `rgba(150,210,255,${0.6 + 0.3 * Math.sin(now / 150)})`; g.lineWidth = 2 * k;
+        g.strokeRect(sx + ddx * ts + 2 * k, sy + ddy * ts + 2 * k, ts - 4 * k, ts - 4 * k);
+      }
+      let dx = ddx, dy = ddy;
       const len = Math.hypot(dx, dy); dx /= len; dy /= len;
-      g.fillStyle = 'rgba(255,255,255,0.85)';
-      const cx = ox + p.x * ts + ts / 2 + dx * ts * 0.56, cy = oy + p.y * ts + ts / 2 + dy * ts * 0.56;
+      const cx = sx + ts / 2 + dx * ts * 0.58, cy = sy + ts / 2 + dy * ts * 0.58, a = RD.facingMode ? 4.5 : 3.4;
       g.beginPath();
-      g.moveTo(cx + dx * 3 * k, cy + dy * 3 * k);
-      g.lineTo(cx - dy * 2.5 * k - dx * 1.5 * k, cy + dx * 2.5 * k - dy * 1.5 * k);
-      g.lineTo(cx + dy * 2.5 * k - dx * 1.5 * k, cy - dx * 2.5 * k - dy * 1.5 * k);
-      g.fill();
+      g.moveTo(cx + dx * a * k, cy + dy * a * k);
+      g.lineTo(cx - dy * a * 0.85 * k - dx * a * 0.6 * k, cy + dx * a * 0.85 * k - dy * a * 0.6 * k);
+      g.lineTo(cx + dy * a * 0.85 * k - dx * a * 0.6 * k, cy - dx * a * 0.85 * k - dy * a * 0.6 * k);
+      g.closePath();
+      g.lineWidth = k; g.strokeStyle = '#1a1030'; g.fillStyle = RD.facingMode ? '#9ad0ff' : '#fff6dc';
+      g.fill(); g.stroke();
     }
     drawFx(g, now, ox, oy, ts, k);
     // ボスのHP
