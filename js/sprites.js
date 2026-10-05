@@ -123,120 +123,195 @@
   };
   const EYE = '#2a1a12', BROW = '#6a3a1a', MOUTH = '#b8483a', CHEEK = '#f59a8e';
 
-  // ---------------- たけ（坊主頭・青い服と鎧・オレンジのマント・剣と盾） ----------------
-  // face: down/up/right, f: 歩行コマ 0..3, atk: 攻撃ポーズ
+  /* ---------------- たけ（坊主頭・金の縁取りの青い服・オレンジのマント・剣と盾） ----------------
+   * 32×32の1マスに収まる2.5頭身。頭を小さめにして、服・マント・装備の形が分かるようにした。
+   * face: down/up/right, f: 歩行コマ 0..3, atk: 攻撃ポーズ */
   function drawTake(face, f, atk) {
     const P = new Pix(32, 32);
     const bob = f === 1 || f === 3 ? -1 : 0;
     const legA = f === 1 ? -1 : f === 3 ? 1 : 0;
     const sway = f === 1 ? 1 : f === 3 ? -1 : 0;
-    const by = 18 + bob; // 胴の上
-    const capeR = (x, y) => C.cape[P.idx(1.3 + (y - by) / 14 + (x > 16 ? 0.5 : 0), x, y)];
+    const ty = 14 + bob; // 胴の上端
+    const capeR = (x, y) => C.cape[P.idx(1.2 + (y - ty) / 16 + (x > 16 ? 0.6 : 0), x, y)];
     // マント（体の後ろ）
-    if (face === 'down') P.poly([[8, by], [24, by], [26 + sway, by + 11], [6 + sway, by + 11]], capeR);
-    if (face === 'right') P.poly([[9, by], [16, by], [12 - sway, by + 12], [3 - sway * 2, by + 11]], capeR);
-    // 足（青いズボンと鋼のすね当て）
-    const leg = (x, y, h) => { P.box(x, y, 4, h, C.navy); P.box(x, y + h - 2, 5, 3, C.boot); P.rect(x, y + 1, 4, 1, C.steel[1]); };
-    if (face === 'right') { leg(12 + legA * 2, by + 8, 4); leg(16 - legA * 2, by + 8, 4); }
-    else { leg(11, by + 8 + Math.min(0, legA), 4 - Math.min(0, legA)); leg(17, by + 8 - Math.max(0, legA), 4 + Math.max(0, legA)); }
-    // 胴：青い服と鋼の胸当て、金のベルト
-    P.box(9, by, 14, 10, C.blue, { round: true });
+    if (face === 'down') P.poly([[9, ty], [23, ty], [25 + sway, ty + 14], [7 + sway, ty + 14]], capeR);
+    if (face === 'right') P.poly([[10, ty], [16, ty], [13 - sway, ty + 15], [4 - sway * 2, ty + 14]], capeR);
+    // 足：紺のズボンと茶色のブーツ
+    const leg = (x, y, h) => { P.box(x, y, 3, h, C.navy); P.box(x - (face === 'right' ? 0 : 0), y + h - 2, 4, 3, C.boot); P.set(x, y + h - 2, C.gold[2]); };
+    if (face === 'right') { leg(13 + legA * 2, ty + 11, 5); leg(16 - legA * 2, ty + 11, 5); }
+    else { leg(12, ty + 11 + Math.min(0, legA), 5 - Math.min(0, legA)); leg(17, ty + 11 - Math.max(0, legA), 5 + Math.max(0, legA)); }
+    // 胴：青い服（すそ広がり）＋金の縁取り
+    const tunic = face === 'right' ? [[12, ty], [20, ty], [21, ty + 12], [11, ty + 12]] : [[11, ty], [21, ty], [23, ty + 12], [9, ty + 12]];
+    P.poly(tunic, (x, y) => C.blue[P.idx(1.2 + (x - 9) / 14 + (y - ty) / 30, x, y)]);
+    const hemL = face === 'right' ? 11 : 9, hemR = face === 'right' ? 21 : 23;
+    P.rect(hemL, ty + 11, hemR - hemL, 1, C.gold[1]); // すその金
     if (face !== 'up') {
-      P.box(face === 'right' ? 13 : 11, by + 1, face === 'right' ? 9 : 10, 6, C.steel, { round: true });
-      P.set(15, by + 3, C.steel[0]); P.set(face === 'right' ? 19 : 16, by + 2, C.steel[0]);
-    }
-    P.rect(9, by + 7, 14, 2, C.gold[2]); P.rect(15, by + 7, 2, 2, C.teal[1]);
-    if (face === 'up') { // 背中は大きなマント
-      P.poly([[7, by - 1], [25, by - 1], [27 + sway, by + 12], [5 + sway, by + 12]], capeR);
-      for (let y = by + 2; y < by + 12; y += 3) P.set(16 + sway, y, C.cape[3]);
-    }
-    // 肩当て
-    if (face !== 'right') { P.ball(8.5, by + 1.5, 3, 2.6, C.steel); P.ball(23.5, by + 1.5, 3, 2.6, C.steel); }
-    else P.ball(17.5, by + 1.5, 3.2, 2.6, C.steel);
-    // 腕・剣・盾
-    const shield = (cx, cy, r) => { P.ball(cx, cy, r, r, C.shieldB); P.ball(cx, cy, r - 1.6, r - 1.6, C.shieldB, { bias: -0.6 }); P.set(cx, cy - 1, C.gold[0]); P.rect(cx - 1, cy, 3, 1, C.gold[1]); P.set(cx, cy + 1, C.gold[2]);
-      for (let a = 0; a < 16; a++) P.set(cx + Math.cos(a / 16 * Math.PI * 2) * r, cy + Math.sin(a / 16 * Math.PI * 2) * r, C.gold[a < 8 ? 1 : 3]); };
-    const sword = (x, y, len, dx, dy) => { for (let i = 0; i < len; i++) { P.set(x + dx * i, y + dy * i, C.blade[1]); P.set(x + dx * i + (dy ? 1 : 0), y + dy * i + (dx ? 1 : 0), C.blade[3]); } P.set(x + dx * (len - 1), y + dy * (len - 1), C.blade[0]); };
-    const hilt = (x, y, horiz) => { if (horiz) { P.rect(x, y - 1, 1, 4, C.gold[2]); P.rect(x - 2, y, 2, 2, C.brown[2]); } else { P.rect(x - 1, y, 4, 1, C.gold[2]); P.rect(x, y + 1, 2, 2, C.brown[2]); } };
-    if (face === 'down') {
-      if (atk) { P.box(5, by + 3, 4, 4, C.blue); P.ball(6.5, by + 8, 1.8, 1.8, SKIN); sword(6, by + 10, 9, 0, 1); hilt(6, by + 8, false); }
-      else { P.box(5, by + 1 + sway, 4, 6, C.blue); P.ball(6.5, by + 7.5 + sway, 1.8, 1.8, SKIN); sword(6, by - 8 + sway, 9, 0, 1); hilt(6, by + 6 + sway, false); }
-      shield(25, by + 5 - sway, 4.6);
-    } else if (face === 'up') {
-      P.box(5, by + 1 - sway, 4, 6, C.blue); P.box(23, by + 1 + sway, 4, 6, C.blue);
-      if (atk) { sword(24, by - 12, 10, 0, 1); hilt(24, by - 3, false); }
-      else { sword(24, by - 6 + sway, 8, 0, 1); hilt(24, by + 2 + sway, false); }
-      shield(7, by + 5 - sway, 4.4);
-    } else { // 右向き：手前の手に剣、盾は体の前
-      if (atk) { P.box(19, by + 2, 7, 3, C.blue); P.ball(26, by + 3.5, 1.8, 1.8, SKIN); sword(27, by + 3, 6, 1, 0); hilt(27, by + 3, true); }
-      else { P.box(14 + sway, by + 2, 4, 6, C.blue); P.ball(15.5 + sway, by + 8, 1.8, 1.8, SKIN); sword(16 + sway, by - 6, 8, 0, 1); hilt(16 + sway, by + 6, false); }
-      shield(22, by + 5, 4.2);
-    }
-    // マントのえり（オレンジ）
-    P.box(10, by - 1, 12, 2, C.cape, { round: true });
-    // 頭（大きな坊主頭）
-    const hy = 10 + bob;
-    if (face === 'right') {
-      P.ball(16.5, hy, 9.2, 8.8, SKIN);
-      P.ball(12, hy + 1.5, 1.8, 2.3, SKIN_T); P.set(12, hy + 1, SKIN_T[3]);
-      P.rect(21, hy, 2, 3, EYE); P.set(21, hy, '#ffffff');
-      P.rect(20, hy - 2, 3, 1, BROW);
-      P.rect(22, hy + 5, 2, 1, MOUTH); P.rect(19, hy + 4, 2, 1, CHEEK);
-      P.set(25, hy + 2, SKIN[3]);
+      if (face === 'down') { P.rect(16, ty + 1, 1, 10, C.gold[2]); P.rect(13, ty + 1, 1, 3, C.gold[1]); P.rect(19, ty + 1, 1, 3, C.gold[1]); }
+      else { P.rect(19, ty + 1, 1, 10, C.gold[2]); }
+      P.rect(face === 'right' ? 12 : 11, ty + 6, face === 'right' ? 9 : 11, 2, C.brown[2]); P.set(face === 'right' ? 18 : 16, ty + 6, C.gold[0]); P.set(face === 'right' ? 18 : 16, ty + 7, C.gold[2]);
     } else {
-      P.ball(16, hy, 9.6, 8.8, SKIN);
-      P.ball(6.6, hy + 2, 1.7, 2.3, SKIN_T); P.ball(25.4, hy + 2, 1.7, 2.3, SKIN_T);
+      P.poly([[8, ty - 1], [24, ty - 1], [26 + sway, ty + 15], [6 + sway, ty + 15]], capeR); // 背中は大きなマント
+      for (let y = ty + 3; y < ty + 15; y += 3) P.set(16 + sway, y, C.cape[3]);
+      P.rect(8 + sway, ty + 14, 18, 1, C.cape[4]);
+    }
+    // 肩当て（金の縁）
+    const pauldron = (cx) => { P.ball(cx, ty + 1, 2.6, 2.1, C.blue, { bias: -0.4 }); P.rect(cx - 2, ty + 2, 5, 1, C.gold[1]); };
+    if (face !== 'right') { pauldron(10); pauldron(22); } else pauldron(17);
+    // 剣と盾
+    const shield = (cx, cy, r) => {
+      P.poly([[cx - r, cy - r], [cx + r, cy - r], [cx + r, cy + 1], [cx, cy + r + 1], [cx - r, cy + 1]], (x, y) => C.shieldB[P.idx(0.9 + (x - cx + r) / (2 * r) + (y - cy + r) / 14, x, y)]);
+      for (let x = cx - r; x <= cx + r; x++) P.set(x, cy - r, C.gold[1]);
+      P.line(cx - r, cy - r, cx - r, cy + 1, C.gold[2]); P.line(cx + r, cy - r, cx + r, cy + 1, C.gold[3]);
+      P.line(cx - r, cy + 1, cx, cy + r + 1, C.gold[2]); P.line(cx + r, cy + 1, cx, cy + r + 1, C.gold[3]);
+      P.rect(cx, cy - r + 2, 1, r + 1, C.gold[0]); P.rect(cx - 1, cy - 1, 3, 1, C.gold[1]);
+    };
+    const sword = (x, y, len, dx, dy) => { for (let i = 0; i < len; i++) { P.set(x + dx * i, y + dy * i, C.blade[1]); P.set(x + dx * i + (dy ? 1 : 0), y + dy * i + (dx ? 1 : 0), C.blade[3]); } P.set(x + dx * (len - 1), y + dy * (len - 1), C.blade[0]); };
+    const hilt = (x, y, horiz) => { if (horiz) { P.rect(x, y - 1, 1, 4, C.gold[1]); P.rect(x - 2, y, 2, 2, C.brown[2]); } else { P.rect(x - 1, y, 4, 1, C.gold[1]); P.rect(x, y + 1, 2, 2, C.brown[2]); } };
+    const hand = (x, y) => P.ball(x, y, 1.5, 1.5, SKIN);
+    if (face === 'down') {
+      P.box(6, ty + 2 + sway, 3, 5, C.blue); P.rect(6, ty + 6 + sway, 3, 1, C.gold[1]);
+      if (atk) { hand(7.5, ty + 8); sword(7, ty + 10, 8, 0, 1); hilt(7, ty + 8, false); }
+      else { hand(7.5, ty + 8 + sway); sword(7, ty - 3 + sway, 9, 0, 1); hilt(7, ty + 6 + sway, false); }
+      P.box(23, ty + 2 - sway, 3, 4, C.blue);
+      shield(25, ty + 7 - sway, 3);
+    } else if (face === 'up') {
+      P.box(6, ty + 2 - sway, 3, 5, C.blue); P.box(23, ty + 2 + sway, 3, 5, C.blue);
+      if (atk) { sword(24, ty - 9, 10, 0, 1); hilt(24, ty, false); }
+      else { sword(24, ty - 3 + sway, 8, 0, 1); hilt(24, ty + 5 + sway, false); }
+      shield(7, ty + 6 - sway, 3);
+    } else { // 右向き：手前の手に剣、盾は前に構える
+      if (atk) { P.box(19, ty + 3, 6, 3, C.blue); hand(25.5, ty + 4.5); sword(27, ty + 4, 5, 1, 0); hilt(27, ty + 4, true); }
+      else { P.box(14 + sway, ty + 2, 3, 6, C.blue); hand(15.5 + sway, ty + 8); sword(16 + sway, ty - 3, 9, 0, 1); hilt(16 + sway, ty + 6, false); }
+      shield(22, ty + 6, 3);
+    }
+    // マントのえり（オレンジ）と金の留め具
+    P.box(11, ty - 1, 10, 2, C.cape, { round: true }); P.set(face === 'right' ? 18 : 16, ty, C.gold[0]);
+    // 頭（坊主頭・頭身を小さめに）
+    const hy = 7.5 + bob;
+    if (face === 'right') {
+      P.ball(16.5, hy, 7.6, 7.2, SKIN);
+      P.ball(13, hy + 1.2, 1.5, 2, SKIN_T); P.set(13, hy + 1, SKIN_T[3]);
+      P.rect(20, hy, 2, 2, EYE); P.set(20, hy, '#ffffff');
+      P.rect(19, hy - 2, 3, 1, BROW);
+      P.rect(21, hy + 4, 2, 1, MOUTH); P.rect(18, hy + 3, 2, 1, CHEEK);
+      P.set(24, hy + 1, SKIN[3]);
+    } else {
+      P.ball(16, hy, 8, 7.2, SKIN);
+      P.ball(8.2, hy + 1.5, 1.4, 2, SKIN_T); P.ball(23.8, hy + 1.5, 1.4, 2, SKIN_T);
       if (face === 'down') {
-        P.rect(11, hy, 2, 3, EYE); P.rect(19, hy, 2, 3, EYE);
-        P.set(11, hy, '#ffffff'); P.set(19, hy, '#ffffff');
-        P.rect(10, hy - 2, 3, 1, BROW); P.rect(19, hy - 2, 3, 1, BROW);
-        P.rect(8, hy + 4, 3, 1, CHEEK); P.rect(21, hy + 4, 3, 1, CHEEK);
-        P.rect(15, hy + 5, 2, 1, MOUTH); P.set(14, hy + 4, MOUTH); P.set(17, hy + 4, MOUTH);
-      } else P.rect(11, hy + 5, 10, 2, SKIN[3]);
+        P.rect(12, hy, 2, 2, EYE); P.rect(18, hy, 2, 2, EYE);
+        P.set(12, hy, '#ffffff'); P.set(18, hy, '#ffffff');
+        P.rect(11, hy - 2, 3, 1, BROW); P.rect(18, hy - 2, 3, 1, BROW);
+        P.rect(10, hy + 3, 2, 1, CHEEK); P.rect(20, hy + 3, 2, 1, CHEEK);
+        P.rect(15, hy + 4, 2, 1, MOUTH);
+      } else P.rect(12, hy + 4, 8, 2, SKIN[3]);
     }
     // 坊主頭のつや
-    const sx = face === 'right' ? 12 : 10;
-    P.rect(sx, hy - 6, 3, 1, SKIN[0]); P.rect(sx - 1, hy - 5, 2, 2, SKIN[0]); P.set(sx + 3, hy - 7, LIGHT);
-    for (let x = 9; x < 24; x += 2) P.set(x + (face === 'right' ? 1 : 0), hy - 7 + ((x * 7) % 3 === 0 ? 1 : 0), SKIN[1]);
+    const sx = face === 'right' ? 13 : 11;
+    P.rect(sx, hy - 5, 3, 1, SKIN[0]); P.rect(sx - 1, hy - 4, 2, 2, SKIN[0]); P.set(sx + 3, hy - 6, LIGHT);
     return P.outline();
   }
 
-  // ---------------- サイ（黒髪ロング・白と金と淡いピンクの姫風衣装・青緑の宝石） ----------------
+  /* ---------------- サイ（黒髪ロング・白と淡いピンクの衣装・金の装飾・青緑の宝石） ---------------- */
   function drawSai(frame) {
     const P = new Pix(32, 32);
     const blink = frame === 1;
     const sway = frame === 1 ? 1 : 0;
-    // 後ろ髪（長い黒髪）
-    P.poly([[6, 8], [26, 8], [27 + sway, 25], [22, 27], [10, 27], [5 + sway, 25]], (x, y) => C.hair[P.idx(1.6 + (x < 16 ? 0.2 : 0.8) + (y - 8) / 25, x, y)]);
-    // ドレス（白、裾に金、ピンクの重ね）
-    P.poly([[11, 18], [21, 18], [26, 30], [6, 30]], (x, y) => C.white[P.idx(1 + (x - 6) / 16 + (y - 18) / 20, x, y)]);
-    P.poly([[13, 22], [19, 22], [22, 30], [10, 30]], (x, y) => C.pink[P.idx(1.2 + (x - 10) / 12, x, y)]);
-    P.rect(6, 29, 21, 1, C.gold[2]); P.rect(7, 28, 19, 1, C.gold[1]);
-    for (let x = 8; x < 26; x += 3) P.set(x, 27, C.gold[0]);
-    // 胴（白いボディスと金の帯）
-    P.box(11, 15, 10, 6, C.white, { round: true });
-    P.rect(11, 20, 10, 2, C.gold[2]); P.set(16, 20, C.teal[1]);
+    // 後ろ髪（腰までの黒髪）
+    P.poly([[9, 6], [23, 6], [24 + sway, 23], [20, 25], [12, 25], [8 + sway, 23]], (x, y) => C.hair[P.idx(1.5 + (x < 16 ? 0.2 : 0.8) + (y - 6) / 24, x, y)]);
+    // ドレス：白い外衣（金の縁）、淡いピンクの前身ごろ
+    P.poly([[12, 14], [20, 14], [25, 30], [7, 30]], (x, y) => C.white[P.idx(0.9 + (x - 7) / 18 + (y - 14) / 30, x, y)]);
+    P.poly([[14, 17], [18, 17], [21, 30], [11, 30]], (x, y) => C.pink[P.idx(1.0 + (x - 11) / 12, x, y)]);
+    P.line(12, 14, 7, 30, C.gold[2]); P.line(20, 14, 25, 30, C.gold[3]);
+    P.rect(7, 30, 19, 1, C.gold[2]); for (let x = 9; x < 25; x += 3) P.set(x, 29, C.gold[0]);
+    P.line(14, 17, 11, 30, C.gold[1]); P.line(18, 17, 21, 30, C.gold[2]);
+    // 胴と金の帯（青緑の宝石）
+    P.box(12, 13, 8, 5, C.white, { round: true });
+    P.rect(12, 17, 8, 1, C.gold[1]); P.set(16, 17, C.teal[1]); P.set(15, 17, C.teal[2]);
     // ふくらんだピンクの袖と腕
-    P.ball(9, 16.5, 2.6, 2.4, C.pink); P.ball(23, 16.5, 2.6, 2.4, C.pink);
-    P.box(8, 18, 2, 4, SKIN); P.box(22, 18, 2, 4, SKIN);
+    P.ball(10.5, 14.5, 2, 2, C.pink); P.ball(21.5, 14.5, 2, 2, C.pink);
+    P.box(10, 16, 2, 4, SKIN); P.box(20, 16, 2, 4, SKIN);
+    P.set(10, 16, C.gold[1]); P.set(21, 16, C.gold[1]); // 腕輪
     // 首飾り（青緑の宝石）
-    P.rect(13, 15, 6, 1, C.gold[1]); P.ball(16, 16.6, 1.4, 1.4, C.teal);
-    // 顔
-    P.ball(16, 9.5, 7.4, 7.2, SKIN);
-    // 前髪
-    P.poly([[7, 9], [9, 3], [16, 1], [23, 3], [25, 9], [22, 7], [18, 5], [16, 7], [12, 5], [9, 8]], (x, y) => C.hair[P.idx(1.2 + (y - 1) / 9 + (x > 16 ? 0.5 : 0), x, y)]);
-    P.rect(7, 9, 2, 9, C.hair[2]); P.rect(23, 9, 2, 9, C.hair[3]);
-    P.set(12, 3, C.hair[0]); P.set(13, 3, C.hair[0]); P.set(11, 4, C.hair[1]);
+    P.rect(14, 13, 4, 1, C.gold[1]); P.ball(16, 14.3, 1.1, 1.1, C.teal);
+    // 顔（頭身を小さめに）
+    P.ball(16, 7.5, 6.2, 6, SKIN);
+    // 前髪と横の髪
+    P.poly([[9, 8], [10, 3], [16, 1], [22, 3], [23, 8], [21, 6], [18, 4], [16, 6], [13, 4], [11, 7]], (x, y) => C.hair[P.idx(1.1 + (y - 1) / 8 + (x > 16 ? 0.5 : 0), x, y)]);
+    P.rect(9, 7, 2, 9, C.hair[2]); P.rect(21, 7, 2, 9, C.hair[3]);
+    P.set(13, 2, C.hair[0]); P.set(12, 3, C.hair[1]);
     // ティアラ（金と青緑の宝石）
-    P.rect(11, 2, 10, 1, C.gold[1]); P.set(12, 1, C.gold[0]); P.set(19, 1, C.gold[0]); P.rect(15, 0, 2, 2, C.gold[2]);
-    P.set(15, 1, C.teal[0]); P.set(16, 1, C.teal[2]);
-    if (blink) { P.rect(11, 10, 3, 1, '#2a1a20'); P.rect(18, 10, 3, 1, '#2a1a20'); }
-    else {
-      P.rect(11, 9, 2, 3, '#2a1a20'); P.rect(19, 9, 2, 3, '#2a1a20');
-      P.set(11, 9, '#ffffff'); P.set(19, 9, '#ffffff'); P.set(13, 9, '#2a1a20'); P.set(18, 9, '#2a1a20');
-    }
-    P.rect(10, 13, 2, 1, CHEEK); P.rect(20, 13, 2, 1, CHEEK);
-    P.rect(15, 14, 2, 1, MOUTH);
+    P.rect(12, 1, 8, 1, C.gold[1]); P.set(13, 0, C.gold[0]); P.set(18, 0, C.gold[0]); P.rect(15, 0, 2, 1, C.teal[1]);
+    // 顔
+    if (blink) { P.rect(12, 8, 2, 1, '#2a1a20'); P.rect(18, 8, 2, 1, '#2a1a20'); }
+    else { P.rect(12, 7, 2, 2, '#2a1a20'); P.rect(18, 7, 2, 2, '#2a1a20'); P.set(12, 7, '#ffffff'); P.set(18, 7, '#ffffff'); }
+    P.rect(11, 10, 2, 1, CHEEK); P.rect(19, 10, 2, 1, CHEEK);
+    P.rect(15, 11, 2, 1, MOUTH);
+    // 髪かざり
+    P.set(22, 3, '#ffffff'); P.set(23, 4, '#ffd84a');
+    return P.outline();
+  }
+
+  /* ---------------- タイトル用の全身絵（64×96、画像素材がないときに使う） ---------------- */
+  function bigTake() {
+    const P = new Pix(64, 96);
+    const capeR = (x, y) => C.cape[P.idx(1.0 + (y - 40) / 50 + (x > 32 ? 0.7 : 0), x, y)];
+    P.poly([[14, 40], [50, 40], [58, 92], [6, 92]], capeR); // マント
+    // 足とブーツ
+    P.box(22, 70, 8, 18, C.navy); P.box(34, 70, 8, 18, C.navy);
+    P.box(20, 84, 11, 8, C.boot, { round: true }); P.box(33, 84, 11, 8, C.boot, { round: true }); P.rect(20, 84, 11, 1, C.gold[1]); P.rect(33, 84, 11, 1, C.gold[1]);
+    // 青い服（金の縁取り）
+    P.poly([[20, 40], [44, 40], [48, 74], [16, 74]], (x, y) => C.blue[P.idx(1.0 + (x - 16) / 32 + (y - 40) / 60, x, y)]);
+    P.rect(16, 72, 32, 2, C.gold[1]); P.rect(31, 42, 2, 30, C.gold[2]); P.rect(24, 42, 1, 10, C.gold[1]); P.rect(39, 42, 1, 10, C.gold[1]);
+    P.box(19, 56, 26, 4, C.brown); P.box(29, 55, 6, 6, C.gold); P.ball(32, 58, 1.5, 1.5, C.teal);
+    // 肩当て
+    P.ball(18, 43, 6, 5, C.blue, { bias: -0.4 }); P.ball(46, 43, 6, 5, C.blue, { bias: -0.4 }); P.rect(12, 46, 12, 2, C.gold[1]); P.rect(40, 46, 12, 2, C.gold[1]);
+    // 右手の剣
+    P.box(10, 46, 6, 14, C.blue); P.ball(13, 62, 3, 3, SKIN);
+    for (let i = 0; i < 30; i++) { P.set(12, 59 - i, C.blade[1]); P.set(13, 59 - i, C.blade[2]); P.set(14, 59 - i, C.blade[3]); }
+    P.rect(11, 30, 4, 1, C.blade[0]); P.rect(8, 60, 10, 2, C.gold[1]); P.box(11, 62, 4, 6, C.brown);
+    // 左手の盾
+    P.box(48, 46, 6, 12, C.blue);
+    P.poly([[42, 52], [62, 52], [62, 66], [52, 78], [42, 66]], (x, y) => C.shieldB[P.idx(0.8 + (x - 42) / 20 + (y - 52) / 30, x, y)]);
+    P.line(42, 52, 62, 52, C.gold[1]); P.line(42, 52, 42, 66, C.gold[1]); P.line(62, 52, 62, 66, C.gold[3]); P.line(42, 66, 52, 78, C.gold[2]); P.line(62, 66, 52, 78, C.gold[3]);
+    P.rect(51, 55, 2, 18, C.gold[1]); P.rect(46, 61, 12, 2, C.gold[1]); P.ball(52, 62, 2, 2, C.teal);
+    // えりと頭
+    P.box(22, 37, 20, 5, C.cape, { round: true }); P.ball(32, 39, 2, 2, C.gold);
+    P.ball(32, 22, 14, 14, SKIN); P.ball(17.5, 24, 2.6, 3.6, SKIN_T); P.ball(46.5, 24, 2.6, 3.6, SKIN_T);
+    P.ball(26, 14, 4, 2.5, ramp(SKIN[0]), { dither: false }); P.rect(24, 12, 3, 1, LIGHT);
+    P.rect(22, 20, 6, 2, BROW); P.rect(36, 20, 6, 2, BROW);
+    P.rect(23, 23, 4, 5, EYE); P.rect(37, 23, 4, 5, EYE); P.rect(23, 23, 2, 2, '#ffffff'); P.rect(37, 23, 2, 2, '#ffffff');
+    P.rect(19, 29, 4, 2, CHEEK); P.rect(41, 29, 4, 2, CHEEK);
+    P.rect(29, 31, 6, 2, MOUTH); P.set(28, 30, MOUTH); P.set(35, 30, MOUTH);
+    return P.outline();
+  }
+  function bigSai() {
+    const P = new Pix(64, 96);
+    P.poly([[16, 14], [48, 14], [52, 66], [42, 72], [22, 72], [12, 66]], (x, y) => C.hair[P.idx(1.4 + (x > 32 ? 0.7 : 0) + (y - 14) / 70, x, y)]); // 長い黒髪
+    // ドレス
+    P.poly([[24, 40], [40, 40], [56, 92], [8, 92]], (x, y) => C.white[P.idx(0.8 + (x - 8) / 48 + (y - 40) / 80, x, y)]);
+    P.poly([[28, 50], [36, 50], [44, 92], [20, 92]], (x, y) => C.pink[P.idx(0.9 + (x - 20) / 24, x, y)]);
+    P.line(24, 40, 8, 92, C.gold[2]); P.line(40, 40, 56, 92, C.gold[3]); P.line(28, 50, 20, 92, C.gold[1]); P.line(36, 50, 44, 92, C.gold[2]);
+    P.rect(8, 91, 49, 2, C.gold[2]); for (let x = 12; x < 54; x += 5) P.ball(x, 88, 1.2, 1.2, C.gold);
+    // 胴・帯
+    P.box(24, 36, 16, 14, C.white, { round: true }); P.rect(24, 48, 16, 3, C.gold[1]); P.ball(32, 49.5, 2, 1.8, C.teal);
+    // 袖と腕
+    P.ball(21, 39, 5, 4.5, C.pink); P.ball(43, 39, 5, 4.5, C.pink);
+    P.box(18, 43, 5, 14, SKIN); P.box(41, 43, 5, 14, SKIN); P.rect(18, 50, 5, 2, C.gold[1]); P.rect(41, 50, 5, 2, C.gold[1]);
+    // 首飾り
+    P.box(29, 32, 6, 5, SKIN); P.line(26, 36, 32, 41, C.gold[1]); P.line(38, 36, 32, 41, C.gold[1]); P.ball(32, 42, 2.4, 2.4, C.teal); P.set(31, 41, '#e8fffa');
+    // 顔
+    P.ball(32, 22, 12, 12, SKIN);
+    P.poly([[19, 24], [20, 13], [26, 8], [32, 7], [40, 9], [45, 15], [45, 24], [41, 17], [36, 13], [33, 17], [28, 12], [23, 18]], (x, y) => C.hair[P.idx(1.0 + (y - 7) / 18 + (x > 32 ? 0.5 : 0), x, y)]);
+    P.rect(19, 22, 3, 22, C.hair[2]); P.rect(42, 22, 3, 22, C.hair[3]);
+    P.line(25, 11, 30, 9, C.hair[0]);
+    // ティアラ
+    P.poly([[24, 9], [27, 4], [30, 7], [32, 2], [34, 7], [37, 4], [40, 9]], (x, y) => C.gold[P.idx(0.6 + y / 8, x, y)]); P.ball(32, 6, 1.6, 1.6, C.teal);
+    P.rect(25, 19, 5, 1, '#3a2a30'); P.rect(35, 19, 5, 1, '#3a2a30');
+    P.rect(25, 22, 5, 5, '#2a1a20'); P.rect(35, 22, 5, 5, '#2a1a20'); P.rect(25, 21, 6, 1, '#1a0a10'); P.rect(34, 21, 6, 1, '#1a0a10');
+    P.rect(26, 23, 2, 2, '#ffffff'); P.rect(36, 23, 2, 2, '#ffffff');
+    P.rect(22, 28, 4, 2, CHEEK); P.rect(39, 28, 4, 2, CHEEK); P.rect(30, 31, 4, 1, MOUTH);
+    P.ball(44, 12, 2.6, 2.6, ramp('#fff4f4')); P.set(44, 12, '#ffd84a');
     return P.outline();
   }
 
@@ -246,9 +321,9 @@
     // マントと肩
     P.poly([[4, 64], [8, 46], [20, 40], [44, 40], [56, 46], [60, 64]], (x, y) => C.cape[P.idx(1.2 + (y - 40) / 30 + (x > 32 ? 0.6 : 0), x, y)]);
     P.box(18, 46, 28, 18, C.blue, { round: true });
-    P.box(22, 48, 20, 14, C.steel, { round: true }); P.rect(31, 49, 2, 12, C.steel[3]); P.rect(24, 50, 3, 2, C.steel[0]);
-    P.ball(14, 49, 8, 6, C.steel); P.ball(50, 49, 8, 6, C.steel);
-    P.rect(10, 47, 3, 2, C.steel[0]); P.rect(46, 47, 3, 2, C.steel[0]);
+    P.rect(31, 46, 2, 18, C.gold[2]); P.rect(24, 47, 1, 8, C.gold[1]); P.rect(39, 47, 1, 8, C.gold[1]);
+    P.ball(14, 49, 8, 6, C.blue, { bias: -0.4 }); P.ball(50, 49, 8, 6, C.blue, { bias: -0.4 });
+    P.rect(6, 52, 16, 2, C.gold[1]); P.rect(42, 52, 16, 2, C.gold[1]); P.ball(32, 44, 2.5, 2.5, C.gold);
     P.box(22, 41, 20, 5, C.cape, { round: true });
     // 頭
     P.ball(11, 27, 3.5, 5, SKIN_T); P.ball(53, 27, 3.5, 5, SKIN_T);
@@ -743,6 +818,7 @@
     s.take.left = { walk: s.take.right.walk.map(flipCanvas), atk: flipCanvas(s.take.right.atk) };
     s.sai = [drawSai(0).canvas(), drawSai(1).canvas()];
     s.portrait = { take: portraitTake().canvas(), sai: portraitSai().canvas() };
+    s.big = { take: bigTake().canvas(), sai: bigSai().canvas() };
     s.enemy = {};
     for (const k of Object.keys(E)) s.enemy[k] = [E[k](0).canvas(), E[k](1).canvas()];
     s.icon = {};

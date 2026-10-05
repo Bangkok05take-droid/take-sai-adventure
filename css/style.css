@@ -40,17 +40,29 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 .screen.active { display: flex; }
 
 /* ---------- タイトル ---------- */
-#screen-title { flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 12px;
-  background: linear-gradient(#5b3a7a 0%, #e57a5a 55%, #ffcf8a 100%); overflow: hidden; }
-.title-art { width: min(92vw, 400px); height: min(38vh, 230px); }
+/* タイトル：深い青緑・金・クリーム色の「冒険の書」 */
+#screen-title { --teal: #0c3a3e; --teal2: #072629; --gold: #e8c25a; --gold2: #b8862a; --cream: #fff4dc;
+  align-items: stretch; justify-content: center; padding: 10px;
+  background: radial-gradient(ellipse at 50% 30%, #155a5c 0%, var(--teal) 55%, var(--teal2) 100%); }
+.book { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 10px 12px;
+  border: 3px solid var(--gold); border-radius: 18px; box-shadow: inset 0 0 0 2px var(--teal2), inset 0 0 0 5px var(--gold2), 0 6px 18px rgba(0,0,0,0.4);
+  background: linear-gradient(rgba(255,244,220,0.04), rgba(255,244,220,0.08)); max-width: 520px; margin: 0 auto; width: 100%; }
+.title-art { flex: 1 1 auto; min-height: 120px; width: 100%; position: relative; }
 .title-art canvas { width: 100%; height: 100%; }
-.title-text { margin: 0; font-size: clamp(30px, 9vw, 48px); line-height: 1.1; text-align: center; color: #fff6dc;
-  text-shadow: 3px 3px 0 #6a2a1a, -1px -1px 0 #6a2a1a, 1px -1px 0 #6a2a1a, -1px 1px 0 #6a2a1a; letter-spacing: 2px; }
-.subtitle { margin: 0 0 6px; font-size: clamp(15px, 4.4vw, 20px); color: #4a1e10; font-weight: bold; }
-.title-buttons { display: flex; flex-direction: column; gap: 10px; width: min(80vw, 320px); }
+.title-logo { text-align: center; flex: none; }
+.title-text { margin: 0; font-size: clamp(26px, 8.2vw, 44px); line-height: 1.15; color: var(--gold); letter-spacing: 1px;
+  text-shadow: 0 2px 0 #5a3a10, 2px 0 0 #3a2208, -2px 0 0 #3a2208, 0 -2px 0 #3a2208, 0 4px 8px rgba(0,0,0,0.5); }
+.subtitle { margin: 2px 0 0; font-size: clamp(14px, 4.2vw, 19px); color: var(--cream); font-weight: bold; letter-spacing: 1px; }
+.title-buttons { display: flex; flex-direction: column; gap: 9px; width: min(86vw, 340px); flex: none; }
+.title-row { display: flex; gap: 9px; }
+.title-row .big { flex: 1; }
+#screen-title .big { min-height: 50px; font-size: 18px; font-weight: bold; padding: 6px 12px; background: var(--cream); color: #0c3a3e;
+  border: 2px solid var(--gold2); box-shadow: 0 4px 0 #3a2a10; }
+#screen-title .big.sub { min-height: 44px; font-size: 16px; background: #164a4e; color: var(--cream); border-color: var(--gold2); }
+#screen-title .big.primary { min-height: 62px; font-size: 22px; letter-spacing: 2px; color: #3a1a00; border: 3px solid #fff2b0;
+  background: linear-gradient(#ffe48a, #e8b440 60%, #c88a20); box-shadow: 0 5px 0 #6a4210, 0 0 14px rgba(255,220,120,0.55); }
+#screen-title .big:active { transform: translateY(3px); }
 .big { min-height: 54px; font-size: 19px; font-weight: bold; padding: 8px 16px; }
-.big.sub { min-height: 46px; font-size: 17px; background: #6a4a6e; }
-.tiny { font-size: 12px; color: #4a1e10; margin: 4px 0 0; }
 
 /* ---------- 村 ---------- */
 #screen-village { flex-direction: column; }
@@ -88,7 +100,7 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 #log div.new { color: #fff; }
 #view { flex: 1; min-height: 120px; position: relative; background: #000; }
 #view canvas { width: 100%; height: 100%; }
-#toast { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); pointer-events: none;
+#toast { position: absolute; left: 50%; top: 24%; transform: translate(-50%, -50%); pointer-events: none;
   background: rgba(30, 10, 10, 0.85); color: #fff; border: 2px solid var(--accent); border-radius: 12px; padding: 10px 18px;
   font-size: 19px; font-weight: bold; opacity: 0; transition: opacity 0.2s; max-width: 92%; text-align: center; }
 #toast.show { opacity: 1; }
@@ -129,14 +141,15 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
   .vgoal { grid-area: goal; }
   .vhud { grid-area: hud; } #village-view { grid-area: view; } .vbuttons { grid-area: btns; grid-template-columns: 1fr 1fr; align-content: center; border-top: 0; border-left: 3px solid #1a0f1c; }
   .fac { min-height: 54px; }
-  #screen-title { flex-direction: row; flex-wrap: wrap; align-content: center; gap: 6px 24px; }
-  .title-art { height: 40vh; width: 40vw; }
+  .book { display: grid; grid-template-columns: 1.2fr 1fr; grid-template-rows: auto 1fr; grid-template-areas: "art logo" "art btns"; max-width: 900px; align-items: center; }
+  .title-art { grid-area: art; height: 100%; }
+  .title-logo { grid-area: logo; } .title-buttons { grid-area: btns; align-self: start; justify-self: center; }
 }
 @media (orientation: landscape) and (max-height: 430px) {
   #log { height: calc(1.35em * 2 + 6px); font-size: 13px; }
   .hud-row { font-size: 15px; } .hud-row.small { font-size: 13px; }
   .act { min-height: 42px; font-size: 16px; }
-  .title-art { display: none; }
+  .title-text { font-size: 26px; }
 }
 
 /* ---------- モーダル ---------- */

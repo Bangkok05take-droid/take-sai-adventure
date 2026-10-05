@@ -59,8 +59,19 @@
     requestAnimationFrame(loop);
   }
 
-  // タイトルの絵（ゲーム内と同じドット絵・配色）
-  let titleBg = null;
+  /* タイトルの絵。
+   * assets/title-characters.png があればその人物イラストを使う（縦横比を保って全体を収める＝引き伸ばさない）。
+   * crop に [x, y, 幅, 高さ] を書くと、元画像のその範囲だけを使う（名前やドット絵一覧を除くため）。
+   * 画像がないときは、ゲーム用ドット絵の全身絵で同じ構図を描く。 */
+  // 画像を置いたら src に 'assets/title-characters.png' を設定する（未設定なら読み込まない＝404を出さない）
+  const TITLE_ART = { src: null, crop: null };
+  let titleBg = null, titleImg = null;
+  (function loadTitleImage() {
+    const img = new Image();
+    img.onload = () => { titleImg = img; };
+    img.onerror = () => { titleImg = null; };
+    if (TITLE_ART.src) img.src = TITLE_ART.src;
+  })();
   function drawTitleArt(now) {
     const c = $('title-canvas');
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -68,32 +79,40 @@
     if (!w || !h) return;
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     const g = c.getContext('2d');
-    g.imageSmoothingEnabled = false;
     g.clearRect(0, 0, w, h);
-    const VW = 160, VH = 84;
+    if (titleImg) {
+      const [sx, sy, sw, sh] = TITLE_ART.crop || [0, 0, titleImg.naturalWidth, titleImg.naturalHeight];
+      const sc = Math.min(w / sw, h / sh);
+      g.imageSmoothingEnabled = true;
+      g.drawImage(titleImg, sx, sy, sw, sh, (w - sw * sc) / 2, (h - sh * sc) / 2, sw * sc, sh * sc);
+      return;
+    }
+    g.imageSmoothingEnabled = false;
+    const VW = 168, VH = 104;
     const sc = Math.min(w / VW, h / VH);
-    g.save(); g.translate((w - VW * sc) / 2, (h - VH * sc) / 2); g.scale(sc, sc);
+    g.save(); g.translate(Math.round((w - VW * sc) / 2), Math.round((h - VH * sc) / 2)); g.scale(sc, sc);
     if (!titleBg) {
       const P = new SP.Pix(VW, VH), R = SP.ramp;
-      // 遺跡の塔（プラーン）と水辺
-      P.poly([[62, 70], [66, 34], [72, 22], [76, 10], [80, 2], [84, 10], [88, 22], [94, 34], [98, 70]], (x, y) => R('#c0624a')[P.idx(1.2 + (x - 62) / 30 + (y % 4 === 0 ? 0.6 : 0), x, y)]);
-      P.rect(74, 52, 12, 18, '#3a1a14'); P.ball(80, 52, 6, 5, R('#3a1a14'));
-      P.poly([[40, 70], [43, 52], [48, 42], [52, 52], [55, 70]], (x, y) => R('#a8564a')[P.idx(1.6 + (x - 40) / 16, x, y)]);
-      P.poly([[105, 70], [108, 52], [113, 42], [117, 52], [120, 70]], (x, y) => R('#a8564a')[P.idx(1.6 + (x - 105) / 16, x, y)]);
-      for (let y = 70; y < VH; y++) for (let x = 0; x < VW; x++) P.set(x, y, R('#3a9ad0')[P.idx(1.4 + (y - 70) / 16, x, y)]);
-      for (const [x, y] of [[30, 76], [122, 78], [70, 80]]) { P.ball(x, y + 2, 6, 2, R('#3a8a40')); P.ball(x, y, 2.5, 3, R('#ff8fb8')); }
+      // 夕暮れの空・遺跡の塔（プラーン）・水辺と蓮
+      for (let y = 0; y < 86; y++) for (let x = 0; x < VW; x++) P.set(x, y, SP.mix('#1e5a5e', '#f0b070', Math.max(0, (y - 20) / 70) + ((SP.hash(x >> 1, y >> 1, 3) & 3) - 1.5) * 0.01));
+      P.ball(84, 40, 22, 22, R('#ffd890'), { dither: false });
+      const prang = (cx, top, wd, col) => P.poly([[cx - wd, 86], [cx - wd + 3, 50], [cx - 4, top + 12], [cx, top], [cx + 4, top + 12], [cx + wd - 3, 50], [cx + wd, 86]], (x, y) => R(col)[P.idx(1.4 + (x - cx + wd) / (2 * wd) + (y % 5 === 0 ? 0.5 : 0), x, y)]);
+      prang(52, 40, 10, '#9a4e40'); prang(116, 40, 10, '#9a4e40'); prang(84, 14, 16, '#b85a44');
+      P.ball(84, 74, 6, 6, R('#3a1a14')); P.rect(78, 74, 12, 12, '#3a1a14');
+      for (let y = 86; y < VH; y++) for (let x = 0; x < VW; x++) P.set(x, y, R('#2a8ab8')[P.idx(1.2 + (y - 86) / 14, x, y)]);
+      for (const [x, y] of [[24, 96], [140, 98], [84, 100]]) { P.ball(x, y + 2, 6, 2, R('#3a8a40')); P.ball(x, y, 2.4, 3, R('#ff8fb8')); }
       P.outline(0.6);
       titleBg = P.canvas();
     }
     g.drawImage(titleBg, 0, 0);
     // 宝珠の光
     const gl = 0.5 + 0.5 * Math.sin(now / 400);
-    g.globalAlpha = 0.35 * gl; g.fillStyle = '#f0d8ff'; g.beginPath(); g.arc(80, 36, 13, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
-    g.drawImage(SP.s.icon.orb, 72, 27 - Math.round(gl * 2), 16, 16);
-    // たけとサイ（顔絵）
-    const b = Math.floor(now / 600) % 2;
-    g.drawImage(SP.s.portrait.take, 2, 20 + b, 56, 56);
-    g.drawImage(SP.s.portrait.sai, 102, 20 + (1 - b), 56, 56);
+    g.globalAlpha = 0.4 * gl; g.fillStyle = '#f6e0ff'; g.beginPath(); g.arc(84, 30, 12, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+    g.drawImage(SP.s.icon.orb, 76, 21 - Math.round(gl * 2), 16, 16);
+    // たけとサイ（全身）
+    const b = Math.floor(now / 700) % 2;
+    g.drawImage(SP.s.big.take, 4, 8 + b, 64, 96);
+    g.drawImage(SP.s.big.sai, 100, 8 + (1 - b), 64, 96);
     g.restore();
   }
 
@@ -254,7 +273,9 @@
   }
   function showTitle() {
     closeAllModals();
-    $('btn-continue').style.display = SV.exists() ? '' : 'none';
+    const has = SV.exists();
+    $('btn-continue').style.display = has ? '' : 'none';
+    $('btn-newgame').classList.toggle('primary', !has); // 「つづきから」がないときは「はじめから」を目立たせる
     $('btn-sound-title').textContent = '音：' + (UI.S.settings.sound ? 'オン' : 'オフ');
     showScreen('title');
   }
@@ -816,7 +837,7 @@
     UI.facing = !UI.facing;
     stopHold();
     updateModeButtons();
-    toast(UI.facing ? '向き変更中：方向ボタンで向きだけ変わる' : '通常の移動に戻った');
+    toast(UI.facing ? '向き変更：オン' : '向き変更：オフ');
   }
   function updateModeButtons() {
     const b = $('b-dash');
