@@ -22,13 +22,28 @@
     if (!data || typeof data !== 'object') return null;
     if (typeof data.version !== 'number') data.version = 1;
     if (data.version > D.SAVE_VERSION) return data; // 新しい版のデータはそのまま
-    // ここに将来の変換を追加する（例：if (data.version === 1) { ...; data.version = 2; }）
+    // v1 → v2：10階クリアの記録は「旧記録」として残し、30階の新しい目標と区別する
+    if (data.version === 1) {
+      const V = data.village || {};
+      if (V.cleared) { V.legacyClear10 = true; V.legacyClears = V.clears || 1; }
+      V.cleared = false; V.clears = 0;
+      // 探索途中に旧・宝珠（10階）を持っていた場合は、守護の輝石に置き換えて旧記録に加える
+      const swap = (it) => { if (it && it.id === 'wish_orb') { it.id = 'guardian_gem'; V.legacyClear10 = true; } };
+      if (data.run) {
+        (data.run.bag || []).forEach(swap);
+        (data.run.floorItems || []).forEach((f) => swap(f.item));
+      }
+      (V.bag || []).forEach(swap); (V.storage || []).forEach(swap);
+      data.village = V;
+      data.version = 2;
+    }
     const def = G.newState();
     fill(data, def);
     fill(data.village, def.village);
     fill(data.settings, def.settings);
     if (data.run) {
       if (!data.run.map || !data.run.player) data.run = null;
+      else fill(data.run.player, { poison: 0, poisonGuard: 0 });
     }
     data.version = D.SAVE_VERSION;
     return data;

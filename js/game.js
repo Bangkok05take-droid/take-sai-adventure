@@ -30,6 +30,7 @@
     return {
       funds: D.START_FUNDS, stage: 1, bag: [], storage: [], nextUid: 1,
       cleared: false, clears: 0, runs: 0, returns: 0, defeats: 0, bestFloor: 0,
+      legacyClear10: false, bossKills: {}, materials: {},
       lastResult: null, seenIntro: false, seenEnding: false,
     };
   };
@@ -95,7 +96,7 @@
     S.run = {
       seed, rng: R.create(seed), floor: 0, turn: 0, runGold: 0, bag,
       player: { x: 0, y: 0, lvl: 1, exp: 0, hp: G.maxHpFor(1), maxhp: G.maxHpFor(1), hunger: D.PLAYER.maxHunger,
-        hungerAcc: 0, regenAcc: 0, starveAcc: 0, dir: 'down', lowWarned: false },
+        hungerAcc: 0, regenAcc: 0, starveAcc: 0, dir: 'down', lowWarned: false, poison: 0, poisonGuard: 0 },
       enemies: [], floorItems: [], map: null, explored: null, stairs: null, returnPoint: null, portal: null,
       log: [], over: false, result: null, nextEnemyId: 1, killedBy: null, revealed: false,
     };
@@ -132,7 +133,7 @@
     // 道具
     const nItems = R.int(rng, F.itemCount[0], F.itemCount[1]);
     for (let i = 0; i < nItems; i++) {
-      const room = floor === D.MAX_FLOOR ? run.map.rooms[0] : null;
+      const room = F.boss ? run.map.rooms[0] : null;
       const pos = DG.freeTile(run.map, rng, occupied, room);
       if (!pos) break;
       occupied.push(pos);
@@ -162,7 +163,7 @@
     }
     G.log(run, '地下' + floor + '階　' + D.THEMES[F.theme].name);
     if (run.returnPoint) G.log(run, 'この階には村へ帰れる「帰還の碑」がある。');
-    if (F.boss) G.log(run, '奥から大きな気配がする…。準備はいいか？');
+    if (F.boss) G.log(run, '奥から大きな気配がする…。' + D.ENEMIES[F.boss].name + 'が待ち構えている！');
     G.updateVision(run);
   }
 
@@ -289,6 +290,7 @@
     G.log(run, G.itemName(f.item) + 'を拾った。');
     ev.push({ t: 'pickup', x: p.x, y: p.y, id: f.item.id });
     if (f.item.id === 'wish_orb') G.log(run, 'ついに願いの宝珠を手に入れた！帰還口から村へ帰ろう。');
+    if (G.def(f.item).type === 'material') G.log(run, '（素材は村に持ち帰ると素材箱に入る）');
     return explicit;
   }
 
@@ -325,15 +327,25 @@
     ev.push({ t: 'kill', x: e.x, y: e.y });
     gainExp(S, e.exp, ev);
     if (e.boss) {
-      const already = !!G.itemAt(run, e.x, e.y);
-      const id = S.village.cleared ? 'guardian_gem' : 'wish_orb';
-      const pos = already ? DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), DG.roomAt(run.map, e.x, e.y)) : { x: e.x, y: e.y };
-      run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id) });
+      const V = S.village, f = run.floor;
+      V.bossKills[f] = (V.bossKills[f] || 0) + 1;
       const room = DG.roomAt(run.map, e.x, e.y);
-      run.portal = { x: room.x + room.w - 2, y: room.y + Math.floor(room.h / 2) };
-      if (DG.same(run.portal, pos) || DG.same(run.portal, run.player)) run.portal = { x: room.x + room.w - 1, y: room.y + 1 };
-      G.log(run, '守護獅子は静かに石へ戻った…。' + D.ITEMS[id].name + 'が残された！');
-      G.log(run, '光る帰還口が現れた！');
+      // 最終ボスの宝珠は、まだ30階を踏破していないときだけ
+      const id = E.repeatDrop && V.cleared ? E.repeatDrop : E.drop;
+      const pos = G.itemAt(run, e.x, e.y) ? DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room) : { x: e.x, y: e.y };
+      run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id) });
+      const taken = run.floorItems.concat([run.player, pos]);
+      run.portal = DG.freeTile(run.map, run.rng, taken, room);
+      if (f < D.MAX_FLOOR) {
+        run.stairs = DG.freeTile(run.map, run.rng, taken.concat([run.portal]), room);
+        G.log(run, E.name + 'は静かに眠りについた…。' + D.ITEMS[id].name + 'が残された！');
+        G.log(run, '下への階段と、村への帰還口が現れた！');
+      } else {
+        G.log(run, E.name + 'は光になって消えた…。' + D.ITEMS[id].name + 'が残された！');
+        G.log(run, '光る帰還口が現れた！');
+      }
+      // 見える範囲を更新して階段・帰還口を地図に記録
+      G.updateVision(run);
       ev.push({ t: 'portal' });
     } else if (R.chance(run.rng, D.ENEMY_DROP_RATE) && !G.itemAt(run, e.x, e.y) && !DG.same(run.stairs, e) && !DG.same(run.returnPoint, e)) {
       const F = D.FLOORS[run.floor];
@@ -416,6 +428,7 @@
       case 'heal': {
         const before = p.hp;
         p.hp = Math.min(p.maxhp, p.hp + d.heal);
+        p.poison = 0; // 回復薬は毒も治す
         remove();
         G.log(run, d.name + 'を使った。HPが' + (p.hp - before) + '回復した。');
         ev.push({ t: 'heal', x: p.x, y: p.y, n: p.hp - before });
@@ -468,6 +481,47 @@
         run.revealed = true;
         G.log(run, '見通しの巻物を読んだ。この階の様子がわかった！');
         ev.push({ t: 'reveal' });
+        return true;
+      }
+      case 'warp': {
+        remove();
+        // 今いる部屋以外で、できるだけ遠い部屋へ
+        const here = G.roomForView(run, p.x, p.y);
+        let best = null, bd = -1;
+        for (let i = 0; i < 12; i++) {
+          const room = R.pick(run.rng, run.map.rooms.filter((r) => r !== here).concat(run.map.rooms.length === 1 ? run.map.rooms : []));
+          const t = DG.randomRoomTile(run.rng, room);
+          if (G.enemyAt(run, t.x, t.y)) continue;
+          const d = Math.abs(t.x - p.x) + Math.abs(t.y - p.y);
+          if (d > bd) { bd = d; best = t; }
+        }
+        if (best) { p.x = best.x; p.y = best.y; G.updateVision(run); }
+        G.log(run, '煙玉を投げた！たけは煙にまぎれて逃げ出した。');
+        ev.push({ t: 'warp' });
+        return true;
+      }
+      case 'slow': {
+        remove();
+        const vis = G.visibleEnemies(run);
+        for (const e of vis) e.slow = Math.max(e.slow || 0, e.boss ? 6 : d.turns);
+        G.log(run, d.name + 'をまいた。' + (vis.length ? '見えている敵の動きが鈍くなった！' : '粉は風に消えた。'));
+        ev.push({ t: 'slow', targets: vis.map((e) => ({ x: e.x, y: e.y })) });
+        return true;
+      }
+      case 'fire': {
+        remove();
+        const vis = G.visibleEnemies(run);
+        G.log(run, d.name + 'を使った！炎が広がる！');
+        ev.push({ t: 'fire', targets: vis.map((e) => ({ x: e.x, y: e.y })) });
+        for (const e of vis) if (run.enemies.includes(e)) damageEnemy(S, e, d.dmg, ev, D.ENEMIES[e.type].name + 'に' + d.dmg + 'のダメージ。');
+        return true;
+      }
+      case 'cure': {
+        remove();
+        p.poison = 0; p.poisonGuard = 30;
+        const before = p.hp; p.hp = Math.min(p.maxhp, p.hp + 20);
+        G.log(run, d.name + 'を使った。毒が消え、体が軽くなった。');
+        ev.push({ t: 'heal', x: p.x, y: p.y, n: p.hp - before });
         return true;
       }
       case 'return': {
@@ -562,7 +616,7 @@
     }
     if (run.over) return;
     // 時間経過で敵が湧く（見えない場所）
-    if (run.turn % D.SPAWN_INTERVAL === 0 && run.enemies.length < D.MAX_ENEMIES && !D.FLOORS[run.floor].boss) spawnEnemy(S);
+    if (run.turn % D.SPAWN_INTERVAL === 0 && run.enemies.length < D.maxEnemies(run.floor) && !D.FLOORS[run.floor].boss) spawnEnemy(S);
     G.updateVision(run);
     if (p.hp <= p.maxhp * 0.3 && !p.lowWarned) {
       p.lowWarned = true;
@@ -603,8 +657,9 @@
       if (e.sleep === 0) G.log(run, E.name + 'が目を覚ました。');
       return;
     }
-    // 遅い敵は2ターンに1回
-    if (E.ai === 'slow' && run.turn % 2 === 1) return;
+    // 遅い敵・鈍足の敵は2ターンに1回
+    if (e.slow > 0) { e.slow--; if (run.turn % 2 === 1) return; }
+    else if (E.ai === 'slow' && run.turn % 2 === 1) return;
     e.acts++;
     const sees = G.isVisible(run, e.x, e.y); // 互いに見えている
     if (sees) { e.tx = p.x; e.ty = p.y; }
@@ -733,7 +788,14 @@
       V.bag = [];
       V.defeats++;
     } else {
-      V.bag = run.bag.filter((i) => i.id !== 'return_scroll' && i.id !== 'wish_orb');
+      // 素材は素材箱へ（倉庫・バッグの枠を使わない）
+      res.materials = {};
+      for (const it of run.bag) {
+        if (G.def(it).type !== 'material') continue;
+        V.materials[it.id] = (V.materials[it.id] || 0) + 1;
+        res.materials[it.id] = (res.materials[it.id] || 0) + 1;
+      }
+      V.bag = run.bag.filter((i) => i.id !== 'return_scroll' && i.id !== 'wish_orb' && G.def(i).type !== 'material');
       V.funds += run.runGold;
       V.returns++;
       res.items = V.bag.length;

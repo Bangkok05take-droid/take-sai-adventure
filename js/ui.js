@@ -44,7 +44,7 @@
     if (UI.stopDash) UI.stopDash();
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
-    AU.playBgm(name === 'dungeon' ? (UI.S.run && UI.S.run.floor === D.MAX_FLOOR ? 'boss' : 'dungeon') : name === 'village' ? 'village' : 'village');
+    AU.playBgm(name === 'dungeon' ? (UI.S.run && D.FLOORS[UI.S.run.floor].boss ? 'boss' : 'dungeon') : 'village');
     if (name === 'village') updateVillageHud();
     if (name === 'dungeon') updateHud();
   }
@@ -184,7 +184,7 @@
   // ================= 遊び方 =================
   const HELP_HTML = `<div class="help">
     <h3>目的</h3>
-    <p>たけを操作して遺跡（地下10階）を探索し、最深部の「願いの宝珠」を村へ持ち帰ろう。拾ったお宝はサイの店で売って村を発展させよう。</p>
+    <p>たけを操作して遺跡（地下30階）を探索し、最深部の「願いの宝珠」を村へ持ち帰ろう。10階と20階には強い守り手がいる。拾ったお宝はサイの店で売って村を発展させよう。</p>
     <h3>操作</h3>
     <ul>
       <li><b>方向ボタン</b>（3×3）：8方向に1マス移動。斜めも1ターン。敵のいる方向へ動くと攻撃（斜めの敵にも攻撃できる）。</li>
@@ -208,7 +208,8 @@
     <h3>帰還と敗北</h3>
     <ul>
       <li><b>帰還の巻物</b>（出発時に1枚無料）を使うと、その場で持ち物とお金を持って村へ帰れる。</li>
-      <li>3・6・9階には<b>帰還の碑</b>がある。10階で守護者を倒すと帰還口が開く。</li>
+      <li>3階ごと（3・6・9…27階）に<b>帰還の碑</b>がある。10・20階の守り手を倒すと、帰還口と下への階段が開く。</li>
+      <li>帰って再出発すると1階から。帰る・進むの判断が大事。探索の途中で中断しても、続きから再開できる。</li>
       <li>倒れると、持ち物と探索中のお金を失う。村の資金・倉庫・施設は残る。</li>
     </ul>
     <h3>村</h3>
@@ -545,12 +546,16 @@
     const lines = V.runs === 1
       ? [['sai', 'いってらっしゃい、たけ！お腹がすいたらちゃんと食べてね。'], ['take', 'いってきます！お宝、たくさん持って帰るよ。']]
       : V.cleared ? [['sai', '宝珠のおかげで村がにぎやかだね。今日も気をつけて！'], ['take', 'まだ見てない部屋があるはず。いってきます！']]
+      : V.bestFloor >= 20 ? [['sai', '結晶の洞窟の先に、金色の神殿があるんだって。'], ['take', '宝珠はきっとその奥だ。準備して行ってくる！']]
+      : V.bestFloor >= 10 ? [['sai', '守護獅子の先にも、まだ遺跡は続いてるんだね。'], ['take', 'うん、30階まであるらしい。少しずつ進むよ。']]
       : [['sai', '今日はどこまで行くの？無理はしないでね。'], ['take', 'うん。危なくなったら帰ってくるよ。']];
     talk(lines);
   }
 
   function villageMenu() {
-    modal({ title: 'メニュー', html: `<p class="note">セーブは自動で行われます。</p><p>帰還 ${UI.S.village.returns}回　敗北 ${UI.S.village.defeats}回　${UI.S.village.cleared ? '宝珠：入手済み' : ''}</p>`, buttons: [
+    modal({ title: 'メニュー', html: `<p class="note">セーブは自動で行われます。</p><p>帰還 ${UI.S.village.returns}回　敗北 ${UI.S.village.defeats}回　最深 地下${UI.S.village.bestFloor}階</p>
+      <p>${UI.S.village.cleared ? '★ 30階の願いの宝珠：入手済み（' + UI.S.village.clears + '回）' : '目標：地下30階の「願いの宝珠」'}</p>
+      ${UI.S.village.legacyClear10 ? '<p class="note">旧記録：10階「宝珠の間」踏破（以前の版）</p>' : ''}`, buttons: [
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(villageMenu, 0); } },
       { label: 'タイトルへ', onClick: () => { save(); setTimeout(showTitle, 0); } },
@@ -703,7 +708,7 @@
     updateHud();
     pushLog(logLen);
     if (S.run && S.run.over) { stopDash(); setTimeout(handleRunOver, 350); return; }
-    if (res.floorChanged) { stopDash(); AU.playBgm(S.run.floor === D.MAX_FLOOR ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階'); }
+    if (res.floorChanged) { stopDash(); AU.playBgm(D.FLOORS[S.run.floor].boss ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階'); }
     // 階段などに乗ったら確認
     const ev = res.events;
     if (ev.some((e) => e.t === 'onStairs')) { stopDash(); setTimeout(() => promptStairs(), 60); }
@@ -784,8 +789,10 @@
   function promptStairs() {
     if (!UI.S.run || UI.modals.length || !G.onStairs(UI.S.run)) return;
     const f = UI.S.run.floor;
-    const nextBoss = f + 1 === D.MAX_FLOOR;
-    modal({ title: '階段', html: `<p>下へ続く階段がある。地下${f + 1}階へ降りますか？</p>${nextBoss ? '<div class="warnbox">この先は「宝珠の間」。守護者が待っています。HPと道具を整えてから進もう。</div>' : ''}<p class="note">降りなかった場合も「足元」ボタンからいつでも降りられます。</p>`, buttons: [
+    const nextBoss = D.FLOORS[f + 1] && D.FLOORS[f + 1].boss;
+    const bossWarn = nextBoss ? `<div class="warnbox">この先は「${D.THEMES[D.FLOORS[f + 1].theme].name}」。${D.ENEMIES[nextBoss].name}が待っています。HPと道具を整えてから進もう。</div>` : '';
+    const region = D.FLOORS[f + 1] && D.FLOORS[f + 1].theme !== D.FLOORS[f].theme && !nextBoss ? `<p class="note">この先は「${D.THEMES[D.FLOORS[f + 1].theme].name}」。</p>` : '';
+    modal({ title: '階段', html: `<p>下へ続く階段がある。地下${f + 1}階へ降りますか？</p>${bossWarn}${region}<p class="note">降りなかった場合も「足元」ボタンからいつでも降りられます。</p>`, buttons: [
       { label: 'まだ探索する' },
       { label: '降りる', cls: 'primary', onClick: () => { setTimeout(() => doDescend(), 0); } },
     ] });
@@ -935,7 +942,8 @@
       ], () => { if (retry) openDepart(); });
       return;
     }
-    const html = `<div class="kv"><span>到達</span><span>地下${res.floor}階</span><span>持ち帰ったお金</span><span>${res.gold}G（村の資金へ）</span><span>持ち帰った道具</span><span>${res.items}個</span></div>
+    const mats = Object.entries(res.materials || {}).map(([id, n]) => D.ITEMS[id].name + '×' + n).join('、');
+    const html = `<div class="kv"><span>到達</span><span>地下${res.floor}階</span><span>持ち帰ったお金</span><span>${res.gold}G（村の資金へ）</span><span>持ち帰った道具</span><span>${res.items}個</span>${mats ? `<span>素材</span><span>${esc(mats)}（素材箱へ）</span>` : ''}</div>
       <p class="note">お宝はサイの店で売るとお金になります。</p>`;
     const after = () => {
       if (res.orb) return ending(res.firstClear);
@@ -956,13 +964,13 @@
     const lines = first ? [
       ['take', 'サイ！見て、これが願いの宝珠だよ！'],
       ['sai', 'わあ…夕日みたいにあったかい光。本当にあったんだね。'],
-      ['take', '遺跡の守護獅子が、最後に道を開けてくれたんだ。'],
+      ['take', '30階の奥で、夢見の黄金象が道を開けてくれたんだ。'],
       ['sai', 'この宝珠、村の真ん中にまつろうよ。みんなが集まる場所になるように。'],
       ['take', 'うん。ぼくの願いは…このお店と村が、ずっとにぎやかでありますように。'],
       ['sai', 'ふふ、私も同じ願い。これからもよろしくね、たけ。'],
     ] : [
-      ['take', '守護の輝石を持って帰ったよ！'],
-      ['sai', 'すごい！宝珠のとなりに飾ろうか…やっぱり売って村のために使おう！'],
+      ['take', 'また30階まで行ってきたよ！'],
+      ['sai', 'すごい！宝珠も、たけの帰りを喜んでるみたい。'],
     ];
     talk(lines, () => {
       if (!first) return;
@@ -971,7 +979,7 @@
         <p>たけとサイの小さなお店は、宝珠の光に照らされて、今日もにぎやかです。</p>
         <p>帰還 ${V.returns}回・敗北 ${V.defeats}回</p>
         <p class="big-t">THANK YOU FOR PLAYING!</p>
-        <p class="note">このあとも探索と村の発展を続けられます。10階の守護者は「守護の輝石」を落とすようになります。</p></div>`,
+        <p class="note">このあとも探索と村の発展を続けられます。30階の黄金象は、次からは「夢見の宝冠」を落とします。</p></div>`,
       buttons: [{ label: '村へ', cls: 'primary' }] });
     });
   }

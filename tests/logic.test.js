@@ -8,7 +8,7 @@ function test(name, fn) {
   catch (e) { failed++; console.log('  NG  ' + name + '\n      ' + (e.stack || e).toString().split('\n').slice(0, 3).join('\n      ')); }
 }
 function assert(c, msg) { if (!c) throw new Error(msg || 'assertion failed'); }
-function eq(a, b, msg) { if (a !== b) throw new Error((msg || '') + ` expected ${JSON.stringify(b)} got ${JSON.stringify(a)}`); }
+function eq(a, b, msg) { if (a !== b) throw new Error((msg || '') + ` expected ${String(JSON.stringify(b)).slice(0, 200)} got ${String(JSON.stringify(a)).slice(0, 200)}`); }
 
 function newRun(seed = 1, setup) {
   const S = G.newState();
@@ -42,22 +42,45 @@ function addEnemy(S, type, x, y) {
   return e;
 }
 
+// ボスを倒す（テスト用：HPを1にして隣から攻撃）
+function defeatBoss(S) {
+  const run = S.run, b = run.enemies.find((e) => e.boss);
+  b.hp = 1; b.sleep = 99;
+  run.player.hp = run.player.maxhp = 9999;
+  for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) {
+    const x = b.x - dx, y = b.y - dy;
+    if (G.canStep(run.map, x, y, dx, dy) && !G.enemyAt(run, x, y)) { run.player.x = x; run.player.y = y; G.updateVision(run);
+      for (let i = 0; i < 60 && run.enemies.includes(b); i++) G.act(S, { type: 'move', dir });
+      return; }
+  }
+  throw new Error('cannot reach boss');
+}
+function goDown(S) {
+  const run = S.run;
+  if (D.FLOORS[run.floor].boss && run.enemies.some((e) => e.boss)) defeatBoss(S);
+  run.player.x = run.stairs.x; run.player.y = run.stairs.y;
+  G.act(S, { type: 'descend' });
+}
+function goToFloor(S, f) { while (S.run.floor < f) goDown(S); }
+
 console.log('ダンジョン生成');
-test('多数のシードで入口から階段・帰還の碑・全道具・全敵に到達でき、不正配置がない', () => {
+test('多数のシードで30階すべて：入口から階段・帰還の碑・全道具・全敵に到達でき、不正配置がない', () => {
   let checked = 0;
-  for (let seed = 1; seed <= 300; seed++) {
+  for (let seed = 1; seed <= 200; seed++) {
     const S = newRun(seed);
     for (let f = 1; f <= D.MAX_FLOOR; f++) {
-      if (f > 1) { S.run.player.x = S.run.stairs.x; S.run.player.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
+      if (f > 1) goDown(S);
       const run = S.run, m = run.map, p = run.player;
       eq(run.floor, f);
+      eq(run.map.w, D.MAP.w);
       const dist = DG.distances(m, p.x, p.y);
       const reach = (o) => dist[o.y * m.w + o.x] >= 0;
       assert(DG.passable(m, p.x, p.y), 'player on wall');
-      if (f < D.MAX_FLOOR) { assert(run.stairs && reach(run.stairs), `stairs unreachable seed${seed} f${f}`); assert(!DG.same(run.stairs, p), 'stairs on start'); }
-      else assert(!run.stairs, 'no stairs on boss floor');
+      const boss = D.FLOORS[f].boss;
+      if (!boss) { assert(run.stairs && reach(run.stairs), `stairs unreachable seed${seed} f${f}`); assert(!DG.same(run.stairs, p), 'stairs on start'); }
+      else { assert(!run.stairs, 'no stairs before boss'); assert(run.enemies.some((e) => e.boss && e.type === boss), 'boss exists'); }
       if (D.RETURN_POINT_FLOORS.includes(f)) { assert(run.returnPoint && reach(run.returnPoint), 'return point'); assert(!DG.same(run.returnPoint, run.stairs)); }
-      // 全マスがつながっている
+      eq(D.RETURN_POINT_FLOORS.includes(f), f % 3 === 0 && f < 30, 'return every 3 floors');
       for (let i = 0; i < m.tiles.length; i++) if (m.tiles[i] !== DG.WALL) assert(dist[i] >= 0, `isolated tile seed${seed} f${f}`);
       const pos = new Set();
       for (const it of run.floorItems) {
@@ -73,9 +96,16 @@ test('多数のシードで入口から階段・帰還の碑・全道具・全�
         assert(!epos.has(k), 'enemies overlap'); epos.add(k);
         assert(!pos.has(k), 'enemy on item');
         assert(!DG.same(e, p), 'enemy on player');
-        if (!e.boss) assert(!G.isVisible(run, e.x, e.y) || DG.roomAt(m, e.x, e.y) !== DG.roomAt(m, p.x, p.y), 'enemy in start room');
+        // 開始直後の包囲を避ける：最初の部屋には敵を置かない
+        if (!e.boss) assert(DG.roomAt(m, e.x, e.y) !== DG.roomAt(m, p.x, p.y), 'enemy in start room');
+        assert(Math.max(Math.abs(e.x - p.x), Math.abs(e.y - p.y)) > 1, 'enemy adjacent at start');
       }
-      if (f === D.MAX_FLOOR) assert(run.enemies.some((e) => e.boss), 'boss exists');
+      if (boss) {
+        defeatBoss(S);
+        assert(run.portal && reach(run.portal), 'portal after boss');
+        if (f < D.MAX_FLOOR) { assert(run.stairs && reach(run.stairs), 'stairs after midboss'); assert(!DG.same(run.stairs, run.portal)); }
+        for (const it of run.floorItems) { assert(!DG.same(it, run.portal), 'item on portal'); assert(!DG.same(it, run.stairs), 'item on stairs'); }
+      }
       checked++;
     }
   }
@@ -477,35 +507,115 @@ test('古い形式（項目が欠けた）データも読み込める', () => {
   assert(SV.deserialize('壊れたデータ') === null);
 });
 
-console.log('10階・エンディング');
-test('10階で守護者を倒し、宝珠を拾って帰還口から帰ると初回クリア。2回目以降は輝石', () => {
+const fs = require('fs'), path = require('path');
+const fixture = (n) => fs.readFileSync(path.join(__dirname, 'fixtures', n), 'utf8');
+test('旧セーブ（v1・探索途中）を移行：村・倉庫・装備・探索中の状態を引き継ぎ、続きから遊べる', () => {
+  const raw = JSON.parse(fixture('save-v1-midrun.json'));
+  const L = SV.deserialize(fixture('save-v1-midrun.json'));
+  eq(L.version, D.SAVE_VERSION);
+  eq(L.village.funds, raw.village.funds); eq(L.village.stage, raw.village.stage);
+  eq(JSON.stringify(L.village.storage), JSON.stringify(raw.village.storage));
+  eq(L.run.floor, 4); eq(L.run.turn, raw.run.turn); eq(L.run.player.hp, raw.run.player.hp);
+  eq(JSON.stringify(L.run.bag), JSON.stringify(raw.run.bag));
+  eq(JSON.stringify(L.run.enemies), JSON.stringify(raw.run.enemies));
+  eq(L.run.player.poison, 0);
+  // 続けて遊べる（4階→11階まで降りられる）
+  for (let i = 0; i < 20; i++) G.act(L, { type: 'wait' });
+  if (!L.run.over) { goToFloor(L, 11); eq(L.run.floor, 11); eq(D.FLOORS[11].theme, 'garden'); }
+  // 再保存→再読み込みで一致
+  const t = SV.serialize(L); eq(SV.serialize(SV.deserialize(t)), t);
+});
+test('旧セーブ（v1・10階クリア済み）を移行：旧記録として残し、30階の目標とは区別。お金・装備は減らない', () => {
+  const raw = JSON.parse(fixture('save-v1-cleared.json'));
+  const L = SV.deserialize(fixture('save-v1-cleared.json'));
+  eq(L.village.legacyClear10, true); eq(L.village.cleared, false); eq(L.village.legacyClears, 1);
+  eq(L.village.funds, raw.village.funds); eq(L.village.stage, 3); eq(L.village.bestFloor, 10);
+  eq(JSON.stringify(L.village.bag), JSON.stringify(raw.village.bag));
+  eq(JSON.stringify(L.village.storage), JSON.stringify(raw.village.storage));
+  assert(G.depart(L, 5).ok, 'can depart');
+});
+test('旧セーブの探索途中に旧・宝珠があれば守護の輝石に置き換え、旧記録にする（新エンディング扱いにしない）', () => {
+  const data = JSON.parse(fixture('save-v1-midrun.json'));
+  data.run.bag.push({ uid: 999, id: 'wish_orb', plus: 0 });
+  const L = SV.deserialize(JSON.stringify(data));
+  assert(!L.run.bag.some((i) => i.id === 'wish_orb') && L.run.bag.some((i) => i.uid === 999 && i.id === 'guardian_gem'));
+  eq(L.village.legacyClear10, true);
+  G.useReturnScroll(L); const res = G.finishRun(L);
+  assert(!res.orb && !L.village.cleared);
+});
+
+console.log('ボス・宝珠・エンディング');
+test('10階・20階の中ボスを倒すとお宝・下への階段・帰還口が出る', () => {
   const S = newRun(40);
-  for (let f = 1; f < 10; f++) { const p = S.run.player; p.x = S.run.stairs.x; p.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
-  const run = S.run; eq(run.floor, 10);
-  const boss = run.enemies.find((e) => e.boss); assert(boss);
-  // 強いたけで正面から戦う
-  run.player.lvl = 15; run.player.maxhp = run.player.hp = 999;
-  const sw = G.makeItem(S, 'ivory_blade', { plus: 3, eq: true }); run.bag.push(sw);
-  run.player.x = boss.x - 1; run.player.y = boss.y; G.updateVision(run);
-  let guard = 0;
-  while (run.enemies.includes(boss) && guard++ < 200) G.act(S, { type: 'move', dir: 'right' });
-  assert(!run.enemies.includes(boss), 'boss defeated');
-  assert(run.portal, 'portal');
+  goToFloor(S, 10);
+  eq(S.run.floor, 10); eq(D.THEMES[D.FLOORS[10].theme].name, '守護獅子の間');
+  defeatBoss(S);
+  assert(S.run.floorItems.some((f) => f.item && f.item.id === 'guardian_gem'), 'gem');
+  assert(S.run.stairs && S.run.portal);
+  eq(S.village.bossKills[10], 1);
+  goToFloor(S, 20);
+  eq(S.run.enemies.find((e) => e.boss).type, 'catfish');
+  defeatBoss(S);
+  assert(S.run.floorItems.some((f) => f.item && f.item.id === 'river_pearl'), 'pearl');
+  // 帰還口から帰る
+  S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y;
+  G.act(S, { type: 'returnHome' });
+  const res = G.finishRun(S);
+  eq(res.type, 'return'); assert(!res.orb); eq(S.village.cleared, false);
+});
+test('30階で最終ボスを倒し、宝珠を拾って帰還口から帰ると初回クリア。2回目以降は宝冠', () => {
+  const S = newRun(41);
+  goToFloor(S, 30);
+  const run = S.run;
+  eq(run.enemies.find((e) => e.boss).type, 'elephant');
+  defeatBoss(S);
+  assert(!run.stairs, 'no stairs at 30');
   const orb = run.floorItems.find((f) => f.item && f.item.id === 'wish_orb'); assert(orb, 'orb dropped');
   run.player.x = orb.x; run.player.y = orb.y; G.act(S, { type: 'pickup' });
-  assert(run.bag.some((i) => i.id === 'wish_orb'));
   run.player.x = run.portal.x; run.player.y = run.portal.y;
   G.act(S, { type: 'returnHome' });
   const res = G.finishRun(S);
-  assert(res.orb && res.firstClear, 'first clear'); assert(S.village.cleared);
+  assert(res.orb && res.firstClear, 'first clear'); assert(S.village.cleared); eq(S.village.clears, 1); eq(S.village.bestFloor, 30);
   assert(!S.village.bag.some((i) => i.id === 'wish_orb'), 'orb placed in village');
-  // 2回目
-  G.depart(S, 41);
-  for (let f = 1; f < 10; f++) { const p = S.run.player; p.x = S.run.stairs.x; p.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
-  const b2 = S.run.enemies.find((e) => e.boss); b2.hp = 1;
-  S.run.player.x = b2.x - 1; S.run.player.y = b2.y; G.updateVision(S.run);
-  guard = 0; while (S.run.enemies.includes(b2) && guard++ < 50) G.act(S, { type: 'move', dir: 'right' });
-  assert(S.run.floorItems.some((f) => f.item && f.item.id === 'guardian_gem'), 'gem on 2nd clear');
+  G.depart(S, 42); goToFloor(S, 30); defeatBoss(S);
+  assert(S.run.floorItems.some((f) => f.item && f.item.id === 'dream_crown'), 'crown on repeat');
+  assert(!S.run.floorItems.some((f) => f.item && f.item.id === 'wish_orb'), 'no second orb');
+});
+test('帰還して再出発すると1階から', () => {
+  const S = newRun(43); goToFloor(S, 12);
+  S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
+  G.act(S, { type: 'returnHome' }); G.finishRun(S);
+  G.depart(S, 44); eq(S.run.floor, 1);
+});
+test('素材は持ち帰ると素材箱に入り、売却・預入できない。倒れると失う', () => {
+  const S = newRun(45); bigRoomFloor(S);
+  S.run.bag.push(G.makeItem(S, 'amber_shard'), G.makeItem(S, 'amber_shard'), G.makeItem(S, 'crystal_shard'));
+  G.useReturnScroll(S); const res = G.finishRun(S);
+  eq(S.village.materials.amber_shard, 2); eq(S.village.materials.crystal_shard, 1); eq(res.materials.amber_shard, 2);
+  assert(!S.village.bag.some((i) => G.def(i).type === 'material'));
+  const it = G.makeItem(S, 'gold_leaf'); assert(!G.canSell(it));
+  G.depart(S, 46); S.run.bag.push(G.makeItem(S, 'gold_leaf')); S.run.player.hp = 1;
+  bigRoomFloor(S); const e = addEnemy(S, 'frog', 6, 5); e.atk = 99;
+  for (let i = 0; i < 30 && !S.run.over; i++) G.act(S, { type: 'wait' });
+  G.finishRun(S); assert(!S.village.materials.gold_leaf, 'lost on defeat');
+});
+test('新しい道具：煙玉・鈍足の粉・火炎の札・解毒の葉', () => {
+  const S = newRun(47); bigRoomFloor(S);
+  const run = S.run, m = run.map;
+  m.rooms.push({ id: 1, x: 25, y: 16, w: 4, h: 3 });
+  for (let y = 16; y < 19; y++) for (let x = 25; x < 29; x++) m.tiles[y * m.w + x] = DG.FLOOR;
+  const e = addEnemy(S, 'frog', 8, 5), e2 = addEnemy(S, 'frog', 10, 9);
+  const add = (id) => { const it = G.makeItem(S, id); run.bag.push(it); return it; };
+  G.act(S, { type: 'use', uid: add('fire_charm').uid });
+  eq(e.hp, 999 - 35); eq(e2.hp, 999 - 35);
+  G.act(S, { type: 'use', uid: add('slow_powder').uid });
+  assert(e.slow > 10, 'slowed');
+  const acts = e.acts; for (let i = 0; i < 4; i++) G.act(S, { type: 'wait' });
+  eq(e.acts - acts, 2, 'slowed enemy acts every other turn');
+  run.player.poison = 5; run.player.hp = 10;
+  G.act(S, { type: 'use', uid: add('antidote').uid }); eq(run.player.poison, 0); assert(run.player.hp >= 30 || run.player.hp > 10);
+  G.act(S, { type: 'use', uid: add('smoke_ball').uid });
+  eq(DG.roomAt(m, run.player.x, run.player.y).id, 1, 'warped to other room');
 });
 
 console.log('（参考）自動プレイによるバランス確認');

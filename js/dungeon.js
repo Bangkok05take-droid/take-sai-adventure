@@ -6,7 +6,7 @@
   const WALL = 0, FLOOR = 1, CORR = 2;
 
   function generate(floor, rng) {
-    if (floor === D.MAX_FLOOR) return generateBossFloor(rng);
+    if (D.BOSS_FLOORS[floor]) return generateBossFloor(rng);
     const M = D.MAP, w = M.w, h = M.h;
     const tiles = new Array(w * h).fill(WALL);
     const set = (x, y, v) => { if (tiles[y * w + x] === WALL || v === FLOOR) tiles[y * w + x] = v; };

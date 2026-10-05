@@ -4,7 +4,7 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 1;
+  D.SAVE_VERSION = 2;
   D.SAVE_KEY = 'takeSaiAdventure.save';
 
   // マップ（3x3 の区画にランダムな部屋を置く）
@@ -12,8 +12,10 @@
   D.MAP.w = D.MAP.cols * D.MAP.cellW;
   D.MAP.h = D.MAP.rows * D.MAP.cellH;
 
-  D.MAX_FLOOR = 10;
-  D.RETURN_POINT_FLOORS = [3, 6, 9];
+  D.MAX_FLOOR = 30;
+  D.BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
+  // 3階ごとに帰還の碑（ボスの階は倒すと帰還口が開く）
+  D.RETURN_POINT_FLOORS = [3, 6, 9, 12, 15, 18, 21, 24, 27];
   D.BAG_SIZE = 12;
 
   // プレイヤー
@@ -30,10 +32,12 @@
   };
   // レベルnに必要な累計経験値（index = レベル）
   D.EXP_TABLE = [0, 0, 8, 20, 38, 62, 92, 130, 176, 232, 300, 380, 470, 570, 680, 800, 940, 1100, 1280, 1480, 1700];
+  for (let n = 21; n <= 45; n++) D.EXP_TABLE[n] = Math.round(D.EXP_TABLE[n - 1] + 220 * Math.pow(1.1, n - 20));
 
   D.ENEMY_HIT_RATE = 0.88;
   D.SPAWN_INTERVAL = 45;   // この行動数ごとに見えない場所へ敵が湧く
   D.MAX_ENEMIES = 8;
+  D.maxEnemies = (f) => (f <= 10 ? 8 : f <= 20 ? 9 : 10);
 
   /* 道具（20種）
    * type: weapon / shield / heal / food / sleep / staff / return / map / treasure / orb
@@ -68,6 +72,28 @@
       desc: '見えている敵を10ターン眠らせる（守護者は3ターン）。' },
     thunder_staff: { name: '稲妻の杖', type: 'staff', dmg: 30, sell: 60, icon: 'staff',
       desc: '向いている方向にまっすぐ稲妻を飛ばし、最初に当たった敵に30ダメージ。防御を無視する。' },
+    jade_sword:    { name: '翠玉の剣', type: 'weapon', atk: 12, sell: 360, icon: 'sword', tint: 'jade',
+      desc: '苔の庭園に眠っていた緑に光る剣。' },
+    crystal_blade: { name: '結晶の刃', type: 'weapon', atk: 15, sell: 520, icon: 'sword', tint: 'crystal',
+      desc: '結晶を削り出した、軽くて鋭い刃。' },
+    golden_sword:  { name: '黄金の宝剣', type: 'weapon', atk: 18, sell: 760, icon: 'sword', tint: 'gold',
+      desc: '深部の神殿の宝剣。王の力が宿るという。' },
+    moss_shield:   { name: '苔石の盾', type: 'shield', def: 9, sell: 330, icon: 'shield', tint: 'moss',
+      desc: '苔むした石の盾。重いが頼もしい。' },
+    crystal_shield:{ name: '結晶の盾', type: 'shield', def: 11, sell: 500, icon: 'shield', tint: 'crystal',
+      desc: '光を通す結晶の盾。' },
+    golden_shield: { name: '黄金の盾', type: 'shield', def: 13, sell: 740, icon: 'shield', tint: 'gold',
+      desc: '神殿の守り手の黄金の盾。' },
+    big_herb:      { name: '大薬草', type: 'heal', heal: 90, price: 90, sell: 30, icon: 'herb', tint: 'big',
+      desc: 'HPを90回復し、毒も治す。' },
+    smoke_ball:    { name: '煙玉', type: 'warp', price: 120, sell: 40, icon: 'smoke',
+      desc: '煙にまぎれて、この階の離れた部屋へ逃げる。' },
+    slow_powder:   { name: '鈍足の粉', type: 'slow', turns: 15, price: 110, sell: 35, icon: 'powder',
+      desc: '見えている敵の動きを15ターン遅くする（2ターンに1回しか動けない）。' },
+    fire_charm:    { name: '火炎の札', type: 'fire', dmg: 35, price: 160, sell: 50, icon: 'charm',
+      desc: '見えている敵すべてに35ダメージ（防御無視）。' },
+    antidote:      { name: '解毒の葉', type: 'cure', price: 40, sell: 12, icon: 'herb', tint: 'cure',
+      desc: '毒を治し、しばらく毒にかからなくなる。HPも20回復。' },
     return_scroll: { name: '帰還の巻物', type: 'return', sell: 0, noSell: true, noStore: true, icon: 'scroll', tint: 'red',
       desc: 'その場で探索を終え、持ち物と探索中のお金を村へ持ち帰る。出発時に1枚無料支給。帰還・敗北で消える。' },
     sight_scroll:  { name: '見通しの巻物', type: 'map', price: 80, sell: 30, icon: 'scroll', tint: 'blue',
@@ -79,7 +105,31 @@
     golden_lotus:  { name: '黄金の蓮', type: 'treasure', sell: 260, icon: 'lotus',
       desc: '金でできた蓮の花。とても高く売れる。' },
     guardian_gem:  { name: '守護の輝石', type: 'treasure', sell: 350, icon: 'gem',
-      desc: '守護獅子が守っていた輝く石。とても高く売れる。' },
+      desc: '10階の守護獅子が守っていた輝く石。とても高く売れる。' },
+    amber_pendant: { name: '琥珀の首飾り', type: 'treasure', sell: 300, icon: 'pendant', depth: 11,
+      desc: '地下庭園で見つかった琥珀の首飾り。' },
+    bronze_bell:   { name: '古都の青銅鐘', type: 'treasure', sell: 420, icon: 'bell', depth: 16,
+      desc: '水没した都の小さな鐘。澄んだ音がする。' },
+    sunken_crown:  { name: '沈んだ王冠', type: 'treasure', sell: 560, icon: 'crown', tint: 'blue', depth: 16,
+      desc: '水底に沈んでいた古い王冠。' },
+    river_pearl:   { name: '水底の真珠', type: 'treasure', sell: 900, icon: 'pearl', depth: 20,
+      desc: '20階の大ナマズ王が抱えていた大きな真珠。' },
+    giant_crystal: { name: '大結晶', type: 'treasure', sell: 700, icon: 'gem', tint: 'crystal', depth: 21,
+      desc: '洞窟を照らしていた大きな結晶。' },
+    prism_flower:  { name: '虹色の結晶花', type: 'treasure', sell: 950, icon: 'lotus', tint: 'prism', depth: 21,
+      desc: '光を受けて七色に輝く結晶の花。' },
+    golden_elephant:{ name: '黄金の象', type: 'treasure', sell: 1300, icon: 'elephant', tint: 'gold', depth: 26,
+      desc: '神殿の奥に祀られていた黄金の象。' },
+    dream_crown:   { name: '夢見の宝冠', type: 'treasure', sell: 2000, icon: 'crown', depth: 26,
+      desc: '遺跡が見る夢を映すという宝冠。' },
+    amber_shard:   { name: '根の琥珀片', type: 'material', sell: 0, noSell: true, icon: 'shard', tint: 'amber', depth: 11,
+      desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る（倉庫の枠を使わない）。' },
+    bronze_shard:  { name: '古都の青銅片', type: 'material', sell: 0, noSell: true, icon: 'shard', tint: 'bronze', depth: 16,
+      desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る。' },
+    crystal_shard: { name: '光る結晶片', type: 'material', sell: 0, noSell: true, icon: 'shard', tint: 'crystal', depth: 21,
+      desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る。' },
+    gold_leaf:     { name: '金箔の欠片', type: 'material', sell: 0, noSell: true, icon: 'shard', tint: 'gold', depth: 26,
+      desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る。' },
     wish_orb:      { name: '願いの宝珠', type: 'orb', sell: 0, noSell: true, noStore: true, icon: 'orb',
       desc: '遺跡の奥に眠っていた宝珠。村へ持ち帰ろう！' },
   };
@@ -95,44 +145,92 @@
     monkey: { name: '吹き矢ザル',   hp: 12,  atk: 3,  def: 1, exp: 7,   ai: 'ranged',  sprite: 'monkey', shoot: 4, range: 4 },
     root:   { name: '根っこオバケ', hp: 24,  atk: 8,  def: 3, exp: 13,  ai: 'dormant', sprite: 'root' },
     jelly:  { name: '水クラゲ',     hp: 28,  atk: 10, def: 4, exp: 17,  ai: 'erratic', sprite: 'jelly' },
-    lion:   { name: '守護獅子',     hp: 150, atk: 14, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true },
+    lion:   { name: '守護獅子',     hp: 150, atk: 14, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true, drop: 'guardian_gem' },
+    catfish: { name: '大ナマズ王',  hp: 320, atk: 22, def: 12, exp: 320, ai: 'boss',   sprite: 'catfish', noScale: true, drop: 'river_pearl' },
+    elephant: { name: '夢見の黄金象', hp: 600, atk: 30, def: 16, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown' },
   };
   D.ENEMY_SCALE = { hp: 0.11, atk: 0.07, exp: 0.12 }; // 1階ごとの上昇率
 
-  // テーマ
+  // テーマ（地域）
   D.THEMES = {
-    brick: { name: 'レンガの回廊' },
-    roots: { name: '木の根の遺跡' },
-    water: { name: '水の神殿' },
-    orb:   { name: '宝珠の間' },
+    brick:   { name: 'レンガの回廊' },
+    roots:   { name: '木の根の遺跡' },
+    water:   { name: '水の神殿' },
+    orb:     { name: '守護獅子の間' },
+    garden:  { name: '木の根と苔の地下庭園' },
+    sunken:  { name: '水没した古代都市' },
+    crystal: { name: '結晶に照らされた洞窟' },
+    gold:    { name: '金色の装飾が残る深部の神殿' },
+    shrine:  { name: '願いの宝珠の間' },
   };
+  D.themeOf = (f) => (f <= 3 ? 'brick' : f <= 6 ? 'roots' : f <= 9 ? 'water' : f === 10 ? 'orb' : f <= 15 ? 'garden'
+    : f <= 20 ? 'sunken' : f <= 25 ? 'crystal' : f <= 29 ? 'gold' : 'shrine');
 
-  // 階層ごとの出現テーブル [id, 重み]
-  D.FLOORS = [
-    null,
-    { theme: 'brick', enemies: [['frog', 1]], enemyCount: [2, 3], itemCount: [4, 5], goldCount: [2, 3],
-      items: [['herb', 4], ['banana', 3], ['old_coin', 3], ['bamboo_shield', 1], ['sleep_incense', 1]] },
-    { theme: 'brick', enemies: [['frog', 4], ['turtle', 1]], enemyCount: [3, 4], itemCount: [4, 5], goldCount: [2, 3],
-      items: [['herb', 4], ['banana', 3], ['old_coin', 3], ['bronze_sword', 1], ['bamboo_shield', 1], ['sleep_incense', 1], ['thunder_staff', 1]] },
-    { theme: 'brick', enemies: [['frog', 3], ['turtle', 1], ['monkey', 2]], enemyCount: [3, 4], itemCount: [4, 6], goldCount: [2, 3],
-      items: [['herb', 4], ['banana', 3], ['old_coin', 3], ['jade_elephant', 1], ['bronze_sword', 1], ['bronze_shield', 1], ['sleep_incense', 1], ['thunder_staff', 1], ['sight_scroll', 1]] },
-    { theme: 'roots', enemies: [['frog', 2], ['turtle', 2], ['monkey', 2], ['root', 2]], enemyCount: [4, 5], itemCount: [4, 6], goldCount: [2, 3],
-      items: [['herb', 4], ['banana', 2], ['khaoniao', 1], ['old_coin', 2], ['jade_elephant', 2], ['iron_katana', 1], ['bronze_shield', 1], ['sleep_incense', 2], ['thunder_staff', 1], ['sight_scroll', 1]] },
-    { theme: 'roots', enemies: [['frog', 1], ['turtle', 2], ['monkey', 2], ['root', 3]], enemyCount: [4, 5], itemCount: [4, 6], goldCount: [2, 3],
-      items: [['herb', 4], ['banana', 2], ['khaoniao', 1], ['old_coin', 2], ['jade_elephant', 2], ['iron_katana', 1], ['bronze_shield', 1], ['sleep_incense', 2], ['thunder_staff', 1], ['sight_scroll', 1], ['elixir', 1]] },
-    { theme: 'roots', enemies: [['turtle', 2], ['monkey', 2], ['root', 3], ['jelly', 1]], enemyCount: [4, 6], itemCount: [5, 6], goldCount: [2, 4],
-      items: [['herb', 4], ['banana', 2], ['khaoniao', 1], ['jade_elephant', 2], ['golden_lotus', 1], ['iron_katana', 1], ['turtle_shield', 1], ['sleep_incense', 2], ['thunder_staff', 1], ['sight_scroll', 1], ['elixir', 1]] },
-    { theme: 'water', enemies: [['turtle', 2], ['monkey', 2], ['root', 2], ['jelly', 3]], enemyCount: [4, 6], itemCount: [5, 6], goldCount: [2, 4],
-      items: [['herb', 4], ['banana', 2], ['khaoniao', 2], ['jade_elephant', 2], ['golden_lotus', 1], ['ivory_blade', 1], ['turtle_shield', 1], ['sleep_incense', 2], ['thunder_staff', 1], ['sight_scroll', 1], ['elixir', 1]] },
-    { theme: 'water', enemies: [['turtle', 1], ['monkey', 2], ['root', 2], ['jelly', 3]], enemyCount: [5, 6], itemCount: [5, 6], goldCount: [2, 4],
-      items: [['herb', 4], ['banana', 2], ['khaoniao', 2], ['jade_elephant', 2], ['golden_lotus', 2], ['ivory_blade', 1], ['turtle_shield', 1], ['sleep_incense', 2], ['thunder_staff', 1], ['sight_scroll', 1], ['elixir', 1]] },
-    { theme: 'water', enemies: [['monkey', 2], ['root', 2], ['jelly', 3]], enemyCount: [5, 6], itemCount: [5, 7], goldCount: [3, 4],
-      items: [['herb', 5], ['banana', 2], ['khaoniao', 2], ['jade_elephant', 2], ['golden_lotus', 2], ['ivory_blade', 1], ['turtle_shield', 1], ['sleep_incense', 2], ['thunder_staff', 1], ['elixir', 2]] },
-    { theme: 'orb', boss: 'lion', enemies: [], enemyCount: [0, 0], itemCount: [2, 2], goldCount: [0, 0],
-      items: [['herb', 3], ['elixir', 1], ['khaoniao', 1]] },
-  ];
+  /* 階層ごとの出現テーブル [id, 重み] を作る。地域ごとに敵・道具・お宝が変わる。 */
+  function floorDef(f) {
+    if (D.BOSS_FLOORS[f]) {
+      return { theme: D.themeOf(f), boss: D.BOSS_FLOORS[f], enemies: [], enemyCount: [0, 0], itemCount: [3, 3], goldCount: [0, 0],
+        items: [['herb', 2], ['elixir', 1], ['khaoniao', 1]].concat(f >= 20 ? [['big_herb', 2]] : []) };
+    }
+    const items = [['herb', 4], ['banana', f <= 15 ? 3 : 2], ['sleep_incense', f <= 3 ? 1 : 2], ['thunder_staff', 1]];
+    const add = (cond, list) => { if (cond) for (const x of list) items.push(x); };
+    add(f >= 3, [['sight_scroll', 1]]);
+    add(f >= 4, [['khaoniao', f >= 11 ? 2 : 1]]);
+    add(f >= 5, [['elixir', 1]]);
+    add(f >= 6, [['smoke_ball', 1]]);
+    add(f >= 8, [['slow_powder', 1]]);
+    add(f >= 11, [['big_herb', 2], ['fire_charm', 1]]);
+    add(f >= 14, [['antidote', 1]]);
+    // 装備
+    add(f <= 3, [['bamboo_shield', 1]]);
+    add(f >= 2 && f <= 5, [['bronze_sword', 1]]);
+    add(f >= 3 && f <= 8, [['bronze_shield', 1]]);
+    add(f >= 4 && f <= 12, [['iron_katana', 1]]);
+    add(f >= 6 && f <= 14, [['turtle_shield', 1]]);
+    add(f >= 7 && f <= 15, [['ivory_blade', 1]]);
+    add(f >= 12 && f <= 22, [['jade_sword', 1]]);
+    add(f >= 13 && f <= 22, [['moss_shield', 1]]);
+    add(f >= 21, [['crystal_blade', 1], ['crystal_shield', 1]]);
+    add(f >= 27, [['golden_sword', 1], ['golden_shield', 1]]);
+    // お宝と素材（深いほど高価）
+    add(f <= 3, [['old_coin', 3]]);
+    add(f >= 3 && f <= 9, [['jade_elephant', f === 3 ? 1 : 2]]);
+    add(f >= 4 && f <= 9, [['old_coin', 2]]);
+    add(f >= 6 && f <= 15, [['golden_lotus', 1]]);
+    add(f >= 11 && f <= 19, [['amber_pendant', 2]]);
+    add(f >= 11 && f <= 15, [['amber_shard', 2]]);
+    add(f >= 16 && f <= 25, [['bronze_bell', 1]]);
+    add(f >= 16 && f <= 19, [['sunken_crown', 1], ['bronze_shard', 2]]);
+    add(f >= 21 && f <= 29, [['giant_crystal', 2]]);
+    add(f >= 21 && f <= 25, [['prism_flower', 1], ['crystal_shard', 2]]);
+    add(f >= 26, [['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]]);
+    return {
+      theme: D.themeOf(f),
+      enemies: D.enemyTable(f),
+      enemyCount: f === 1 ? [2, 3] : f <= 3 ? [3, 4] : f <= 6 ? [4, 5] : f <= 9 ? [4, 6] : f <= 20 ? [5, 7] : [6, 7],
+      itemCount: f <= 3 ? [4, 5] : f <= 9 ? [5, 6] : [5, 7],
+      goldCount: f <= 9 ? [2, 3] : [2, 4],
+      items,
+    };
+  }
+  // 敵の出現テーブル
+  D.enemyTable = function (f) {
+    if (f === 1) return [['frog', 1]];
+    if (f === 2) return [['frog', 4], ['turtle', 1]];
+    if (f === 3) return [['frog', 3], ['turtle', 1], ['monkey', 2]];
+    if (f <= 6) return [['frog', 2], ['turtle', 2], ['monkey', 2], ['root', 3]].concat(f === 6 ? [['jelly', 1]] : []);
+    if (f <= 9) return [['turtle', 2], ['monkey', 2], ['root', 2], ['jelly', 3]];
+    if (f <= 15) return [['turtle', 2], ['monkey', 3], ['root', 3], ['jelly', 3]];
+    if (f <= 20) return [['monkey', 2], ['root', 3], ['jelly', 4]];
+    return [['monkey', 2], ['root', 3], ['jelly', 4], ['turtle', 1]];
+  };
+  D.FLOORS = [null];
+  for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS.push(floorDef(f));
+  D.rebuildFloors = function () { for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS[f] = floorDef(f); };
+
   D.ENEMY_DROP_RATE = 0.12;
-  D.goldAmount = (floor, r) => Math.round((10 + r * 18) * (1 + 0.3 * (floor - 1)));
+  // 床に落ちているお金（浅い階は控えめ、深いほど多い）
+  D.goldAmount = (floor, r) => Math.round((8 + r * 12) * (1 + 0.28 * (floor - 1)));
 
   // 村の発展（3段階）
   D.VILLAGE_STAGES = [

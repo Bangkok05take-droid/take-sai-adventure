@@ -306,14 +306,19 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(await p.isVisible('#screen-dungeon'), 'retried');
   });
 
-  await test('10階で守護者を倒して宝珠を拾い、帰還口から帰るとエンディング', async () => {
+  await test('30階で最終ボスを倒して宝珠を拾い、帰還口から帰るとエンディング（10・20階の中ボスも突破）', async () => {
     await p.evaluate(() => {
-      const S = TS.UI.S;
-      for (let f = S.run.floor; f < 10; f++) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.Game.act(S, { type: 'descend' }); }
+      const S = TS.UI.S, G = TS.Game;
+      const killBoss = () => { const r = S.run, b = r.enemies.find((e) => e.boss); if (!b) return;
+        r.player.hp = r.player.maxhp = 9999; b.hp = 1;
+        for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) { const x = b.x - dx, y = b.y - dy;
+          if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); for (let i = 0; i < 50 && r.enemies.includes(b); i++) G.act(S, { type: 'move', dir }); return; } } };
+      while (S.run.floor < 30) { if (TS.Data.FLOORS[S.run.floor].boss) killBoss(); const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
       b.hp = 5;
+      // ボスの左（通行可能な隣）に立つ
       r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 500;
-      TS.Game.updateVision(r);
+      G.updateVision(r);
     });
     await p.waitForTimeout(200);
     await shot('17_boss');
@@ -323,9 +328,13 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     if (await p.$('.modal')) { await p.tap('.modal-buttons button'); await p.waitForTimeout(100); }
     assert(await p.evaluate(() => TS.UI.S.run.bag.some((i) => i.id === 'wish_orb')), 'orb picked');
     await shot('18_orb');
-    await p.evaluate(() => { const r = TS.UI.S.run; r.player.x = r.portal.x - 1; r.player.y = r.portal.y; TS.Game.updateVision(r); });
-    await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(200);
-    assert(await p.isVisible('text=帰還口'));
+    // 帰還口の隣の床から、帰還口へ1歩
+    const dir = await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game;
+      for (const [d, [dx, dy]] of Object.entries(G.DIRS)) { const x = r.portal.x - dx, y = r.portal.y - dy;
+        if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); return d; } } });
+    await p.tap(`#dpad [data-dir="${dir}"]`); await p.waitForTimeout(200);
+    if (await p.$('text=足元には')) await p.waitForTimeout(10);
+    assert(await p.isVisible('.modal h2:has-text("帰還口")'), 'portal prompt');
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(150);
     await closeTalk();
@@ -334,6 +343,20 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(300);
     assert(await p.evaluate(() => TS.UI.S.village.cleared && !TS.UI.S.run));
     await shot('20_village_cleared');
+  });
+
+  await test('旧バージョン（v1）のセーブで「つづきから」：村・装備・探索途中を引き継いで再開', async () => {
+    const v1 = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-midrun.json'), 'utf8');
+    await p.evaluate((t) => localStorage.setItem('takeSaiAdventure.save', t), v1);
+    await p.reload(); await p.waitForTimeout(400);
+    await p.tap('#btn-continue'); await p.waitForTimeout(400);
+    const st = await p.evaluate(() => ({ screen: TS.UI.screen, floor: TS.UI.S.run && TS.UI.S.run.floor, ver: TS.UI.S.version, funds: TS.UI.S.village.funds, storage: TS.UI.S.village.storage.length }));
+    const raw = JSON.parse(v1);
+    assert(st.screen === 'dungeon' && st.floor === 4 && st.ver === 2 && st.funds === raw.village.funds && st.storage === raw.village.storage.length, JSON.stringify(st));
+    await p.tap('#b-wait'); await p.waitForTimeout(200);
+    const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('takeSaiAdventure.save')).version);
+    assert(saved === 2, 'saved as v2');
+    await shot('24_migrated');
   });
 
   await test('はじめから（データ削除）は2回確認が出る', async () => {

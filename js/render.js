@@ -72,7 +72,7 @@
       let sx = ox + e.x * ts, sy = oy + e.y * ts;
       const l = lungeOffset(e.id, now, ts);
       sx += l[0]; sy += l[1];
-      const img = SP.s.enemy[D.ENEMIES[e.type].sprite];
+      const img = SP.s.enemy[D.ENEMIES[e.type].sprite] || SP.s.enemy.lion;
       const flash = RD.fx.some((f) => f.t === 'flash' && f.x === e.x && f.y === e.y && now - f.t0 < 160);
       const big = e.boss ? Math.round(ts * 0.25) : 0;
       g.globalAlpha = flash ? 0.4 : 1;

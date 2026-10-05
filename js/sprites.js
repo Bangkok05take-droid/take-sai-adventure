@@ -199,7 +199,7 @@
   };
   SP.iconFor = function (def) {
     const key = def.tint ? def.icon + '_' + def.tint : def.icon;
-    return SP.s.icon[key] || SP.s.icon[def.icon];
+    return SP.s.icon[key] || SP.s.icon[def.icon] || SP.s.icon.coin;
   };
   const urlCache = {};
   SP.iconURL = function (def) {
@@ -229,6 +229,11 @@
     brick: { floor: '#c98b5a', floor2: '#b57848', line: '#8f5a34', wallTop: '#5a2e1c', wall: '#a8502e', wall2: '#8a3e22', mortar: '#e6b98a', deco: '#6a9a3a', bg: '#1a0f0a' },
     roots: { floor: '#8f8a5a', floor2: '#7d784c', line: '#5f5a38', wallTop: '#3a2a18', wall: '#8a5a3a', wall2: '#6a4228', mortar: '#b89a6a', deco: '#4a8a2a', root: '#5a3a1e', bg: '#0f0c06' },
     water: { floor: '#7fa6b0', floor2: '#6a929c', line: '#4f7680', wallTop: '#1e3a4a', wall: '#3f7f96', wall2: '#2f6378', mortar: '#a8d0d8', deco: '#ff8fb8', water: '#3a8fc0', bg: '#06121a' },
+    garden: { floor: '#7f9a5a', floor2: '#6f8a4c', line: '#4f6a38', wallTop: '#24301a', wall: '#6a7a4a', wall2: '#55653a', mortar: '#a8c080', deco: '#e05a8a', root: '#4a3018', bg: '#080c04' },
+    sunken: { floor: '#6a8a96', floor2: '#5a7a86', line: '#3a5a66', wallTop: '#122a36', wall: '#4a6f80', wall2: '#3a5a6a', mortar: '#9ac0c8', deco: '#ffd84a', water: '#2a7ab0', bg: '#040e14' },
+    crystal: { floor: '#5a5a7a', floor2: '#4e4e6c', line: '#3a3a56', wallTop: '#141428', wall: '#4a4a78', wall2: '#3a3a64', mortar: '#9a9ad0', deco: '#7af0ff', bg: '#05050e' },
+    gold: { floor: '#b89a5a', floor2: '#a4884c', line: '#7a6030', wallTop: '#3a2a10', wall: '#a07a30', wall2: '#806020', mortar: '#f0d890', deco: '#ffe060', bg: '#0e0a02' },
+    shrine: { floor: '#c8a8e0', floor2: '#b494cc', line: '#8a6aa8', wallTop: '#2a1a3a', wall: '#8a6ab0', wall2: '#6a4e90', mortar: '#f0d8ff', deco: '#ffd84a', bg: '#0c0614' },
     orb: { floor: '#b8a0d0', floor2: '#a088bc', line: '#7a6098', wallTop: '#2a1a3a', wall: '#7a5aa0', wall2: '#5a3e80', mortar: '#e0c8f0', deco: '#ffd84a', bg: '#0c0614' },
   };
   SP.themeColors = THEME_COL;
