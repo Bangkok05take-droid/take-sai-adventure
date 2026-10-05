@@ -201,7 +201,8 @@
       <li><b>方向ボタン</b>（3×3）：8方向に1マス移動。斜めも1ターン。押し続けると連続で進む（敵が隣に来た・道具や階段の上などで止まる）。</li>
       <li>敵のいる方向へ動くと攻撃（斜めの敵にも攻撃できる）。押しっぱなしで攻撃を繰り返すことはない。</li>
       <li>壁の角をはさんだ斜めには移動・攻撃できない（敵も同じ）。</li>
-      <li><b>中央の「向き」</b>（PCはF）：オンにすると、方向ボタンで向きだけ変わる（移動・攻撃なし、時間も進まない）。杖などはこの向きに使う。もう一度押すと移動に戻る。</li>
+      <li><b>中央の「向き」</b>（PCはF）：タップでオン/オフ。オンの間は方向ボタンで向きだけ変わる（移動・攻撃なし、時間も進まない）。杖などはこの向きに使う。</li>
+      <li><b>「向き」を長押し</b>（PCはRを押し続ける）：休息（連続足踏み）。1回ごとに普通に1ターン待ち、自然回復でHPが戻る。敵の行動や満腹度も普通に進む。指を離す・HP全回復・敵が見える・ダメージ・満腹度が少ない・毒のときは止まる。</li>
       <li><b>足踏み</b>（スペース）：その場で1ターンだけ待つ。</li>
       <li>PC：矢印キー/WASDで上下左右、Q・E・Z・C（またはテンキー7・9・1・3）で斜め。</li>
       <li><b>ダッシュ</b>（PCはX）：オンにして方向ボタンを押し続けると、その方向へ速く進む（1マスごとに1ターン）。指を離すとすぐ止まる。新しい敵・ダメージ・敵が隣・壁・分かれ道・道具・階段・帰還地点・HPや満腹度の危険で自動で止まり、止まった理由が表示される。押し直すと再び進む。</li>
@@ -715,7 +716,7 @@
       b.addEventListener('lostpointercapture', end);
     }
     const act = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); if (UI.modals.length) return; AU.sfx('tap'); fn(); });
-    act('b-face', toggleFacing);
+    bindFaceButton();
     act('b-wait', () => { stopHold(); doAct({ type: 'wait' }); });
     act('b-items', openItems);
     act('b-menu', dungeonMenu);
@@ -726,15 +727,72 @@
     // どこで指を離しても・画面が隠れても入力を確実に解除する
     window.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse' || !e.buttons) releaseAllPointers(); });
     window.addEventListener('pointercancel', releaseAllPointers);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopHold(); });
-    window.addEventListener('blur', stopHold);
-    window.addEventListener('pagehide', stopHold);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stopAllInput(); });
+    window.addEventListener('blur', stopAllInput);
+    window.addEventListener('pagehide', stopAllInput);
     updateModeButtons();
   }
   function releaseAllPointers() {
     for (const b of document.querySelectorAll('#dpad .dir.pressed')) b.classList.remove('pressed');
     if (UI.hold && UI.hold.source.startsWith('ptr:')) stopHold();
+    if (UI.facePress) faceRelease(true);
   }
+
+  // ---- 「向き」ボタン：短押し＝向き変更モードのオン/オフ（離したときに確定）、長押し＝休息（連続足踏み） ----
+  const REST_DELAY = 400, REST_MS = 180;
+  function bindFaceButton() {
+    const b = $('b-face');
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (UI.modals.length || UI.facePress) return;
+      try { b.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      b.classList.add('pressed');
+      const fp = { long: false, timer: null };
+      UI.facePress = fp;
+      fp.timer = setTimeout(() => { if (UI.facePress === fp) { fp.long = true; startRest(); } }, REST_DELAY);
+    });
+    const up = () => faceRelease(false);
+    const cancel = () => faceRelease(true);
+    b.addEventListener('pointerup', up);
+    b.addEventListener('pointercancel', cancel);
+    b.addEventListener('lostpointercapture', () => { if (UI.facePress) faceRelease(false); });
+  }
+  // cancel=true のとき（キャンセル・画面外など）は短押しとして扱わない
+  function faceRelease(cancel) {
+    const fp = UI.facePress;
+    if (!fp) return;
+    UI.facePress = null;
+    clearTimeout(fp.timer);
+    $('b-face').classList.remove('pressed');
+    if (fp.long) { stopRest(); return; } // 長押しとして処理済み：短押しは発動しない
+    if (!cancel && !UI.modals.length) { AU.sfx('tap'); toggleFacing(); }
+  }
+  function startRest() {
+    stopHold(); // 移動・ダッシュの連続処理を止める
+    const S = UI.S;
+    if (!S.run || S.run.over || UI.modals.length) return;
+    const block = G.restBlock(S);
+    if (block) { showStop(block, false, '休めない：' + G.REST_STOP[block]); return; }
+    const st = { timer: null };
+    UI.rest = st;
+    $('restnote').classList.add('show');
+    const tick = () => {
+      if (UI.rest !== st) return;
+      if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden || !UI.S.run || UI.S.run.over) { stopRest(); return; }
+      const logLen = UI.S.run.log.length;
+      const out = G.restStep(UI.S);
+      if (out.res.consumed) afterAction(out.res, { type: 'wait' }, logLen);
+      if (out.stop) { UI.lastStop = out.stop; showStop(out.stop, false, '休息終了：' + G.REST_STOP[out.stop]); stopRest(); return; }
+      st.timer = setTimeout(tick, REST_MS);
+    };
+    tick();
+  }
+  function stopRest() {
+    if (UI.rest) clearTimeout(UI.rest.timer);
+    UI.rest = null;
+    const n = $('restnote'); if (n) n.classList.remove('show');
+  }
+  UI.stopRest = stopRest;
 
   function cycleMap() {
     const st = UI.S.settings;
@@ -780,7 +838,7 @@
    * ダッシュ：押している間、約85msごとに1マス。
    * どちらも指を離すと即停止し、入力はため込まない。安全停止したら押し直すまで再開しない。 */
   function pressDir(dir, source) {
-    if (UI.modals.length) return;
+    if (UI.modals.length || UI.rest || (UI.facePress && UI.facePress.long)) return; // 休息中は方向入力で動かない
     stopHold();
     const run = UI.S.run;
     if (!run || run.over) return;
@@ -827,7 +885,8 @@
   }
   function releaseDir(source) { if (UI.hold && UI.hold.source === source) stopHold(); }
   function stopHold() { if (UI.hold) { clearTimeout(UI.hold.timer); UI.hold = null; } }
-  UI.stopDash = stopHold; UI.stopHold = stopHold;
+  function stopAllInput() { stopHold(); stopRest(); if (UI.facePress) faceRelease(true); }
+  UI.stopDash = stopHold; UI.stopHold = stopAllInput;
   function faceDir(dir) {
     const run = UI.S.run;
     run.player.dir = dir;
@@ -836,10 +895,10 @@
     save();
   }
   // 停止理由を短く表示（不具合ではなく安全停止だと分かるように）
-  function showStop(reason, dash) {
-    if (reason === 'over' || (!dash && reason === 'wall')) return;
+  function showStop(reason, dash, text) {
+    if (reason === 'over' || (!text && !dash && reason === 'wall')) return;
     const el = $('stopnote');
-    el.textContent = (dash ? 'ダッシュ停止：' : '停止：') + (G.DASH_STOP[reason] || reason);
+    el.textContent = text || ((dash ? 'ダッシュ停止：' : '停止：') + (G.DASH_STOP[reason] || reason));
     el.classList.add('show');
     clearTimeout(UI.stopTimer);
     UI.stopTimer = setTimeout(() => el.classList.remove('show'), 1400);
@@ -876,6 +935,7 @@
     else if (e.key === 'i' || e.key === 'I') openItems();
     else if (e.key === 'x' || e.key === 'X' || e.key === 'Shift') toggleDash();
     else if (e.key === 'f' || e.key === 'F') toggleFacing();
+    else if (e.key === 'r' || e.key === 'R') { UI.keyRest = true; startRest(); }
     else if (e.key === 'Escape' || e.key === 'm' || e.key === 'M') dungeonMenu();
     else if (e.key === 'Enter') footAction();
   }
@@ -885,7 +945,7 @@
     const num = { Numpad8: 'up', Numpad2: 'down', Numpad4: 'left', Numpad6: 'right', Numpad7: 'upleft', Numpad9: 'upright', Numpad1: 'downleft', Numpad3: 'downright' };
     return num[e.code] || map[e.key && e.key.length === 1 ? e.key.toLowerCase() : e.key] || null;
   }
-  function onKeyUp(e) { releaseDir('key:' + e.code); }
+  function onKeyUp(e) { releaseDir('key:' + e.code); if ((e.key === 'r' || e.key === 'R') && UI.keyRest) { UI.keyRest = false; stopRest(); } }
 
   /* 行動の実行。入力ロック中（直前の行動の直後）は無視して予約しない。 */
   function doAct(action) {

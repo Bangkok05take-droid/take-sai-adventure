@@ -328,6 +328,39 @@ test('長押し：隣に敵が来たら止まる・攻撃になったら止ま�
   r = G.act(S, { type: 'move', dir: 'right' }); eq(G.walkCheck(S, 'right', r), 'attackBlocked', 'attack stops hold');
   r = G.act(S, { type: 'move', dir: 'upleft' }); eq(G.walkCheck(S, 'upleft', r), null, 'diagonal walk ok');
 });
+console.log('休息（向きボタン長押し）');
+test('休息：1回ごとに通常の待機1ターン。自然回復・敵の行動・満腹度は待機と同じ', () => {
+  const A = newRun(80); bigRoomFloor(A); const B = newRun(80); bigRoomFloor(B);
+  // 見えない場所の敵（両方に同じ配置）
+  for (const S of [A, B]) { const m = S.run.map; m.tiles[20 * m.w + 30] = DG.FLOOR; m.rooms.push({ id: 1, x: 30, y: 20, w: 1, h: 1 }); addEnemy(S, 'frog', 30, 20); S.run.player.hp = 10; }
+  for (let i = 0; i < 12; i++) { G.restStep(A); G.act(B, { type: 'wait' }); }
+  eq(SV.serialize(A), SV.serialize(B), 'rest == wait');
+  assert(A.run.player.hp > 10, 'natural regen'); eq(A.run.turn, 12); eq(A.run.enemies[0].acts, 12);
+});
+test('休息：開始できない条件（敵が見える・HP満タン・満腹度危険・毒）は1ターンも進めない', () => {
+  const S = newRun(81); bigRoomFloor(S); const p = S.run.player;
+  let r = G.restStep(S); eq(r.stop, 'full'); eq(S.run.turn, 0);
+  p.hp = 10; p.hunger = 8; r = G.restStep(S); eq(r.stop, 'hunger'); eq(S.run.turn, 0);
+  p.hunger = 80; p.poison = 3; r = G.restStep(S); eq(r.stop, 'poison'); eq(S.run.turn, 0);
+  p.poison = 0; const e = addEnemy(S, 'frog', 15, 10); e.sleep = 99;
+  r = G.restStep(S); eq(r.stop, 'enemy'); eq(S.run.turn, 0);
+});
+test('休息：全回復・敵の出現・被ダメージで止まる', () => {
+  const S = newRun(82); bigRoomFloor(S); const p = S.run.player;
+  p.hp = p.maxhp - 1; p.regenAcc = 0.99;
+  let r = G.restStep(S); eq(r.stop, 'full'); eq(p.hp, p.maxhp);
+  p.hp = 10; p.hunger = 0; p.starveAcc = 1;
+  p.hunger = 50;
+  // 通路の先（見えない所）から敵が近づいて視界に入る
+  const S2 = newRun(83); corridorFloor(S2); const q = S2.run.player; q.x = 25; q.y = 8; q.hp = 10; G.updateVision(S2.run);
+  const e = addEnemy(S2, 'frog', 29, 8);
+  let n = 0; do { r = G.restStep(S2); n++; } while (!r.stop && n < 10);
+  eq(r.stop, 'newEnemy'); assert(n <= 3, 'stopped promptly ' + n);
+  const S3 = newRun(84); bigRoomFloor(S3); S3.run.player.hp = 10; S3.run.player.hunger = 0; S3.run.player.starveAcc = 1;
+  S3.run.player.hunger = 0;
+  r = G.restStep(S3); eq(r.stop, 'hunger', 'starving cannot rest');
+});
+
 console.log('持ち物の整理');
 test('整理：種類順・同種は基本種類と強化値順。何度押しても同じ。数・強化値・装備・貸出は変わらない', () => {
   const S = G.newState();

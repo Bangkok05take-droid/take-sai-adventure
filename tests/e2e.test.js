@@ -285,6 +285,75 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(a.turn === b.turn + 1 && a.x === b.x && a.y === b.y, 'step in place = 1 turn');
     await p.evaluate(() => { TS.UI.S.run.enemies = []; });
   });
+  const faceDown = () => p.evaluate(() => document.querySelector('#b-face').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 21 })));
+  const faceUp = (type = 'pointerup') => p.evaluate((type) => document.querySelector('#b-face').dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 21 })), type);
+  const faceOn = () => p.$eval('#b-face', (b) => b.classList.contains('on'));
+  await test('「向き」短押し：離したときに向き変更モードを切り替え、ターンは進まない', async () => {
+    await openRoom(); await center();
+    const b0 = await run(); const on0 = await faceOn();
+    await faceDown(); await p.waitForTimeout(80);
+    assert((await faceOn()) === on0, 'not toggled on press');
+    await faceUp(); await p.waitForTimeout(60);
+    assert((await faceOn()) === !on0, 'toggled on release');
+    await faceDown(); await p.waitForTimeout(80); await faceUp(); await p.waitForTimeout(60);
+    assert((await faceOn()) === on0, 'toggled back');
+    assert((await run()).turn === b0.turn, 'no turn');
+  });
+  await test('「向き」長押し：400ms後から休息（1回1ターン・自然回復）。離すと即停止し短押しは発動しない。モードは維持', async () => {
+    await openRoom(); await center();
+    await p.evaluate(() => { const pl = TS.UI.S.run.player; pl.maxhp = 999; pl.hp = 500; pl.hunger = 90; });
+    const b0 = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp, x: TS.UI.S.run.player.x, hunger: TS.UI.S.run.player.hunger, acc: TS.UI.S.run.player.hungerAcc }));
+    const on0 = await faceOn();
+    await faceDown(); await p.waitForTimeout(300);
+    assert((await run()).turn === b0.turn, 'no rest before 400ms');
+    await p.waitForTimeout(700);
+    assert(await p.isVisible('#restnote'), '休息中 shown');
+    await shot('28_resting');
+    // 休息中の方向入力で動かない
+    await pdown('right'); await p.waitForTimeout(100); await pup('right');
+    await faceUp();
+    const a = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp, x: TS.UI.S.run.player.x }));
+    assert(a.turn - b0.turn >= 2 && a.turn - b0.turn <= 5, 'rest turns ' + (a.turn - b0.turn));
+    assert(a.hp > b0.hp && a.x === b0.x, 'regen, no move ' + JSON.stringify([b0, a]));
+    await p.waitForTimeout(500);
+    assert((await run()).turn === a.turn, 'stops on release, no extra turn');
+    assert((await faceOn()) === on0, 'mode kept after long press');
+    assert(!(await p.isVisible('#restnote')), 'note hidden');
+  });
+  await test('休息：HP全回復で自動停止、敵が見えていると開始しない（理由を表示）、キャンセル・メニューで停止', async () => {
+    await openRoom(); await center();
+    await p.evaluate(() => { const pl = TS.UI.S.run.player; pl.maxhp = 999; pl.hp = 997; pl.regenAcc = 0; });
+    await faceDown(); await p.waitForTimeout(2200);
+    const full = await p.evaluate(() => ({ hp: TS.UI.S.run.player.hp, max: TS.UI.S.run.player.maxhp, stop: TS.UI.lastStop }));
+    const t1 = (await run()).turn; await p.waitForTimeout(400);
+    assert(full.hp === full.max && full.stop === 'full' && (await run()).turn === t1, 'stopped at full ' + JSON.stringify(full));
+    assert(/休息終了：HPが満タン/.test(await p.textContent('#stopnote')), 'reason shown');
+    await faceUp();
+    // 敵が見えている → 開始しない
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game; r.player.hp = 300; const e = G.makeEnemy(r, 'frog', 12, 9); e.sleep = 99; e._keep = true; r.enemies.push(e); G.updateVision(r); });
+    const t2 = (await run()).turn;
+    await faceDown(); await p.waitForTimeout(800);
+    assert((await run()).turn === t2 && /休めない：敵が見えている/.test(await p.textContent('#stopnote')), 'blocked by enemy');
+    await faceUp();
+    await p.evaluate(() => { TS.UI.S.run.enemies = []; });
+    // キャンセルで停止
+    await faceDown(); await p.waitForTimeout(700);
+    await faceUp('pointercancel');
+    const t3 = (await run()).turn; await p.waitForTimeout(500);
+    assert((await run()).turn === t3, 'cancel stops');
+    // メニューで停止
+    await faceDown(); await p.waitForTimeout(700);
+    await p.evaluate(() => document.querySelector('#b-menu').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+    const t4 = (await run()).turn; await p.waitForTimeout(500);
+    assert((await run()).turn === t4, 'menu stops');
+    await faceUp();
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
+    // 押し直すと再開できる
+    const t5 = (await run()).turn;
+    await faceDown(); await p.waitForTimeout(800); await faceUp();
+    assert((await run()).turn > t5, 'resumes after re-press');
+  });
+
   await test('ダッシュ：安全停止の理由を表示、押し直すと再開。通常⇔ダッシュの切替で速度が正しく、古い長押しが残らない', async () => {
     await openRoom(); await center();
     // 通常の長押しの速さ（約170ms/歩）

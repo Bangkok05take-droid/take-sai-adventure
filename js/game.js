@@ -467,6 +467,39 @@
     return null;
   };
 
+  // ---------- 休息（「向き」ボタンの長押しで連続足踏み） ----------
+  /* 通常の「待つ」を1ターンずつ繰り返すだけ。回復は既存の自然回復ルールのみ（即時・無料回復なし）。
+   * 敵の行動・満腹度・状態異常も通常どおり進む。 */
+  G.REST_STOP = { full: 'HPが満タン', enemy: '敵が見えている', newEnemy: '敵が現れた', damage: 'ダメージを受けた', hunger: '満腹度が少ない',
+    poison: '毒で回復できない', over: '探索終了', event: 'できごと' };
+  // 休息を始められるか（だめなら理由）
+  G.restBlock = function (S) {
+    const run = S.run;
+    if (!run || run.over) return 'over';
+    const p = run.player;
+    if (G.visibleEnemies(run).length) return 'enemy';
+    if (p.poison > 0) return 'poison';
+    if (p.hunger <= 10) return 'hunger';
+    if (p.hp >= p.maxhp) return 'full';
+    return null;
+  };
+  /* 1ターン待って、続けてよいかを返す { res, stop } */
+  G.restStep = function (S) {
+    const block = G.restBlock(S);
+    if (block) return { res: { consumed: false, events: [] }, stop: block };
+    const run = S.run, p = run.player, hp = p.hp;
+    const res = G.act(S, { type: 'wait' });
+    let stop = null;
+    if (run.over) stop = 'over';
+    else if (p.hp < hp || res.events.some((e) => e.t === 'hit' && e.target === 'player')) stop = 'damage';
+    else if (G.visibleEnemies(run).length) stop = 'newEnemy';
+    else if (p.poison > 0) stop = 'poison';
+    else if (p.hunger <= 10) stop = 'hunger';
+    else if (res.events.some((e) => e.t === 'warn' || e.t === 'telegraph' || e.t === 'steal')) stop = 'event';
+    else if (p.hp >= p.maxhp) stop = 'full';
+    return { res, stop };
+  };
+
   // ---------- 持ち物の整理 ----------
   // 種類の順：武器→盾→食料→回復→状態異常回復→攻撃・補助→帰還→素材→お宝
   const SORT_GROUP = { weapon: 0, shield: 1, food: 2, heal: 3, cure: 4, sleep: 5, staff: 5, fire: 5, slow: 5, warp: 5, map: 5, return: 6, material: 7, treasure: 8, orb: 9 };
