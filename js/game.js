@@ -4,8 +4,26 @@
   'use strict';
   const D = TS.Data, R = TS.RNG, DG = TS.Dungeon;
   const G = {};
-  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  // 8方向（斜めは「左上」などと表記）
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
+    upleft: [-1, -1], upright: [1, -1], downleft: [-1, 1], downright: [1, 1] };
+  const DIRS4 = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   G.DIRS = DIRS;
+  G.DIR_NAMES = { up: '上', down: '下', left: '左', right: '右', upleft: '左上', upright: '右上', downleft: '左下', downright: '右下' };
+  // 絵の向き（斜めは左右の絵を使う）
+  G.faceOf = (dir) => (dir.includes('left') ? 'left' : dir.includes('right') ? 'right' : dir);
+  G.dirOf = function (dx, dy) {
+    dx = Math.sign(dx); dy = Math.sign(dy);
+    for (const [k, v] of Object.entries(DIRS)) if (v[0] === dx && v[1] === dy) return k;
+    return null;
+  };
+  /* 地形として (x,y) から (dx,dy) へ1歩進めるか。
+   * 斜めは、隣接する縦・横の両方のマスが通行可能なときだけ（壁の角をすり抜けない）。 */
+  G.canStep = function (map, x, y, dx, dy) {
+    if (!DG.passable(map, x + dx, y + dy)) return false;
+    if (dx !== 0 && dy !== 0) return DG.passable(map, x + dx, y) && DG.passable(map, x, y + dy);
+    return true;
+  };
 
   // ---------- 生成 ----------
   G.newVillage = function () {
@@ -168,7 +186,7 @@
     const m = run.map;
     let r = DG.roomAt(m, x, y);
     if (r) return r;
-    for (const [dx, dy] of Object.values(DIRS)) {
+    for (const [dx, dy] of Object.values(DIRS4)) {
       r = DG.roomAt(m, x + dx, y + dy);
       if (r) return r;
     }
@@ -237,9 +255,9 @@
     if (!d) return false;
     p.dir = dir;
     const nx = p.x + d[0], ny = p.y + d[1];
+    if (!G.canStep(run.map, p.x, p.y, d[0], d[1])) return false; // 壁・角：ターン消費なし
     const e = G.enemyAt(run, nx, ny);
     if (e) { playerAttack(S, e, ev); return true; }
-    if (!DG.passable(run.map, nx, ny)) return false; // 壁：ターン消費なし
     p.x = nx; p.y = ny;
     ev.push({ t: 'move' });
     G.updateVision(run);
@@ -385,8 +403,8 @@
         let x = p.x, y = p.y, hitE = null;
         const path = [];
         for (let i = 0; i < 20; i++) {
+          if (!G.canStep(run.map, x, y, dx, dy)) break;
           x += dx; y += dy;
-          if (!DG.passable(run.map, x, y)) break;
           path.push({ x, y });
           hitE = G.enemyAt(run, x, y);
           if (hitE) break;
@@ -518,7 +536,13 @@
     }
   }
 
-  function adjacent(a, b) { return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1; }
+  // 近接攻撃できる隣接（斜めも可。ただし壁の角越しは不可）
+  function adjacent(run, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) !== 1) return false;
+    return G.canStep(run.map, a.x, a.y, dx, dy);
+  }
+  G.adjacent = adjacent;
 
   function enemyAct(S, e, ev) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type];
@@ -537,7 +561,7 @@
     e.acts++;
     const sees = G.isVisible(run, e.x, e.y); // 互いに見えている
     if (sees) { e.tx = p.x; e.ty = p.y; }
-    if (adjacent(e, p)) { enemyAttack(S, e, e.atk, ev, false); return; }
+    if (adjacent(run, e, p)) { enemyAttack(S, e, e.atk, ev, false); return; }
     if (E.ai === 'ranged' && sees && canShoot(run, e)) { enemyAttack(S, e, Math.round(E.shoot * (1 + D.ENEMY_SCALE.atk * Math.max(0, run.floor - 1))), ev, true); return; }
     if (E.ai === 'erratic' && R.chance(run.rng, 0.35)) { randomStep(run, e); return; }
     if (e.tx !== null) {
@@ -553,23 +577,29 @@
   }
 
   function canShoot(run, e) {
-    const p = run.player;
-    if (e.x !== p.x && e.y !== p.y) return false;
-    const dist = Math.abs(e.x - p.x) + Math.abs(e.y - p.y);
-    if (dist < 2 || dist > D.ENEMIES[e.type].range) return false;
-    const dx = Math.sign(p.x - e.x), dy = Math.sign(p.y - e.y);
-    let x = e.x + dx, y = e.y + dy;
-    while (x !== p.x || y !== p.y) {
-      if (!DG.passable(run.map, x, y) || G.enemyAt(run, x, y)) return false;
+    return G.clearLine(run, e, run.player, D.ENEMIES[e.type].range);
+  }
+
+  /* a から b へ8方向の直線上にあり、range 以内で、途中に壁・角・敵がないか */
+  G.clearLine = function (run, a, b, range) {
+    const ddx = b.x - a.x, ddy = b.y - a.y;
+    if (!(ddx === 0 || ddy === 0 || Math.abs(ddx) === Math.abs(ddy))) return false;
+    const dist = Math.max(Math.abs(ddx), Math.abs(ddy));
+    if (dist < 2 || dist > range) return false;
+    const dx = Math.sign(ddx), dy = Math.sign(ddy);
+    let x = a.x, y = a.y;
+    for (let i = 0; i < dist; i++) {
+      if (!G.canStep(run.map, x, y, dx, dy)) return false;
       x += dx; y += dy;
+      if (i < dist - 1 && G.enemyAt(run, x, y)) return false;
     }
     return true;
-  }
+  };
 
   function enemyAttack(S, e, atk, ev, ranged) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type];
     const dx = p.x - e.x, dy = p.y - e.y;
-    e.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    e.dir = G.dirOf(dx, dy) || e.dir;
     if (ranged) ev.push({ t: 'dart', from: { x: e.x, y: e.y }, to: { x: p.x, y: p.y } });
     else ev.push({ t: 'lunge', id: e.id, x: e.x, y: e.y });
     if (!R.chance(run.rng, D.ENEMY_HIT_RATE)) {
@@ -585,8 +615,8 @@
   }
 
   function stepTo(run, e, nx, ny) {
-    if (!DG.passable(run.map, nx, ny) || G.enemyAt(run, nx, ny) || (nx === run.player.x && ny === run.player.y)) return false;
-    e.dir = nx > e.x ? 'right' : nx < e.x ? 'left' : ny > e.y ? 'down' : 'up';
+    if (!G.canStep(run.map, e.x, e.y, nx - e.x, ny - e.y) || G.enemyAt(run, nx, ny) || (nx === run.player.x && ny === run.player.y)) return false;
+    e.dir = G.dirOf(nx - e.x, ny - e.y) || e.dir;
     e.x = nx; e.y = ny;
     return true;
   }
@@ -597,7 +627,8 @@
     return false;
   }
 
-  // BFSで目標までの最短経路の1歩目（他の敵はふさがっているとみなす）
+  const STEP8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  // BFSで目標までの最短経路の1歩目（8方向・角抜けなし。他の敵はふさがっているとみなす）
   function stepToward(run, e, tx, ty) {
     const m = run.map, W = m.w;
     const goal = ty * W + tx;
@@ -608,9 +639,9 @@
     let found = false;
     for (let i = 0; i < q.length && !found; i++) {
       const c = q[i], x = c % W, y = (c / W) | 0;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dy] of STEP8) {
         const nx = x + dx, ny = y + dy, k = ny * W + nx;
-        if (!DG.passable(m, nx, ny) || prev[k] !== -1) continue;
+        if (!G.canStep(m, x, y, dx, dy) || prev[k] !== -1) continue;
         if (k !== goal && G.enemyAt(run, nx, ny)) continue;
         prev[k] = c;
         if (k === goal) { found = true; break; }

@@ -117,12 +117,29 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     let moved = 0, bumped = 0;
     for (const d of ['up', 'up', 'up', 'up', 'up', 'up', 'up', 'up', 'up', 'up']) {
       const b = await run();
-      await p.tap('#dpad .' + d); await p.waitForTimeout(160);
+      await p.tap(`#dpad [data-dir="${d}"]`); await p.waitForTimeout(160);
       if (await p.$('.modal')) { await p.tap('.modal-buttons button'); await p.waitForTimeout(80); }
       const a = await run();
       if (a.y !== b.y) { moved++; assert(a.turn === b.turn + 1); } else { bumped++; assert(a.turn === b.turn, 'bump no turn'); }
     }
     assert(bumped > 0, 'hit a wall');
+  });
+
+  await test('3×3の方向ボタンで斜めに移動（1ターン）、中央は待つ', async () => {
+    await p.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; const room = r.map.rooms[0]; r.player.x = room.x + 1; r.player.y = room.y + 1;
+      // 斜め移動を確実に試せるよう、周囲を床にしておく
+      for (let y = r.player.y - 1; y <= r.player.y + 1; y++) for (let x = r.player.x - 1; x <= r.player.x + 1; x++) r.map.tiles[y * r.map.w + x] = 1;
+      TS.Game.updateVision(r); });
+    for (const [d, dx, dy] of [['downright', 1, 1], ['upleft', -1, -1], ['upright', 1, -1], ['downleft', -1, 1]]) {
+      const b = await run();
+      await p.tap(`#dpad [data-dir="${d}"]`); await p.waitForTimeout(160);
+      const a = await run();
+      assert(a.x === b.x + dx && a.y === b.y + dy && a.turn === b.turn + 1, d + JSON.stringify([b, a]));
+    }
+    const b = await run();
+    await p.tap('#b-wait'); await p.waitForTimeout(160);
+    const a = await run();
+    assert(a.turn === b.turn + 1 && a.x === b.x, 'center wait');
   });
 
   await test('道具メニューを開いている間は時間が進まない／道具を使うと1ターン', async () => {
@@ -265,14 +282,14 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     });
     await p.waitForTimeout(200);
     await shot('17_boss');
-    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad .right'); await p.waitForTimeout(160); }
+    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
     assert(await p.evaluate(() => !!TS.UI.S.run.portal), 'portal opened');
-    await p.tap('#dpad .right'); await p.waitForTimeout(200); // 宝珠のマスへ
+    await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(200); // 宝珠のマスへ
     if (await p.$('.modal')) { await p.tap('.modal-buttons button'); await p.waitForTimeout(100); }
     assert(await p.evaluate(() => TS.UI.S.run.bag.some((i) => i.id === 'wish_orb')), 'orb picked');
     await shot('18_orb');
     await p.evaluate(() => { const r = TS.UI.S.run; r.player.x = r.portal.x - 1; r.player.y = r.portal.y; TS.Game.updateVision(r); });
-    await p.tap('#dpad .right'); await p.waitForTimeout(200);
+    await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(200);
     assert(await p.isVisible('text=帰還口'));
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(150);

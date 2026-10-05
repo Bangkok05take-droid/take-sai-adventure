@@ -90,14 +90,15 @@
     // たけ
     {
       const l = lungeOffset('p', now, ts);
-      const frames = SP.s.take[p.dir] || SP.s.take.down;
+      const frames = SP.s.take[G.faceOf(p.dir)] || SP.s.take.down;
       const img = frames[Math.floor(now / 450) % frames.length];
       const hurt = RD.fx.some((f) => f.t === 'flash' && f.target === 'player' && now - f.t0 < 160);
       g.globalAlpha = hurt ? 0.45 : 1;
       g.drawImage(img, ox + p.x * ts + l[0], oy + p.y * ts + l[1], ts, ts);
       g.globalAlpha = 1;
       // 向きの小さな矢印
-      const [dx, dy] = G.DIRS[p.dir];
+      let [dx, dy] = G.DIRS[p.dir];
+      const len = Math.hypot(dx, dy); dx /= len; dy /= len;
       g.fillStyle = 'rgba(255,255,255,0.8)';
       const cx = ox + p.x * ts + ts / 2 + dx * ts * 0.55, cy = oy + p.y * ts + ts / 2 + dy * ts * 0.55;
       g.beginPath();

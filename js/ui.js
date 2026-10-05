@@ -184,8 +184,10 @@
     <p>たけを操作して遺跡（地下10階）を探索し、最深部の「願いの宝珠」を村へ持ち帰ろう。拾ったお宝はサイの店で売って村を発展させよう。</p>
     <h3>操作</h3>
     <ul>
-      <li><b>十字ボタン</b>（PCは矢印キー/WASD）：上下左右に1マス移動。敵のいる方向へ動くと攻撃。</li>
-      <li><b>待つ</b>（スペース）：その場で1ターン休む。</li>
+      <li><b>方向ボタン</b>（3×3）：8方向に1マス移動。斜めも1ターン。敵のいる方向へ動くと攻撃（斜めの敵にも攻撃できる）。</li>
+      <li>壁の角をはさんだ斜めには移動・攻撃できない（敵も同じ）。</li>
+      <li><b>中央の「待つ」</b>（スペース）：その場で1ターン休む。</li>
+      <li>PC：矢印キー/WASDで上下左右、Q・E・Z・C（またはテンキー7・9・1・3）で斜め。</li>
       <li><b>足元</b>（Enter）：階段を降りる・道具を拾う・帰還する。</li>
       <li><b>道具</b>（I）：使う・装備する・置く。<b>メニュー</b>（Esc）：地図・説明・音。</li>
     </ul>
@@ -568,7 +570,7 @@
       b.addEventListener('lostpointercapture', end);
     }
     const act = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); if (UI.modals.length) return; AU.sfx('tap'); fn(); });
-    act('b-wait', () => doAct({ type: 'wait' }));
+    $('b-wait').addEventListener('pointerdown', (e) => { e.preventDefault(); if (UI.modals.length) return; AU.sfx('tap'); doAct({ type: 'wait' }); });
     act('b-items', openItems);
     act('b-menu', dungeonMenu);
     act('b-foot', footAction);
@@ -613,15 +615,18 @@
       return;
     }
     if (UI.screen !== 'dungeon' || !UI.S.run) return;
-    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
-    if (map[e.key]) {
+    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right',
+      q: 'upleft', e: 'upright', z: 'downleft', c: 'downright', Home: 'upleft', PageUp: 'upright', End: 'downleft', PageDown: 'downright' };
+    const num = { Numpad8: 'up', Numpad2: 'down', Numpad4: 'left', Numpad6: 'right', Numpad7: 'upleft', Numpad9: 'upright', Numpad1: 'downleft', Numpad3: 'downright' };
+    const dir = num[e.code] || map[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    if (dir) {
       e.preventDefault();
       if (e.repeat && UI.lastKeyResult && !calm(UI.lastKeyResult)) return; // 何か起きたらキーを離すまで止める
-      UI.lastKeyResult = doAct({ type: 'move', dir: map[e.key] }) || UI.lastKeyResult;
+      UI.lastKeyResult = doAct({ type: 'move', dir }) || UI.lastKeyResult;
       return;
     }
     if (e.repeat) return;
-    if (e.key === ' ' || e.key === '.') { e.preventDefault(); doAct({ type: 'wait' }); }
+    if (e.key === ' ' || e.key === '.' || e.code === 'Numpad5') { e.preventDefault(); doAct({ type: 'wait' }); }
     else if (e.key === 'i' || e.key === 'I') openItems();
     else if (e.key === 'Escape' || e.key === 'm' || e.key === 'M') dungeonMenu();
     else if (e.key === 'Enter') footAction();
@@ -801,10 +806,10 @@
 
   function pickDir(cb) {
     const run = UI.S.run;
-    const h = modal({ title: '稲妻の向き', html: `<p class="note">今の向き：${{ up: '上', down: '下', left: '左', right: '右' }[run.player.dir]}</p><div class="dir-pick">
-      <span></span><button data-d="up">▲</button><span></span>
+    const h = modal({ title: '稲妻の向き', html: `<p class="note">今の向き：${G.DIR_NAMES[run.player.dir]}（斜めにも撃てます）</p><div class="dir-pick">
+      <button data-d="upleft">◤</button><button data-d="up">▲</button><button data-d="upright">◥</button>
       <button data-d="left">◀</button><button data-d="${run.player.dir}" class="primary">今の向き</button><button data-d="right">▶</button>
-      <span></span><button data-d="down">▼</button><span></span></div>`, buttons: [{ label: 'やめる' }] });
+      <button data-d="downleft">◣</button><button data-d="down">▼</button><button data-d="downright">◢</button></div>`, buttons: [{ label: 'やめる' }] });
     h.body.querySelectorAll('button[data-d]').forEach((b) => b.addEventListener('click', () => { const dir = b.dataset.d; h.close(); cb(dir); }));
     h.body.querySelector('.primary').style.fontSize = '14px';
   }

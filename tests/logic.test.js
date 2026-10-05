@@ -123,6 +123,77 @@ test('敵の攻撃で1階のHP満タンから一撃死しない（ガマ蛙の�
   assert(max < S.run.player.maxhp / 3, 'frog too strong');
 });
 
+console.log('8方向の移動と角抜け防止');
+test('斜め移動は1ターン、8方向すべて動ける', () => {
+  const S = newRun(50); bigRoomFloor(S);
+  const run = S.run; run.player.x = 10; run.player.y = 8;
+  for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) {
+    const x = run.player.x, y = run.player.y, t = run.turn;
+    const r = G.act(S, { type: 'move', dir });
+    assert(r.consumed, dir); eq(run.turn, t + 1, dir); eq(run.player.x, x + dx, dir); eq(run.player.y, y + dy, dir);
+  }
+});
+test('斜めに隣接する敵を攻撃できる', () => {
+  const S = newRun(51); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 6, 6);
+  let hit = false;
+  for (let i = 0; i < 6; i++) { G.act(S, { type: 'move', dir: 'downright' }); if (e.hp < 999) hit = true; }
+  assert(hit, 'diagonal attack'); eq(S.run.player.x, 5);
+});
+// 角のあるマップ： (5,5) から右下 (6,6) へ。 (6,5) が壁
+function cornerMap(S) {
+  bigRoomFloor(S);
+  const m = S.run.map; m.tiles[5 * m.w + 6] = DG.WALL; G.updateVision(S.run);
+}
+test('壁の角をすり抜けて斜めに移動・攻撃できない（ターン消費なし）', () => {
+  const S = newRun(52); cornerMap(S);
+  let r = G.act(S, { type: 'move', dir: 'downright' });
+  assert(!r.consumed); eq(S.run.player.x, 5); eq(S.run.turn, 0);
+  const e = addEnemy(S, 'frog', 6, 6);
+  r = G.act(S, { type: 'move', dir: 'downright' });
+  assert(!r.consumed && e.hp === 999, 'no corner attack');
+  // 反対側の角も同様
+  const m = S.run.map; m.tiles[5 * m.w + 6] = DG.FLOOR; m.tiles[6 * m.w + 5] = DG.WALL;
+  r = G.act(S, { type: 'move', dir: 'downright' });
+  assert(!r.consumed && e.hp === 999, 'no corner attack 2');
+});
+test('敵も壁の角越しには攻撃・移動しない', () => {
+  const S = newRun(53); cornerMap(S);
+  const e = addEnemy(S, 'frog', 6, 6); e.atk = 50;
+  const hp = S.run.player.hp;
+  for (let i = 0; i < 3; i++) { S.run.player.x = 5; S.run.player.y = 5; e.x = 6; e.y = 6; G.updateVision(S.run); G.act(S, { type: 'wait' }); }
+  // 角越しなので攻撃は来ない（敵は回り込もうとして動く）
+  eq(S.run.player.hp, hp, 'no damage through corner');
+});
+test('敵は斜めから近づいて攻撃してくる', () => {
+  const S = newRun(54); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 8, 8); e.atk = 3;
+  G.act(S, { type: 'wait' }); // (8,8) -> (7,7)
+  eq(e.x, 7); eq(e.y, 7);
+  G.act(S, { type: 'wait' }); // -> (6,6) 斜めに隣接
+  eq(e.x, 6); eq(e.y, 6);
+  const hp = S.run.player.hp; let hit = false;
+  for (let i = 0; i < 5; i++) { G.act(S, { type: 'wait' }); if (S.run.player.hp < hp) hit = true; }
+  assert(hit, 'diagonal enemy attack'); eq(e.x, 6);
+});
+test('稲妻の杖は斜めにも飛び、角で止まる', () => {
+  const S = newRun(55); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 8, 8);
+  const st = G.makeItem(S, 'thunder_staff', { charges: 3 }); S.run.bag.push(st);
+  G.act(S, { type: 'use', uid: st.uid, dir: 'downright' });
+  eq(e.hp, 999 - 30, 'diagonal bolt');
+  const m = S.run.map; m.tiles[5 * m.w + 6] = DG.WALL; e.hp = 999; e.x = 6; e.y = 6;
+  G.act(S, { type: 'use', uid: st.uid, dir: 'downright' });
+  eq(e.hp, 999, 'blocked by corner');
+});
+test('吹き矢ザルは斜め一直線からも撃つが、角越しには撃たない', () => {
+  const S = newRun(56); bigRoomFloor(S);
+  const mk = addEnemy(S, 'monkey', 8, 8);
+  assert(G.clearLine(S.run, mk, S.run.player, 4), 'diagonal line');
+  const m = S.run.map; m.tiles[6 * m.w + 7] = DG.WALL;
+  assert(!G.clearLine(S.run, mk, S.run.player, 4), 'corner blocks');
+});
+
 console.log('道具・装備・満腹度');
 test('薬草で回復、食料で満腹度回復、使うとターン消費', () => {
   const S = newRun(10); bigRoomFloor(S);
@@ -383,7 +454,7 @@ function bot(S, maxTurns) {
   const run = S.run;
   while (!run.over && run.turn < maxTurns) {
     const p = run.player;
-    const adj = run.enemies.find((e) => Math.abs(e.x - p.x) + Math.abs(e.y - p.y) === 1);
+    const adj = run.enemies.find((e) => G.adjacent(run, p, e));
     const heal = run.bag.find((i) => G.def(i).type === 'heal');
     const food = run.bag.find((i) => G.def(i).type === 'food');
     const wpn = run.bag.filter((i) => G.def(i).type === 'weapon').sort((a, b) => G.def(b).atk - G.def(a).atk)[0];
@@ -394,7 +465,7 @@ function bot(S, maxTurns) {
     if (p.hunger < 15 && food) { G.act(S, { type: 'use', uid: food.uid }); continue; }
     if (adj) {
       const st = run.bag.find((i) => i.id === 'thunder_staff' && i.charges > 0);
-      const dir = adj.x > p.x ? 'right' : adj.x < p.x ? 'left' : adj.y > p.y ? 'down' : 'up';
+      const dir = G.dirOf(adj.x - p.x, adj.y - p.y);
       if (st && adj.boss) { G.act(S, { type: 'use', uid: st.uid, dir }); continue; }
       G.act(S, { type: 'move', dir }); continue;
     }
@@ -421,7 +492,7 @@ function walk(S, t) {
   if (bd <= 0) return false;
   for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) {
     const nx = p.x + dx, ny = p.y + dy;
-    const d = DG.passable(m, nx, ny) ? dist[ny * m.w + nx] : -1;
+    const d = G.canStep(m, p.x, p.y, dx, dy) ? dist[ny * m.w + nx] : -1;
     if (d >= 0 && d < bd) { bd = d; best = dir; }
   }
   if (!best) return false;

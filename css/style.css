@@ -96,11 +96,11 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 
 #controls { display: flex; gap: 10px; padding: 8px 10px 10px; background: var(--panel); border-top: 3px solid #1a0f1c; justify-content: space-between; align-items: center; }
 #dpad { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-  width: min(56vw, 30vh, 230px); aspect-ratio: 1; gap: 4px; flex: none; }
-#dpad .dir { font-size: 26px; padding: 0; border-radius: 16px; }
-#dpad .up { grid-area: 1 / 2; } #dpad .left { grid-area: 2 / 1; } #dpad .right { grid-area: 2 / 3; } #dpad .down { grid-area: 3 / 2; }
-.dpad-center { grid-area: 2 / 2; border-radius: 50%; background: #2a1a2e; margin: 18%; }
-#actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 220px; align-self: stretch; align-content: center; }
+  width: min(60vw, 32vh, 250px); aspect-ratio: 1; gap: 5px; flex: none; }
+#dpad .dir { font-size: 24px; padding: 0; border-radius: 14px; }
+#dpad .dir i { display: inline-block; font-style: normal; transform: rotate(var(--r)); pointer-events: none; }
+#dpad .wait { font-size: 15px; font-weight: bold; padding: 0; border-radius: 50%; background: #3a2a40; }
+#actions { flex: 1; display: grid; grid-template-columns: 1fr; gap: 8px; max-width: 200px; align-self: stretch; align-content: center; }
 .act { min-height: 58px; font-size: clamp(14px, 4.3vw, 18px); font-weight: bold; padding: 4px 2px; white-space: nowrap; }
 #b-foot.hot { background: #c4532e; animation: pulse 1s infinite; }
 @keyframes pulse { 50% { background: #e8794a; } }
@@ -159,7 +159,7 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 .detail-head img { width: 64px; height: 64px; image-rendering: pixelated; background: #2e1c33; border-radius: 12px; border: 2px solid #1a0f1c; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 15px; margin-top: 6px; }
 .kv span:nth-child(odd) { color: var(--muted); }
-.dir-pick { display: grid; grid-template-columns: repeat(3, 72px); grid-template-rows: repeat(3, 72px); gap: 6px; justify-content: center; margin: 6px auto; }
+.dir-pick { display: grid; grid-template-columns: repeat(3, 76px); grid-template-rows: repeat(3, 76px); gap: 6px; justify-content: center; margin: 6px auto; }
 .dir-pick button { font-size: 26px; }
 .stage { padding: 8px 10px; border-radius: 12px; background: #2e1c33; border: 2px solid #1a0f1c; margin-bottom: 8px; }
 .stage.done { border-color: #7ed957; }

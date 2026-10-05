@@ -69,15 +69,18 @@
       </div>
       <div id="controls">
         <div id="dpad">
-          <button class="dir up" data-dir="up" aria-label="上">▲</button>
-          <button class="dir left" data-dir="left" aria-label="左">◀</button>
-          <button class="dir right" data-dir="right" aria-label="右">▶</button>
-          <button class="dir down" data-dir="down" aria-label="下">▼</button>
-          <div class="dpad-center"></div>
+          <button class="dir" data-dir="upleft" aria-label="左上"><i style="--r:-45deg">▲</i></button>
+          <button class="dir" data-dir="up" aria-label="上"><i style="--r:0deg">▲</i></button>
+          <button class="dir" data-dir="upright" aria-label="右上"><i style="--r:45deg">▲</i></button>
+          <button class="dir" data-dir="left" aria-label="左"><i style="--r:-90deg">▲</i></button>
+          <button id="b-wait" class="wait" aria-label="待つ">待つ</button>
+          <button class="dir" data-dir="right" aria-label="右"><i style="--r:90deg">▲</i></button>
+          <button class="dir" data-dir="downleft" aria-label="左下"><i style="--r:-135deg">▲</i></button>
+          <button class="dir" data-dir="down" aria-label="下"><i style="--r:180deg">▲</i></button>
+          <button class="dir" data-dir="downright" aria-label="右下"><i style="--r:135deg">▲</i></button>
         </div>
         <div id="actions">
           <button id="b-foot" class="act">足元</button>
-          <button id="b-wait" class="act">待つ</button>
           <button id="b-items" class="act">道具</button>
           <button id="b-menu" class="act">メニュー</button>
         </div>
