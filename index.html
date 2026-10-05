@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2a1a2e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="description" content="たけとサイの大冒険 〜アユタヤの夢見る遺跡〜：スマホで遊べるターン制ダンジョン探索ゲーム">
+  <title>たけとサイの大冒険 〜アユタヤの夢見る遺跡〜</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- タイトル -->
+    <section id="screen-title" class="screen active">
+      <div class="title-art"><canvas id="title-canvas"></canvas></div>
+      <h1 class="title-text">たけとサイの<br>大冒険</h1>
+      <p class="subtitle">〜アユタヤの夢見る遺跡〜</p>
+      <div class="title-buttons">
+        <button id="btn-continue" class="big primary">つづきから</button>
+        <button id="btn-newgame" class="big">はじめから</button>
+        <button id="btn-help-title" class="big sub">遊び方</button>
+        <button id="btn-sound-title" class="big sub">音：オン</button>
+      </div>
+      <p class="tiny">PCでは矢印キーでも操作できます</p>
+    </section>
+
+    <!-- 村 -->
+    <section id="screen-village" class="screen">
+      <header class="vhud">
+        <div class="vhud-item"><span class="lbl">村の資金</span><b id="v-funds">0</b>G</div>
+        <div class="vhud-item"><span class="lbl">村</span><b id="v-stage">小さなお店</b></div>
+        <div class="vhud-item"><span class="lbl">最深</span><b id="v-best">-</b></div>
+        <button id="v-menu" class="icon-btn" aria-label="メニュー">≡</button>
+      </header>
+      <div id="village-view"><canvas id="village-canvas"></canvas></div>
+      <div class="vbuttons">
+        <button data-fac="shop" class="fac"><span class="ico">🏪</span>サイの店</button>
+        <button data-fac="storage" class="fac"><span class="ico">📦</span>倉庫</button>
+        <button data-fac="smith" class="fac"><span class="ico">🔨</span>鍛冶屋</button>
+        <button data-fac="develop" class="fac"><span class="ico">🏮</span>村の発展</button>
+        <button data-fac="bag" class="fac"><span class="ico">🎒</span>持ち物</button>
+        <button data-fac="depart" class="fac depart"><span class="ico">🧭</span>遺跡へ出発</button>
+      </div>
+    </section>
+
+    <!-- ダンジョン -->
+    <section id="screen-dungeon" class="screen">
+      <header id="hud">
+        <div class="hud-row">
+          <b id="h-floor" class="floor">地下1階</b>
+          <span id="h-lv">Lv1</span>
+          <span class="hpwrap"><span class="lbl">HP</span><span class="bar"><i id="h-hpbar"></i></span><b id="h-hp">30/30</b></span>
+        </div>
+        <div class="hud-row small">
+          <span>満腹 <b id="h-food">100</b>%</span>
+          <span>攻<b id="h-atk">4</b> 防<b id="h-def">0</b></span>
+          <span><b id="h-gold">0</b>G</span>
+          <button id="h-map" class="mini-btn">地図</button>
+        </div>
+      </header>
+      <div id="log" role="log" aria-live="polite"></div>
+      <div id="view">
+        <canvas id="dungeon-canvas"></canvas>
+        <div id="toast"></div>
+      </div>
+      <div id="controls">
+        <div id="dpad">
+          <button class="dir up" data-dir="up" aria-label="上">▲</button>
+          <button class="dir left" data-dir="left" aria-label="左">◀</button>
+          <button class="dir right" data-dir="right" aria-label="右">▶</button>
+          <button class="dir down" data-dir="down" aria-label="下">▼</button>
+          <div class="dpad-center"></div>
+        </div>
+        <div id="actions">
+          <button id="b-foot" class="act">足元</button>
+          <button id="b-wait" class="act">待つ</button>
+          <button id="b-items" class="act">道具</button>
+          <button id="b-menu" class="act">メニュー</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="modal-root"></div>
+    <div id="flash"></div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/rng.js"></script>
+  <script src="js/dungeon.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
