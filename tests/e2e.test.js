@@ -144,7 +144,10 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
 
   await test('ダッシュ：オンで押し続けると連続移動（1マス1ターン）、離すと即停止、壁で止まり押し直すまで再開しない', async () => {
     await p.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; r.floorItems = [];
-      const room = r.map.rooms.slice().sort((a, b) => b.w - a.w)[0]; r.player.x = room.x; r.player.y = room.y; r._room = room;
+      const room = r.map.rooms.slice().sort((a, b) => b.w - a.w)[0]; r._room = room;
+      // 右端の外が壁になっている行を選ぶ（出入口のない行）
+      let yy = room.y; for (let y = room.y; y < room.y + room.h; y++) { const ok = [-1, 0, 1].every((d) => !TS.Dungeon.passable(r.map, room.x + room.w, y + d) || (y + d < room.y || y + d >= room.y + room.h)); if (ok && !TS.Dungeon.passable(r.map, room.x + room.w, y)) { yy = y; break; } }
+      r.player.x = room.x; r.player.y = yy;
       // 階段・帰還の碑をこの部屋の外へ
       const other = r.map.rooms.find((o) => o !== room); r.stairs = { x: other.x, y: other.y }; r.returnPoint = null;
       TS.Game.updateVision(r); });
@@ -178,6 +181,24 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
     await p.tap('#b-dash'); await p.waitForTimeout(100);
     assert(await p.$eval('#b-dash', (b) => !b.classList.contains('on')), 'dash off');
+  });
+
+  await test('ダッシュがオフなら長押ししても1歩だけ（入力をため込まない）', async () => {
+    await p.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; TS.Game.updateVision(r); });
+    assert(await p.$eval('#b-dash', (b) => !b.classList.contains('on')));
+    const dirs = ['right', 'left', 'down', 'up'];
+    let moved = false;
+    for (const d of dirs) {
+      const b0 = await run();
+      await p.evaluate((d) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 9 })), d);
+      await p.waitForTimeout(900);
+      await p.evaluate((d) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 9 })), d);
+      const b1 = await run();
+      assert(b1.turn - b0.turn <= 1, 'one step only ' + JSON.stringify([b0, b1]));
+      if (b1.turn - b0.turn === 1) { moved = true; break; }
+    }
+    assert(moved, 'moved once');
+    if (await p.$('.modal')) { await p.tap('.modal-buttons button'); await p.waitForTimeout(100); }
   });
 
   await test('道具メニューを開いている間は時間が進まない／道具を使うと1ターン', async () => {
@@ -400,8 +421,9 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(await p.evaluate(() => !!localStorage.getItem('takeSaiAdventure.save')), 'save kept');
   });
 
-  await test('横向きスマホとPC画面でも崩れない', async () => {
-    for (const [name, opt] of [['landscape', { viewport: { width: 860, height: 400 }, deviceScaleFactor: 2.6, isMobile: true, hasTouch: true }],
+  await test('小さいスマホ（360×640）・横向きスマホ・PC画面でも崩れず、ボタンが画面内に収まる', async () => {
+    for (const [name, opt] of [['small', { viewport: { width: 360, height: 640 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }],
+      ['landscape', { viewport: { width: 860, height: 400 }, deviceScaleFactor: 2.6, isMobile: true, hasTouch: true }],
       ['pc', { viewport: { width: 1280, height: 800 } }]]) {
       const { ctx: c2, p: p2 } = await mk(opt);
       await p2.goto(URL); await p2.waitForTimeout(300);
@@ -416,12 +438,13 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
       await p2.keyboard.press('ArrowRight'); await p2.waitForTimeout(150);
       await p2.screenshot({ path: path.join(OUT, `23_${name}_dungeon.png`) });
       const m = await p2.evaluate(() => {
-        const ids = ['dpad', 'actions', 'view', 'hud'];
+        const ids = ['dpad', 'actions', 'view', 'hud', 'b-wait', 'b-dash', 'b-items', 'b-menu', 'b-foot'];
         const out = { sw: document.documentElement.scrollWidth, sh: document.documentElement.scrollHeight, iw: innerWidth, ih: innerHeight };
         for (const id of ids) { const r = document.getElementById(id).getBoundingClientRect(); out[id] = [r.left, r.top, r.right, r.bottom].map(Math.round); }
         return out;
       });
       assert(m.sw <= m.iw && m.sh <= m.ih, name + ' overflow ' + JSON.stringify(m));
+      for (const id of ['b-wait', 'b-dash', 'b-items', 'b-menu', 'b-foot']) assert(m[id][3] <= m.ih + 1 && m[id][2] <= m.iw + 1 && m[id][3] - m[id][1] >= 36, name + ' button ' + id + JSON.stringify(m[id]));
       for (const id of ['dpad', 'actions', 'view']) assert(m[id][2] <= m.iw + 1 && m[id][3] <= m.ih + 1 && m[id][2] - m[id][0] > 50 && m[id][3] - m[id][1] > 50, name + ' ' + id + JSON.stringify(m));
       await c2.close();
     }

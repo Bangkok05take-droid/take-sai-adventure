@@ -61,8 +61,9 @@
     const theme = D.FLOORS[run.floor].theme;
     const TH = SP.themeColors[theme];
     g.fillStyle = TH.bg; g.fillRect(0, 0, W, H);
-    const k = Math.max(1, Math.floor(Math.min(W / 9.5, H / 9) / TILE));
-    const ts = TILE * k;
+    // 1マスの大きさ：横9.5マス・縦7.5マス程度が見えるように。16px刻みにしてドットの乱れを抑える
+    const ts = Math.max(TILE, Math.floor(Math.min(W / 9.5, H / 7.5) / 16) * 16);
+    const k = ts / TILE;
     const m = run.map, p = run.player;
     const ox = Math.round(W / 2 - (p.x + 0.5) * ts), oy = Math.round(H / 2 - (p.y + 0.5) * ts);
     const x0 = Math.max(0, Math.floor(-ox / ts)), x1 = Math.min(m.w - 1, Math.ceil((W - ox) / ts));
