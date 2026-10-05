@@ -79,8 +79,8 @@
     R(8, 44, 80, 12, '#3a8fc0'); R(8, 44, 80, 2, '#7ac8e8');
     R(14, 48, 6, 2, '#3a8a40'); R(16, 46, 3, 2, '#ff8fb8'); R(72, 50, 6, 2, '#3a8a40'); R(74, 48, 3, 2, '#ff8fb8');
     const b = Math.floor(now / 500) % 2;
-    g.drawImage(SP.s.take.down[Math.floor(now / 450) % 2], 18, 26 + b, 16, 16);
-    g.drawImage(SP.s.sai, 62, 26 + (1 - b), 16, 16);
+    g.drawImage(SP.s.take.down.walk[Math.floor(now / 450) % 2 ? 0 : 2], 12, 22 + b, 24, 24);
+    g.drawImage(SP.s.sai[Math.floor(now / 1900) % 5 === 0 ? 1 : 0], 60, 22 + (1 - b), 24, 24);
     const gl = 0.5 + 0.5 * Math.sin(now / 400);
     g.globalAlpha = gl; g.drawImage(SP.s.icon.orb, 40, 16 - b, 16, 16); g.globalAlpha = 1;
     g.restore();
@@ -730,6 +730,7 @@
         case 'heal': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 700 }); RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); AU.sfx('heal'); break;
         case 'eat': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe08a', dur: 600 }); AU.sfx('eat'); break;
         case 'levelup': RD.addFx({ t: 'banner', x: e.x, y: e.y, text: 'LEVEL UP!', dur: 1100 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe04a', dur: 900 }); AU.sfx('levelup'); toast('レベル' + p.lvl + 'になった！', 'levelup'); break;
+        case 'move': RD.noteMove(); break;
         case 'pickup': AU.sfx('pickup'); break;
         case 'gold': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n + 'G', color: '#ffe04a' }); AU.sfx('gold'); break;
         case 'bolt': RD.addFx({ t: 'bolt', from: { x: p.x, y: p.y }, to: e.path.length ? e.path[e.path.length - 1] : { x: p.x, y: p.y }, dur: 300 }); AU.sfx('bolt'); break;

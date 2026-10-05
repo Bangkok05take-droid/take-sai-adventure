@@ -1,175 +1,112 @@
-/* オリジナルのドット絵（16x16）。左右対称のものは左半分だけ書いて反転する。 */
+/* オリジナルのドット絵（スーパーファミコン風）。
+ * 外部の画像を使わず、小さな「ドット絵ペインター」で陰影・ディザ・輪郭線つきの絵をコードで描く。
+ * キャラクターと敵は32×32（ボスは48×48）、タイル32×32、道具アイコン16×16。
+ * 起動時に一度だけ描いてキャンバスを使い回す（毎フレーム描き直さない）。 */
 (function (TS) {
   'use strict';
   const SP = {};
-  const half = (rows) => rows.map((r) => r + r.split('').reverse().join(''));
 
-  const PAL_TAKE = { o: '#3b2414', s: '#f6c79a', h: '#fff1dc', e: '#2b1a10', r: '#f39a8b', m: '#a2452f',
-    y: '#f4c430', b: '#2e8b88', l: '#7a4a24', p: '#5b4636', k: '#3a2a20', g: '#6b8e3a', S: '#e0a878' };
+  // ---------------- 色 ----------------
+  const hex2rgb = (h) => { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+  const rgb2hex = (r, g, b) => '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  const mix = (a, b, t) => { const A = hex2rgb(a), B = hex2rgb(b); return rgb2hex(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t); };
+  // 影は青紫寄り、光は暖色寄りにする（統一した色使い）
+  const SHADOW = '#1d1033', LIGHT = '#fff6dc', INK = '#160c1e';
+  const shade = (c, t) => (t >= 0 ? mix(c, LIGHT, t) : mix(c, SHADOW, -t));
+  // ランプ：0=ハイライト 1=明 2=基本 3=影 4=濃い影
+  const ramp = (c) => [shade(c, 0.55), shade(c, 0.25), c, shade(c, -0.32), shade(c, -0.58)];
+  SP.ramp = ramp; SP.mix = mix; SP.shade = shade;
 
-  const TAKE_FRONT = half([
-    '........',
-    '.....ooo',
-    '...oohss',
-    '..ohssss',
-    '..osssss',
-    '.ossssss',
-    '.ossesss',
-    '.ossesss',
-    '.osrrssm',
-    '..osssss',
-    '...oyyyy',
-    '..obbbby',
-    '.osbbbbb',
-    '..obbbll',
-    '...oppo.',
-    '...okko.',
-  ]);
-  const TAKE_BACK = half([
-    '........',
-    '.....ooo',
-    '...oohss',
-    '..ohssss',
-    '..osssss',
-    '.ossssss',
-    '.ossssss',
-    '.ossssss',
-    '.oSsssss',
-    '..oSssss',
-    '...oyyyy',
-    '..obgggg',
-    '.osbgggg',
-    '..obgggl',
-    '...oppo.',
-    '...okko.',
-  ]);
-  const TAKE_SIDE = TAKE_FRONT.slice();
-  TAKE_SIDE[6] = '.osssssssssesso.';
-  TAKE_SIDE[7] = '.osssssssssesso.';
-  TAKE_SIDE[8] = '.ossssssssrsmso.';
-  TAKE_SIDE[11] = '..obbbbbyybbo...';
-  TAKE_SIDE[12] = '..obbbbbbbbbso..';
-  TAKE_SIDE[14] = '...oppo.oppo....';
-  TAKE_SIDE[15] = '...okko.okko....';
-  const TAKE_WALK = TAKE_FRONT.slice();
-  TAKE_WALK[14] = '...oppo..oppo...';
-  TAKE_WALK[15] = '....okko.okko...';
+  const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+  const L = (() => { const v = [-0.5, -0.68, 0.53]; const n = Math.hypot(...v); return v.map((x) => x / n); })();
 
-  const PAL_SAI = { k: '#1d1a24', s: '#e9b48a', e: '#1d1a24', r: '#ef8f86', m: '#b04a3c', c: '#f2a65a',
-    n: '#3d6fa8', o: '#3b2414', w: '#ffffff', f: '#ff6f91' };
-  const SAI = half([
-    '........',
-    '.....kkk',
-    '...kkkkk',
-    '..kkkkkk',
-    '..kkkkks',
-    '..kkssss',
-    '..kksess',
-    '..kksess',
-    '..kksrsm',
-    '.kkkksss',
-    '.kkkcccc',
-    '.kkkcccw',
-    '..kscccc',
-    '...onnnn',
-    '...onnnn',
-    '....oss.',
-  ]);
-  SAI[3] = '..kkkkkkkkkkkfk.'; // 髪かざり（プルメリア）
-
-  // ---- 敵 ----
-  const ENEMIES = {
-    frog: { pal: { o: '#1f3b1a', w: '#ffffff', k: '#111111', g: '#6cc04a', r: '#ff9fb0', m: '#2c5a22', y: '#f2e6a0' }, rows: half([
-      '........', '........', '...ooo..', '..owwko.', '..owkko.', '.ogggggg', 'oggggggg', 'ogrrgggg',
-      'oggmmmmm', 'oggggggg', '.oyyyyyy', '.ogyyyyy', '..oggyyy', '.ogggooo', '.oooo...', '........']) },
-    turtle: { pal: { o: '#2a2a2a', H: '#8fae7a', e: '#111111', t: '#9b958a', T: '#6f685d' }, rows: half([
-      '........', '........', '.....ooo', '....oHHH', '....oHeH', '...ooHHH', '..oottTT', '.otTTttt',
-      'otTttTTt', 'otttTTtt', 'oTTttttT', 'otttTTtt', '.ooooooo', '.oHHo...', '.ooo....', '........']) },
-    monkey: { pal: { o: '#2e1a0e', b: '#9a5b2e', f: '#f0c49a', e: '#111111', m: '#a33', p: '#c8a040' }, rows: half([
-      '........', '....oooo', '...obbbb', '.oobbbbb', 'offobfff', 'offobfef', '.oobffff', '...offfm',
-      '....offf', '...obbbb', '..obbbbb', '.obfbbbb', '.ooobbbb', '...obbbo', '...oooo.', '........']) },
-    root: { pal: { o: '#24170c', w: '#7b5233', d: '#3b2716', y: '#c8ff6a', l: '#5aa040' }, rows: half([
-      '........', '..l.....', '..olo..o', '...owoow', '...owwww', '..owwwww', '.owwdwww', '.owyydww',
-      '.owddwww', '.owwwwdd', '.owwwwww', '..owwwww', '.owowwww', 'ow.owoww', 'o..ow.ow', '....o..o']) },
-    jelly: { pal: { o: '#1b3f6b', J: '#c9f1ff', j: '#6cc8f0', k: '#14304f', p: '#ff9ad5' }, rows: half([
-      '........', '........', '.....ooo', '...ooJJJ', '..oJJjjj', '.oJjjjjj', '.ojjjjjj', '.ojjkjjj',
-      '.ojjjjpj', '.oojjjjj', '..oooooo', '..j.j..j', '..j..j.j', '.j..j..j', '.j...j..', '........']) },
-    lion: { pal: { m: '#d0602a', G: '#f2c84b', g: '#a77b1c', k: '#2b1a10', r: '#b33a2a', o: '#5a3b10', w: '#fff' }, rows: half([
-      '...mm...', '..mmmmmm', '.mmmmmmm', 'mmmGGGGG', 'mmGGGGGG', 'mmGGkGGG', 'mmGGkGGG', 'mmGGGGgg',
-      'mmGGGrrw', '.mmGGGGG', '..mmmmmm', '..oGGGGG', '.oGGgGGG', '.oGGgGGG', '.oGGoGGo', '.ooo.ooo']) },
+  // ---------------- ドット絵ペインター ----------------
+  function Pix(w, h) { this.w = w; this.h = h; this.c = new Array(w * h).fill(null); }
+  Pix.prototype.set = function (x, y, col) { x = Math.floor(x); y = Math.floor(y); if (x >= 0 && y >= 0 && x < this.w && y < this.h && col) this.c[y * this.w + x] = col; };
+  Pix.prototype.get = function (x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h ? this.c[y * this.w + x] : null; };
+  Pix.prototype.rect = function (x, y, w, h, col) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, col); return this; };
+  Pix.prototype.idx = (f, x, y, dither) => {
+    const d = dither === false ? 0 : (BAYER[y & 3][x & 3] / 16 - 0.47) * 0.9;
+    return Math.max(0, Math.min(4, Math.round(f + d)));
   };
-
-  // ---- 道具アイコン ----
-  const SWORD = [
-    '................', '............ooo.', '...........owwo.', '..........owwo..', '.........owwo...', '........owwo....',
-    '.......owwo.....', '..o...owwo......', '..oo.owwo.......', '...oowwo........', '...ohho.........', '..ohhooo........',
-    '.ohho...........', '.oo.............', '................', '................'];
-  const SWORD_TINT = { wood: '#b07a45', bronze: '#d79a4a', iron: '#cfd8e0', ivory: '#fff6dc' };
-  const SHIELD = half([
-    '........', '..oooooo', '.oaaaaaa', '.oabbbbb', '.oabbbbb', '.oabbbbc', '.oabbbcc', '.oabbbbc',
-    '.oabbbbb', '..oabbbb', '..oabbbb', '...oabbb', '....oabb', '.....oaa', '......oo', '........']);
-  const SHIELD_TINT = { bamboo: ['#d8c27a', '#a8904a'], bronze: ['#e0a050', '#b8742a'], turtle: ['#9bb08a', '#5f7550'] };
-  const ICONS = {
-    herb: { pal: { o: '#1f4a1a', g: '#4caf50', G: '#9be36a', s: '#6b4a2a' }, rows: half([
-      '........', '........', '.....oo.', '....ogGo', '...ogGGo', '..ogGGgo', '..ogGgo.', '...ogo.o',
-      '....oo.o', '......os', '......os', '.....oso', '......os', '......oo', '........', '........']) },
-    potion: { pal: { o: '#30204a', w: '#e8e0ff', p: '#c24bd8', P: '#f0a0ff', c: '#9b6b3a' }, rows: half([
-      '........', '......cc', '......cc', '.....oww', '.....oww', '....owww', '...oPppp', '..oPpppp',
-      '..oPpppp', '..oppppp', '..oppppp', '...ooppp', '.....ooo', '........', '........', '........']) },
-    banana: { pal: { o: '#5a4010', y: '#ffe04a', Y: '#e8b820', b: '#4a3010' }, rows: [
-      '................', '..........bb....', '..........oyo...', '..........oyyo..', '..........oyyo..', '.........oyyYo..',
-      '........oyyYo...', '......ooyyYo....', '...oooyyyYo.....', '..oyyyyYYo......', '..oYYYYoo.......', '...oooo.........',
-      '................', '................', '................', '................'] },
-    rice: { pal: { o: '#4a2e14', b: '#c8943c', B: '#a0702a', w: '#ffffff', W: '#e8e8e0' }, rows: half([
-      '........', '........', '....oooo', '...owwww', '..owwWww', '..oooooo', '..obBbBb', '..oBbBbB',
-      '..obBbBb', '..oBbBbB', '...obBbB', '...ooooo', '....o...', '........', '........', '........']) },
-    onigiri: { pal: { o: '#333333', w: '#ffffff', n: '#1f3a2a' }, rows: half([
-      '........', '........', '.......o', '......ow', '.....oww', '....owww', '...owwww', '...owwww',
-      '..owwwww', '..owwwnn', '.owwwwnn', '.owwwwnn', '..oooooo', '........', '........', '........']) },
-    incense: { pal: { o: '#3a2a1a', s: '#d8d8f0', r: '#c0392b', g: '#d4a017', G: '#8a6a10' }, rows: half([
-      '......s.', '.......s', '......s.', '.......s', '......s.', '.......r', '.......r', '.......r',
-      '.......r', '....oooo', '...ogggg', '...oGgGg', '...ogggg', '....oooo', '........', '........']) },
-    staff: { pal: { o: '#2a1a0a', w: '#8a5a2a', y: '#fff36a', Y: '#ffb000' }, rows: half([
-      '........', '......oo', '.....oyY', '.....oYy', '......oo', '.......w', '.......w', '.......w',
-      '.......w', '.......w', '.......w', '.......w', '.......w', '.......w', '.......o', '........']) },
-    scroll: { pal: { o: '#4a3020', p: '#f5e6c0', P: '#d8c090', r: '#c0392b' }, rows: half([
-      '........', '........', '........', '..oooooo', '.oPppppp', '.oPppppp', '..oppppp', '..oppppp',
-      '..oprrrr', '..oppppp', '..oppppp', '.oPppppp', '.oPppppp', '..oooooo', '........', '........']) },
-    coin: { pal: { o: '#7a5a10', y: '#ffd84a', Y: '#e0a820', w: '#fff6b0' }, rows: half([
-      '........', '........', '........', '.....ooo', '....oyyy', '...oywyy', '...oyyYY', '...oyyYy',
-      '...oyyYY', '...oyyyy', '....oyyy', '.....ooo', '........', '........', '........', '........']) },
-    elephant: { pal: { o: '#1a4a30', j: '#4fc08a', J: '#9ef0c0', k: '#0a2a18' }, rows: half([
-      '........', '........', '........', '..ooo.oo', '.ojjjojj', '.oJjjojj', '.ojjjjkj', '.ojjjjjj',
-      '..ojjjjj', '...oojjj', '.....ojj', '.....ojj', '.....oj.', '.....oo.', '........', '........']) },
-    lotus: { pal: { o: '#7a5010', y: '#ffd84a', Y: '#f0a820', w: '#fff6b0', g: '#3a8a40' }, rows: half([
-      '........', '........', '.......o', '......oy', '..o..oyw', '.oyo.oyw', '.oywooyy', '..oywoyy',
-      '..oyyoyy', '...oyyYY', '....oYYY', '.....ooo', '...ggggg', '....gggg', '........', '........']) },
-    gem: { pal: { o: '#203060', c: '#7ad7ff', C: '#d8f6ff', b: '#3a8ad0' }, rows: half([
-      '........', '........', '........', '.....ooo', '....oCcc', '...oCccc', '..obbbbb', '...obccc',
-      '....obcc', '.....obc', '......ob', '.......o', '........', '........', '........', '........']) },
-    orb: { pal: { o: '#4a2a6a', p: '#b06ae0', P: '#e8c8ff', w: '#ffffff', y: '#ffd84a' }, rows: half([
-      '........', '........', '.....ooo', '....oPPp', '...oPwPp', '...oPPpp', '..oPpppp', '..oppppp',
-      '..oppppp', '...opppp', '...ooppp', '....oooo', '...oyyyy', '..oyyyyy', '..oooooo', '........']) },
-    gold: { pal: { o: '#7a5a10', y: '#ffd84a', Y: '#e0a820', w: '#fff6b0' }, rows: half([
-      '........', '........', '........', '........', '........', '........', '.....ooo', '....oywy',
-      '...ooyyy', '..oywooo', '..oyyyyy', '.ooyyooo', 'oywyyywy', 'oyyyyyyy', '.ooooooo', '........']) },
-  };
-
-  function toCanvas(rows, pal) {
-    const c = document.createElement('canvas');
-    c.width = 16; c.height = rows.length;
-    const g = c.getContext('2d');
-    for (let y = 0; y < rows.length; y++) {
-      for (let x = 0; x < 16; x++) {
-        const ch = rows[y][x];
-        if (!ch || ch === '.' || !pal[ch]) continue;
-        g.fillStyle = pal[ch];
-        g.fillRect(x, y, 1, 1);
+  // 球（楕円）を立体的に塗る
+  Pix.prototype.ball = function (cx, cy, rx, ry, R, o) {
+    o = o || {};
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+      for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        const nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry, q = nx * nx + ny * ny;
+        if (q > 1) continue;
+        if (o.clip && !o.clip(x, y)) continue;
+        const nz = Math.sqrt(1 - q);
+        const d = nx * L[0] + ny * L[1] + nz * L[2];
+        this.set(x, y, R[this.idx((0.88 - d) * 2.1 + (o.bias || 0), x, y, o.dither)]);
       }
     }
-    return c;
-  }
-  function flip(src) {
+    return this;
+  };
+  // 縦長の円柱（胴体・足など）
+  Pix.prototype.box = function (x0, y0, w, h, R, o) {
+    o = o || {};
+    for (let y = y0; y < y0 + h; y++) {
+      for (let x = x0; x < x0 + w; x++) {
+        if (o.round && ((y === y0 || y === y0 + h - 1) && (x === x0 || x === x0 + w - 1))) continue;
+        const nx = ((x + 0.5 - x0) / w) * 2 - 1, nz = Math.sqrt(Math.max(0, 1 - nx * nx));
+        const top = (y - y0) / Math.max(1, h - 1);
+        const d = nx * L[0] + nz * L[2] * 0.9 - (top - 0.3) * 0.25;
+        this.set(x, y, R[this.idx((0.85 - d) * 2.1 + (o.bias || 0), x, y, o.dither)]);
+      }
+    }
+    return this;
+  };
+  // 多角形（col は色、または (x,y)→色 の関数）
+  Pix.prototype.poly = function (pts, col) {
+    let minY = Infinity, maxY = -Infinity;
+    for (const p of pts) { minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); }
+    for (let y = Math.floor(minY); y <= Math.ceil(maxY); y++) {
+      const xs = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        if ((a[1] <= y + 0.5 && b[1] > y + 0.5) || (b[1] <= y + 0.5 && a[1] > y + 0.5)) xs.push(a[0] + (y + 0.5 - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
+      }
+      xs.sort((p, q) => p - q);
+      for (let k = 0; k + 1 < xs.length; k += 2) for (let x = Math.round(xs[k]); x < Math.round(xs[k + 1]); x++) this.set(x, y, typeof col === 'function' ? col(x, y) : col);
+    }
+    return this;
+  };
+  Pix.prototype.line = function (x0, y0, x1, y1, col) {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+    for (let i = 0; i <= n; i++) this.set(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), col);
+    return this;
+  };
+  // 外側の輪郭（隣の色を暗くした色 = セレクティブアウトライン）
+  Pix.prototype.outline = function (strength) {
+    const add = [];
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+      if (this.get(x, y)) continue;
+      let n = null;
+      for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) { const v = this.get(x + dx, y + dy); if (v) { n = v; break; } }
+      if (n) add.push([x, y, mix(n, INK, strength || 0.78)]);
+    }
+    for (const [x, y, c] of add) this.set(x, y, c);
+    return this;
+  };
+  Pix.prototype.canvas = function () {
+    const cv = document.createElement('canvas');
+    cv.width = this.w; cv.height = this.h;
+    const g = cv.getContext('2d');
+    const img = g.createImageData(this.w, this.h);
+    for (let i = 0; i < this.c.length; i++) {
+      const v = this.c[i];
+      if (!v) continue;
+      const [r, gg, b] = hex2rgb(v);
+      img.data[i * 4] = r; img.data[i * 4 + 1] = gg; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return cv;
+  };
+  SP.Pix = Pix;
+
+  function flipCanvas(src) {
     const c = document.createElement('canvas');
     c.width = src.width; c.height = src.height;
     const g = c.getContext('2d');
@@ -177,30 +114,540 @@
     return c;
   }
 
+  // ---------------- 共通の色 ----------------
+  const SKIN = ramp('#f2be8e'), SKIN_T = ramp('#e2a678');
+  const C = {
+    teal: ramp('#2f8f8a'), yellow: ramp('#f2c230'), brown: ramp('#7a4c2a'), pants: ramp('#5e4a3e'), shoe: ramp('#3a2a24'),
+    green: ramp('#5a8a3a'), hair: ramp('#2a2238'), shirt: ramp('#e0645e'), skirt: ramp('#3a6ea8'), white: ramp('#f4efe6'),
+  };
+
+  // ---------------- たけ（坊主頭の2頭身） ----------------
+  // face: down/up/right, f: 歩行コマ 0..3, atk: 攻撃ポーズ
+  function drawTake(face, f, atk) {
+    const P = new Pix(32, 32);
+    const bob = f === 1 || f === 3 ? -1 : 0;
+    const legA = f === 1 ? -1 : f === 3 ? 1 : 0;
+    const by = 19 + bob; // 胴の上
+    // 足
+    if (face === 'right') {
+      P.box(12 + legA * 2, by + 7, 4, 4, C.pants); P.box(16 - legA * 2, by + 7, 4, 4, C.pants);
+      P.box(12 + legA * 2, by + 10, 5, 2, C.shoe); P.box(16 - legA * 2, by + 10, 5, 2, C.shoe);
+    } else {
+      P.box(11, by + 7 + Math.min(0, legA), 4, 4 - Math.min(0, legA), C.pants); P.box(17, by + 7 - Math.max(0, legA), 4, 4 + Math.max(0, legA), C.pants);
+      P.box(10, by + 10 + Math.min(0, legA), 5, 2, C.shoe); P.box(17, by + 10 - Math.max(0, legA), 5, 2, C.shoe);
+    }
+    // 胴（チュニック）とベルト
+    P.box(9, by, 14, 9, C.teal, { round: true });
+    P.rect(9, by + 6, 14, 1, C.brown[2]); P.set(15, by + 6, C.yellow[1]); P.set(16, by + 6, C.yellow[1]);
+    if (face === 'up') { // リュック
+      P.box(10, by - 1, 12, 8, C.green, { round: true });
+      P.rect(11, by + 1, 10, 1, C.green[4]); P.box(13, by + 2, 6, 3, C.green, { bias: 0.6 });
+      P.set(15, by + 3, C.yellow[0]); P.set(16, by + 3, C.yellow[1]);
+    } else if (face === 'right') {
+      P.box(6, by - 1, 5, 8, C.green, { round: true }); // 背中のリュック
+    } else {
+      P.rect(12, by + 1, 1, 5, C.teal[4]); P.rect(19, by + 1, 1, 5, C.teal[4]); // ベストの合わせ
+    }
+    // 腕（歩くと振る）
+    const swing = f === 1 ? 1 : f === 3 ? -1 : 0;
+    if (atk) {
+      if (face === 'right') { P.box(21, by + 1, 6, 3, C.teal); P.ball(27.5, by + 2.5, 1.8, 1.8, SKIN); drawBlade(P, 28, by + 2, 'right'); }
+      else if (face === 'down') { P.box(20, by + 2, 3, 6, C.teal); P.ball(21.5, by + 9, 1.8, 1.8, SKIN); drawBlade(P, 21, by + 10, 'down'); P.box(7, by + 1, 3, 6, C.teal); P.ball(8.5, by + 7.5, 1.7, 1.7, SKIN); }
+      else { P.box(20, by - 3, 3, 6, C.teal); P.ball(21.5, by - 4, 1.8, 1.8, SKIN); drawBlade(P, 21, by - 5, 'up'); P.box(7, by + 1, 3, 6, C.teal); }
+    } else if (face === 'right') {
+      P.box(14 + swing, by + 1, 3, 6, C.teal); P.ball(15.5 + swing, by + 7.5, 1.7, 1.7, SKIN);
+    } else {
+      P.box(6, by + 1 + swing, 3, 6, C.teal); P.box(23, by + 1 - swing, 3, 6, C.teal);
+      P.ball(7.5, by + 7.5 + swing, 1.7, 1.7, SKIN); P.ball(24.5, by + 7.5 - swing, 1.7, 1.7, SKIN);
+    }
+    // スカーフ
+    P.box(10, by - 1, 12, 3, C.yellow, { round: true });
+    if (face === 'right') P.box(8, by, 3, 4, C.yellow);
+    // 頭（大きな坊主頭）
+    const hy = 10.5 + bob;
+    if (face === 'right') {
+      P.ball(16.5, hy, 9.3, 9, SKIN);
+      P.ball(12, hy + 1.5, 1.8, 2.3, SKIN_T); // 耳
+      P.set(12, hy + 1, SKIN_T[3]);
+      P.rect(21, hy + 1, 2, 3, '#2a1a12'); P.set(21, hy + 1, '#ffffff');
+      P.rect(20, hy - 1, 3, 1, '#7a4a2a');
+      P.rect(22, hy + 5, 2, 1, '#b04a3a');
+      P.rect(19, hy + 4, 2, 1, '#f39a8b');
+      P.set(25, hy + 3, SKIN[3]);
+    } else {
+      P.ball(16, hy, 9.6, 9, SKIN);
+      P.ball(6.6, hy + 2, 1.7, 2.3, SKIN_T); P.ball(25.4, hy + 2, 1.7, 2.3, SKIN_T);
+      if (face === 'down') {
+        P.rect(11, hy + 1, 2, 3, '#2a1a12'); P.rect(19, hy + 1, 2, 3, '#2a1a12');
+        P.set(11, hy + 1, '#ffffff'); P.set(19, hy + 1, '#ffffff');
+        P.rect(10, hy - 1, 3, 1, '#7a4a2a'); P.rect(19, hy - 1, 3, 1, '#7a4a2a');
+        P.rect(8, hy + 4, 3, 1, '#f39a8b'); P.rect(21, hy + 4, 3, 1, '#f39a8b');
+        P.rect(15, hy + 5, 2, 1, '#b04a3a'); P.set(14, hy + 4, '#b04a3a'); P.set(17, hy + 4, '#b04a3a');
+      } else {
+        P.rect(10, hy + 5, 12, 2, SKIN[3]); // うなじ
+      }
+    }
+    // 坊主頭のつや
+    const sx = face === 'right' ? 12 : 10;
+    P.rect(sx, hy - 6, 3, 1, SKIN[0]); P.rect(sx - 1, hy - 5, 2, 2, SKIN[0]); P.set(sx + 3, hy - 7, LIGHT);
+    for (let x = 9; x < 24; x += 2) P.set(x + (face === 'right' ? 1 : 0), hy - 7 + ((x * 7) % 3 === 0 ? 1 : 0), SKIN[1]);
+    return P.outline();
+  }
+  function drawBlade(P, x, y, dir) {
+    const R = ramp('#d8dfe8');
+    if (dir === 'right') { for (let i = 0; i < 4; i++) { P.set(x + i, y - i, R[1]); P.set(x + i + 1, y - i, R[3]); } P.set(x, y + 1, C.brown[2]); }
+    else if (dir === 'down') { for (let i = 0; i < 4; i++) { P.set(x, y + i, R[1]); P.set(x + 1, y + i, R[3]); } }
+    else { for (let i = 0; i < 5; i++) { P.set(x, y - i, R[1]); P.set(x + 1, y - i, R[3]); } }
+  }
+
+  // ---------------- サイ（黒髪ロング・普段着） ----------------
+  function drawSai(frame) {
+    const P = new Pix(32, 32);
+    const blink = frame === 1;
+    const sway = frame === 1 ? 1 : 0;
+    // 後ろ髪（長い黒髪）
+    P.poly([[6, 9], [26, 9], [27 + sway, 26], [22, 28], [10, 28], [5 + sway, 26]], (x, y) => C.hair[P.idx(1.6 + (x < 16 ? 0.2 : 0.8) + (y - 9) / 25, x, y)]);
+    // 足・サンダル
+    P.box(12, 27, 3, 3, SKIN); P.box(17, 27, 3, 3, SKIN);
+    P.rect(11, 30, 5, 1, '#8a5a3a'); P.rect(17, 30, 5, 1, '#8a5a3a');
+    // 長いスカート（パーシン風の柄）
+    P.poly([[10, 20], [22, 20], [24, 28], [8, 28]], (x, y) => C.skirt[P.idx(1.4 + (x - 8) / 12, x, y)]);
+    P.rect(9, 25, 14, 1, C.yellow[2]); P.rect(9, 26, 15, 1, C.skirt[4]);
+    // Tシャツ
+    P.box(10, 16, 12, 6, C.shirt, { round: true });
+    P.rect(14, 16, 4, 1, SKIN[2]); P.set(15, 17, SKIN[3]); P.set(16, 17, SKIN[3]); // えり元
+    P.rect(11, 20, 10, 1, C.shirt[4]);
+    // 腕
+    P.box(7, 17, 3, 5, C.shirt); P.box(22, 17, 3, 5, C.shirt);
+    P.ball(8.5, 23, 1.6, 1.8, SKIN); P.ball(23.5, 23, 1.6, 1.8, SKIN);
+    // 顔
+    P.ball(16, 10, 7.6, 7.4, SKIN);
+    // 前髪（ゆるく分けた黒髪）
+    P.poly([[7, 9], [9, 3], [16, 1], [23, 3], [25, 9], [22, 7], [18, 5], [16, 7], [12, 5], [9, 8]], (x, y) => C.hair[P.idx(1.2 + (y - 1) / 9 + (x > 16 ? 0.5 : 0), x, y)]);
+    P.rect(7, 9, 2, 9, C.hair[2]); P.rect(23, 9, 2, 9, C.hair[3]);
+    P.set(12, 3, C.hair[0]); P.set(13, 3, C.hair[0]); P.set(11, 4, C.hair[1]); // 髪のつや
+    // プルメリアの髪かざり
+    P.ball(23, 5, 2.2, 2.2, ramp('#fff4f4')); P.set(23, 5, '#ffd84a'); P.set(22, 5, '#ffd84a');
+    if (blink) { P.rect(11, 11, 3, 1, '#2a1a20'); P.rect(18, 11, 3, 1, '#2a1a20'); }
+    else {
+      P.rect(11, 10, 2, 3, '#2a1a20'); P.rect(19, 10, 2, 3, '#2a1a20');
+      P.set(11, 10, '#ffffff'); P.set(19, 10, '#ffffff'); P.set(13, 10, '#2a1a20'); P.set(18, 10, '#2a1a20');
+    }
+    P.rect(10, 14, 2, 1, '#f39a8b'); P.rect(20, 14, 2, 1, '#f39a8b');
+    P.rect(15, 15, 2, 1, '#b04a3a');
+    return P.outline();
+  }
+
+  // ---------------- 敵 ----------------
+  const E = {};
+  E.frog = (f) => {
+    const P = new Pix(32, 32); const g = ramp('#5cb84a'), y = ramp('#f0e08a');
+    const s = f ? 1 : 0;
+    P.ball(9, 27, 4, 2.5, g); P.ball(23, 27, 4, 2.5, g);
+    P.ball(16, 21 + s, 11, 8.5 - s, g);
+    P.ball(16, 24 + s, 7, 4.5, y);
+    P.ball(10, 12 + s, 4, 4, g); P.ball(22, 12 + s, 4, 4, g);
+    P.ball(10, 12 + s, 2.5, 2.6, ramp('#ffffff')); P.ball(22, 12 + s, 2.5, 2.6, ramp('#ffffff'));
+    P.rect(10, 12 + s, 2, 2, '#1a1a1a'); P.rect(22, 12 + s, 2, 2, '#1a1a1a');
+    P.line(10, 20 + s, 22, 20 + s, g[4]); P.set(9, 19 + s, g[4]); P.set(23, 19 + s, g[4]);
+    P.rect(7, 18 + s, 2, 1, '#ff9fb0'); P.rect(23, 18 + s, 2, 1, '#ff9fb0');
+    return P.outline();
+  };
+  E.turtle = (f) => {
+    const P = new Pix(32, 32); const sh = ramp('#9b927f'), sk = ramp('#8fae7a');
+    const hy = 9 + (f ? 1 : 0);
+    P.ball(16, hy, 4.5, 4, sk); P.rect(14, hy, 1, 1, '#111'); P.rect(18, hy, 1, 1, '#111');
+    P.ball(7, 25, 3, 2.5, sk); P.ball(25, 25, 3, 2.5, sk);
+    P.ball(16, 19, 12, 9, sh);
+    for (const [cx, cy] of [[16, 17], [10, 20], [22, 20], [16, 23], [11, 14], [21, 14]]) {
+      P.poly([[cx - 3, cy], [cx - 1, cy - 2], [cx + 1, cy - 2], [cx + 3, cy], [cx + 1, cy + 2], [cx - 1, cy + 2]], (x, y) => sh[P.idx(1.6 + (y - cy) / 4, x, y)]);
+      P.line(cx - 3, cy, cx - 1, cy - 2, sh[4]); P.line(cx + 1, cy + 2, cx + 3, cy, sh[4]);
+    }
+    P.rect(5, 26, 22, 2, sh[4]);
+    return P.outline();
+  };
+  E.monkey = (f) => {
+    const P = new Pix(32, 32); const b = ramp('#9a5b2e'), fc = ramp('#f0c49a');
+    P.line(23, 14, 30, 8 + f, '#c8a040'); P.line(23, 15, 30, 9 + f, '#8a6a20');
+    P.ball(16, 24, 7, 6, b); P.ball(11, 30, 2.5, 1.5, b); P.ball(21, 30, 2.5, 1.5, b);
+    P.ball(6, 12, 3, 3, fc); P.ball(26, 12, 3, 3, fc);
+    P.ball(16, 12, 9, 8, b);
+    P.ball(16, 14, 6.5, 5.5, fc);
+    P.rect(12, 12, 2, 2, '#1a1010'); P.rect(18, 12, 2, 2, '#1a1010'); P.set(12, 12, '#fff'); P.set(18, 12, '#fff');
+    P.rect(15, 17, 3, 1, '#a33');
+    P.ball(23, 18, 2, 2, fc);
+    return P.outline();
+  };
+  E.root = (f) => {
+    const P = new Pix(32, 32); const w = ramp('#7b5233'), l = ramp('#5aa040');
+    for (let i = 0; i < 5; i++) { const x = 6 + i * 5; P.line(x, 24, x - 2 + (i % 2) * 4, 31, w[3]); P.line(x + 1, 24, x - 1 + (i % 2) * 4, 31, w[2]); }
+    P.box(7, 8, 18, 18, w, { round: true });
+    for (let y = 9; y < 25; y += 3) P.line(9 + (y % 2), y, 12 + (y % 2), y + 2, w[4]);
+    P.ball(12, 15, 2.5, 2, ramp(f ? '#e8ff8a' : '#c8ff6a')); P.ball(20, 15, 2.5, 2, ramp(f ? '#e8ff8a' : '#c8ff6a'));
+    P.rect(12, 20, 8, 2, w[4]);
+    P.ball(10, 6, 4, 3, l); P.ball(20, 5, 5, 3.5, l); P.ball(15, 3, 3, 2.5, l);
+    return P.outline();
+  };
+  E.jelly = (f) => {
+    const P = new Pix(32, 32); const j = ramp('#6cc8f0');
+    for (let i = 0; i < 5; i++) { const x = 8 + i * 4; for (let y = 19; y < 30; y++) P.set(x + Math.round(Math.sin((y + f * 2 + i) / 2)), y, j[(y % 3) + 1]); }
+    P.ball(16, 14, 11, 9, j, { clip: (x, y) => y < 20 });
+    P.ball(11, 10, 2, 1.5, ramp('#ffffff')); P.set(20, 9, '#e8faff');
+    P.rect(12, 14, 2, 2, '#14304f'); P.rect(19, 14, 2, 2, '#14304f');
+    P.rect(15, 17, 3, 1, '#ff9ad5');
+    P.rect(6, 19, 21, 1, j[3]);
+    return P.outline(0.6);
+  };
+  E.statue = (f) => {
+    const P = new Pix(32, 32); const st = ramp('#a89f90'), moss = ramp('#6a9a4a');
+    P.box(11, 24, 4, 7, st); P.box(17, 24, 4, 7, st);
+    P.box(9, 13, 14, 12, st, { round: true });
+    P.rect(9, 22, 14, 2, st[4]);
+    P.ball(16, 8, 6, 6, st); P.rect(10, 4, 12, 3, st[3]); P.rect(15, 1, 2, 3, st[2]);
+    P.rect(13, 8, 2, 1, f ? '#ff7a4a' : '#ffb04a'); P.rect(18, 8, 2, 1, f ? '#ff7a4a' : '#ffb04a');
+    const R = ramp('#c8ccd4');
+    P.box(24, 14, 3, 4, st); for (let i = 0; i < 12; i++) { P.set(25, 13 - i + (f ? 1 : 0), R[1]); P.set(26, 13 - i + (f ? 1 : 0), R[3]); }
+    P.rect(23, 13 + (f ? 1 : 0), 5, 1, '#8a6a30');
+    P.box(5, 14, 4, 8, st);
+    P.set(12, 17, moss[2]); P.set(13, 18, moss[1]); P.set(19, 21, moss[2]); P.set(11, 26, moss[2]);
+    return P.outline();
+  };
+  E.bat = (f) => {
+    const P = new Pix(32, 32); const b = ramp('#5a3a7a');
+    const up = f ? -4 : 0;
+    P.poly([[15, 14], [2, 8 + up], [4, 14 + up / 2], [1, 19], [7, 17], [10, 21], [14, 18]], (x, y) => b[P.idx(2.2 + (y - 10) / 12, x, y)]);
+    P.poly([[17, 14], [30, 8 + up], [28, 14 + up / 2], [31, 19], [25, 17], [22, 21], [18, 18]], (x, y) => b[P.idx(2.6 + (y - 10) / 12, x, y)]);
+    P.ball(16, 16, 5, 5.5, b);
+    P.poly([[12, 12], [13, 6], [15, 11]], b[2]); P.poly([[17, 11], [19, 6], [20, 12]], b[3]);
+    P.set(14, 15, '#ff4a4a'); P.set(18, 15, '#ff4a4a'); P.set(15, 19, '#fff'); P.set(17, 19, '#fff');
+    return P.outline();
+  };
+  E.shaman = (f) => {
+    const P = new Pix(32, 32); const robe = ramp('#4f7a3a'), mask = ramp('#e8d8b0');
+    P.line(25, 6, 25, 30, '#7a5a30'); P.line(26, 6, 26, 30, '#5a3a20');
+    P.ball(25.5, 5, 3 + f * 0.5, 3 + f * 0.5, ramp('#9effa0'));
+    P.poly([[16, 6], [24, 28], [8, 28]], (x, y) => robe[P.idx(1.2 + (x - 8) / 9, x, y)]);
+    P.ball(16, 10, 6, 6, robe);
+    P.ball(16, 12, 4, 4, mask); P.rect(14, 12, 1, 1, '#1a1a1a'); P.rect(17, 12, 1, 1, '#1a1a1a'); P.rect(15, 14, 2, 1, '#a33');
+    for (let x = 9; x < 24; x += 3) P.set(x, 26, '#d8c060');
+    return P.outline();
+  };
+  E.lizard = (f) => {
+    const P = new Pix(32, 32); const g = ramp('#6aa05a'), sp = ramp('#a05ac0');
+    P.poly([[2, 25], [10, 20], [10, 24]], g[3]);
+    P.ball(16, 21, 10, 5.5, g);
+    P.ball(25, 15, 5, 4.5, g);
+    P.ball(11, 26, 2, 2, g); P.ball(21, 26, 2, 2, g);
+    for (const [x, y] of [[12, 19], [16, 18], [20, 20], [14, 22]]) P.ball(x, y, 1.4, 1.2, sp);
+    P.rect(26, 13, 2, 2, '#ffe04a'); P.set(27, 13, '#111');
+    if (f) { P.set(30, 17, '#ff4a6a'); P.set(31, 18, '#ff4a6a'); P.set(31, 16, '#ff4a6a'); }
+    return P.outline();
+  };
+  E.thief = (f) => {
+    const P = new Pix(32, 32); const b = ramp('#d8a030'), fc = ramp('#f8dcb0');
+    P.ball(24, 24, 5, 5, ramp('#8a5a30')); P.rect(22, 19, 4, 2, '#5a3a20'); P.set(24, 23, '#ffe04a'); P.set(23, 25, '#ffe04a');
+    P.ball(14, 24, 7, 6, b);
+    P.ball(5, 12, 3, 3, fc); P.ball(23, 12, 3, 3, fc);
+    P.ball(14, 12, 9, 8, b);
+    P.ball(14, 14, 6, 5, fc);
+    P.rect(9, 11, 10, 2, '#3a2a40'); P.set(11, 12, '#fff'); P.set(17, 12, '#fff');
+    P.rect(13, 17, 3, 1, '#a33');
+    if (f) P.set(28, 18, '#fff6b0');
+    return P.outline();
+  };
+  E.golem = (f) => {
+    const P = new Pix(32, 32); const r = ramp('#6a6a90'), cr = ramp('#7af0ff');
+    P.box(8, 23, 6, 8, r); P.box(18, 23, 6, 8, r);
+    P.box(4, 11, 24, 14, r, { round: true });
+    P.ball(16, 8, 6, 5, r);
+    P.poly([[4, 11], [6, 3], [9, 11]], (x, y) => cr[P.idx(0.8 + (y - 3) / 6, x, y)]);
+    P.poly([[23, 11], [26, 2], [28, 11]], (x, y) => cr[P.idx(1.2 + (y - 2) / 6, x, y)]);
+    P.ball(16, 17, 3, 3, ramp(f ? '#c8ffff' : '#7af0ff'));
+    P.rect(13, 7, 2, 2, '#ffdf6a'); P.rect(18, 7, 2, 2, '#ffdf6a');
+    return P.outline();
+  };
+  E.wisp = (f) => {
+    const P = new Pix(32, 32); const w = ramp(f ? '#fff6b0' : '#ffe880');
+    P.ball(16, 16, 8 + f, 8 + f, w);
+    P.ball(16, 16, 4, 4, ramp('#ffffff'));
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + f * 0.5; P.set(16 + Math.cos(a) * 12, 16 + Math.sin(a) * 12, '#fff6b0'); }
+    P.rect(13, 15, 2, 2, '#8a6a10'); P.rect(18, 15, 2, 2, '#8a6a10');
+    return P.outline(0.5);
+  };
+  E.guard = (f) => {
+    const P = new Pix(32, 32); const gd = ramp('#d8a838'), cl = ramp('#8a2a3a');
+    P.box(11, 24, 4, 7, gd); P.box(17, 24, 4, 7, gd);
+    P.poly([[9, 14], [23, 14], [25, 26], [7, 26]], (x, y) => cl[P.idx(1.4 + (x - 7) / 18, x, y)]);
+    P.box(9, 12, 14, 9, gd, { round: true });
+    P.ball(16, 8, 6, 6, gd); P.rect(11, 8, 10, 2, '#2a1a10'); P.rect(13, 8, 2, 1, '#ff8a4a'); P.rect(18, 8, 2, 1, '#ff8a4a');
+    P.poly([[14, 3], [18, 3], [20, 0], [12, 0]], ramp('#c83a3a')[2]);
+    const R = ramp('#e8ecf0');
+    for (let i = 0; i < 16; i++) { P.set(4, 28 - i - (f ? 2 : 0), R[1]); P.set(5, 28 - i - (f ? 2 : 0), R[3]); }
+    P.rect(2, 13 - (f ? 2 : 0), 6, 2, gd[2]);
+    return P.outline();
+  };
+  // ボス（48×48）
+  E.lion = (f) => {
+    const P = new Pix(48, 48); const g = ramp('#f2c84b'), m = ramp('#d0602a');
+    P.box(10, 34, 7, 12, g); P.box(31, 34, 7, 12, g);
+    P.ball(24, 32, 15, 10, g);
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; P.ball(24 + Math.cos(a) * 12, 17 + Math.sin(a) * 11, 4.5, 4.5, m); }
+    P.ball(24, 18, 10, 9.5, g);
+    P.rect(18, 15, 3, 3, '#2a1a10'); P.rect(27, 15, 3, 3, '#2a1a10'); P.set(18, 15, '#fff'); P.set(27, 15, '#fff');
+    P.ball(24, 21, 3, 2, g, { bias: 0.8 });
+    P.rect(19, 24 + f, 10, 3, '#8a2a20'); P.rect(20, 24 + f, 2, 2, '#fff'); P.rect(26, 24 + f, 2, 2, '#fff');
+    P.rect(14, 41, 4, 1, g[4]); P.rect(32, 41, 4, 1, g[4]);
+    return P.outline();
+  };
+  E.catfish = (f) => {
+    const P = new Pix(48, 48); const b = ramp('#5a7a8a'), be = ramp('#c8d8c0');
+    P.poly([[40, 26], [47, 18 + f * 2], [47, 36 - f * 2]], b[3]);
+    P.ball(23, 28, 19, 13, b);
+    P.ball(21, 33, 13, 6, be);
+    P.rect(6, 28, 12, 2, '#2a3a40');
+    P.line(7, 26, 0, 20 + f, '#2a3a40'); P.line(7, 30, 0, 38 - f, '#2a3a40'); P.line(9, 25, 3, 16 + f, '#2a3a40');
+    P.ball(13, 21, 3, 3, ramp('#ffe04a')); P.rect(13, 21, 2, 2, '#111');
+    const cr = ramp('#ffd84a');
+    P.poly([[16, 15], [18, 7], [21, 12], [24, 5], [27, 12], [30, 7], [32, 15]], (x, y) => cr[P.idx(0.8 + (y - 5) / 10, x, y)]);
+    P.set(24, 9, '#ff4a6a'); P.set(19, 11, '#4ac0ff'); P.set(29, 11, '#4ac0ff');
+    return P.outline();
+  };
+  E.elephant = (f) => {
+    const P = new Pix(48, 48); const g = ramp('#e8c050'), o = ramp('#c03a5a');
+    P.box(10, 34, 8, 13, g); P.box(30, 34, 8, 13, g);
+    P.ball(24, 30, 18, 12, g);
+    P.ball(9, 19, 8, 10, g); P.ball(39, 19, 8, 10, g);
+    P.ball(24, 18, 11, 10, g);
+    for (let i = 0; i < 16; i++) P.ball(24 + Math.sin(i / 4 + f) * 2, 24 + i, 3.2 - i * 0.08, 2.2, g);
+    P.rect(17, 15, 3, 3, '#2a1a10'); P.rect(28, 15, 3, 3, '#2a1a10'); P.set(17, 15, '#fff'); P.set(28, 15, '#fff');
+    P.poly([[16, 8], [24, 3], [32, 8], [24, 11]], (x, y) => o[P.idx(1.2 + (y - 3) / 8, x, y)]);
+    P.ball(24, 6, 2, 2, ramp('#b06ae0'));
+    P.rect(12, 27, 24, 2, o[2]); for (let x = 13; x < 36; x += 3) P.set(x, 29, '#ffe880');
+    P.poly([[18, 26], [14, 32], [17, 32]], '#fff6e0'); P.poly([[30, 26], [34, 32], [31, 32]], '#fff6e0');
+    return P.outline();
+  };
+
+  // ---------------- 道具アイコン（16×16） ----------------
+  const TINT = {
+    wood: '#b07a45', bronze: '#d79a4a', iron: '#cfd8e0', ivory: '#fff2d0', jade: '#5ad08a', crystal: '#9ae8ff', gold: '#ffd84a',
+    bamboo: '#d8c27a', turtle: '#8fae7a', moss: '#7a9a5a',
+  };
+  const I = {};
+  I.sword = (t) => { const P = new Pix(16, 16); const R = ramp(TINT[t] || '#cfd8e0');
+    for (let i = 0; i < 9; i++) { P.set(5 + i, 10 - i, R[1]); P.set(6 + i, 10 - i, R[2]); P.set(6 + i, 11 - i, R[3]); }
+    P.set(14, 1, R[0]); P.line(2, 9, 6, 13, '#8a6a30'); P.line(3, 9, 7, 13, '#c8a040');
+    P.rect(2, 12, 2, 2, '#5a3a20'); return P.outline(); };
+  I.shield = (t) => { const P = new Pix(16, 16); const R = ramp(TINT[t] || '#d79a4a');
+    P.poly([[2, 2], [14, 2], [14, 8], [8, 15], [2, 8]], (x, y) => R[P.idx(0.6 + (x - 2) / 8 + (y - 2) / 14, x, y)]);
+    P.rect(3, 3, 10, 1, R[0]); P.rect(7, 4, 2, 7, R[4]); P.rect(5, 6, 6, 2, R[4]); return P.outline(); };
+  I.herb = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'big' ? '#3ab070' : t === 'cure' ? '#a0d040' : '#5cb84a');
+    P.line(8, 15, 8, 8, '#6a4a2a'); P.ball(5, 7, 4, 2.5, R); P.ball(11, 6, 4, 2.5, R); P.ball(8, 4, 2.5, 3.5, R);
+    if (t === 'big') P.ball(12, 11, 2.5, 2, R);
+    if (t === 'cure') P.set(8, 3, '#ffffff');
+    return P.outline(); };
+  I.potion = () => { const P = new Pix(16, 16); const R = ramp('#c24bd8');
+    P.rect(6, 1, 4, 2, '#9b6b3a'); P.box(6, 3, 4, 3, ramp('#e8e0ff')); P.ball(8, 10, 5, 5, R); P.set(6, 8, '#fff'); return P.outline(); };
+  I.banana = () => { const P = new Pix(16, 16); const R = ramp('#ffe04a');
+    for (let i = 0; i < 11; i++) { const a = i / 10 * Math.PI * 0.9 + 0.3; P.ball(8 - Math.cos(a) * 6, 4 + Math.sin(a) * 8, 1.8, 1.8, R); }
+    P.rect(13, 1, 2, 2, '#5a4010'); return P.outline(); };
+  I.rice = () => { const P = new Pix(16, 16); const B = ramp('#c8943c');
+    P.ball(8, 6, 5, 3, ramp('#ffffff')); P.box(3, 7, 10, 7, B, { round: true });
+    for (let y = 8; y < 14; y += 2) for (let x = 4; x < 13; x += 2) P.set(x + (y % 4 ? 1 : 0), y, B[3]); return P.outline(); };
+  I.onigiri = () => { const P = new Pix(16, 16); P.poly([[8, 1], [15, 13], [1, 13]], (x, y) => ramp('#ffffff')[P.idx(0.5 + (x - 1) / 12, x, y)]);
+    P.rect(5, 9, 6, 5, '#1f3a2a'); return P.outline(); };
+  I.incense = () => { const P = new Pix(16, 16); const G = ramp('#d4a017');
+    P.line(8, 2, 8, 9, '#c0392b'); P.set(7, 1, '#d8d8f0'); P.set(9, 0, '#d8d8f0'); P.ball(8, 12, 5, 3, G); return P.outline(); };
+  I.staff = () => { const P = new Pix(16, 16); P.line(4, 15, 11, 5, '#8a5a2a'); P.line(5, 15, 12, 5, '#5a3a20'); P.ball(12, 4, 3, 3, ramp('#ffe04a')); return P.outline(); };
+  I.scroll = (t) => { const P = new Pix(16, 16); const R = ramp('#f5e6c0');
+    P.box(2, 3, 12, 10, R); P.box(1, 2, 2, 12, ramp('#c8a070')); P.box(13, 2, 2, 12, ramp('#c8a070'));
+    P.rect(3, 7, 10, 2, t === 'blue' ? '#2f6fd0' : '#c0392b'); return P.outline(); };
+  I.coin = () => { const P = new Pix(16, 16); P.ball(8, 8, 6, 6, ramp('#ffd84a')); P.rect(7, 5, 2, 6, '#c08a10'); return P.outline(); };
+  I.elephant = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'gold' ? '#ffd84a' : '#4fc08a');
+    P.ball(9, 9, 5, 4, R); P.ball(4, 7, 3, 3, R); P.line(2, 8, 2, 13, R[2]); P.box(6, 12, 2, 3, R); P.box(10, 12, 2, 3, R); P.set(4, 6, '#111'); return P.outline(); };
+  I.lotus = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'prism' ? '#c8a0ff' : '#ffd84a');
+    P.ball(8, 6, 2.5, 5, R); P.ball(4, 8, 2.5, 4, R); P.ball(12, 8, 2.5, 4, R); P.rect(3, 12, 10, 2, '#3a8a40');
+    if (t === 'prism') { P.set(6, 6, '#7af0ff'); P.set(10, 7, '#ff9ad5'); }
+    return P.outline(); };
+  I.gem = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'crystal' ? '#9ae8ff' : '#7ad7ff');
+    P.poly([[4, 5], [8, 2], [12, 5], [8, 14]], (x, y) => R[P.idx(0.4 + (x - 4) / 5, x, y)]); P.line(4, 5, 12, 5, R[0]); return P.outline(); };
+  I.orb = () => { const P = new Pix(16, 16); P.ball(8, 7, 5.5, 5.5, ramp('#b06ae0')); P.set(6, 5, '#fff'); P.box(4, 12, 8, 3, ramp('#ffd84a')); return P.outline(); };
+  I.gold = () => { const P = new Pix(16, 16); const R = ramp('#ffd84a');
+    for (const [x, y] of [[5, 12], [10, 12], [8, 10], [6, 8], [11, 9], [8, 6]]) P.ball(x, y, 3, 1.6, R); return P.outline(); };
+  I.pendant = () => { const P = new Pix(16, 16); P.line(3, 1, 8, 7, '#c8a040'); P.line(13, 1, 8, 7, '#c8a040'); P.ball(8, 10, 4, 4.5, ramp('#e8902a')); P.set(7, 8, '#fff2c0'); return P.outline(); };
+  I.bell = () => { const P = new Pix(16, 16); const R = ramp('#c08a40'); P.rect(7, 1, 2, 2, '#6a4a20'); P.ball(8, 8, 5, 6, R, { clip: (x, y) => y < 13 }); P.rect(2, 12, 12, 2, R[3]); P.ball(8, 14, 1.5, 1.5, R); return P.outline(); };
+  I.crown = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'blue' ? '#7ac0d0' : '#ffd84a');
+    P.poly([[2, 13], [2, 5], [5, 9], [8, 3], [11, 9], [14, 5], [14, 13]], (x, y) => R[P.idx(0.5 + (y - 3) / 10, x, y)]);
+    P.set(8, 9, '#ff4a6a'); P.set(4, 11, '#4ac0ff'); P.set(12, 11, '#4ac0ff'); return P.outline(); };
+  I.pearl = () => { const P = new Pix(16, 16); P.ball(8, 9, 6, 6, ramp('#f0f0ff')); P.set(6, 6, '#ffffff'); P.set(10, 12, '#c8c8f0'); return P.outline(); };
+  I.shard = (t) => { const P = new Pix(16, 16); const R = ramp({ amber: '#e8902a', bronze: '#c08a40', crystal: '#9ae8ff', gold: '#ffd84a' }[t] || '#cccccc');
+    P.poly([[6, 2], [11, 5], [12, 12], [7, 14], [3, 9]], (x, y) => R[P.idx(0.5 + (x - 3) / 7, x, y)]); P.line(6, 2, 7, 14, R[0]); return P.outline(); };
+  I.smoke = () => { const P = new Pix(16, 16); P.ball(8, 10, 5, 5, ramp('#5a5a6a')); P.ball(7, 4, 3, 2.5, ramp('#d8d8e0')); P.ball(11, 3, 2, 2, ramp('#e8e8f0')); P.line(10, 6, 12, 4, '#c0392b'); return P.outline(); };
+  I.powder = () => { const P = new Pix(16, 16); P.ball(8, 10, 5.5, 4.5, ramp('#d8c8f0')); P.rect(6, 3, 4, 3, '#8a6aa8'); P.set(4, 6, '#c8b8ff'); P.set(12, 7, '#c8b8ff'); return P.outline(); };
+  I.charm = () => { const P = new Pix(16, 16); P.box(4, 1, 8, 14, ramp('#f5e6c0')); P.ball(8, 7, 2.5, 3, ramp('#ff6a2a')); P.line(6, 11, 10, 11, '#c0392b'); P.line(6, 13, 10, 13, '#c0392b'); return P.outline(); };
+
+  // ---------------- 地形タイル（32×32） ----------------
+  const THEME = {
+    brick:   { floor: '#c4875a', floor2: '#b07448', wall: '#a8502e', top: '#4a2418', deco: '#6a9a3a', bg: '#140a08', light: '#ffb060' },
+    roots:   { floor: '#8f8a5a', floor2: '#7a754a', wall: '#8a5a3a', top: '#2e2214', deco: '#5aa040', root: '#5a3a1e', bg: '#0c0a04', light: '#ffcf70' },
+    water:   { floor: '#7fa2ac', floor2: '#6b8e98', wall: '#3f7f96', top: '#16303e', deco: '#ff8fb8', bg: '#04101a', light: '#9ae8ff' },
+    orb:     { floor: '#c8a070', floor2: '#b48c5e', wall: '#b07a3a', top: '#3a2410', deco: '#ffd84a', bg: '#100804', light: '#ffd070' },
+    garden:  { floor: '#76935a', floor2: '#678250', wall: '#6a7a4a', top: '#1e2a16', deco: '#e05a8a', root: '#4a3018', bg: '#060a04', light: '#c8ff8a' },
+    sunken:  { floor: '#6a8a96', floor2: '#5a7a86', wall: '#4a6f80', top: '#0e2430', deco: '#ffd84a', bg: '#030c12', light: '#7ad0ff' },
+    crystal: { floor: '#5c5c7e', floor2: '#4e4e6e', wall: '#4a4a78', top: '#12122a', deco: '#7af0ff', bg: '#04040c', light: '#7af0ff' },
+    gold:    { floor: '#b89a5a', floor2: '#a4884c', wall: '#a07a30', top: '#34260c', deco: '#ffe060', bg: '#0c0802', light: '#ffe080' },
+    shrine:  { floor: '#c4a6dc', floor2: '#b094c8', wall: '#8a6ab0', top: '#26183a', deco: '#ffd84a', bg: '#0a0614', light: '#ffd8ff' },
+  };
+  SP.themeColors = THEME;
+  const hash = (x, y, s) => { let h = (x * 374761393 + y * 668265263 + (s || 0) * 2246822519) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; };
+  SP.hash = hash;
+
+  function floorTile(theme, v) {
+    const T = THEME[theme], P = new Pix(32, 32);
+    const A = ramp(T.floor), B = ramp(T.floor2);
+    const style = { brick: 'stone', roots: 'flag', water: 'tile', orb: 'tile', garden: 'flag', sunken: 'tile', crystal: 'cave', gold: 'tile', shrine: 'tile' }[theme];
+    if (style === 'cave') {
+      for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+        const n = (hash(x >> 2, y >> 2, v) & 15) / 15;
+        P.set(x, y, A[P.idx(1.6 + n * 1.2, x, y)]);
+      }
+    } else {
+      // 石畳：大小の石を並べ、1つずつ明るさを変える
+      const cells = style === 'stone' ? [[0, 0, 16, 10], [16, 0, 16, 10], [0, 10, 10, 11], [10, 10, 12, 11], [22, 10, 10, 11], [0, 21, 18, 11], [18, 21, 14, 11]]
+        : style === 'flag' ? [[0, 0, 20, 14], [20, 0, 12, 14], [0, 14, 12, 18], [12, 14, 20, 18]]
+          : [[0, 0, 16, 16], [16, 0, 16, 16], [0, 16, 16, 16], [16, 16, 16, 16]];
+      cells.forEach(([x0, y0, w, h], i) => {
+        const R = (hash(i, v, 7) & 1) ? A : B;
+        const b = ((hash(i, v, 3) & 7) - 3) * 0.12;
+        for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+          let f = 1.7 + b + (y - y0) / h * 0.4;
+          if (y === y0 || x === x0) f = 0.8 + b;
+          if (y === y0 + h - 1 || x === x0 + w - 1) f = 3.4;
+          P.set(x, y, R[P.idx(f, x, y)]);
+        }
+      });
+    }
+    const r = hash(v, 99, 5) % 6;
+    if (theme === 'brick' && r < 2) { P.set(6 + v, 24, T.deco); P.set(7 + v, 23, T.deco); P.set(8 + v, 24, ramp(T.deco)[1]); }
+    if ((theme === 'roots' || theme === 'garden') && r < 3) for (let i = 0; i < 6; i++) P.set((hash(i, v, 2) % 30) + 1, (hash(v, i, 4) % 30) + 1, ramp(T.deco)[(i % 3) + 1]);
+    if (theme === 'garden' && r === 0) { P.ball(22, 22, 3, 2, ramp('#3a8a40')); P.ball(22, 20, 1.5, 1.5, ramp(T.deco)); }
+    if (theme === 'crystal' && r < 2) P.poly([[10, 26], [13, 18], [16, 26]], (x, y) => ramp(T.deco)[P.idx(0.6 + (x - 10) / 5, x, y)]);
+    if ((theme === 'gold' || theme === 'shrine') && r === 1) { P.rect(14, 14, 4, 4, ramp(T.deco)[2]); P.set(15, 15, '#fff'); }
+    if ((theme === 'water' || theme === 'sunken') && r === 2) for (let i = 0; i < 4; i++) P.set(8 + i * 5, 26 - i, ramp('#9ad0e0')[1]);
+    return P.canvas();
+  }
+  function wallFace(theme, v) {
+    const T = THEME[theme], P = new Pix(32, 32), W = ramp(T.wall);
+    P.rect(0, 0, 32, 32, shade(T.wall, 0.45));
+    if (theme === 'crystal') {
+      for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) P.set(x, y, W[P.idx(1.8 + ((hash(x >> 3, y >> 2, v) & 7) / 7) * 1.4 + y / 40, x, y)]);
+      const cr = ramp(T.deco);
+      if (v !== 1) P.poly([[6 + v * 4, 30], [10 + v * 4, 12], [14 + v * 4, 30]], (x, y) => cr[P.idx(0.4 + (x - 6 - v * 4) / 5, x, y)]);
+    } else {
+      for (let row = 0; row < 5; row++) {
+        const off = row % 2 ? 8 : 0, h = 6;
+        for (let bx = -16; bx < 32; bx += 16) {
+          const b = ((hash(bx + 20, row, v) & 7) - 3) * 0.15;
+          for (let y = row * h + 1; y < row * h + h; y++) for (let x = bx + off + 1; x < bx + off + 16; x++) {
+            let f = 1.8 + b + (y - row * h) / h * 0.6;
+            if (y === row * h + 1) f = 1.0 + b;
+            if (x === bx + off + 15) f = 3.2;
+            P.set(x, y, W[P.idx(f, x, y)]);
+          }
+        }
+      }
+    }
+    P.rect(0, 30, 32, 2, W[4]);
+    if ((theme === 'roots' || theme === 'garden') && v % 2 === 0) {
+      const R = ramp(T.root);
+      for (let y = 0; y < 30; y++) { P.set(9 + Math.round(Math.sin(y / 4) * 2), y, R[2]); P.set(10 + Math.round(Math.sin(y / 4) * 2), y, R[3]); }
+      P.ball(8, 6, 3, 2, ramp(T.deco)); P.ball(22, 14, 2.5, 2, ramp('#5aa040'));
+    }
+    if (theme === 'garden' && v === 1) for (let i = 0; i < 5; i++) P.ball(4 + i * 6, 2 + (i % 2) * 2, 2.5, 2, ramp('#4a8a3a'));
+    if (theme === 'sunken' && v === 1) { P.rect(0, 20, 32, 10, ramp('#2a6a90')[2]); for (let x = 2; x < 32; x += 6) P.set(x, 21, '#9ad8f0'); }
+    if ((theme === 'gold' || theme === 'shrine' || theme === 'orb') && v === 2) {
+      const G = ramp('#ffd84a'); P.rect(0, 12, 32, 3, G[2]); for (let x = 1; x < 32; x += 4) P.set(x, 13, G[0]);
+    }
+    if (theme === 'water' && v === 2) { P.ball(16, 12, 5, 6, ramp('#3a7a96')); P.rect(14, 11, 4, 2, '#1e4050'); }
+    return P.canvas();
+  }
+  function wallTop(theme, v) {
+    const T = THEME[theme], P = new Pix(32, 32), R = ramp(T.top);
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) P.set(x, y, R[P.idx(2.4 + ((hash(x >> 2, y >> 2, v + 11) & 3) / 3) * 0.9, x, y)]);
+    if ((theme === 'roots' || theme === 'garden') && v === 2) P.box(0, 13, 32, 5, ramp(T.root));
+    if (theme === 'garden' && v === 3) P.ball(16, 16, 6, 5, ramp('#3a6a2a'));
+    if (theme === 'crystal' && v === 1) P.ball(10, 20, 2, 2, ramp(T.deco));
+    return P.canvas();
+  }
+
+  // 動くもの：壁のたいまつ・帰還の碑・帰還口・宝箱
+  function torch(theme, f) {
+    const P = new Pix(32, 32), T = THEME[theme];
+    P.box(14, 12, 4, 10, ramp('#5a3a20'));
+    P.rect(12, 11, 8, 2, ramp('#8a8a90')[2]);
+    P.ball(16, 7 - (f % 2), 3.5 + (f === 1 ? 0.5 : 0), 5, ramp(T.light));
+    P.ball(16, 8, 1.8, 2.5, ramp('#ffffff'));
+    return P.canvas();
+  }
+  function stairsTile() {
+    const P = new Pix(32, 32);
+    P.rect(1, 1, 30, 30, '#140a08');
+    const R = ramp('#e8d0a0');
+    for (let i = 0; i < 6; i++) {
+      for (let y = Math.round(3 + i * 4.5); y < Math.round(3 + i * 4.5) + 4; y++) for (let x = 3 + i * 2; x < 29 - i * 2; x++) P.set(x, y, R[Math.min(4, Math.floor(i * 0.7 + (y - (3 + i * 4.5)) / 3))]);
+    }
+    P.rect(0, 0, 32, 1, '#ffe8a0'); P.rect(0, 31, 32, 1, '#2a1a10'); P.rect(0, 0, 1, 32, '#ffe8a0'); P.rect(31, 0, 1, 32, '#2a1a10');
+    return P.canvas();
+  }
+  function returnStone(f) {
+    const P = new Pix(32, 32), S = ramp('#7a8898');
+    P.ball(16, 28, 12, 3, ramp(f ? '#8af0ff' : '#5ac8e8'));
+    P.box(9, 6, 14, 22, S, { round: true });
+    P.poly([[9, 6], [16, 1], [23, 6]], (x, y) => S[P.idx(1 + (x - 9) / 10, x, y)]);
+    const g = ramp(f ? '#c8ffff' : '#6ae0ff');
+    P.rect(15, 10, 2, 12, g[1]); P.rect(12, 14, 8, 2, g[1]); P.set(15, 10, '#ffffff');
+    return P.outline().canvas();
+  }
+  function portalTile(f) {
+    const P = new Pix(32, 32);
+    for (let r = 13; r > 2; r -= 2) P.ball(16, 16, r, r, ramp(r % 4 === 1 ? '#ffd84a' : '#fff6b0'), { dither: false });
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + f * 0.4; P.set(16 + Math.cos(a) * 14, 16 + Math.sin(a) * 14, '#ffffff'); }
+    return P.canvas();
+  }
+  function chestTile(f) {
+    const P = new Pix(32, 32), W = ramp('#a0602a'), G = ramp('#ffd84a');
+    P.box(6, 14, 20, 12, W, { round: true });
+    P.ball(16, 14, 10, 5, W, { clip: (x, y) => y <= 14 });
+    P.rect(6, 15, 20, 2, G[2]); P.rect(6, 23, 20, 2, G[3]); P.rect(14, 16, 4, 5, G[1]); P.set(15, 18, '#3a2010');
+    P.outline();
+    if (f) { P.set(24, 7, '#ffffff'); P.set(23, 8, '#fff6b0'); P.set(25, 8, '#fff6b0'); P.set(24, 9, '#ffffff'); }
+    return P.canvas();
+  }
+
+  // ---------------- まとめて作る ----------------
   SP.build = function () {
     const s = {};
-    s.take = {
-      down: [toCanvas(TAKE_FRONT, PAL_TAKE), toCanvas(TAKE_WALK, PAL_TAKE)],
-      up: [toCanvas(TAKE_BACK, PAL_TAKE)],
-      right: [toCanvas(TAKE_SIDE, PAL_TAKE)],
-    };
-    s.take.left = [flip(s.take.right[0])];
-    s.sai = toCanvas(SAI, PAL_SAI);
+    s.take = {};
+    for (const face of ['down', 'up', 'right']) {
+      s.take[face] = { walk: [0, 1, 2, 3].map((f) => drawTake(face, f, false).canvas()), atk: drawTake(face, 0, true).canvas() };
+    }
+    s.take.left = { walk: s.take.right.walk.map(flipCanvas), atk: flipCanvas(s.take.right.atk) };
+    s.sai = [drawSai(0).canvas(), drawSai(1).canvas()];
     s.enemy = {};
-    for (const [k, v] of Object.entries(ENEMIES)) s.enemy[k] = toCanvas(v.rows, v.pal);
+    for (const k of Object.keys(E)) s.enemy[k] = [E[k](0).canvas(), E[k](1).canvas()];
     s.icon = {};
-    for (const [k, v] of Object.entries(ICONS)) s.icon[k] = toCanvas(v.rows, v.pal);
-    for (const [t, col] of Object.entries(SWORD_TINT)) s.icon['sword_' + t] = toCanvas(SWORD, { o: '#2a2a2a', w: col, h: '#7a4a24' });
-    for (const [t, col] of Object.entries(SHIELD_TINT)) s.icon['shield_' + t] = toCanvas(SHIELD, { o: '#2a2a2a', a: col[1], b: col[0], c: '#ffffff' });
-    s.icon.scroll_red = s.icon.scroll;
-    s.icon.scroll_blue = toCanvas(ICONS.scroll.rows, Object.assign({}, ICONS.scroll.pal, { r: '#2f6fd0' }));
+    for (const k of Object.keys(I)) s.icon[k] = I[k]().canvas();
+    s.iconT = {};
     SP.s = s;
     return s;
   };
   SP.iconFor = function (def) {
-    const key = def.tint ? def.icon + '_' + def.tint : def.icon;
-    return SP.s.icon[key] || SP.s.icon[def.icon] || SP.s.icon.coin;
+    const key = def.icon + ':' + (def.tint || '');
+    const s = SP.s;
+    if (!s.iconT[key]) s.iconT[key] = I[def.icon] ? I[def.icon](def.tint).canvas() : s.icon.coin;
+    return s.iconT[key];
   };
+  SP.enemyFrames = (sprite) => SP.s.enemy[sprite] || SP.s.enemy.frog;
+
   const urlCache = {};
   SP.iconURL = function (def) {
     const key = def.icon + (def.tint || '');
@@ -214,100 +661,31 @@
     }
     return urlCache[key];
   };
+  // 会話の顔絵（顔のあたりを拡大）
   SP.portraitURL = function (who, size) {
-    const src = who === 'sai' ? SP.s.sai : SP.s.take.down[0];
+    const src = who === 'sai' ? SP.s.sai[0] : SP.s.take.down.walk[0];
     const c = document.createElement('canvas');
     c.width = c.height = size || 64;
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
-    g.drawImage(src, 0, 0, c.width, c.height);
+    g.drawImage(src, 2, 0, 28, 28, 0, 0, c.width, c.height);
     return c.toDataURL();
   };
 
-  /* ---- 地形タイル（テーマごとに描画して用意） ---- */
-  const THEME_COL = {
-    brick: { floor: '#c98b5a', floor2: '#b57848', line: '#8f5a34', wallTop: '#5a2e1c', wall: '#a8502e', wall2: '#8a3e22', mortar: '#e6b98a', deco: '#6a9a3a', bg: '#1a0f0a' },
-    roots: { floor: '#8f8a5a', floor2: '#7d784c', line: '#5f5a38', wallTop: '#3a2a18', wall: '#8a5a3a', wall2: '#6a4228', mortar: '#b89a6a', deco: '#4a8a2a', root: '#5a3a1e', bg: '#0f0c06' },
-    water: { floor: '#7fa6b0', floor2: '#6a929c', line: '#4f7680', wallTop: '#1e3a4a', wall: '#3f7f96', wall2: '#2f6378', mortar: '#a8d0d8', deco: '#ff8fb8', water: '#3a8fc0', bg: '#06121a' },
-    garden: { floor: '#7f9a5a', floor2: '#6f8a4c', line: '#4f6a38', wallTop: '#24301a', wall: '#6a7a4a', wall2: '#55653a', mortar: '#a8c080', deco: '#e05a8a', root: '#4a3018', bg: '#080c04' },
-    sunken: { floor: '#6a8a96', floor2: '#5a7a86', line: '#3a5a66', wallTop: '#122a36', wall: '#4a6f80', wall2: '#3a5a6a', mortar: '#9ac0c8', deco: '#ffd84a', water: '#2a7ab0', bg: '#040e14' },
-    crystal: { floor: '#5a5a7a', floor2: '#4e4e6c', line: '#3a3a56', wallTop: '#141428', wall: '#4a4a78', wall2: '#3a3a64', mortar: '#9a9ad0', deco: '#7af0ff', bg: '#05050e' },
-    gold: { floor: '#b89a5a', floor2: '#a4884c', line: '#7a6030', wallTop: '#3a2a10', wall: '#a07a30', wall2: '#806020', mortar: '#f0d890', deco: '#ffe060', bg: '#0e0a02' },
-    shrine: { floor: '#c8a8e0', floor2: '#b494cc', line: '#8a6aa8', wallTop: '#2a1a3a', wall: '#8a6ab0', wall2: '#6a4e90', mortar: '#f0d8ff', deco: '#ffd84a', bg: '#0c0614' },
-    orb: { floor: '#b8a0d0', floor2: '#a088bc', line: '#7a6098', wallTop: '#2a1a3a', wall: '#7a5aa0', wall2: '#5a3e80', mortar: '#e0c8f0', deco: '#ffd84a', bg: '#0c0614' },
-  };
-  SP.themeColors = THEME_COL;
-
-  function hash(x, y) { let h = (x * 374761393 + y * 668265263) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; }
-
-  // 床タイル（variant 0..3）
-  function drawFloor(g, C, v, theme) {
-    g.fillStyle = C.floor; g.fillRect(0, 0, 16, 16);
-    g.fillStyle = C.floor2;
-    if (v % 2) { g.fillRect(0, 0, 8, 8); g.fillRect(8, 8, 8, 8); } else { g.fillRect(8, 0, 8, 8); g.fillRect(0, 8, 8, 8); }
-    g.fillStyle = C.line;
-    g.fillRect(0, 0, 16, 1); g.fillRect(0, 8, 16, 1); g.fillRect(0, 0, 1, 16); g.fillRect(8, 0, 1, 16);
-    if (theme === 'roots' && v === 3) { g.fillStyle = C.deco; g.fillRect(3, 11, 2, 1); g.fillRect(4, 10, 1, 1); g.fillRect(11, 4, 2, 1); }
-    if (theme === 'water' && v === 2) { g.fillStyle = C.water; g.fillRect(2, 3, 12, 10); g.fillStyle = '#7ac8e8'; g.fillRect(4, 6, 3, 1); g.fillRect(9, 9, 3, 1);
-      g.fillStyle = '#3a8a40'; g.fillRect(9, 4, 4, 3); g.fillStyle = C.deco; g.fillRect(10, 3, 2, 2); }
-    if (theme === 'brick' && v === 3) { g.fillStyle = C.deco; g.fillRect(12, 13, 1, 2); g.fillRect(13, 12, 1, 2); }
-    if (theme === 'orb' && v === 1) { g.fillStyle = C.deco; g.fillRect(7, 7, 2, 2); }
-  }
-  // 壁の正面（下が床のとき）
-  function drawWallFace(g, C, v, theme) {
-    g.fillStyle = C.mortar; g.fillRect(0, 0, 16, 16);
-    for (let row = 0; row < 4; row++) {
-      const off = row % 2 ? 4 : 0;
-      for (let bx = -8; bx < 16; bx += 8) {
-        g.fillStyle = ((row + bx / 8 + v) % 3 === 0) ? C.wall2 : C.wall;
-        g.fillRect(bx + off + 1, row * 4 + 1, 7, 3);
-      }
-    }
-    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 14, 16, 2);
-    if (theme === 'roots' && v % 2 === 0) {
-      g.fillStyle = C.root;
-      g.fillRect(5, 0, 2, 9); g.fillRect(7, 8, 2, 6); g.fillRect(3, 6, 2, 2); g.fillRect(9, 13, 3, 2);
-      g.fillStyle = C.deco; g.fillRect(4, 4, 2, 2); g.fillRect(10, 2, 2, 2);
-    }
-    if (theme === 'water' && v === 1) { g.fillStyle = 'rgba(120,220,255,0.5)'; g.fillRect(7, 0, 2, 16); }
-    if (theme === 'orb' && v === 2) { g.fillStyle = C.deco; g.fillRect(6, 5, 4, 4); g.fillStyle = '#fff'; g.fillRect(7, 6, 1, 1); }
-  }
-  function drawWallTop(g, C, v, theme) {
-    g.fillStyle = C.wallTop; g.fillRect(0, 0, 16, 16);
-    g.fillStyle = 'rgba(255,255,255,0.06)';
-    if (v % 2) g.fillRect(2, 3, 5, 2); else g.fillRect(9, 10, 5, 2);
-    if (theme === 'roots' && v === 2) { g.fillStyle = C.root; g.fillRect(0, 7, 16, 2); g.fillRect(7, 0, 2, 7); }
-    if (theme === 'roots' && v === 3) { g.fillStyle = C.deco; g.fillRect(5, 5, 3, 3); g.fillRect(9, 9, 2, 2); }
-  }
-
   SP.buildTiles = function () {
     const out = {};
-    for (const [theme, C] of Object.entries(THEME_COL)) {
-      const mk = (fn, v) => { const c = document.createElement('canvas'); c.width = c.height = 16; fn(c.getContext('2d'), C, v, theme); return c; };
+    for (const theme of Object.keys(THEME)) {
       out[theme] = {
-        floor: [0, 1, 2, 3].map((v) => mk(drawFloor, v)),
-        face: [0, 1, 2].map((v) => mk(drawWallFace, v)),
-        top: [0, 1, 2, 3].map((v) => mk(drawWallTop, v)),
+        floor: [0, 1, 2, 3, 4, 5].map((v) => floorTile(theme, v)),
+        face: [0, 1, 2, 3].map((v) => wallFace(theme, v)),
+        top: [0, 1, 2, 3].map((v) => wallTop(theme, v)),
+        torch: [0, 1, 2].map((f) => torch(theme, f)),
       };
     }
-    // 階段・帰還の碑・帰還口
-    const mk = (fn) => { const c = document.createElement('canvas'); c.width = c.height = 16; fn(c.getContext('2d')); return c; };
-    out.stairs = mk((g) => {
-      g.fillStyle = '#2a1a10'; g.fillRect(1, 1, 14, 14);
-      const cols = ['#e8d0a0', '#c8a878', '#a88858', '#886838', '#584020'];
-      for (let i = 0; i < 5; i++) { g.fillStyle = cols[i]; g.fillRect(2 + i, 2 + i * 2.6, 12 - i * 2, 2.4); }
-    });
-    out.returnPoint = mk((g) => {
-      g.fillStyle = 'rgba(120,220,255,0.35)'; g.fillRect(1, 12, 14, 3);
-      g.fillStyle = '#556070'; g.fillRect(4, 2, 8, 12);
-      g.fillStyle = '#7a8898'; g.fillRect(5, 3, 6, 10); g.fillRect(4, 1, 8, 2);
-      g.fillStyle = '#6ae0ff'; g.fillRect(7, 5, 2, 5); g.fillRect(6, 6, 4, 1);
-    });
-    out.portal = mk((g) => {
-      g.fillStyle = '#ffd84a'; g.fillRect(3, 1, 10, 14); g.fillRect(1, 3, 14, 10);
-      g.fillStyle = '#fff6b0'; g.fillRect(4, 3, 8, 10); g.fillRect(3, 4, 10, 8);
-      g.fillStyle = '#ffffff'; g.fillRect(6, 5, 4, 6);
-    });
+    out.stairs = stairsTile();
+    out.returnPoint = [returnStone(0), returnStone(1)];
+    out.portal = [portalTile(0), portalTile(1), portalTile(2)];
+    out.chest = [chestTile(0), chestTile(1)];
     out.hash = hash;
     SP.tiles = out;
     return out;
