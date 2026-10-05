@@ -169,7 +169,7 @@
 
   function makeEnemy(run, type, x, y) {
     const E = D.ENEMIES[type], f = run.floor;
-    const k = E.noScale ? 0 : Math.max(0, f - 1);
+    const k = E.noScale ? 0 : Math.max(0, f - (E.base || 1));
     const hp = Math.round(E.hp * (1 + D.ENEMY_SCALE.hp * k));
     return {
       id: run.nextEnemyId++, type, x, y, hp, maxhp: hp,
@@ -177,9 +177,10 @@
       def: E.def,
       exp: Math.round(E.exp * (1 + D.ENEMY_SCALE.exp * k)),
       sleep: E.ai === 'dormant' ? 9999 : 0,
-      tx: null, ty: null, acts: 0, dir: 'down',
+      tx: null, ty: null, acts: 0, dir: 'down', cycle: 0, rest: 0, charge: null, stolen: 0,
     };
   }
+  G.makeEnemy = makeEnemy;
 
   // ---------- 視界 ----------
   // 部屋の中（入口のマスを含む）なら部屋全体と周囲の壁、通路では周囲1マスが見える。
@@ -326,6 +327,11 @@
     G.log(run, E.name + 'をたおした！ 経験値' + e.exp);
     ev.push({ t: 'kill', x: e.x, y: e.y });
     gainExp(S, e.exp, ev);
+    if (e.stolen) {
+      run.runGold += e.stolen;
+      G.log(run, '盗まれた' + e.stolen + 'Gを取り返した！');
+      ev.push({ t: 'gold', x: e.x, y: e.y, n: e.stolen });
+    }
     if (e.boss) {
       const V = S.village, f = run.floor;
       V.bossKills[f] = (V.bossKills[f] || 0) + 1;
@@ -590,7 +596,16 @@
         if (p.hunger === 0) { G.log(run, '空腹で力が出ない…。HPが減っていく！'); ev.push({ t: 'warn', msg: '満腹度0！HPが減っていく' }); }
       }
     }
-    if (p.hunger > 0) {
+    if (p.poisonGuard > 0) p.poisonGuard--;
+    if (p.poison > 0) {
+      p.poison--;
+      const n = Math.max(1, Math.round(p.maxhp * D.POISON.dmgRate));
+      p.hp -= n;
+      ev.push({ t: 'hit', x: p.x, y: p.y, n, target: 'player', poison: true });
+      if (p.hp <= 0) { die(S, '毒で倒れた'); return; }
+      if (p.poison === 0) { p.poisonGuard = D.POISON.guard; G.log(run, '毒が抜けた。'); }
+    }
+    if (p.hunger > 0 && !p.poison) {
       p.starveAcc = 0;
       p.regenAcc += p.maxhp / D.PLAYER.regenTurns;
       if (p.regenAcc >= 1) {
@@ -598,7 +613,7 @@
         p.regenAcc -= n;
         p.hp = Math.min(p.maxhp, p.hp + n);
       }
-    } else {
+    } else if (p.hunger <= 0) {
       p.regenAcc = 0;
       p.starveAcc++;
       if (p.starveAcc >= D.PLAYER.starveTurns) {
@@ -645,12 +660,15 @@
   }
   G.adjacent = adjacent;
 
+  const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+
   function enemyAct(S, e, ev) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type];
-    // 眠り
+    // 眠り（眠ると予告中の攻撃も中断される）
     if (e.sleep > 0) {
+      if (e.charge) { e.charge = null; G.log(run, E.name + 'の構えがとけた。'); }
       if (e.sleep > 1000) { // 休眠中の根っこオバケ：近づくと起きる
-        if (Math.abs(e.x - p.x) + Math.abs(e.y - p.y) <= 2) { e.sleep = 0; G.log(run, E.name + 'が目を覚ました！'); }
+        if (cheb(e, p) <= 2) { e.sleep = 0; G.log(run, E.name + 'が目を覚ました！'); }
         return;
       }
       e.sleep--;
@@ -659,13 +677,50 @@
     }
     // 遅い敵・鈍足の敵は2ターンに1回
     if (e.slow > 0) { e.slow--; if (run.turn % 2 === 1) return; }
-    else if (E.ai === 'slow' && run.turn % 2 === 1) return;
+    else if ((E.ai === 'slow' || E.slowMove) && run.turn % 2 === 1 && !e.charge) return;
+    // 大技のあとの隙
+    if (e.rest > 0) { e.rest--; e.acts++; return; }
     e.acts++;
     const sees = G.isVisible(run, e.x, e.y); // 互いに見えている
     if (sees) { e.tx = p.x; e.ty = p.y; }
+    if (e.charge) { resolveCharge(S, e, ev); return; }
+    switch (E.ai) {
+      case 'boss': if (bossAct(S, e, ev, sees)) return; break;
+      case 'telegraph':
+        if (sees && adjacent(run, e, p)) { startCharge(S, e, ev, [{ x: p.x, y: p.y }], E.heavy, 1, 'が武器を大きく振りかぶった！'); return; }
+        break;
+      case 'area':
+        if (sees && cheb(e, p) <= 1) { startCharge(S, e, ev, areaTiles(run, e, 1), E.heavy, 1, 'が地面を踏みならそうとしている！'); return; }
+        break;
+      case 'support':
+        if (supportHeal(S, e, ev)) return;
+        if (sees && !adjacent(run, e, p) && cheb(e, p) <= 2 && stepAway(run, e)) return;
+        break;
+      case 'thief':
+        if (e.flee) { if (!stepAway(run, e)) randomStep(run, e); return; }
+        if (adjacent(run, e, p) && run.runGold > 0) { steal(S, e, ev); return; }
+        break;
+      case 'magic':
+        if (sees && adjacent(run, e, p) && stepAway(run, e)) return;
+        break;
+      default: break;
+    }
     if (adjacent(run, e, p)) { enemyAttack(S, e, e.atk, ev, false); return; }
-    if (E.ai === 'ranged' && sees && canShoot(run, e)) { enemyAttack(S, e, Math.round(E.shoot * (1 + D.ENEMY_SCALE.atk * Math.max(0, run.floor - 1))), ev, true); return; }
+    if ((E.ai === 'ranged' || E.ai === 'magic') && sees && canShoot(run, e)) {
+      const k = Math.max(0, run.floor - (E.base || 1));
+      enemyAttack(S, e, Math.round(E.shoot * (1 + D.ENEMY_SCALE.atk * k)), ev, true);
+      return;
+    }
     if (E.ai === 'erratic' && R.chance(run.rng, 0.35)) { randomStep(run, e); return; }
+    moveEnemy(run, e);
+    // 速い敵はもう1歩（攻撃はしない）
+    if (E.ai === 'fast' && run.enemies.includes(e) && !adjacent(run, e, p)) {
+      if (G.isVisible(run, e.x, e.y)) { e.tx = p.x; e.ty = p.y; }
+      moveEnemy(run, e);
+    }
+  }
+
+  function moveEnemy(run, e) {
     if (e.tx !== null) {
       if (e.x === e.tx && e.y === e.ty) { e.tx = e.ty = null; randomStep(run, e); return; }
       if (!stepToward(run, e, e.tx, e.ty)) randomStep(run, e);
@@ -676,6 +731,128 @@
     const t = DG.randomRoomTile(run.rng, room);
     e.tx = t.x; e.ty = t.y; e.wander = true;
     stepToward(run, e, t.x, t.y);
+  }
+
+  // プレイヤーから離れる方向へ1歩
+  function stepAway(run, e) {
+    const p = run.player;
+    let best = null, bd = cheb(e, p);
+    for (const [dx, dy] of STEP8) {
+      const nx = e.x + dx, ny = e.y + dy;
+      if (!G.canStep(run.map, e.x, e.y, dx, dy) || G.enemyAt(run, nx, ny) || (nx === p.x && ny === p.y)) continue;
+      const d = Math.max(Math.abs(nx - p.x), Math.abs(ny - p.y));
+      if (d > bd) { bd = d; best = [nx, ny]; }
+    }
+    if (!best) return false;
+    return stepTo(run, e, best[0], best[1]);
+  }
+
+  // ---- 予告攻撃（見えているときだけ始める。次の行動で発動し、その後に隙ができる） ----
+  function areaTiles(run, c, r) {
+    const out = [];
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (!dx && !dy) continue;
+      const x = c.x + dx, y = c.y + dy;
+      if (DG.passable(run.map, x, y)) out.push({ x, y });
+    }
+    return out;
+  }
+  function lineTiles(run, e, dx, dy, len) {
+    const out = [];
+    let x = e.x, y = e.y;
+    for (let i = 0; i < len; i++) {
+      if (!G.canStep(run.map, x, y, dx, dy)) break;
+      x += dx; y += dy;
+      out.push({ x, y });
+    }
+    return out;
+  }
+  function startCharge(S, e, ev, tiles, mult, rest, msg) {
+    const run = S.run, E = D.ENEMIES[e.type];
+    e.charge = { tiles, mult, rest };
+    e.dir = G.dirOf(run.player.x - e.x, run.player.y - e.y) || e.dir;
+    G.log(run, '！ ' + E.name + msg + '（赤いマスから離れよう）');
+    ev.push({ t: 'telegraph', id: e.id, tiles, msg: E.name + msg });
+  }
+  function resolveCharge(S, e, ev) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], c = e.charge;
+    e.charge = null;
+    e.rest = c.rest || 0;
+    ev.push({ t: 'blast', id: e.id, tiles: c.tiles });
+    if (c.tiles.some((t) => t.x === p.x && t.y === p.y)) {
+      const dmg = calcDamage(run.rng, e.atk * c.mult, G.playerDef(run));
+      p.hp -= dmg;
+      G.log(run, E.name + 'の大技！たけは' + dmg + 'のダメージ。');
+      ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player', big: true });
+      if (p.hp <= 0) die(S, E.name + 'の大技にやられた');
+    } else {
+      G.log(run, E.name + 'の大技をかわした！' + (e.rest ? '今がチャンスだ。' : ''));
+      ev.push({ t: 'miss', x: p.x, y: p.y });
+    }
+  }
+
+  function bossAct(S, e, ev, sees) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], P = E.pattern;
+    if (!sees) return false;
+    e.cycle = (e.cycle || 0) + 1;
+    const enraged = P.enrage && e.hp < e.maxhp * P.enrage;
+    const every = enraged ? P.every - 1 : P.every;
+    // 仲間を呼ぶ
+    if (P.summon && e.cycle % P.summonEvery === 0) {
+      const minions = run.enemies.filter((m) => m.summoned).length;
+      if (minions < P.summonMax) {
+        const spot = areaTiles(run, e, 2).find((t) => !G.enemyAt(run, t.x, t.y) && !(t.x === p.x && t.y === p.y) && cheb(t, p) >= 2);
+        if (spot) {
+          const m = makeEnemy(run, P.summon, spot.x, spot.y);
+          m.summoned = true; m.exp = Math.round(m.exp / 3);
+          run.enemies.push(m);
+          G.log(run, E.name + 'が' + D.ENEMIES[P.summon].name + 'を呼んだ！');
+          ev.push({ t: 'summon', x: spot.x, y: spot.y });
+          return true;
+        }
+      }
+    }
+    if (e.cycle % every === 0) {
+      if (cheb(e, p) <= P.stomp) { startCharge(S, e, ev, areaTiles(run, e, P.stomp), P.stompMult, enraged ? 1 : 2, 'が大きく身構えた！周りを攻撃してくる！'); return true; }
+      const ddx = p.x - e.x, ddy = p.y - e.y;
+      if ((ddx === 0 || ddy === 0 || Math.abs(ddx) === Math.abs(ddy)) && cheb(e, p) <= P.line) {
+        const tiles = lineTiles(run, e, Math.sign(ddx), Math.sign(ddy), P.line);
+        if (tiles.some((t) => t.x === p.x && t.y === p.y)) { startCharge(S, e, ev, tiles, P.lineMult, enraged ? 1 : 2, 'がこちらをにらみ、力をためている！一直線に来る！'); return true; }
+      }
+    }
+    return false;
+  }
+
+  function supportHeal(S, e, ev) {
+    const run = S.run, E = D.ENEMIES[e.type];
+    if ((e.cd || 0) > 0) { e.cd--; return false; }
+    const hurt = run.enemies.filter((o) => o !== e && o.hp < o.maxhp * 0.7 && cheb(o, e) <= 5 && !o.boss)
+      .sort((a, b) => a.hp / a.maxhp - b.hp / b.maxhp)[0];
+    if (!hurt) return false;
+    const n = Math.round(hurt.maxhp * E.heal);
+    hurt.hp = Math.min(hurt.maxhp, hurt.hp + n);
+    e.cd = 3;
+    if (G.isVisible(run, e.x, e.y) || G.isVisible(run, hurt.x, hurt.y)) {
+      G.log(run, E.name + 'が' + D.ENEMIES[hurt.type].name + 'を回復した！');
+      ev.push({ t: 'enemyHeal', x: hurt.x, y: hurt.y, n });
+    }
+    return true;
+  }
+
+  function steal(S, e, ev) {
+    const run = S.run, E = D.ENEMIES[e.type];
+    const n = Math.min(run.runGold, Math.max(10, Math.round(run.runGold * 0.15)));
+    run.runGold -= n; e.stolen = (e.stolen || 0) + n;
+    e.flee = true;
+    G.log(run, E.name + 'に' + n + 'G盗まれた！倒せば取り返せる。');
+    ev.push({ t: 'steal', x: run.player.x, y: run.player.y, n });
+    // 見えない場所へ逃げる
+    for (let i = 0; i < 20; i++) {
+      const t = DG.randomRoomTile(run.rng, R.pick(run.rng, run.map.rooms));
+      if (G.isVisible(run, t.x, t.y) || G.enemyAt(run, t.x, t.y) || G.itemAt(run, t.x, t.y)) continue;
+      e.x = t.x; e.y = t.y; e.tx = e.ty = null;
+      break;
+    }
   }
 
   function canShoot(run, e) {
@@ -711,9 +888,15 @@
     }
     const dmg = calcDamage(run.rng, atk, G.playerDef(run));
     p.hp -= dmg;
-    G.log(run, E.name + (ranged ? 'の吹き矢！' : 'の攻撃！') + 'たけは' + dmg + 'のダメージ。');
+    G.log(run, E.name + (ranged ? (E.ai === 'magic' ? 'の光の矢！' : 'の吹き矢！') : 'の攻撃！') + 'たけは' + dmg + 'のダメージ。');
     ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player' });
-    if (p.hp <= 0) die(S, E.name + 'にやられた');
+    if (p.hp <= 0) { die(S, E.name + 'にやられた'); return; }
+    // 毒（治ったあとしばらくはかからない＝連続しない）
+    if (E.ai === 'poison' && !p.poison && !p.poisonGuard && R.chance(run.rng, D.POISON.chance)) {
+      p.poison = D.POISON.turns;
+      G.log(run, 'たけは毒におかされた！（薬草・解毒の葉で治る）');
+      ev.push({ t: 'warn', msg: '毒になった！' });
+    }
   }
 
   function stepTo(run, e, nx, ny) {

@@ -741,6 +741,14 @@
           break;
         }
         case 'warn': toast(e.msg); AU.sfx('warn'); break;
+        case 'telegraph': toast('！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;
+        case 'blast': AU.sfx('bolt'); break;
+        case 'steal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
+        case 'summon': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 }); AU.sfx('warn'); break;
+        case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600 }); break;
+        case 'fire': for (const t of e.targets) RD.addFx({ t: 'sparkle', x: t.x, y: t.y, color: '#ff8a3a', dur: 600 }); AU.sfx('bolt'); break;
+        case 'slow': for (const t of e.targets) RD.addFx({ t: 'num', x: t.x, y: t.y, text: '鈍', color: '#c8b8ff' }); AU.sfx('sleep'); break;
+        case 'warp': AU.sfx('stairs'); flash(); break;
         case 'bagFull': toast('バッグがいっぱい！'); break;
         case 'stairs': AU.sfx('stairs'); flash(); break;
         case 'reveal': AU.sfx('heal'); break;
@@ -767,6 +775,7 @@
     bar.style.width = (r * 100) + '%';
     bar.className = r <= 0.3 ? 'low' : r <= 0.6 ? 'mid' : '';
     $('h-food').textContent = p.hunger;
+    $('h-status').textContent = p.poison ? '毒' + p.poison : '';
     $('h-food').className = p.hunger <= 10 ? 'hungry' : '';
     $('h-atk').textContent = G.playerAtk(run);
     $('h-def').textContent = G.playerDef(run);

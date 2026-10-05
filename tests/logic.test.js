@@ -298,6 +298,111 @@ test('ダッシュ：帰還地点で止まる', () => {
   eq(r.stop, 'returnPoint'); eq(S.run.player.x, 8);
 });
 
+console.log('敵の役割と予告攻撃');
+function realEnemy(S, type, x, y, floor) {
+  const run = S.run; const old = run.floor; run.floor = floor || old;
+  const e = G.makeEnemy(run, type, x, y); run.floor = old; run.enemies.push(e); G.updateVision(run); return e;
+}
+test('石像の戦士：隣で振りかぶり（予告）、離れればかわせて、その後に隙がある', () => {
+  const S = newRun(70); bigRoomFloor(S);
+  const p = S.run.player; p.hp = p.maxhp = 500;
+  const e = realEnemy(S, 'statue', 6, 5, 9);
+  let r = G.act(S, { type: 'wait' });
+  assert(e.charge && r.events.some((x) => x.t === 'telegraph'), 'charging'); eq(p.hp, 500, 'no damage on telegraph');
+  r = G.act(S, { type: 'move', dir: 'left' }); // 予告マスから離れる
+  assert(!e.charge, 'resolved'); eq(p.hp, 500, 'dodged'); eq(e.rest, 1, 'gap after heavy');
+  const x = e.x; G.act(S, { type: 'wait' }); eq(e.x, x, 'resting');
+});
+test('石像の戦士：その場にいると大ダメージ。眠らせると予告が中断', () => {
+  const S = newRun(71); bigRoomFloor(S);
+  const p = S.run.player; p.hp = p.maxhp = 500;
+  const e = realEnemy(S, 'statue', 6, 5, 9);
+  G.act(S, { type: 'wait' }); G.act(S, { type: 'wait' });
+  assert(500 - p.hp >= Math.round(e.atk * 1.5), 'heavy hit ' + (500 - p.hp));
+  const S2 = newRun(72); bigRoomFloor(S2);
+  const e2 = realEnemy(S2, 'statue', 6, 5, 9);
+  G.act(S2, { type: 'wait' }); assert(e2.charge);
+  const inc = G.makeItem(S2, 'sleep_incense'); S2.run.bag.push(inc);
+  const hp = S2.run.player.hp;
+  G.act(S2, { type: 'use', uid: inc.uid });
+  assert(!e2.charge, 'charge canceled by sleep'); eq(S2.run.player.hp, hp);
+});
+test('予告攻撃は見えていない敵からは始まらない（理不尽な大ダメージなし）', () => {
+  const S = newRun(73); bigRoomFloor(S);
+  const run = S.run, m = run.map;
+  // 通路の先（見えない位置）に番兵
+  for (let x = 22; x < 30; x++) m.tiles[5 * m.w + x] = DG.CORR;
+  run.player.x = 21; run.player.y = 5; G.updateVision(run);
+  const e = realEnemy(S, 'guard', 25, 5, 27);
+  assert(!G.isVisible(run, 25, 5));
+  G.act(S, { type: 'wait' });
+  assert(!e.charge, 'no charge when unseen');
+});
+test('結晶ゴーレム：周囲8マスを予告してから攻撃。2マス離れればかわせる', () => {
+  const S = newRun(74); bigRoomFloor(S);
+  const p = S.run.player; p.hp = p.maxhp = 900;
+  const e = realEnemy(S, 'golem', 6, 6, 22);
+  for (let i = 0; i < 2 && !e.charge; i++) G.act(S, { type: 'wait' });
+  assert(e.charge && e.charge.tiles.length >= 8, 'area telegraph');
+  G.act(S, { type: 'move', dir: 'upleft' });
+  for (let i = 0; i < 2 && e.charge; i++) G.act(S, { type: 'move', dir: 'left' });
+  eq(p.hp >= 899, true, 'dodged area');
+});
+test('ヤミコウモリは1ターンに2歩動く', () => {
+  const S = newRun(75); bigRoomFloor(S);
+  const e = realEnemy(S, 'bat', 15, 5, 11);
+  G.act(S, { type: 'wait' });
+  eq(e.x, 13, 'two steps'); eq(e.acts, 1, 'one action');
+});
+test('苔の祈祷師は傷ついた仲間を回復する', () => {
+  const S = newRun(76); bigRoomFloor(S);
+  const ally = realEnemy(S, 'jelly', 18, 10, 12); ally.hp = 5;
+  const sh = realEnemy(S, 'shaman', 15, 10, 12);
+  ally.sleep = 50;
+  G.act(S, { type: 'wait' });
+  assert(ally.hp > 5, 'healed ' + ally.hp);
+});
+test('毒：かかると毎ターン減り自然回復しない。治った直後は再びかからない。薬草で治る', () => {
+  const S = newRun(77); bigRoomFloor(S);
+  const p = S.run.player; p.hp = p.maxhp = 200;
+  p.poison = 3;
+  G.act(S, { type: 'wait' }); assert(p.hp < 200, 'poison dmg');
+  G.act(S, { type: 'wait' }); G.act(S, { type: 'wait' });
+  eq(p.poison, 0); assert(p.poisonGuard > 0, 'guard');
+  const lz = realEnemy(S, 'lizard', 6, 5, 16); lz.atk = 1;
+  for (let i = 0; i < 8; i++) G.act(S, { type: 'wait' });
+  eq(p.poison, 0, 'no repoison during guard');
+  p.poison = 5; const h = G.makeItem(S, 'herb'); S.run.bag.push(h);
+  G.act(S, { type: 'use', uid: h.uid }); eq(p.poison, 0, 'herb cures');
+});
+test('金ぴかザル：お金を盗んで逃げ、倒すと取り返せる', () => {
+  const S = newRun(78); bigRoomFloor(S);
+  const run = S.run; run.runGold = 200;
+  const m = run.map; m.rooms.push({ id: 1, x: 25, y: 16, w: 4, h: 3 });
+  for (let y = 16; y < 19; y++) for (let x = 25; x < 29; x++) m.tiles[y * m.w + x] = DG.FLOOR;
+  const t = realEnemy(S, 'thief', 6, 5, 17);
+  G.act(S, { type: 'wait' });
+  eq(run.runGold, 170); eq(t.stolen, 30); assert(t.x >= 25, 'fled');
+  t.hp = 1; t.x = 6; t.y = 5; t.flee = false; G.updateVision(run);
+  for (let i = 0; i < 10 && run.enemies.includes(t); i++) G.act(S, { type: 'move', dir: 'right' });
+  eq(run.runGold, 200, 'returned');
+});
+test('ボス：一定間隔で予告つきの大技、その後2ターンの隙。大ナマズ王は仲間を呼ぶ（上限あり）', () => {
+  const S = newRun(79); goToFloor(S, 20);
+  const run = S.run, b = run.enemies.find((e) => e.boss);
+  run.player.hp = run.player.maxhp = 99999;
+  run.player.x = b.x - 1; run.player.y = b.y; G.updateVision(run);
+  let tele = 0, rests = 0;
+  for (let i = 0; i < 40; i++) {
+    const r = G.act(S, { type: 'wait' });
+    if (r.events.some((x) => x.t === 'telegraph')) tele++;
+    if (b.rest > 0) rests++;
+  }
+  assert(tele >= 4, 'telegraphs ' + tele); assert(rests >= 4, 'gaps');
+  const minions = run.enemies.filter((e) => e.summoned).length;
+  assert(minions >= 1 && minions <= 2, 'summons capped ' + minions);
+});
+
 console.log('道具・装備・満腹度');
 test('薬草で回復、食料で満腹度回復、使うとターン消費', () => {
   const S = newRun(10); bigRoomFloor(S);

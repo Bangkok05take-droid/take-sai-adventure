@@ -65,6 +65,15 @@
       const i = y * m.w + x;
       if (run.explored[i] && !G.isVisible(run, x, y)) g.fillRect(ox + x * ts, oy + y * ts, ts, ts);
     }
+    // 予告攻撃の範囲（赤く点滅）
+    const pulse = 0.35 + 0.25 * Math.sin(now / 120);
+    for (const e of run.enemies) {
+      if (!e.charge || !G.isVisible(run, e.x, e.y)) continue;
+      g.fillStyle = `rgba(255,40,40,${pulse})`;
+      for (const t of e.charge.tiles) g.fillRect(ox + t.x * ts + k, oy + t.y * ts + k, ts - 2 * k, ts - 2 * k);
+      g.strokeStyle = 'rgba(255,220,220,0.9)'; g.lineWidth = k;
+      for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 1.5 * k, oy + t.y * ts + 1.5 * k, ts - 3 * k, ts - 3 * k);
+    }
     // 敵
     const bob = (id) => (Math.floor(now / 400 + id) % 2) * k;
     for (const e of run.enemies) {
@@ -78,6 +87,15 @@
       g.globalAlpha = flash ? 0.4 : 1;
       g.drawImage(img, sx - big, sy - big * 2 + (e.sleep ? 0 : bob(e.id)), ts + big * 2, ts + big * 2);
       g.globalAlpha = 1;
+      if (e.charge) {
+        g.font = `bold ${Math.round(ts * 0.5)}px sans-serif`; g.textAlign = 'center';
+        g.lineWidth = k * 2; g.strokeStyle = '#400'; g.strokeText('！', sx + ts / 2, sy - ts * 0.05);
+        g.fillStyle = '#ff5050'; g.fillText('！', sx + ts / 2, sy - ts * 0.05); g.textAlign = 'left';
+      } else if (e.rest > 0) {
+        g.font = `bold ${Math.round(ts * 0.3)}px sans-serif`; g.fillStyle = '#bde0ff';
+        g.fillText('…', sx + ts * 0.65, sy + ts * 0.2);
+      }
+      if (e.slow > 0) { g.fillStyle = '#c8b8ff'; g.font = `bold ${Math.round(ts * 0.26)}px sans-serif`; g.fillText('鈍', sx + k, sy + ts * 0.3); }
       if (e.sleep > 0) {
         g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(ts * 0.35)}px sans-serif`;
         g.fillText('z', sx + ts * 0.72, sy + ts * 0.25 - (Math.floor(now / 500) % 2) * k * 2);

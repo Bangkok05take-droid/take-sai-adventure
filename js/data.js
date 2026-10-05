@@ -138,18 +138,39 @@
   D.SMITH = { maxPlus: 3, cost: (plus) => 80 * (plus + 1), sellPerPlus: 15 };
 
   /* 敵
-   * ai: melee 普通 / slow 2ターンに1回動く / ranged 吹き矢 / dormant 近づくまで眠る / erratic ふらふら / boss */
+   * ai: melee 普通 / slow 2ターンに1回 / ranged 吹き矢 / dormant 近づくまで眠る / erratic ふらふら
+   *     fast 2回動く / support 仲間を回復 / telegraph 予告してから強打 / area 予告してから周囲を攻撃
+   *     poison 毒 / magic 遠くから魔法 / thief お金を盗んで逃げる / boss
+   * base: 出現し始める階（ここからの階数で強くなる） */
   D.ENEMIES = {
     frog:   { name: 'ガマ蛙',       hp: 9,   atk: 4,  def: 1, exp: 3,   ai: 'melee',   sprite: 'frog' },
     turtle: { name: '石ガメ',       hp: 20,  atk: 5,  def: 6, exp: 8,   ai: 'slow',    sprite: 'turtle' },
     monkey: { name: '吹き矢ザル',   hp: 12,  atk: 3,  def: 1, exp: 7,   ai: 'ranged',  sprite: 'monkey', shoot: 4, range: 4 },
     root:   { name: '根っこオバケ', hp: 24,  atk: 8,  def: 3, exp: 13,  ai: 'dormant', sprite: 'root' },
     jelly:  { name: '水クラゲ',     hp: 28,  atk: 10, def: 4, exp: 17,  ai: 'erratic', sprite: 'jelly' },
-    lion:   { name: '守護獅子',     hp: 150, atk: 14, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true, drop: 'guardian_gem' },
-    catfish: { name: '大ナマズ王',  hp: 320, atk: 22, def: 12, exp: 320, ai: 'boss',   sprite: 'catfish', noScale: true, drop: 'river_pearl' },
-    elephant: { name: '夢見の黄金象', hp: 600, atk: 30, def: 16, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown' },
+    statue: { name: '石像の戦士',   hp: 40,  atk: 13, def: 6, exp: 28,  ai: 'telegraph', sprite: 'statue', base: 8, heavy: 2.2,
+      tip: '隣にいると剣を振りかぶり、次の行動で強打する。離れればかわせる。' },
+    bat:    { name: 'ヤミコウモリ', hp: 30,  atk: 17, def: 3, exp: 30,  ai: 'fast',    sprite: 'bat', base: 11, tip: '1ターンに2回動く。' },
+    shaman: { name: '苔の祈祷師',   hp: 38,  atk: 14, def: 4, exp: 38,  ai: 'support', sprite: 'shaman', base: 12, heal: 0.4,
+      tip: '傷ついた仲間を回復する。先に倒すか眠らせよう。' },
+    lizard: { name: '毒トカゲ',     hp: 50,  atk: 22, def: 6, exp: 48,  ai: 'poison',  sprite: 'lizard', base: 16, tip: '噛まれると毒になる。薬草・解毒の葉で治る。' },
+    thief:  { name: '金ぴかザル',   hp: 45,  atk: 16, def: 5, exp: 42,  ai: 'thief',   sprite: 'thief', base: 17,
+      tip: '探索中のお金を盗んで逃げる。倒せば取り返せる。' },
+    golem:  { name: '結晶ゴーレム', hp: 110, atk: 30, def: 16, exp: 90, ai: 'area',    sprite: 'golem', base: 21, heavy: 2.0, slowMove: true,
+      tip: '動きは遅いが、地面を踏みならして周囲を攻撃する（予告あり）。' },
+    wisp:   { name: '光の精',       hp: 45,  atk: 18, def: 6, exp: 60,  ai: 'magic',   sprite: 'wisp', base: 21, shoot: 26, range: 5,
+      tip: '離れた所から光の矢を撃つ。物陰や斜めの角を使ってかわそう。' },
+    guard:  { name: '神殿の番兵',   hp: 120, atk: 40, def: 18, exp: 120, ai: 'telegraph', sprite: 'guard', base: 26, heavy: 2.2,
+      tip: '大剣を振りかぶってから強打する。予告を見たら離れよう。' },
+    lion:   { name: '守護獅子',     hp: 160, atk: 15, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true, drop: 'guardian_gem',
+      pattern: { stomp: 1, stompMult: 2.0, line: 4, lineMult: 1.8, every: 4 } },
+    catfish: { name: '大ナマズ王',  hp: 380, atk: 26, def: 12, exp: 320, ai: 'boss',   sprite: 'catfish', noScale: true, drop: 'river_pearl',
+      pattern: { stomp: 1, stompMult: 2.0, line: 6, lineMult: 1.7, every: 4, summon: 'jelly', summonEvery: 8, summonMax: 2 } },
+    elephant: { name: '夢見の黄金象', hp: 720, atk: 36, def: 17, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown',
+      pattern: { stomp: 2, stompMult: 1.7, line: 6, lineMult: 2.0, every: 4, summon: 'wisp', summonEvery: 9, summonMax: 2, enrage: 0.5 } },
   };
-  D.ENEMY_SCALE = { hp: 0.11, atk: 0.07, exp: 0.12 }; // 1階ごとの上昇率
+  D.POISON = { chance: 0.4, turns: 8, guard: 15, dmgRate: 0.025 }; // 毒：最大HPの2.5%を毎ターン。治った後しばらくかからない
+  D.ENEMY_SCALE = { hp: 0.12, atk: 0.08, exp: 0.12 }; // 出現し始めた階から1階ごとの上昇率
 
   // テーマ（地域）
   D.THEMES = {
@@ -218,11 +239,12 @@
     if (f === 1) return [['frog', 1]];
     if (f === 2) return [['frog', 4], ['turtle', 1]];
     if (f === 3) return [['frog', 3], ['turtle', 1], ['monkey', 2]];
-    if (f <= 6) return [['frog', 2], ['turtle', 2], ['monkey', 2], ['root', 3]].concat(f === 6 ? [['jelly', 1]] : []);
-    if (f <= 9) return [['turtle', 2], ['monkey', 2], ['root', 2], ['jelly', 3]];
-    if (f <= 15) return [['turtle', 2], ['monkey', 3], ['root', 3], ['jelly', 3]];
-    if (f <= 20) return [['monkey', 2], ['root', 3], ['jelly', 4]];
-    return [['monkey', 2], ['root', 3], ['jelly', 4], ['turtle', 1]];
+    if (f <= 6) return [['frog', 2], ['turtle', 2], ['monkey', 3], ['root', 3]].concat(f === 6 ? [['jelly', 1]] : []);
+    if (f <= 9) return [['turtle', 2], ['monkey', 3], ['root', 2], ['jelly', 3]].concat(f >= 8 ? [['statue', 1]] : []);
+    if (f <= 15) return [['root', 2], ['jelly', 2], ['monkey', 2], ['bat', 3]].concat(f >= 12 ? [['shaman', 2]] : [], f >= 13 ? [['statue', 2]] : []);
+    if (f <= 20) return [['jelly', 2], ['bat', 2], ['shaman', 2], ['statue', 2], ['lizard', 3], ['turtle', 1]].concat(f >= 17 ? [['thief', 2]] : []);
+    if (f <= 25) return [['golem', 2], ['wisp', 3], ['lizard', 2], ['shaman', 2], ['thief', 2], ['bat', 1], ['statue', 1]];
+    return [['guard', 3], ['golem', 2], ['wisp', 2], ['shaman', 2], ['thief', 2], ['lizard', 1]];
   };
   D.FLOORS = [null];
   for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS.push(floorDef(f));
