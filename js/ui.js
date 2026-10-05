@@ -59,6 +59,8 @@
     requestAnimationFrame(loop);
   }
 
+  // タイトルの絵（ゲーム内と同じドット絵・配色）
+  let titleBg = null;
   function drawTitleArt(now) {
     const c = $('title-canvas');
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -68,21 +70,30 @@
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
     g.clearRect(0, 0, w, h);
-    const sc = Math.floor(Math.min(w / 96, h / 56)) || 1;
-    const ox = (w - 96 * sc) / 2, oy = (h - 56 * sc) / 2;
-    g.save(); g.translate(ox, oy); g.scale(sc, sc);
-    // 遺跡の塔
-    const R = (x, y, ww, hh, col) => { g.fillStyle = col; g.fillRect(x, y, ww, hh); };
-    R(36, 14, 24, 30, '#9a4a3a'); R(40, 6, 16, 8, '#9a4a3a'); R(44, 0, 8, 6, '#9a4a3a'); R(47, -4, 2, 4, '#9a4a3a');
-    for (let y = 16; y < 44; y += 4) R(36, y, 24, 1, '#7a3a2a');
-    R(44, 30, 8, 14, '#3a1a14');
-    R(8, 44, 80, 12, '#3a8fc0'); R(8, 44, 80, 2, '#7ac8e8');
-    R(14, 48, 6, 2, '#3a8a40'); R(16, 46, 3, 2, '#ff8fb8'); R(72, 50, 6, 2, '#3a8a40'); R(74, 48, 3, 2, '#ff8fb8');
-    const b = Math.floor(now / 500) % 2;
-    g.drawImage(SP.s.take.down.walk[Math.floor(now / 450) % 2 ? 0 : 2], 12, 22 + b, 24, 24);
-    g.drawImage(SP.s.sai[Math.floor(now / 1900) % 5 === 0 ? 1 : 0], 60, 22 + (1 - b), 24, 24);
+    const VW = 160, VH = 84;
+    const sc = Math.min(w / VW, h / VH);
+    g.save(); g.translate((w - VW * sc) / 2, (h - VH * sc) / 2); g.scale(sc, sc);
+    if (!titleBg) {
+      const P = new SP.Pix(VW, VH), R = SP.ramp;
+      // 遺跡の塔（プラーン）と水辺
+      P.poly([[62, 70], [66, 34], [72, 22], [76, 10], [80, 2], [84, 10], [88, 22], [94, 34], [98, 70]], (x, y) => R('#c0624a')[P.idx(1.2 + (x - 62) / 30 + (y % 4 === 0 ? 0.6 : 0), x, y)]);
+      P.rect(74, 52, 12, 18, '#3a1a14'); P.ball(80, 52, 6, 5, R('#3a1a14'));
+      P.poly([[40, 70], [43, 52], [48, 42], [52, 52], [55, 70]], (x, y) => R('#a8564a')[P.idx(1.6 + (x - 40) / 16, x, y)]);
+      P.poly([[105, 70], [108, 52], [113, 42], [117, 52], [120, 70]], (x, y) => R('#a8564a')[P.idx(1.6 + (x - 105) / 16, x, y)]);
+      for (let y = 70; y < VH; y++) for (let x = 0; x < VW; x++) P.set(x, y, R('#3a9ad0')[P.idx(1.4 + (y - 70) / 16, x, y)]);
+      for (const [x, y] of [[30, 76], [122, 78], [70, 80]]) { P.ball(x, y + 2, 6, 2, R('#3a8a40')); P.ball(x, y, 2.5, 3, R('#ff8fb8')); }
+      P.outline(0.6);
+      titleBg = P.canvas();
+    }
+    g.drawImage(titleBg, 0, 0);
+    // 宝珠の光
     const gl = 0.5 + 0.5 * Math.sin(now / 400);
-    g.globalAlpha = gl; g.drawImage(SP.s.icon.orb, 40, 16 - b, 16, 16); g.globalAlpha = 1;
+    g.globalAlpha = 0.35 * gl; g.fillStyle = '#f0d8ff'; g.beginPath(); g.arc(80, 36, 13, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+    g.drawImage(SP.s.icon.orb, 72, 27 - Math.round(gl * 2), 16, 16);
+    // たけとサイ（顔絵）
+    const b = Math.floor(now / 600) % 2;
+    g.drawImage(SP.s.portrait.take, 2, 20 + b, 56, 56);
+    g.drawImage(SP.s.portrait.sai, 102, 20 + (1 - b), 56, 56);
     g.restore();
   }
 
@@ -216,7 +227,7 @@
     </ul>
     <h3>村</h3>
     <ul>
-      <li><b>サイの店</b>：お宝を売る・食料や薬を買う。無料の貸出品（木刀・おにぎり）もある。</li>
+      <li><b>サイの店</b>：お宝を売る・食料や薬を買う。無料の貸出品（かしだしの木刀・旅人のおにぎり）もある。</li>
       <li><b>倉庫</b>：大事な物を預けておけば、倒れても失わない（20→40→60→80枠）。</li>
       <li><b>村の発展</b>：施設と飾りの価格・効果・解放条件を見て建てる。画面上に「次の目標」が出る。</li>
       <li><b>鍛冶屋</b>：武器・盾を強化（設備しだいで+3→+5→+8。+4以降は深い階の素材が必要）。</li>
@@ -269,7 +280,7 @@
       ['sai', 'うん。無理しないでね。危なくなったら帰還の巻物で帰ってきて！'],
     ], () => {
       UI.S.village.seenIntro = true; save();
-      showHelp(() => info('はじめの一歩', '<p>下の<b>「遺跡へ出発」</b>から探索に出かけよう。</p><p class="note">装備がなくても、出発前にサイの店で<b>木刀とおにぎりを無料で借りられます</b>。</p>'));
+      showHelp(() => info('はじめの一歩', '<p>下の<b>「遺跡へ出発」</b>から探索に出かけよう。</p><p class="note">装備がなくても、出発前にサイの店で<b>かしだしの木刀と旅人のおにぎりを無料で借りられます</b>。</p>'));
     });
   }
   function continueGame() {
@@ -497,7 +508,7 @@
     smith3: [['sai', '黄金の炉に火が入ったよ。最高の装備を作れるって！'], ['take', '30階の守り手にも負けないぞ。']],
     lanterns: [['sai', '灯籠が並ぶと、夕方の水路がきれいだね。'], ['take', '遺跡から帰るとき、遠くからでも村が見えるよ。']],
     garden: [['sai', '蓮の庭、気に入ってくれた？'], ['take', 'いい香り。ほっとするね。']],
-    stalls: [['sai', '屋台通りができたよ！夜までにぎやかだね。'], ['take', 'カオニャオの屋台、毎日寄っちゃいそう。']],
+    stalls: [['sai', '屋台通りができたよ！夜までにぎやかだね。'], ['take', 'もち米の屋台、毎日寄っちゃいそう。']],
     bridge: [['sai', '赤い橋がかかったよ。向こう岸まで散歩できるね。'], ['take', '今度いっしょに渡ろう。']],
     statue: [['sai', '象の像、展示室を見に来た人がみんな触っていくよ。'], ['take', '幸運のおまじないかな。']],
     fountain: [['sai', '噴水ができて、子どもたちが大はしゃぎ！'], ['take', '村がどんどん明るくなるね。']],
@@ -649,7 +660,7 @@
     html += `<div class="okbox">帰還の巻物を1枚無料で持っていきます。使えばいつでも持ち物を持って帰れます。</div>`;
     if (V.meal) html += `<div class="okbox">🍛 ${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）</div>`;
     else if (V.diner) html += '<p class="note">サイの食堂で料理を注文すると、この探索が少し楽になります。</p>';
-    if (!w && ls.weapon) html += '<p class="note">武器がありません。サイの店の「貸出」で木刀を無料で借りられます。</p>';
+    if (!w && ls.weapon) html += '<p class="note">武器がありません。サイの店の「貸出」でかしだしの木刀を無料で借りられます。</p>';
     if (!chk.ok) html += `<p class="warnbox">${esc(chk.msg)}</p>`;
     const buttons = [{ label: 'やめる' }];
     if (ls.weapon || ls.food) buttons.push({ label: '無料で借りる', onClick: () => {
@@ -935,7 +946,7 @@
         case 'steal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
         case 'summon': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 }); AU.sfx('warn'); break;
         case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600 }); break;
-        case 'fire': for (const t of e.targets) RD.addFx({ t: 'sparkle', x: t.x, y: t.y, color: '#ff8a3a', dur: 600 }); AU.sfx('bolt'); break;
+        case 'fire': for (const t of e.targets) RD.addFx({ t: 'sparkle', x: t.x, y: t.y, color: '#fff36a', dur: 600 }); flash(); AU.sfx('bolt'); break;
         case 'slow': for (const t of e.targets) RD.addFx({ t: 'num', x: t.x, y: t.y, text: '鈍', color: '#c8b8ff' }); AU.sfx('sleep'); break;
         case 'warp': AU.sfx('stairs'); flash(); break;
         case 'bagFull': toast('バッグがいっぱい！'); break;
@@ -1079,7 +1090,7 @@
 
   function pickDir(cb) {
     const run = UI.S.run;
-    const h = modal({ title: '稲妻の向き', html: `<p class="note">今の向き：${G.DIR_NAMES[run.player.dir]}（斜めにも撃てます）</p><div class="dir-pick">
+    const h = modal({ title: 'いかずちの向き', html: `<p class="note">今の向き：${G.DIR_NAMES[run.player.dir]}（斜めにも撃てます）</p><div class="dir-pick">
       <button data-d="upleft">◤</button><button data-d="up">▲</button><button data-d="upright">◥</button>
       <button data-d="left">◀</button><button data-d="${run.player.dir}" class="primary">今の向き</button><button data-d="right">▶</button>
       <button data-d="downleft">◣</button><button data-d="down">▼</button><button data-d="downright">◢</button></div>`, buttons: [{ label: 'やめる' }] });
@@ -1149,7 +1160,7 @@
       talk([
         ['sai', 'たけ！気がついた？遺跡の入口で倒れてたんだよ…。'],
         ['take', 'ごめん、地下' + res.floor + '階で無理しちゃった。'],
-        ['sai', '無事でよかった。お店のお金と倉庫はそのままだよ。木刀とおにぎりも貸せるからね。'],
+        ['sai', '無事でよかった。お店のお金と倉庫はそのままだよ。木刀とおにぎりも無料で貸せるからね。'],
       ], () => { if (retry) openDepart(); });
       return;
     }

@@ -536,8 +536,8 @@
           if (hitE) break;
         }
         ev.push({ t: 'bolt', path, dir: p.dir });
-        if (hitE) damageEnemy(S, hitE, d.dmg, ev, '稲妻が' + D.ENEMIES[hitE.type].name + 'に命中！ ' + d.dmg + 'のダメージ。');
-        else G.log(run, '稲妻は壁に当たって消えた。');
+        if (hitE) damageEnemy(S, hitE, d.dmg, ev, '雷が' + D.ENEMIES[hitE.type].name + 'に命中！ ' + d.dmg + 'のダメージ。');
+        else G.log(run, '雷は壁に当たって消えた。');
         return true;
       }
       case 'map': {
@@ -545,7 +545,7 @@
         run.explored.fill(0);
         for (let i = 0; i < run.explored.length; i++) if (run.map.tiles[i] !== DG.WALL) run.explored[i] = 1;
         run.revealed = true;
-        G.log(run, '見通しの巻物を読んだ。この階の様子がわかった！');
+        G.log(run, 'みとおしの巻物を読んだ。この階の様子がわかった！');
         ev.push({ t: 'reveal' });
         return true;
       }
@@ -562,7 +562,7 @@
           if (d > bd) { bd = d; best = t; }
         }
         if (best) { p.x = best.x; p.y = best.y; G.updateVision(run); }
-        G.log(run, '煙玉を投げた！たけは煙にまぎれて逃げ出した。');
+        G.log(run, 'けむり玉を投げた！たけは煙にまぎれて逃げ出した。');
         ev.push({ t: 'warp' });
         return true;
       }
@@ -577,7 +577,7 @@
       case 'fire': {
         remove();
         const vis = G.visibleEnemies(run);
-        G.log(run, d.name + 'を使った！炎が広がる！');
+        G.log(run, d.name + 'を読んだ！雷鳴がとどろく！');
         ev.push({ t: 'fire', targets: vis.map((e) => ({ x: e.x, y: e.y })) });
         for (const e of vis) if (run.enemies.includes(e)) damageEnemy(S, e, d.dmg, ev, D.ENEMIES[e.type].name + 'に' + d.dmg + 'のダメージ。');
         return true;
@@ -954,7 +954,7 @@
     // 毒（治ったあとしばらくはかからない＝連続しない）
     if (E.ai === 'poison' && !p.poison && !p.poisonGuard && R.chance(run.rng, D.POISON.chance)) {
       p.poison = D.POISON.turns;
-      G.log(run, 'たけは毒におかされた！（薬草・解毒の葉で治る）');
+      G.log(run, 'たけは毒におかされた！（やくそう・どくけしそうで治る）');
       ev.push({ t: 'warn', msg: '毒になった！' });
     }
   }

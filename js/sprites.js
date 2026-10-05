@@ -115,77 +115,84 @@
   }
 
   // ---------------- 共通の色 ----------------
-  const SKIN = ramp('#f2be8e'), SKIN_T = ramp('#e2a678');
+  const SKIN = ramp('#f4c193'), SKIN_T = ramp('#e2a678');
   const C = {
-    teal: ramp('#2f8f8a'), yellow: ramp('#f2c230'), brown: ramp('#7a4c2a'), pants: ramp('#5e4a3e'), shoe: ramp('#3a2a24'),
-    green: ramp('#5a8a3a'), hair: ramp('#2a2238'), shirt: ramp('#e0645e'), skirt: ramp('#3a6ea8'), white: ramp('#f4efe6'),
+    blue: ramp('#3a6fd8'), navy: ramp('#2a3f8a'), steel: ramp('#c9d3e2'), gold: ramp('#f2c440'), cape: ramp('#f08a2a'),
+    brown: ramp('#7a4c2a'), boot: ramp('#5a4a6a'), hair: ramp('#2a2238'), white: ramp('#f8f4ee'), pink: ramp('#f6b8cc'),
+    teal: ramp('#22c0b0'), blade: ramp('#e4ecf4'), shieldB: ramp('#2f5fc0'),
   };
+  const EYE = '#2a1a12', BROW = '#6a3a1a', MOUTH = '#b8483a', CHEEK = '#f59a8e';
 
-  // ---------------- たけ（坊主頭の2頭身） ----------------
+  // ---------------- たけ（坊主頭・青い服と鎧・オレンジのマント・剣と盾） ----------------
   // face: down/up/right, f: 歩行コマ 0..3, atk: 攻撃ポーズ
   function drawTake(face, f, atk) {
     const P = new Pix(32, 32);
     const bob = f === 1 || f === 3 ? -1 : 0;
     const legA = f === 1 ? -1 : f === 3 ? 1 : 0;
-    const by = 19 + bob; // 胴の上
-    // 足
-    if (face === 'right') {
-      P.box(12 + legA * 2, by + 7, 4, 4, C.pants); P.box(16 - legA * 2, by + 7, 4, 4, C.pants);
-      P.box(12 + legA * 2, by + 10, 5, 2, C.shoe); P.box(16 - legA * 2, by + 10, 5, 2, C.shoe);
-    } else {
-      P.box(11, by + 7 + Math.min(0, legA), 4, 4 - Math.min(0, legA), C.pants); P.box(17, by + 7 - Math.max(0, legA), 4, 4 + Math.max(0, legA), C.pants);
-      P.box(10, by + 10 + Math.min(0, legA), 5, 2, C.shoe); P.box(17, by + 10 - Math.max(0, legA), 5, 2, C.shoe);
+    const sway = f === 1 ? 1 : f === 3 ? -1 : 0;
+    const by = 18 + bob; // 胴の上
+    const capeR = (x, y) => C.cape[P.idx(1.3 + (y - by) / 14 + (x > 16 ? 0.5 : 0), x, y)];
+    // マント（体の後ろ）
+    if (face === 'down') P.poly([[8, by], [24, by], [26 + sway, by + 11], [6 + sway, by + 11]], capeR);
+    if (face === 'right') P.poly([[9, by], [16, by], [12 - sway, by + 12], [3 - sway * 2, by + 11]], capeR);
+    // 足（青いズボンと鋼のすね当て）
+    const leg = (x, y, h) => { P.box(x, y, 4, h, C.navy); P.box(x, y + h - 2, 5, 3, C.boot); P.rect(x, y + 1, 4, 1, C.steel[1]); };
+    if (face === 'right') { leg(12 + legA * 2, by + 8, 4); leg(16 - legA * 2, by + 8, 4); }
+    else { leg(11, by + 8 + Math.min(0, legA), 4 - Math.min(0, legA)); leg(17, by + 8 - Math.max(0, legA), 4 + Math.max(0, legA)); }
+    // 胴：青い服と鋼の胸当て、金のベルト
+    P.box(9, by, 14, 10, C.blue, { round: true });
+    if (face !== 'up') {
+      P.box(face === 'right' ? 13 : 11, by + 1, face === 'right' ? 9 : 10, 6, C.steel, { round: true });
+      P.set(15, by + 3, C.steel[0]); P.set(face === 'right' ? 19 : 16, by + 2, C.steel[0]);
     }
-    // 胴（チュニック）とベルト
-    P.box(9, by, 14, 9, C.teal, { round: true });
-    P.rect(9, by + 6, 14, 1, C.brown[2]); P.set(15, by + 6, C.yellow[1]); P.set(16, by + 6, C.yellow[1]);
-    if (face === 'up') { // リュック
-      P.box(10, by - 1, 12, 8, C.green, { round: true });
-      P.rect(11, by + 1, 10, 1, C.green[4]); P.box(13, by + 2, 6, 3, C.green, { bias: 0.6 });
-      P.set(15, by + 3, C.yellow[0]); P.set(16, by + 3, C.yellow[1]);
-    } else if (face === 'right') {
-      P.box(6, by - 1, 5, 8, C.green, { round: true }); // 背中のリュック
-    } else {
-      P.rect(12, by + 1, 1, 5, C.teal[4]); P.rect(19, by + 1, 1, 5, C.teal[4]); // ベストの合わせ
+    P.rect(9, by + 7, 14, 2, C.gold[2]); P.rect(15, by + 7, 2, 2, C.teal[1]);
+    if (face === 'up') { // 背中は大きなマント
+      P.poly([[7, by - 1], [25, by - 1], [27 + sway, by + 12], [5 + sway, by + 12]], capeR);
+      for (let y = by + 2; y < by + 12; y += 3) P.set(16 + sway, y, C.cape[3]);
     }
-    // 腕（歩くと振る）
-    const swing = f === 1 ? 1 : f === 3 ? -1 : 0;
-    if (atk) {
-      if (face === 'right') { P.box(21, by + 1, 6, 3, C.teal); P.ball(27.5, by + 2.5, 1.8, 1.8, SKIN); drawBlade(P, 28, by + 2, 'right'); }
-      else if (face === 'down') { P.box(20, by + 2, 3, 6, C.teal); P.ball(21.5, by + 9, 1.8, 1.8, SKIN); drawBlade(P, 21, by + 10, 'down'); P.box(7, by + 1, 3, 6, C.teal); P.ball(8.5, by + 7.5, 1.7, 1.7, SKIN); }
-      else { P.box(20, by - 3, 3, 6, C.teal); P.ball(21.5, by - 4, 1.8, 1.8, SKIN); drawBlade(P, 21, by - 5, 'up'); P.box(7, by + 1, 3, 6, C.teal); }
-    } else if (face === 'right') {
-      P.box(14 + swing, by + 1, 3, 6, C.teal); P.ball(15.5 + swing, by + 7.5, 1.7, 1.7, SKIN);
-    } else {
-      P.box(6, by + 1 + swing, 3, 6, C.teal); P.box(23, by + 1 - swing, 3, 6, C.teal);
-      P.ball(7.5, by + 7.5 + swing, 1.7, 1.7, SKIN); P.ball(24.5, by + 7.5 - swing, 1.7, 1.7, SKIN);
+    // 肩当て
+    if (face !== 'right') { P.ball(8.5, by + 1.5, 3, 2.6, C.steel); P.ball(23.5, by + 1.5, 3, 2.6, C.steel); }
+    else P.ball(17.5, by + 1.5, 3.2, 2.6, C.steel);
+    // 腕・剣・盾
+    const shield = (cx, cy, r) => { P.ball(cx, cy, r, r, C.shieldB); P.ball(cx, cy, r - 1.6, r - 1.6, C.shieldB, { bias: -0.6 }); P.set(cx, cy - 1, C.gold[0]); P.rect(cx - 1, cy, 3, 1, C.gold[1]); P.set(cx, cy + 1, C.gold[2]);
+      for (let a = 0; a < 16; a++) P.set(cx + Math.cos(a / 16 * Math.PI * 2) * r, cy + Math.sin(a / 16 * Math.PI * 2) * r, C.gold[a < 8 ? 1 : 3]); };
+    const sword = (x, y, len, dx, dy) => { for (let i = 0; i < len; i++) { P.set(x + dx * i, y + dy * i, C.blade[1]); P.set(x + dx * i + (dy ? 1 : 0), y + dy * i + (dx ? 1 : 0), C.blade[3]); } P.set(x + dx * (len - 1), y + dy * (len - 1), C.blade[0]); };
+    const hilt = (x, y, horiz) => { if (horiz) { P.rect(x, y - 1, 1, 4, C.gold[2]); P.rect(x - 2, y, 2, 2, C.brown[2]); } else { P.rect(x - 1, y, 4, 1, C.gold[2]); P.rect(x, y + 1, 2, 2, C.brown[2]); } };
+    if (face === 'down') {
+      if (atk) { P.box(5, by + 3, 4, 4, C.blue); P.ball(6.5, by + 8, 1.8, 1.8, SKIN); sword(6, by + 10, 9, 0, 1); hilt(6, by + 8, false); }
+      else { P.box(5, by + 1 + sway, 4, 6, C.blue); P.ball(6.5, by + 7.5 + sway, 1.8, 1.8, SKIN); sword(6, by - 8 + sway, 9, 0, 1); hilt(6, by + 6 + sway, false); }
+      shield(25, by + 5 - sway, 4.6);
+    } else if (face === 'up') {
+      P.box(5, by + 1 - sway, 4, 6, C.blue); P.box(23, by + 1 + sway, 4, 6, C.blue);
+      if (atk) { sword(24, by - 12, 10, 0, 1); hilt(24, by - 3, false); }
+      else { sword(24, by - 6 + sway, 8, 0, 1); hilt(24, by + 2 + sway, false); }
+      shield(7, by + 5 - sway, 4.4);
+    } else { // 右向き：手前の手に剣、盾は体の前
+      if (atk) { P.box(19, by + 2, 7, 3, C.blue); P.ball(26, by + 3.5, 1.8, 1.8, SKIN); sword(27, by + 3, 6, 1, 0); hilt(27, by + 3, true); }
+      else { P.box(14 + sway, by + 2, 4, 6, C.blue); P.ball(15.5 + sway, by + 8, 1.8, 1.8, SKIN); sword(16 + sway, by - 6, 8, 0, 1); hilt(16 + sway, by + 6, false); }
+      shield(22, by + 5, 4.2);
     }
-    // スカーフ
-    P.box(10, by - 1, 12, 3, C.yellow, { round: true });
-    if (face === 'right') P.box(8, by, 3, 4, C.yellow);
+    // マントのえり（オレンジ）
+    P.box(10, by - 1, 12, 2, C.cape, { round: true });
     // 頭（大きな坊主頭）
-    const hy = 10.5 + bob;
+    const hy = 10 + bob;
     if (face === 'right') {
-      P.ball(16.5, hy, 9.3, 9, SKIN);
-      P.ball(12, hy + 1.5, 1.8, 2.3, SKIN_T); // 耳
-      P.set(12, hy + 1, SKIN_T[3]);
-      P.rect(21, hy + 1, 2, 3, '#2a1a12'); P.set(21, hy + 1, '#ffffff');
-      P.rect(20, hy - 1, 3, 1, '#7a4a2a');
-      P.rect(22, hy + 5, 2, 1, '#b04a3a');
-      P.rect(19, hy + 4, 2, 1, '#f39a8b');
-      P.set(25, hy + 3, SKIN[3]);
+      P.ball(16.5, hy, 9.2, 8.8, SKIN);
+      P.ball(12, hy + 1.5, 1.8, 2.3, SKIN_T); P.set(12, hy + 1, SKIN_T[3]);
+      P.rect(21, hy, 2, 3, EYE); P.set(21, hy, '#ffffff');
+      P.rect(20, hy - 2, 3, 1, BROW);
+      P.rect(22, hy + 5, 2, 1, MOUTH); P.rect(19, hy + 4, 2, 1, CHEEK);
+      P.set(25, hy + 2, SKIN[3]);
     } else {
-      P.ball(16, hy, 9.6, 9, SKIN);
+      P.ball(16, hy, 9.6, 8.8, SKIN);
       P.ball(6.6, hy + 2, 1.7, 2.3, SKIN_T); P.ball(25.4, hy + 2, 1.7, 2.3, SKIN_T);
       if (face === 'down') {
-        P.rect(11, hy + 1, 2, 3, '#2a1a12'); P.rect(19, hy + 1, 2, 3, '#2a1a12');
-        P.set(11, hy + 1, '#ffffff'); P.set(19, hy + 1, '#ffffff');
-        P.rect(10, hy - 1, 3, 1, '#7a4a2a'); P.rect(19, hy - 1, 3, 1, '#7a4a2a');
-        P.rect(8, hy + 4, 3, 1, '#f39a8b'); P.rect(21, hy + 4, 3, 1, '#f39a8b');
-        P.rect(15, hy + 5, 2, 1, '#b04a3a'); P.set(14, hy + 4, '#b04a3a'); P.set(17, hy + 4, '#b04a3a');
-      } else {
-        P.rect(10, hy + 5, 12, 2, SKIN[3]); // うなじ
-      }
+        P.rect(11, hy, 2, 3, EYE); P.rect(19, hy, 2, 3, EYE);
+        P.set(11, hy, '#ffffff'); P.set(19, hy, '#ffffff');
+        P.rect(10, hy - 2, 3, 1, BROW); P.rect(19, hy - 2, 3, 1, BROW);
+        P.rect(8, hy + 4, 3, 1, CHEEK); P.rect(21, hy + 4, 3, 1, CHEEK);
+        P.rect(15, hy + 5, 2, 1, MOUTH); P.set(14, hy + 4, MOUTH); P.set(17, hy + 4, MOUTH);
+      } else P.rect(11, hy + 5, 10, 2, SKIN[3]);
     }
     // 坊主頭のつや
     const sx = face === 'right' ? 12 : 10;
@@ -193,48 +200,99 @@
     for (let x = 9; x < 24; x += 2) P.set(x + (face === 'right' ? 1 : 0), hy - 7 + ((x * 7) % 3 === 0 ? 1 : 0), SKIN[1]);
     return P.outline();
   }
-  function drawBlade(P, x, y, dir) {
-    const R = ramp('#d8dfe8');
-    if (dir === 'right') { for (let i = 0; i < 4; i++) { P.set(x + i, y - i, R[1]); P.set(x + i + 1, y - i, R[3]); } P.set(x, y + 1, C.brown[2]); }
-    else if (dir === 'down') { for (let i = 0; i < 4; i++) { P.set(x, y + i, R[1]); P.set(x + 1, y + i, R[3]); } }
-    else { for (let i = 0; i < 5; i++) { P.set(x, y - i, R[1]); P.set(x + 1, y - i, R[3]); } }
-  }
 
-  // ---------------- サイ（黒髪ロング・普段着） ----------------
+  // ---------------- サイ（黒髪ロング・白と金と淡いピンクの姫風衣装・青緑の宝石） ----------------
   function drawSai(frame) {
     const P = new Pix(32, 32);
     const blink = frame === 1;
     const sway = frame === 1 ? 1 : 0;
     // 後ろ髪（長い黒髪）
-    P.poly([[6, 9], [26, 9], [27 + sway, 26], [22, 28], [10, 28], [5 + sway, 26]], (x, y) => C.hair[P.idx(1.6 + (x < 16 ? 0.2 : 0.8) + (y - 9) / 25, x, y)]);
-    // 足・サンダル
-    P.box(12, 27, 3, 3, SKIN); P.box(17, 27, 3, 3, SKIN);
-    P.rect(11, 30, 5, 1, '#8a5a3a'); P.rect(17, 30, 5, 1, '#8a5a3a');
-    // 長いスカート（パーシン風の柄）
-    P.poly([[10, 20], [22, 20], [24, 28], [8, 28]], (x, y) => C.skirt[P.idx(1.4 + (x - 8) / 12, x, y)]);
-    P.rect(9, 25, 14, 1, C.yellow[2]); P.rect(9, 26, 15, 1, C.skirt[4]);
-    // Tシャツ
-    P.box(10, 16, 12, 6, C.shirt, { round: true });
-    P.rect(14, 16, 4, 1, SKIN[2]); P.set(15, 17, SKIN[3]); P.set(16, 17, SKIN[3]); // えり元
-    P.rect(11, 20, 10, 1, C.shirt[4]);
-    // 腕
-    P.box(7, 17, 3, 5, C.shirt); P.box(22, 17, 3, 5, C.shirt);
-    P.ball(8.5, 23, 1.6, 1.8, SKIN); P.ball(23.5, 23, 1.6, 1.8, SKIN);
+    P.poly([[6, 8], [26, 8], [27 + sway, 25], [22, 27], [10, 27], [5 + sway, 25]], (x, y) => C.hair[P.idx(1.6 + (x < 16 ? 0.2 : 0.8) + (y - 8) / 25, x, y)]);
+    // ドレス（白、裾に金、ピンクの重ね）
+    P.poly([[11, 18], [21, 18], [26, 30], [6, 30]], (x, y) => C.white[P.idx(1 + (x - 6) / 16 + (y - 18) / 20, x, y)]);
+    P.poly([[13, 22], [19, 22], [22, 30], [10, 30]], (x, y) => C.pink[P.idx(1.2 + (x - 10) / 12, x, y)]);
+    P.rect(6, 29, 21, 1, C.gold[2]); P.rect(7, 28, 19, 1, C.gold[1]);
+    for (let x = 8; x < 26; x += 3) P.set(x, 27, C.gold[0]);
+    // 胴（白いボディスと金の帯）
+    P.box(11, 15, 10, 6, C.white, { round: true });
+    P.rect(11, 20, 10, 2, C.gold[2]); P.set(16, 20, C.teal[1]);
+    // ふくらんだピンクの袖と腕
+    P.ball(9, 16.5, 2.6, 2.4, C.pink); P.ball(23, 16.5, 2.6, 2.4, C.pink);
+    P.box(8, 18, 2, 4, SKIN); P.box(22, 18, 2, 4, SKIN);
+    // 首飾り（青緑の宝石）
+    P.rect(13, 15, 6, 1, C.gold[1]); P.ball(16, 16.6, 1.4, 1.4, C.teal);
     // 顔
-    P.ball(16, 10, 7.6, 7.4, SKIN);
-    // 前髪（ゆるく分けた黒髪）
+    P.ball(16, 9.5, 7.4, 7.2, SKIN);
+    // 前髪
     P.poly([[7, 9], [9, 3], [16, 1], [23, 3], [25, 9], [22, 7], [18, 5], [16, 7], [12, 5], [9, 8]], (x, y) => C.hair[P.idx(1.2 + (y - 1) / 9 + (x > 16 ? 0.5 : 0), x, y)]);
     P.rect(7, 9, 2, 9, C.hair[2]); P.rect(23, 9, 2, 9, C.hair[3]);
-    P.set(12, 3, C.hair[0]); P.set(13, 3, C.hair[0]); P.set(11, 4, C.hair[1]); // 髪のつや
-    // プルメリアの髪かざり
-    P.ball(23, 5, 2.2, 2.2, ramp('#fff4f4')); P.set(23, 5, '#ffd84a'); P.set(22, 5, '#ffd84a');
-    if (blink) { P.rect(11, 11, 3, 1, '#2a1a20'); P.rect(18, 11, 3, 1, '#2a1a20'); }
+    P.set(12, 3, C.hair[0]); P.set(13, 3, C.hair[0]); P.set(11, 4, C.hair[1]);
+    // ティアラ（金と青緑の宝石）
+    P.rect(11, 2, 10, 1, C.gold[1]); P.set(12, 1, C.gold[0]); P.set(19, 1, C.gold[0]); P.rect(15, 0, 2, 2, C.gold[2]);
+    P.set(15, 1, C.teal[0]); P.set(16, 1, C.teal[2]);
+    if (blink) { P.rect(11, 10, 3, 1, '#2a1a20'); P.rect(18, 10, 3, 1, '#2a1a20'); }
     else {
-      P.rect(11, 10, 2, 3, '#2a1a20'); P.rect(19, 10, 2, 3, '#2a1a20');
-      P.set(11, 10, '#ffffff'); P.set(19, 10, '#ffffff'); P.set(13, 10, '#2a1a20'); P.set(18, 10, '#2a1a20');
+      P.rect(11, 9, 2, 3, '#2a1a20'); P.rect(19, 9, 2, 3, '#2a1a20');
+      P.set(11, 9, '#ffffff'); P.set(19, 9, '#ffffff'); P.set(13, 9, '#2a1a20'); P.set(18, 9, '#2a1a20');
     }
-    P.rect(10, 14, 2, 1, '#f39a8b'); P.rect(20, 14, 2, 1, '#f39a8b');
-    P.rect(15, 15, 2, 1, '#b04a3a');
+    P.rect(10, 13, 2, 1, CHEEK); P.rect(20, 13, 2, 1, CHEEK);
+    P.rect(15, 14, 2, 1, MOUTH);
+    return P.outline();
+  }
+
+  // ---------------- 会話用の顔絵（64×64） ----------------
+  function portraitTake() {
+    const P = new Pix(64, 64);
+    // マントと肩
+    P.poly([[4, 64], [8, 46], [20, 40], [44, 40], [56, 46], [60, 64]], (x, y) => C.cape[P.idx(1.2 + (y - 40) / 30 + (x > 32 ? 0.6 : 0), x, y)]);
+    P.box(18, 46, 28, 18, C.blue, { round: true });
+    P.box(22, 48, 20, 14, C.steel, { round: true }); P.rect(31, 49, 2, 12, C.steel[3]); P.rect(24, 50, 3, 2, C.steel[0]);
+    P.ball(14, 49, 8, 6, C.steel); P.ball(50, 49, 8, 6, C.steel);
+    P.rect(10, 47, 3, 2, C.steel[0]); P.rect(46, 47, 3, 2, C.steel[0]);
+    P.box(22, 41, 20, 5, C.cape, { round: true });
+    // 頭
+    P.ball(11, 27, 3.5, 5, SKIN_T); P.ball(53, 27, 3.5, 5, SKIN_T);
+    P.ball(32, 24, 20, 19, SKIN);
+    // 坊主頭のつやと剃り跡
+    P.ball(22, 10, 5, 3, ramp(SKIN[0]), { dither: false }); P.rect(19, 9, 3, 1, LIGHT);
+    for (let i = 0; i < 40; i++) { const x = 16 + (SP.hash ? (i * 7) % 32 : i), y = 8 + (i * 5) % 8; P.set(x, y, SKIN[1]); }
+    // 眉・目・ほお・口
+    P.rect(19, 21, 7, 2, BROW); P.rect(38, 21, 7, 2, BROW);
+    P.rect(20, 25, 5, 6, EYE); P.rect(39, 25, 5, 6, EYE);
+    P.rect(20, 25, 2, 2, '#ffffff'); P.rect(39, 25, 2, 2, '#ffffff'); P.set(23, 29, '#5a4a6a'); P.set(42, 29, '#5a4a6a');
+    P.rect(15, 33, 5, 2, CHEEK); P.rect(44, 33, 5, 2, CHEEK);
+    P.rect(30, 30, 4, 2, SKIN[3]);
+    P.rect(28, 36, 8, 2, MOUTH); P.set(27, 35, MOUTH); P.set(36, 35, MOUTH); P.rect(29, 38, 6, 1, '#e86a5a');
+    return P.outline();
+  }
+  function portraitSai() {
+    const P = new Pix(64, 64);
+    // 長い黒髪（後ろ）
+    P.poly([[10, 18], [54, 18], [58, 64], [6, 64]], (x, y) => C.hair[P.idx(1.6 + (x > 32 ? 0.6 : 0) + (y - 18) / 60, x, y)]);
+    // ドレスの肩（白・金・ピンク）
+    P.poly([[14, 64], [18, 48], [46, 48], [50, 64]], (x, y) => C.white[P.idx(0.9 + (x - 14) / 40, x, y)]);
+    P.ball(18, 50, 7, 5, C.pink); P.ball(46, 50, 7, 5, C.pink);
+    P.rect(24, 48, 16, 2, C.gold[1]); P.line(24, 48, 32, 56, C.gold[2]); P.line(40, 48, 32, 56, C.gold[2]);
+    P.ball(32, 57, 3, 3, C.teal); P.set(31, 56, '#e8fffa');
+    P.box(28, 42, 8, 7, SKIN);
+    // 顔
+    P.ball(32, 26, 17, 17, SKIN);
+    // 前髪
+    P.poly([[14, 26], [16, 10], [24, 4], [32, 3], [42, 5], [49, 12], [50, 26], [45, 16], [38, 12], [33, 16], [26, 11], [19, 18]], (x, y) => C.hair[P.idx(1.0 + (y - 3) / 22 + (x > 32 ? 0.5 : 0), x, y)]);
+    P.rect(14, 24, 4, 20, C.hair[2]); P.rect(46, 24, 4, 20, C.hair[3]);
+    P.line(22, 8, 28, 6, C.hair[0]); P.line(23, 9, 27, 8, C.hair[1]);
+    // ティアラ
+    P.poly([[22, 6], [26, 1], [29, 4], [32, 0], [35, 4], [38, 1], [42, 6]], (x, y) => C.gold[P.idx(0.6 + y / 6, x, y)]);
+    P.ball(32, 3.5, 2, 2, C.teal);
+    // 目（まつげ）・眉・口
+    P.rect(22, 21, 6, 1, '#3a2a30'); P.rect(37, 21, 6, 1, '#3a2a30');
+    P.rect(22, 25, 6, 6, '#2a1a20'); P.rect(37, 25, 6, 6, '#2a1a20');
+    P.rect(22, 24, 7, 1, '#1a0a10'); P.rect(36, 24, 7, 1, '#1a0a10');
+    P.rect(23, 26, 2, 2, '#ffffff'); P.rect(38, 26, 2, 2, '#ffffff'); P.rect(25, 29, 2, 1, '#6a5a7a'); P.rect(40, 29, 2, 1, '#6a5a7a');
+    P.rect(18, 33, 5, 2, CHEEK); P.rect(42, 33, 5, 2, CHEEK);
+    P.rect(30, 37, 5, 1, MOUTH); P.rect(31, 38, 3, 1, '#e86a7a');
+    // 髪かざり（プルメリア）
+    P.ball(47, 12, 3.5, 3.5, ramp('#fff4f4')); P.set(47, 12, '#ffd84a'); P.set(46, 12, '#ffd84a');
     return P.outline();
   }
 
@@ -249,14 +307,17 @@
     P.ball(10, 12 + s, 4, 4, g); P.ball(22, 12 + s, 4, 4, g);
     P.ball(10, 12 + s, 2.5, 2.6, ramp('#ffffff')); P.ball(22, 12 + s, 2.5, 2.6, ramp('#ffffff'));
     P.rect(10, 12 + s, 2, 2, '#1a1a1a'); P.rect(22, 12 + s, 2, 2, '#1a1a1a');
-    P.line(10, 20 + s, 22, 20 + s, g[4]); P.set(9, 19 + s, g[4]); P.set(23, 19 + s, g[4]);
-    P.rect(7, 18 + s, 2, 1, '#ff9fb0'); P.rect(23, 18 + s, 2, 1, '#ff9fb0');
+    P.set(11, 13 + s, '#ffffff'); P.set(23, 13 + s, '#ffffff');
+    P.line(6, 8 + s, 11, 9 + s, g[4]); P.line(26, 8 + s, 21, 9 + s, g[4]); // 怒り眉
+    P.poly([[10, 19 + s], [22, 19 + s], [19, 23 + s], [13, 23 + s]], '#7a1a2a'); P.rect(14, 21 + s, 4, 2, '#ff6a8a');
+    P.rect(7, 17 + s, 2, 1, '#ff9fb0'); P.rect(23, 17 + s, 2, 1, '#ff9fb0');
     return P.outline();
   };
   E.turtle = (f) => {
     const P = new Pix(32, 32); const sh = ramp('#9b927f'), sk = ramp('#8fae7a');
     const hy = 9 + (f ? 1 : 0);
-    P.ball(16, hy, 4.5, 4, sk); P.rect(14, hy, 1, 1, '#111'); P.rect(18, hy, 1, 1, '#111');
+    P.ball(16, hy, 5, 4.2, sk); P.rect(13, hy - 1, 2, 2, '#ffffff'); P.rect(18, hy - 1, 2, 2, '#ffffff'); P.set(14, hy, '#111'); P.set(18, hy, '#111');
+    P.line(12, hy - 2, 15, hy - 1, sk[4]); P.line(20, hy - 2, 17, hy - 1, sk[4]); P.rect(15, hy + 2, 3, 1, sk[4]);
     P.ball(7, 25, 3, 2.5, sk); P.ball(25, 25, 3, 2.5, sk);
     P.ball(16, 19, 12, 9, sh);
     for (const [cx, cy] of [[16, 17], [10, 20], [22, 20], [16, 23], [11, 14], [21, 14]]) {
@@ -274,7 +335,8 @@
     P.ball(16, 12, 9, 8, b);
     P.ball(16, 14, 6.5, 5.5, fc);
     P.rect(12, 12, 2, 2, '#1a1010'); P.rect(18, 12, 2, 2, '#1a1010'); P.set(12, 12, '#fff'); P.set(18, 12, '#fff');
-    P.rect(15, 17, 3, 1, '#a33');
+    P.rect(13, 17, 7, 1, '#7a1a1a'); P.rect(14, 18, 5, 1, '#ffffff'); P.set(13, 16, '#7a1a1a'); P.set(19, 16, '#7a1a1a'); // にやり
+    P.line(11, 10, 14, 11, b[4]); P.line(21, 10, 18, 11, b[4]);
     P.ball(23, 18, 2, 2, fc);
     return P.outline();
   };
@@ -284,7 +346,8 @@
     P.box(7, 8, 18, 18, w, { round: true });
     for (let y = 9; y < 25; y += 3) P.line(9 + (y % 2), y, 12 + (y % 2), y + 2, w[4]);
     P.ball(12, 15, 2.5, 2, ramp(f ? '#e8ff8a' : '#c8ff6a')); P.ball(20, 15, 2.5, 2, ramp(f ? '#e8ff8a' : '#c8ff6a'));
-    P.rect(12, 20, 8, 2, w[4]);
+    P.line(9, 11, 14, 13, w[4]); P.line(23, 11, 18, 13, w[4]);
+    for (let x = 12; x < 20; x++) P.set(x, 20 + (x % 2), '#2a1408'); P.rect(12, 21, 8, 1, '#2a1408');
     P.ball(10, 6, 4, 3, l); P.ball(20, 5, 5, 3.5, l); P.ball(15, 3, 3, 2.5, l);
     return P.outline();
   };
@@ -293,8 +356,8 @@
     for (let i = 0; i < 5; i++) { const x = 8 + i * 4; for (let y = 19; y < 30; y++) P.set(x + Math.round(Math.sin((y + f * 2 + i) / 2)), y, j[(y % 3) + 1]); }
     P.ball(16, 14, 11, 9, j, { clip: (x, y) => y < 20 });
     P.ball(11, 10, 2, 1.5, ramp('#ffffff')); P.set(20, 9, '#e8faff');
-    P.rect(12, 14, 2, 2, '#14304f'); P.rect(19, 14, 2, 2, '#14304f');
-    P.rect(15, 17, 3, 1, '#ff9ad5');
+    P.rect(12, 13, 2, 3, '#14304f'); P.rect(19, 13, 2, 3, '#14304f'); P.set(12, 13, '#ffffff'); P.set(19, 13, '#ffffff');
+    P.rect(9, 16, 2, 1, '#ff9ad5'); P.rect(22, 16, 2, 1, '#ff9ad5'); P.rect(15, 17, 3, 1, '#2a4a7a');
     P.rect(6, 19, 21, 1, j[3]);
     return P.outline(0.6);
   };
@@ -319,7 +382,9 @@
     P.poly([[17, 14], [30, 8 + up], [28, 14 + up / 2], [31, 19], [25, 17], [22, 21], [18, 18]], (x, y) => b[P.idx(2.6 + (y - 10) / 12, x, y)]);
     P.ball(16, 16, 5, 5.5, b);
     P.poly([[12, 12], [13, 6], [15, 11]], b[2]); P.poly([[17, 11], [19, 6], [20, 12]], b[3]);
-    P.set(14, 15, '#ff4a4a'); P.set(18, 15, '#ff4a4a'); P.set(15, 19, '#fff'); P.set(17, 19, '#fff');
+    P.rect(13, 14, 2, 2, '#ff4a4a'); P.rect(18, 14, 2, 2, '#ff4a4a'); P.set(13, 14, '#ffd0d0'); P.set(18, 14, '#ffd0d0');
+    P.line(12, 13, 15, 14, b[4]); P.line(20, 13, 17, 14, b[4]);
+    P.rect(14, 18, 5, 1, '#2a1030'); P.set(15, 19, '#ffffff'); P.set(17, 19, '#ffffff');
     return P.outline();
   };
   E.shaman = (f) => {
@@ -339,7 +404,7 @@
     P.ball(25, 15, 5, 4.5, g);
     P.ball(11, 26, 2, 2, g); P.ball(21, 26, 2, 2, g);
     for (const [x, y] of [[12, 19], [16, 18], [20, 20], [14, 22]]) P.ball(x, y, 1.4, 1.2, sp);
-    P.rect(26, 13, 2, 2, '#ffe04a'); P.set(27, 13, '#111');
+    P.rect(25, 12, 3, 3, '#ffe04a'); P.rect(26, 12, 1, 3, '#111'); P.line(24, 11, 28, 12, g[4]); P.line(26, 17, 30, 17, '#3a2a1a');
     if (f) { P.set(30, 17, '#ff4a6a'); P.set(31, 18, '#ff4a6a'); P.set(31, 16, '#ff4a6a'); }
     return P.outline();
   };
@@ -363,7 +428,7 @@
     P.poly([[4, 11], [6, 3], [9, 11]], (x, y) => cr[P.idx(0.8 + (y - 3) / 6, x, y)]);
     P.poly([[23, 11], [26, 2], [28, 11]], (x, y) => cr[P.idx(1.2 + (y - 2) / 6, x, y)]);
     P.ball(16, 17, 3, 3, ramp(f ? '#c8ffff' : '#7af0ff'));
-    P.rect(13, 7, 2, 2, '#ffdf6a'); P.rect(18, 7, 2, 2, '#ffdf6a');
+    P.rect(12, 7, 3, 2, '#ffdf6a'); P.rect(18, 7, 3, 2, '#ffdf6a'); P.line(11, 6, 15, 7, r[4]); P.line(22, 6, 18, 7, r[4]); P.rect(14, 10, 5, 1, r[4]);
     return P.outline();
   };
   E.wisp = (f) => {
@@ -371,7 +436,7 @@
     P.ball(16, 16, 8 + f, 8 + f, w);
     P.ball(16, 16, 4, 4, ramp('#ffffff'));
     for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + f * 0.5; P.set(16 + Math.cos(a) * 12, 16 + Math.sin(a) * 12, '#fff6b0'); }
-    P.rect(13, 15, 2, 2, '#8a6a10'); P.rect(18, 15, 2, 2, '#8a6a10');
+    P.rect(13, 14, 2, 3, '#8a6a10'); P.rect(18, 14, 2, 3, '#8a6a10'); P.set(13, 14, '#ffffff'); P.set(18, 14, '#ffffff'); P.rect(15, 18, 3, 1, '#c08a20');
     return P.outline(0.5);
   };
   E.guard = (f) => {
@@ -394,6 +459,7 @@
     for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; P.ball(24 + Math.cos(a) * 12, 17 + Math.sin(a) * 11, 4.5, 4.5, m); }
     P.ball(24, 18, 10, 9.5, g);
     P.rect(18, 15, 3, 3, '#2a1a10'); P.rect(27, 15, 3, 3, '#2a1a10'); P.set(18, 15, '#fff'); P.set(27, 15, '#fff');
+    P.line(16, 12, 21, 14, g[4]); P.line(32, 12, 27, 14, g[4]);
     P.ball(24, 21, 3, 2, g, { bias: 0.8 });
     P.rect(19, 24 + f, 10, 3, '#8a2a20'); P.rect(20, 24 + f, 2, 2, '#fff'); P.rect(26, 24 + f, 2, 2, '#fff');
     P.rect(14, 41, 4, 1, g[4]); P.rect(32, 41, 4, 1, g[4]);
@@ -427,49 +493,89 @@
     return P.outline();
   };
 
-  // ---------------- 道具アイコン（16×16） ----------------
+  // ---------------- 道具アイコン（16×16）：色だけでなく形と小さな印で見分ける ----------------
   const TINT = {
-    wood: '#b07a45', bronze: '#d79a4a', iron: '#cfd8e0', ivory: '#fff2d0', jade: '#5ad08a', crystal: '#9ae8ff', gold: '#ffd84a',
-    bamboo: '#d8c27a', turtle: '#8fae7a', moss: '#7a9a5a',
+    wood: '#b07a45', copper: '#d98a4a', iron: '#aab4c0', steel: '#dfe8f2', jade: '#4fd08a', crystal: '#9ae8ff', gold: '#ffd84a',
   };
   const I = {};
-  I.sword = (t) => { const P = new Pix(16, 16); const R = ramp(TINT[t] || '#cfd8e0');
-    for (let i = 0; i < 9; i++) { P.set(5 + i, 10 - i, R[1]); P.set(6 + i, 10 - i, R[2]); P.set(6 + i, 11 - i, R[3]); }
-    P.set(14, 1, R[0]); P.line(2, 9, 6, 13, '#8a6a30'); P.line(3, 9, 7, 13, '#c8a040');
-    P.rect(2, 12, 2, 2, '#5a3a20'); return P.outline(); };
-  I.shield = (t) => { const P = new Pix(16, 16); const R = ramp(TINT[t] || '#d79a4a');
-    P.poly([[2, 2], [14, 2], [14, 8], [8, 15], [2, 8]], (x, y) => R[P.idx(0.6 + (x - 2) / 8 + (y - 2) / 14, x, y)]);
-    P.rect(3, 3, 10, 1, R[0]); P.rect(7, 4, 2, 7, R[4]); P.rect(5, 6, 6, 2, R[4]); return P.outline(); };
-  I.herb = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'big' ? '#3ab070' : t === 'cure' ? '#a0d040' : '#5cb84a');
-    P.line(8, 15, 8, 8, '#6a4a2a'); P.ball(5, 7, 4, 2.5, R); P.ball(11, 6, 4, 2.5, R); P.ball(8, 4, 2.5, 3.5, R);
-    if (t === 'big') P.ball(12, 11, 2.5, 2, R);
-    if (t === 'cure') P.set(8, 3, '#ffffff');
+  // 剣：材質で刃の色、強さで刃の長さ・つばの形が変わる
+  I.sword = (t) => {
+    const P = new Pix(16, 16); const R = ramp(TINT[t] || '#cfd8e0');
+    const len = { wood: 7, copper: 8, iron: 9, steel: 10, jade: 10, crystal: 11, gold: 11 }[t] || 9;
+    for (let i = 0; i < len; i++) { P.set(5 + i, 10 - i, R[1]); P.set(6 + i, 10 - i, R[2]); P.set(6 + i, 11 - i, R[3]); }
+    P.set(5 + len, 10 - len + 1, R[0]);
+    const guard = t === 'gold' || t === 'crystal' ? ramp('#ffd84a') : t === 'wood' ? ramp('#7a4a24') : ramp('#8a6a40');
+    P.line(2, 9, 6, 13, guard[2]); P.line(3, 9, 7, 13, guard[1]);
+    if (t === 'steel' || t === 'gold' || t === 'jade' || t === 'crystal') { P.set(1, 8, guard[1]); P.set(8, 14, guard[1]); }
+    P.rect(2, 12, 2, 2, '#5a3a20'); P.set(1, 14, guard[2]);
+    if (t === 'jade') P.set(4, 11, '#2aff9a'); if (t === 'crystal') P.set(4, 11, '#ffffff'); if (t === 'gold') P.set(4, 11, '#ff4a6a');
+    return P.outline();
+  };
+  // 盾：木は丸盾、鉄は紋章入り、はがねは鋲つきのカイト型、宝石の盾は中央に宝石
+  I.shield = (t) => {
+    const P = new Pix(16, 16); const R = ramp(TINT[t] || '#aab4c0');
+    if (t === 'wood') {
+      P.ball(8, 8, 6.5, 6.5, R); for (let x = 4; x < 13; x += 3) P.line(x, 3, x, 13, R[3]); P.ball(8, 8, 1.8, 1.8, ramp('#aab4c0'));
+    } else if (t === 'iron') {
+      P.poly([[2, 2], [14, 2], [14, 8], [8, 15], [2, 8]], (x, y) => R[P.idx(0.6 + (x - 2) / 8 + (y - 2) / 14, x, y)]);
+      P.ball(8, 7, 2.5, 2.2, ramp('#f2c440')); P.set(6, 9, '#f2c440');
+    } else {
+      P.poly([[2, 2], [14, 2], [13, 9], [8, 15], [3, 9]], (x, y) => R[P.idx(0.4 + (x - 2) / 9 + (y - 2) / 16, x, y)]);
+      P.rect(3, 3, 10, 1, R[0]);
+      if (t === 'steel') for (const [x, y] of [[4, 4], [11, 4], [4, 8], [11, 8], [8, 12]]) P.set(x, y, '#ffffff');
+      else { const G = ramp(t === 'gold' ? '#ff4a6a' : t === 'jade' ? '#2aff9a' : '#ffffff'); P.ball(8, 7, 2.2, 2.6, G); P.rect(3, 2, 10, 1, ramp('#ffd84a')[1]); }
+    }
+    return P.outline();
+  };
+  // やくそう：葉1枚。上やくそう：葉3枚と光。どくけしそう：白い十字の印
+  I.herb = (t) => {
+    const P = new Pix(16, 16); const R = ramp(t === 'cure' ? '#9ad040' : '#4cb84a');
+    P.line(8, 15, 8, 7, '#6a4a2a');
+    if (t === 'big') { P.ball(4, 8, 3.5, 2.2, R); P.ball(12, 7, 3.5, 2.2, R); P.ball(8, 4, 2.4, 3.4, R); P.set(13, 2, '#ffffff'); P.set(12, 1, '#fff6b0'); P.set(14, 1, '#fff6b0'); }
+    else if (t === 'cure') { P.ball(8, 6, 4.5, 4.5, R); P.rect(7, 4, 2, 5, '#ffffff'); P.rect(6, 5, 4, 2, '#ffffff'); }
+    else { P.ball(6, 7, 4, 2.5, R); P.ball(10, 5, 3, 2.5, R); }
+    return P.outline();
+  };
+  I.potion = () => { const P = new Pix(16, 16); const R = ramp('#e04a8a');
+    P.rect(6, 1, 4, 2, '#9b6b3a'); P.box(6, 3, 4, 3, ramp('#e8e0ff')); P.ball(8, 10, 5, 5, R);
+    P.set(7, 9, '#ffffff'); P.set(9, 9, '#ffffff'); P.rect(6, 10, 5, 1, '#ffffff'); P.rect(7, 11, 3, 1, '#ffffff'); P.set(8, 12, '#ffffff'); // ハートの印
     return P.outline(); };
-  I.potion = () => { const P = new Pix(16, 16); const R = ramp('#c24bd8');
-    P.rect(6, 1, 4, 2, '#9b6b3a'); P.box(6, 3, 4, 3, ramp('#e8e0ff')); P.ball(8, 10, 5, 5, R); P.set(6, 8, '#fff'); return P.outline(); };
   I.banana = () => { const P = new Pix(16, 16); const R = ramp('#ffe04a');
     for (let i = 0; i < 11; i++) { const a = i / 10 * Math.PI * 0.9 + 0.3; P.ball(8 - Math.cos(a) * 6, 4 + Math.sin(a) * 8, 1.8, 1.8, R); }
     P.rect(13, 1, 2, 2, '#5a4010'); return P.outline(); };
-  I.rice = () => { const P = new Pix(16, 16); const B = ramp('#c8943c');
-    P.ball(8, 6, 5, 3, ramp('#ffffff')); P.box(3, 7, 10, 7, B, { round: true });
-    for (let y = 8; y < 14; y += 2) for (let x = 4; x < 13; x += 2) P.set(x + (y % 4 ? 1 : 0), y, B[3]); return P.outline(); };
   I.onigiri = () => { const P = new Pix(16, 16); P.poly([[8, 1], [15, 13], [1, 13]], (x, y) => ramp('#ffffff')[P.idx(0.5 + (x - 1) / 12, x, y)]);
-    P.rect(5, 9, 6, 5, '#1f3a2a'); return P.outline(); };
-  I.incense = () => { const P = new Pix(16, 16); const G = ramp('#d4a017');
-    P.line(8, 2, 8, 9, '#c0392b'); P.set(7, 1, '#d8d8f0'); P.set(9, 0, '#d8d8f0'); P.ball(8, 12, 5, 3, G); return P.outline(); };
-  I.staff = () => { const P = new Pix(16, 16); P.line(4, 15, 11, 5, '#8a5a2a'); P.line(5, 15, 12, 5, '#5a3a20'); P.ball(12, 4, 3, 3, ramp('#ffe04a')); return P.outline(); };
-  I.scroll = (t) => { const P = new Pix(16, 16); const R = ramp('#f5e6c0');
+    P.rect(5, 9, 6, 5, '#1f3a2a'); P.set(7, 6, '#e05a5a'); return P.outline(); };
+  I.bento = () => { const P = new Pix(16, 16);
+    P.box(1, 5, 14, 9, ramp('#c0402a'), { round: true }); P.rect(2, 6, 12, 7, '#2a1a10');
+    P.ball(5, 9, 2.6, 2.2, ramp('#ffffff')); P.ball(11, 8, 2.4, 1.6, ramp('#e8902a')); P.ball(10, 11, 1.6, 1.4, ramp('#4caf50')); P.set(13, 10, '#e05a5a');
+    P.rect(1, 3, 14, 2, ramp('#f2c440')[2]); return P.outline(); };
+  I.sleepgrass = () => { const P = new Pix(16, 16); const F = ramp('#a070e0');
+    P.line(6, 15, 6, 7, '#3a7a3a'); P.line(10, 15, 10, 9, '#3a7a3a'); P.ball(4, 12, 2, 1.2, ramp('#4caf50'));
+    P.ball(6, 6, 2.6, 2.6, F); P.ball(10, 8, 2.2, 2.2, F); P.set(6, 6, '#ffe04a'); P.set(10, 8, '#ffe04a');
+    P.rect(11, 1, 4, 1, '#ffffff'); P.set(13, 2, '#ffffff'); P.set(12, 3, '#ffffff'); P.rect(11, 4, 4, 1, '#ffffff'); // Z
+    return P.outline(); };
+  I.staff = () => { const P = new Pix(16, 16); P.line(3, 15, 10, 6, '#8a5a2a'); P.line(4, 15, 11, 6, '#5a3a20');
+    P.ball(12, 4, 3, 3, ramp('#7ac8ff')); P.line(11, 2, 13, 4, '#ffe04a'); P.line(13, 4, 12, 6, '#ffe04a'); return P.outline(); };
+  // 巻物：帰還＝赤いひもと家の印、みとおし＝青いひもと目の印、雷鳴＝黄色いひもと稲妻の印
+  I.scroll = (t) => {
+    const P = new Pix(16, 16); const R = ramp('#f5e6c0');
     P.box(2, 3, 12, 10, R); P.box(1, 2, 2, 12, ramp('#c8a070')); P.box(13, 2, 2, 12, ramp('#c8a070'));
-    P.rect(3, 7, 10, 2, t === 'blue' ? '#2f6fd0' : '#c0392b'); return P.outline(); };
-  I.coin = () => { const P = new Pix(16, 16); P.ball(8, 8, 6, 6, ramp('#ffd84a')); P.rect(7, 5, 2, 6, '#c08a10'); return P.outline(); };
+    const rib = t === 'sight' ? '#2f6fd0' : t === 'thunder' ? '#e8b020' : '#c0392b';
+    P.rect(3, 12, 10, 1, rib);
+    if (t === 'sight') { P.ball(8, 7, 3.5, 2, ramp('#ffffff')); P.ball(8, 7, 1.4, 1.4, ramp('#2f6fd0')); }
+    else if (t === 'thunder') { P.line(9, 4, 6, 8, '#e8a010'); P.line(6, 8, 10, 8, '#e8a010'); P.line(10, 8, 7, 11, '#e8a010'); }
+    else { P.poly([[8, 4], [12, 8], [4, 8]], '#c0392b'); P.rect(5, 8, 6, 3, '#c0392b'); P.rect(7, 9, 2, 2, '#f5e6c0'); }
+    return P.outline();
+  };
+  I.coin = () => { const P = new Pix(16, 16); P.ball(8, 8, 6, 6, ramp('#ffd84a')); P.ball(8, 8, 3.2, 3.2, ramp('#e0a820')); P.rect(7, 6, 2, 4, '#fff6b0'); return P.outline(); };
   I.elephant = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'gold' ? '#ffd84a' : '#4fc08a');
-    P.ball(9, 9, 5, 4, R); P.ball(4, 7, 3, 3, R); P.line(2, 8, 2, 13, R[2]); P.box(6, 12, 2, 3, R); P.box(10, 12, 2, 3, R); P.set(4, 6, '#111'); return P.outline(); };
+    P.ball(9, 9, 5, 4, R); P.ball(4, 7, 3, 3, R); P.line(2, 8, 2, 13, R[2]); P.box(6, 12, 2, 3, R); P.box(10, 12, 2, 3, R); P.set(4, 6, '#111'); P.ball(6, 6, 1.6, 2.4, R); return P.outline(); };
   I.lotus = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'prism' ? '#c8a0ff' : '#ffd84a');
     P.ball(8, 6, 2.5, 5, R); P.ball(4, 8, 2.5, 4, R); P.ball(12, 8, 2.5, 4, R); P.rect(3, 12, 10, 2, '#3a8a40');
-    if (t === 'prism') { P.set(6, 6, '#7af0ff'); P.set(10, 7, '#ff9ad5'); }
+    if (t === 'prism') { P.set(6, 6, '#7af0ff'); P.set(10, 7, '#ff9ad5'); P.set(8, 3, '#fff6b0'); }
     return P.outline(); };
-  I.gem = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'crystal' ? '#9ae8ff' : '#7ad7ff');
-    P.poly([[4, 5], [8, 2], [12, 5], [8, 14]], (x, y) => R[P.idx(0.4 + (x - 4) / 5, x, y)]); P.line(4, 5, 12, 5, R[0]); return P.outline(); };
+  I.gem = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'crystal' ? '#9ae8ff' : '#ff7a5a');
+    P.poly([[4, 5], [8, 2], [12, 5], [8, 14]], (x, y) => R[P.idx(0.4 + (x - 4) / 5, x, y)]); P.line(4, 5, 12, 5, R[0]); P.set(7, 4, '#ffffff'); return P.outline(); };
   I.orb = () => { const P = new Pix(16, 16); P.ball(8, 7, 5.5, 5.5, ramp('#b06ae0')); P.set(6, 5, '#fff'); P.box(4, 12, 8, 3, ramp('#ffd84a')); return P.outline(); };
   I.gold = () => { const P = new Pix(16, 16); const R = ramp('#ffd84a');
     for (const [x, y] of [[5, 12], [10, 12], [8, 10], [6, 8], [11, 9], [8, 6]]) P.ball(x, y, 3, 1.6, R); return P.outline(); };
@@ -479,21 +585,25 @@
     P.poly([[2, 13], [2, 5], [5, 9], [8, 3], [11, 9], [14, 5], [14, 13]], (x, y) => R[P.idx(0.5 + (y - 3) / 10, x, y)]);
     P.set(8, 9, '#ff4a6a'); P.set(4, 11, '#4ac0ff'); P.set(12, 11, '#4ac0ff'); return P.outline(); };
   I.pearl = () => { const P = new Pix(16, 16); P.ball(8, 9, 6, 6, ramp('#f0f0ff')); P.set(6, 6, '#ffffff'); P.set(10, 12, '#c8c8f0'); return P.outline(); };
+  // 素材：かけらの形に、地域の印（琥珀=しずく、青銅=歯車、すいしょう=ひし形、金ぱく=薄い板）
   I.shard = (t) => { const P = new Pix(16, 16); const R = ramp({ amber: '#e8902a', bronze: '#c08a40', crystal: '#9ae8ff', gold: '#ffd84a' }[t] || '#cccccc');
-    P.poly([[6, 2], [11, 5], [12, 12], [7, 14], [3, 9]], (x, y) => R[P.idx(0.5 + (x - 3) / 7, x, y)]); P.line(6, 2, 7, 14, R[0]); return P.outline(); };
+    if (t === 'gold') { P.poly([[2, 6], [12, 3], [14, 10], [4, 13]], (x, y) => R[P.idx(0.4 + (x - 2) / 10, x, y)]); P.line(4, 7, 11, 5, R[0]); }
+    else if (t === 'bronze') { P.ball(8, 8, 5.5, 5.5, R); P.ball(8, 8, 2, 2, ramp('#5a3a20')); for (let a = 0; a < 8; a++) P.set(8 + Math.cos(a * Math.PI / 4) * 6.5, 8 + Math.sin(a * Math.PI / 4) * 6.5, R[3]); }
+    else if (t === 'amber') { P.ball(8, 10, 4.5, 4.5, R); P.poly([[8, 1], [12, 8], [4, 8]], R[2]); P.set(7, 9, '#fff2c0'); P.set(9, 11, '#7a4a10'); }
+    else { P.poly([[8, 1], [13, 8], [8, 15], [3, 8]], (x, y) => R[P.idx(0.4 + (x - 3) / 6, x, y)]); P.line(8, 1, 8, 15, R[0]); }
+    return P.outline(); };
   I.smoke = () => { const P = new Pix(16, 16); P.ball(8, 10, 5, 5, ramp('#5a5a6a')); P.ball(7, 4, 3, 2.5, ramp('#d8d8e0')); P.ball(11, 3, 2, 2, ramp('#e8e8f0')); P.line(10, 6, 12, 4, '#c0392b'); return P.outline(); };
-  I.powder = () => { const P = new Pix(16, 16); P.ball(8, 10, 5.5, 4.5, ramp('#d8c8f0')); P.rect(6, 3, 4, 3, '#8a6aa8'); P.set(4, 6, '#c8b8ff'); P.set(12, 7, '#c8b8ff'); return P.outline(); };
-  I.charm = () => { const P = new Pix(16, 16); P.box(4, 1, 8, 14, ramp('#f5e6c0')); P.ball(8, 7, 2.5, 3, ramp('#ff6a2a')); P.line(6, 11, 10, 11, '#c0392b'); P.line(6, 13, 10, 13, '#c0392b'); return P.outline(); };
+  I.powder = () => { const P = new Pix(16, 16); P.ball(8, 10, 5.5, 4.5, ramp('#d8c8f0')); P.rect(6, 3, 4, 3, '#8a6aa8'); P.set(4, 6, '#c8b8ff'); P.set(12, 7, '#c8b8ff'); P.rect(6, 10, 4, 1, '#6a4a8a'); return P.outline(); };
 
   // ---------------- 地形タイル（32×32） ----------------
   const THEME = {
     brick:   { floor: '#c4875a', floor2: '#b07448', wall: '#a8502e', top: '#4a2418', deco: '#6a9a3a', bg: '#140a08', light: '#ffb060' },
-    roots:   { floor: '#8f8a5a', floor2: '#7a754a', wall: '#8a5a3a', top: '#2e2214', deco: '#5aa040', root: '#5a3a1e', bg: '#0c0a04', light: '#ffcf70' },
-    water:   { floor: '#7fa2ac', floor2: '#6b8e98', wall: '#3f7f96', top: '#16303e', deco: '#ff8fb8', bg: '#04101a', light: '#9ae8ff' },
+    roots:   { floor: '#a09a64', floor2: '#8c8656', wall: '#8a5a3a', top: '#2e2214', deco: '#5aa040', root: '#5a3a1e', bg: '#0c0a04', light: '#ffcf70' },
+    water:   { floor: '#8ab4c0', floor2: '#76a0ae', wall: '#3f7f96', top: '#16303e', deco: '#ff8fb8', bg: '#04101a', light: '#9ae8ff' },
     orb:     { floor: '#c8a070', floor2: '#b48c5e', wall: '#b07a3a', top: '#3a2410', deco: '#ffd84a', bg: '#100804', light: '#ffd070' },
-    garden:  { floor: '#76935a', floor2: '#678250', wall: '#6a7a4a', top: '#1e2a16', deco: '#e05a8a', root: '#4a3018', bg: '#060a04', light: '#c8ff8a' },
-    sunken:  { floor: '#6a8a96', floor2: '#5a7a86', wall: '#4a6f80', top: '#0e2430', deco: '#ffd84a', bg: '#030c12', light: '#7ad0ff' },
-    crystal: { floor: '#5c5c7e', floor2: '#4e4e6e', wall: '#4a4a78', top: '#12122a', deco: '#7af0ff', bg: '#04040c', light: '#7af0ff' },
+    garden:  { floor: '#84a862', floor2: '#749656', wall: '#6a7a4a', top: '#1e2a16', deco: '#e05a8a', root: '#4a3018', bg: '#060a04', light: '#c8ff8a' },
+    sunken:  { floor: '#78a0ae', floor2: '#68909e', wall: '#4a6f80', top: '#0e2430', deco: '#ffd84a', bg: '#030c12', light: '#7ad0ff' },
+    crystal: { floor: '#6c6c98', floor2: '#5e5e88', wall: '#4a4a78', top: '#12122a', deco: '#7af0ff', bg: '#04040c', light: '#7af0ff' },
     gold:    { floor: '#b89a5a', floor2: '#a4884c', wall: '#a07a30', top: '#34260c', deco: '#ffe060', bg: '#0c0802', light: '#ffe080' },
     shrine:  { floor: '#c4a6dc', floor2: '#b094c8', wall: '#8a6ab0', top: '#26183a', deco: '#ffd84a', bg: '#0a0614', light: '#ffd8ff' },
   };
@@ -632,6 +742,7 @@
     }
     s.take.left = { walk: s.take.right.walk.map(flipCanvas), atk: flipCanvas(s.take.right.atk) };
     s.sai = [drawSai(0).canvas(), drawSai(1).canvas()];
+    s.portrait = { take: portraitTake().canvas(), sai: portraitSai().canvas() };
     s.enemy = {};
     for (const k of Object.keys(E)) s.enemy[k] = [E[k](0).canvas(), E[k](1).canvas()];
     s.icon = {};
@@ -663,12 +774,12 @@
   };
   // 会話の顔絵（顔のあたりを拡大）
   SP.portraitURL = function (who, size) {
-    const src = who === 'sai' ? SP.s.sai[0] : SP.s.take.down.walk[0];
+    const src = who === 'sai' ? SP.s.portrait.sai : SP.s.portrait.take;
     const c = document.createElement('canvas');
     c.width = c.height = size || 64;
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
-    g.drawImage(src, 2, 0, 28, 28, 0, 0, c.width, c.height);
+    g.drawImage(src, 0, 0, c.width, c.height);
     return c.toDataURL();
   };
 

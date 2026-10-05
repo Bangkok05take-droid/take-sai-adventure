@@ -13,7 +13,7 @@ const { start, BASE } = require('./serve');
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     g.fillStyle = '#ffb347'; g.beginPath(); g.arc(32, 32, 31, 0, Math.PI * 2); g.fill();
-    g.drawImage(TS.Sprites.s.take.down.walk[0], 4, 0, 24, 24, 4, 4, 56, 56);
+    g.drawImage(TS.Sprites.s.portrait.take, 4, 0, 56, 56, 2, 4, 60, 60);
     return c.toDataURL('image/png');
   });
   fs.writeFileSync(path.join(__dirname, '..', 'favicon.png'), Buffer.from(url.split(',')[1], 'base64'));

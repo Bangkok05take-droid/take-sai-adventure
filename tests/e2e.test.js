@@ -192,7 +192,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     // 中央に広い空き部屋を作る（テスト用）
     const m = r.map; const x0 = 8, y0 = 6, w = 17, h = 13;
     for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) m.tiles[y * m.w + x] = 1;
-    m.rooms.push({ id: 99, x: x0, y: y0, w, h });
+    m.rooms = [{ id: 99, x: x0, y: y0, w, h }]; // ほかの部屋とは重ねない
     r.stairs = { x: 1, y: 1 }; r.player.x = 16; r.player.y = 12; r.player.hp = r.player.maxhp = 999;
     TS.Game.updateVision(r); TS.Render.resetLayer && TS.Render.resetLayer();
   });
@@ -349,7 +349,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert((await run()).turn === b.turn, 'no time passes in menu');
     await p.evaluate(() => { TS.UI.S.run.player.hp = 5; });
     await p.tap('#b-items'); await p.waitForTimeout(150);
-    await p.tap('.row:has-text("薬草")'); await p.waitForTimeout(100);
+    await p.tap('.row:has-text("やくそう")'); await p.waitForTimeout(100);
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(200);
     const a = await run();
     assert(a.turn === b.turn + 1 && a.hp >= 30, JSON.stringify(a));
@@ -411,7 +411,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
   await test('お宝を確認して売却 → 施設一覧で価格・効果・条件を見て購入し、村の絵と次の目標が変わる', async () => {
     await p.tap('.fac[data-fac="shop"]'); await p.waitForTimeout(150);
     await p.tap('.tabs button[data-t="sell"]'); await p.waitForTimeout(100);
-    await p.tap('.row:has-text("翡翠の象")'); await p.waitForTimeout(100);
+    await p.tap('.row:has-text("ひすいの象")'); await p.waitForTimeout(100);
     assert(await p.isVisible('text=売りますか'));
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
     await p.tap('.modal-buttons button'); await p.waitForTimeout(100);

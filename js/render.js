@@ -325,6 +325,12 @@
     // 木々
     const tree = (x, y, s) => { P.box(x - 2, y, 5, 12 * s, R('#6a4228')); P.ball(x, y - 4, 11 * s, 9 * s, R('#3f8a3a')); P.ball(x - 5, y - 8, 6 * s, 5 * s, R('#4fa046')); };
     tree(130, 66, 1); tree(196, 70, 0.9); tree(372, 66, 1.1);
+    // ヤシの木と花の茂み（明るい王道ファンタジーの村らしく）
+    const palm = (x, y) => { for (let i = 0; i < 22; i++) P.rect(x + Math.round(Math.sin(i / 7) * 2), y - i, 3, 1, R('#8a5a30')[i % 3 === 0 ? 3 : 2]);
+      for (let a = 0; a < 6; a++) { const ang = a / 6 * Math.PI * 2; for (let r = 0; r < 10; r++) P.set(x + 1 + Math.cos(ang) * r, y - 22 + Math.sin(ang) * r * 0.6 + r * r * 0.05, R('#3fa040')[r < 4 ? 1 : 2]); } };
+    palm(100, 150); palm(256, 150); palm(380, 150);
+    const bush = (x, y) => { P.ball(x, y, 6, 4, R('#3f9a3a')); P.ball(x - 2, y - 2, 1.5, 1.5, R('#ff8fb8')); P.ball(x + 3, y - 1, 1.5, 1.5, R('#ffe04a')); };
+    bush(6, 150); bush(98, 196); bush(250, 196); bush(330, 196);
     // 地面（草）
     for (let y = 76; y < 200; y++) for (let x = 0; x < RD.VW; x++) {
       const n = SP.hash(x >> 2, y >> 2, 3) & 7;
@@ -350,6 +356,7 @@
       const x = 10, y = lv.stage >= 2 ? 84 : 96, w = lv.stage >= 3 ? 84 : lv.stage >= 2 ? 76 : 64, h = 150 - y;
       P.box(x, y + 12, w, h - 12, R('#c88a5a'));
       P.rect(x + 3, y + 16, w - 6, h - 20, R('#e8b88a')[2]);
+      P.rect(x + 6, y + 18, 10, 8, '#ffe8a0'); P.rect(x + w - 16, y + 18, 10, 8, '#ffe8a0'); P.rect(x + 10, y + 18, 1, 8, '#8a5a3a'); P.rect(x + w - 12, y + 18, 1, 8, '#8a5a3a');
       for (let i = 0; i < Math.ceil(w / 10) + 1; i++) P.rect(x - 3 + i * 10, y, 10, 12, i % 2 ? '#f6f0e6' : '#e24a4a');
       P.rect(x - 3, y + 11, w + 6, 2, '#8a3a2a');
       P.rect(x + 6, y + h - 20, w - 12, 6, R('#8a5a3a')[2]);
