@@ -142,6 +142,41 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(a.turn === b.turn + 1 && a.x === b.x, 'center wait');
   });
 
+  await test('ダッシュ：オンで押し続けると連続移動（1マス1ターン）、離すと即停止、壁で止まり押し直すまで再開しない', async () => {
+    await p.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; r.floorItems = [];
+      const room = r.map.rooms.slice().sort((a, b) => b.w - a.w)[0]; r.player.x = room.x; r.player.y = room.y; r._room = room; TS.Game.updateVision(r); });
+    await p.tap('#b-dash'); await p.waitForTimeout(100);
+    assert(await p.$eval('#b-dash', (b) => b.classList.contains('on') && b.textContent.includes('オン')), 'dash on shown');
+    const press = (d) => p.evaluate((d) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 7 })), d);
+    const release = (d) => p.evaluate((d) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 7 })), d);
+    const b0 = await run();
+    await press('right'); await p.waitForTimeout(170); await release('right');
+    const b1 = await run();
+    assert(b1.x - b0.x >= 2 && b1.turn - b0.turn === b1.x - b0.x, 'moved while held ' + JSON.stringify([b0, b1]));
+    await p.waitForTimeout(400);
+    const b2 = await run();
+    assert(b2.turn === b1.turn && b2.x === b1.x, 'stops on release');
+    // 壁まで押し続ける → 止まって、押したままでも再開しない
+    await press('right'); await p.waitForTimeout(2500);
+    const b3 = await run();
+    const wall = await p.evaluate(() => { const r = TS.UI.S.run; return r._room.x + r._room.w - 1; });
+    assert(b3.x === wall, 'stopped at wall ' + b3.x + ' vs ' + wall);
+    await p.waitForTimeout(400);
+    const b4 = await run();
+    assert(b4.turn === b3.turn, 'no restart while held');
+    await release('right');
+    // メニューを開くと止まる
+    await p.evaluate(() => { const r = TS.UI.S.run; r.player.x = r._room.x; TS.Game.updateVision(r); });
+    await press('right'); await p.waitForTimeout(80);
+    await p.evaluate(() => document.querySelector('#b-menu').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })));
+    const c1 = await run(); await p.waitForTimeout(400); const c2 = await run();
+    assert(c1.turn === c2.turn, 'menu stops dash');
+    await release('right');
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
+    await p.tap('#b-dash'); await p.waitForTimeout(100);
+    assert(await p.$eval('#b-dash', (b) => !b.classList.contains('on')), 'dash off');
+  });
+
   await test('道具メニューを開いている間は時間が進まない／道具を使うと1ターン', async () => {
     const b = await run();
     await p.tap('#b-items'); await p.waitForTimeout(150);

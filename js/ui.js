@@ -29,6 +29,7 @@
     AU.setEnabled(UI.S.settings.sound);
     bindTitle(); bindVillage(); bindDungeon();
     document.addEventListener('keydown', onKey);
+    document.addEventListener('keyup', onKeyUp);
     showTitle();
     requestAnimationFrame(loop);
   }
@@ -40,6 +41,7 @@
   function save() { if (UI.started) SV.save(UI.S); }
 
   function showScreen(name) {
+    if (UI.stopDash) UI.stopDash();
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
     AU.playBgm(name === 'dungeon' ? (UI.S.run && UI.S.run.floor === D.MAX_FLOOR ? 'boss' : 'dungeon') : name === 'village' ? 'village' : 'village');
@@ -97,6 +99,7 @@
     $('modal-root').appendChild(back);
     const body = m.querySelector('.modal-body');
     if (typeof opts.html === 'string') body.innerHTML = opts.html; else if (opts.html) body.appendChild(opts.html);
+    if (UI.stopDash) UI.stopDash();
     const handle = { el: m, body, back, opts, close };
     // モーダルを開いたタップの「後から来るclick」で誤って閉じたり押したりしないよう、
     // モーダル内で押し始めた操作（またはキーボード）だけを受け付ける
@@ -188,6 +191,7 @@
       <li>壁の角をはさんだ斜めには移動・攻撃できない（敵も同じ）。</li>
       <li><b>中央の「待つ」</b>（スペース）：その場で1ターン休む。</li>
       <li>PC：矢印キー/WASDで上下左右、Q・E・Z・C（またはテンキー7・9・1・3）で斜め。</li>
+      <li><b>ダッシュ</b>（PCはX）：オンにして方向ボタンを押し続けると、その方向へ連続で進む（1マスごとに1ターン）。指を離すとすぐ止まる。敵が見えた・ダメージ・壁・分かれ道・道具・階段・帰還地点・HPや満腹度が危ないときは自動で止まり、押し直すまで再開しない。敵には自動で攻撃しない。</li>
       <li><b>足元</b>（Enter）：階段を降りる・道具を拾う・帰還する。</li>
       <li><b>道具</b>（I）：使う・装備する・置く。<b>メニュー</b>（Esc）：地図・説明・音。</li>
     </ul>
@@ -195,7 +199,6 @@
     <ul>
       <li>移動・攻撃・待つ・道具を使う・装備変更で1ターン。そのあと敵が1回ずつ動く。</li>
       <li>壁にぶつかる、メニューや道具の説明を見るだけなら時間は進まない。</li>
-      <li>ボタン押しっぱなしで連続移動。敵が見えたり何か起きると止まる。</li>
     </ul>
     <h3>満腹度とHP</h3>
     <ul>
@@ -562,20 +565,26 @@
         e.preventDefault();
         b.classList.add('pressed');
         try { b.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
-        startHold(b.dataset.dir);
+        pressDir(b.dataset.dir, 'ptr');
       });
-      const end = () => { b.classList.remove('pressed'); stopHold(); };
+      const end = () => { b.classList.remove('pressed'); releaseDir('ptr'); };
       b.addEventListener('pointerup', end);
       b.addEventListener('pointercancel', end);
       b.addEventListener('lostpointercapture', end);
     }
     const act = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); if (UI.modals.length) return; AU.sfx('tap'); fn(); });
-    $('b-wait').addEventListener('pointerdown', (e) => { e.preventDefault(); if (UI.modals.length) return; AU.sfx('tap'); doAct({ type: 'wait' }); });
+    act('b-wait', () => doAct({ type: 'wait' }));
     act('b-items', openItems);
     act('b-menu', dungeonMenu);
     act('b-foot', footAction);
+    act('b-dash', toggleDash);
     $('h-map').addEventListener('click', () => { cycleMap(); });
     $('log').addEventListener('click', () => { if (!UI.modals.length) showLog(); });
+    // 画面が隠れたら（アプリ切り替えなど）ダッシュを止める
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stopDash(); });
+    window.addEventListener('blur', stopDash);
+    window.addEventListener('pagehide', stopDash);
+    updateDashButton();
   }
 
   function cycleMap() {
@@ -585,25 +594,62 @@
     save();
   }
 
-  // 押しっぱなし移動：1回目は即時、その後は一定間隔。何か起きたら止まる。
-  function startHold(dir) {
-    stopHold();
-    if (UI.modals.length) return;
-    const r = doAct({ type: 'move', dir });
-    if (!r || !calm(r)) return;
-    UI.hold = { dir, timer: setTimeout(function rep() {
-      if (!UI.hold || UI.modals.length) return;
-      const r2 = doAct({ type: 'move', dir });
-      if (!r2 || !calm(r2)) { stopHold(); return; }
-      UI.hold.timer = setTimeout(rep, 150);
-    }, 380) };
+  // ---- ダッシュ ----
+  const DASH_MS = 75;
+  function toggleDash() {
+    UI.S.settings.dash = !UI.S.settings.dash;
+    stopDash();
+    updateDashButton();
+    toast(UI.S.settings.dash ? 'ダッシュ：オン' : 'ダッシュ：オフ');
+    save();
   }
-  function stopHold() { if (UI.hold) { clearTimeout(UI.hold.timer); UI.hold = null; } }
-  // 連続移動を続けてよいか（移動だけで、新しい敵も見えていない）
-  function calm(r) {
-    if (!r.consumed) return false;
-    if (r.events.some((e) => e.t !== 'move')) return false;
-    return G.visibleEnemies(UI.S.run).length === 0;
+  function updateDashButton() {
+    const b = $('b-dash');
+    const on = !!(UI.S && UI.S.settings.dash);
+    b.classList.toggle('on', on);
+    b.innerHTML = 'ダッシュ<small>' + (on ? 'オン' : 'オフ') + '</small>';
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  // 方向入力：ダッシュがオフなら1回押すごとに1歩。オンなら押している間だけ連続移動。
+  function pressDir(dir, source) {
+    if (UI.modals.length) return;
+    if (!UI.S.settings.dash) { stopDash(); doAct({ type: 'move', dir }); return; }
+    startDash(dir, source);
+  }
+  function releaseDir(source) { if (UI.dash && UI.dash.source === source) stopDash(); }
+  function startDash(dir, source) {
+    stopDash();
+    const run = UI.S.run;
+    if (!run || run.over) return;
+    const st = { dir, source, timer: null, stopped: false };
+    UI.dash = st;
+    const [dx, dy] = G.DIRS[dir];
+    // 押した方向に敵がいれば、その1回だけ通常の攻撃をして止まる（自動で攻撃し続けない）
+    if (G.enemyAt(run, run.player.x + dx, run.player.y + dy)) { doAct({ type: 'move', dir }); st.stopped = true; return; }
+    const tick = () => {
+      if (UI.dash !== st || st.stopped) return;
+      if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden) { stopDash(); return; }
+      const stop = doDashStep(dir);
+      if (stop) {
+        st.stopped = true; // 指を離して押し直すまで再開しない
+        if (['enemy', 'damage', 'danger', 'attackBlocked'].includes(stop)) toast('ダッシュ停止：' + G.DASH_STOP[stop]);
+        return;
+      }
+      st.timer = setTimeout(tick, DASH_MS);
+    };
+    tick();
+  }
+  function stopDash() { if (UI.dash) { clearTimeout(UI.dash.timer); UI.dash = null; } }
+  UI.stopDash = stopDash;
+
+  function doDashStep(dir) {
+    const S = UI.S;
+    if (!S.run || S.run.over || UI.modals.length) return 'over';
+    const logLen = S.run.log.length;
+    const out = G.dashStep(S, dir);
+    UI.lockUntil = performance.now() + 60;
+    afterAction(out.res, { type: 'move', dir }, logLen);
+    return out.stop;
   }
 
   function onKey(e) {
@@ -615,22 +661,27 @@
       return;
     }
     if (UI.screen !== 'dungeon' || !UI.S.run) return;
-    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right',
-      q: 'upleft', e: 'upright', z: 'downleft', c: 'downright', Home: 'upleft', PageUp: 'upright', End: 'downleft', PageDown: 'downright' };
-    const num = { Numpad8: 'up', Numpad2: 'down', Numpad4: 'left', Numpad6: 'right', Numpad7: 'upleft', Numpad9: 'upright', Numpad1: 'downleft', Numpad3: 'downright' };
-    const dir = num[e.code] || map[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    const dir = keyDir(e);
     if (dir) {
       e.preventDefault();
-      if (e.repeat && UI.lastKeyResult && !calm(UI.lastKeyResult)) return; // 何か起きたらキーを離すまで止める
-      UI.lastKeyResult = doAct({ type: 'move', dir }) || UI.lastKeyResult;
+      if (e.repeat) return; // キーの自動連打では動かない（ダッシュは押している間だけ）
+      pressDir(dir, 'key:' + e.code);
       return;
     }
     if (e.repeat) return;
     if (e.key === ' ' || e.key === '.' || e.code === 'Numpad5') { e.preventDefault(); doAct({ type: 'wait' }); }
     else if (e.key === 'i' || e.key === 'I') openItems();
+    else if (e.key === 'x' || e.key === 'X' || e.key === 'Shift') toggleDash();
     else if (e.key === 'Escape' || e.key === 'm' || e.key === 'M') dungeonMenu();
     else if (e.key === 'Enter') footAction();
   }
+  function keyDir(e) {
+    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right',
+      q: 'upleft', e: 'upright', z: 'downleft', c: 'downright', Home: 'upleft', PageUp: 'upright', End: 'downleft', PageDown: 'downright' };
+    const num = { Numpad8: 'up', Numpad2: 'down', Numpad4: 'left', Numpad6: 'right', Numpad7: 'upleft', Numpad9: 'upright', Numpad1: 'downleft', Numpad3: 'downright' };
+    return num[e.code] || map[e.key && e.key.length === 1 ? e.key.toLowerCase() : e.key] || null;
+  }
+  function onKeyUp(e) { releaseDir('key:' + e.code); }
 
   /* 行動の実行。入力ロック中（直前の行動の直後）は無視して予約しない。 */
   function doAct(action) {
@@ -642,17 +693,21 @@
     const logLen = S.run.log.length;
     const res = G.act(S, action);
     if (!res.consumed && action.type === 'move' && !res.events.length) AU.sfx('bump');
+    afterAction(res, action, logLen);
+    return res;
+  }
+  function afterAction(res, action, logLen) {
+    const S = UI.S;
     handleEvents(res.events, action);
     save();
     updateHud();
     pushLog(logLen);
-    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, 350); return res; }
-    if (res.floorChanged) { AU.playBgm(S.run.floor === D.MAX_FLOOR ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階'); }
+    if (S.run && S.run.over) { stopDash(); setTimeout(handleRunOver, 350); return; }
+    if (res.floorChanged) { stopDash(); AU.playBgm(S.run.floor === D.MAX_FLOOR ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階'); }
     // 階段などに乗ったら確認
     const ev = res.events;
-    if (ev.some((e) => e.t === 'onStairs')) { stopHold(); setTimeout(() => promptStairs(), 60); }
-    else if (ev.some((e) => e.t === 'onReturnPoint' || e.t === 'onPortal')) { stopHold(); setTimeout(() => promptReturnPoint(), 60); }
-    return res;
+    if (ev.some((e) => e.t === 'onStairs')) { stopDash(); setTimeout(() => promptStairs(), 60); }
+    else if (ev.some((e) => e.t === 'onReturnPoint' || e.t === 'onPortal')) { stopDash(); setTimeout(() => promptReturnPoint(), 60); }
   }
   UI.doAct = doAct;
 
@@ -775,7 +830,7 @@
   function openItems() {
     const run = UI.S.run;
     if (!run || run.over || UI.modals.length) return;
-    stopHold();
+    stopDash();
     const h = modal({ title: '道具', right: `${run.bag.length}/${D.BAG_SIZE}`, buttons: [{ label: '閉じる' }] });
     let html = '<p class="note">道具を見ている間は時間が進みません。</p><div class="list">';
     if (!run.bag.length) html += '<p>何も持っていない。</p>';
@@ -825,7 +880,7 @@
 
   function dungeonMenu() {
     if (UI.modals.length) return;
-    stopHold();
+    stopDash();
     const run = UI.S.run;
     const p = run.player;
     const nextExp = D.EXP_TABLE[p.lvl + 1];

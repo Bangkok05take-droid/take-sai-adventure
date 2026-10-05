@@ -194,6 +194,80 @@ test('吹き矢ザルは斜め一直線からも撃つが、角越しには撃�
   assert(!G.clearLine(S.run, mk, S.run.player, 4), 'corner blocks');
 });
 
+console.log('ダッシュ');
+// 部屋(2..21 x 2..13) の右に長い通路、途中に分かれ道
+function corridorFloor(S) {
+  bigRoomFloor(S);
+  const m = S.run.map;
+  for (let x = 22; x < 31; x++) m.tiles[8 * m.w + x] = DG.CORR;   // 通路 y=8
+  for (let y = 9; y < 12; y++) m.tiles[y * m.w + 27] = DG.CORR;   // x=27 で下へ分岐
+  S.run.stairs = { x: 3, y: 13 };
+  G.updateVision(S.run);
+}
+function dashUntilStop(S, dir, max = 50) {
+  let n = 0, out;
+  do { out = G.dashStep(S, dir); if (out.res.consumed) n++; } while (!out.stop && n < max);
+  return { n, stop: out.stop };
+}
+test('ダッシュは1マスごとに1ターン進み、敵も毎回1回行動。壁の前で止まる', () => {
+  const S = newRun(60); bigRoomFloor(S);
+  const run = S.run;
+  // 見えない場所の敵（部屋の外の別区画）
+  const m = run.map; m.tiles[20 * m.w + 30] = DG.FLOOR; m.rooms.push({ id: 1, x: 30, y: 20, w: 1, h: 1 });
+  const e = addEnemy(S, 'turtle', 30, 20); e.type = 'frog';
+  run.player.x = 5; run.player.y = 4; G.updateVision(run);
+  const t0 = run.turn;
+  const r = dashUntilStop(S, 'right');
+  eq(r.stop, 'wall'); eq(run.player.x, 21); eq(run.turn - t0, r.n); eq(r.n, 16);
+  eq(e.acts, r.n, 'enemy acted once per step');
+});
+test('ダッシュ：敵が見えたら止まる／押した先の敵には自動攻撃しない', () => {
+  const S = newRun(61); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 15, 12);
+  let out = G.dashStep(S, 'right');
+  eq(out.stop, 'enemy'); eq(S.run.player.x, 6);
+  e.x = 7; e.y = 5; G.updateVision(S.run);
+  const t = S.run.turn;
+  out = G.dashStep(S, 'right');
+  eq(out.stop, 'attackBlocked'); eq(e.hp, 999); eq(S.run.turn, t, 'no turn');
+});
+test('ダッシュ：通路の分かれ道・部屋の出入りで止まる', () => {
+  const S = newRun(62); corridorFloor(S);
+  const run = S.run; run.player.x = 18; run.player.y = 8; G.updateVision(run);
+  let r = dashUntilStop(S, 'right');
+  eq(r.stop, 'room'); eq(run.player.x, 23, 'stop after leaving room (doorway counts as room)');
+  r = dashUntilStop(S, 'right');
+  eq(r.stop, 'branch'); eq(run.player.x, 27);
+  r = dashUntilStop(S, 'right');
+  eq(r.stop, 'wall'); eq(run.player.x, 30);
+});
+test('ダッシュ：足元の道具・階段で止まる', () => {
+  const S = newRun(63); bigRoomFloor(S);
+  const run = S.run;
+  run.floorItems.push({ x: 9, y: 5, item: G.makeItem(S, 'herb') });
+  let r = dashUntilStop(S, 'right');
+  eq(r.stop, 'item'); eq(run.player.x, 9);
+  run.player.x = 3; run.player.y = 5; run.stairs = { x: 3, y: 9 }; G.updateVision(run);
+  r = dashUntilStop(S, 'down');
+  eq(r.stop, 'stairs'); eq(run.player.y, 9);
+});
+test('ダッシュ：被ダメージ・HP危険域・満腹度危険域で止まる', () => {
+  const S = newRun(64); bigRoomFloor(S);
+  const p = S.run.player;
+  p.hunger = 0; p.starveAcc = 1; p.hp = 25;
+  let out = G.dashStep(S, 'right'); eq(out.stop, 'damage');
+  p.hunger = 50; p.hp = 5;
+  out = G.dashStep(S, 'right'); eq(out.stop, 'danger');
+  p.hp = p.maxhp; p.hunger = 8;
+  out = G.dashStep(S, 'right'); eq(out.stop, 'danger');
+});
+test('ダッシュ：帰還地点で止まる', () => {
+  const S = newRun(65); bigRoomFloor(S);
+  S.run.returnPoint = { x: 8, y: 5 };
+  const r = dashUntilStop(S, 'right');
+  eq(r.stop, 'returnPoint'); eq(S.run.player.x, 8);
+});
+
 console.log('道具・装備・満腹度');
 test('薬草で回復、食料で満腹度回復、使うとターン消費', () => {
   const S = newRun(10); bigRoomFloor(S);

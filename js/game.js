@@ -356,6 +356,53 @@
     }
   }
 
+  // ---------- ダッシュ（安全な連続移動） ----------
+  /* 1マスだけ通常の移動をし（1ターン）、続けてよいかを判定する。
+   * 戻り値 { res, stop }。stop が null 以外ならダッシュを止める（理由の文字列）。
+   * 敵への自動攻撃はしない。 */
+  G.DASH_STOP = { enemy: '敵が見えた', attackBlocked: '前に敵がいる', damage: 'ダメージを受けた', wall: '壁の前', branch: '分かれ道',
+    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', danger: 'HP・満腹度に注意', room: '部屋の出入り', over: '探索終了' };
+  G.dashStep = function (S, dir) {
+    const run = S.run;
+    const none = { res: { consumed: false, events: [] }, stop: 'over' };
+    if (!run || run.over || !DIRS[dir]) return none;
+    const p = run.player, [dx, dy] = DIRS[dir];
+    if (!G.canStep(run.map, p.x, p.y, dx, dy)) { p.dir = dir; return { res: { consumed: false, events: [] }, stop: 'wall' }; }
+    if (G.enemyAt(run, p.x + dx, p.y + dy)) return { res: { consumed: false, events: [] }, stop: 'attackBlocked' };
+    const hp = p.hp;
+    const roomBefore = G.roomForView(run, p.x, p.y);
+    const from = { x: p.x, y: p.y };
+    const res = G.act(S, { type: 'move', dir });
+    if (!res.consumed) return { res, stop: 'wall' };
+    return { res, stop: G.dashCheck(S, dir, hp, roomBefore, from, res) };
+  };
+  G.dashCheck = function (S, dir, hpBefore, roomBefore, from, res) {
+    const run = S.run, p = run.player;
+    if (run.over) return 'over';
+    const ev = res.events;
+    if (p.hp < hpBefore || ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
+    if (G.visibleEnemies(run).length) return 'enemy';
+    if (G.onStairs(run)) return 'stairs';
+    if (G.onReturnPoint(run) || G.onPortal(run)) return 'returnPoint';
+    if (G.itemAt(run, p.x, p.y) || ev.some((e) => e.t === 'pickup' || e.t === 'gold' || e.t === 'bagFull')) return 'item';
+    if (p.hp <= p.maxhp * 0.3 || p.hunger <= 10 || ev.some((e) => e.t === 'warn')) return 'danger';
+    if (G.roomForView(run, p.x, p.y) !== roomBefore) return 'room';
+    const [dx, dy] = DIRS[dir];
+    if (!G.canStep(run.map, p.x, p.y, dx, dy)) return 'wall';
+    if (G.enemyAt(run, p.x + dx, p.y + dy)) return 'attackBlocked';
+    // 通路の分かれ道：来た方向以外に2つ以上の道がある
+    if (!DG.roomAt(run.map, p.x, p.y)) {
+      let exits = 0;
+      for (const [ox, oy] of Object.values(DIRS4)) {
+        const nx = p.x + ox, ny = p.y + oy;
+        if (nx === from.x && ny === from.y) continue;
+        if (DG.passable(run.map, nx, ny)) exits++;
+      }
+      if (exits >= 2) return 'branch';
+    }
+    return null;
+  };
+
   // ---------- 道具 ----------
   G.findBag = (run, uid) => run.bag.find((it) => it.uid === uid) || null;
 
