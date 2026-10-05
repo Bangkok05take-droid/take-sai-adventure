@@ -32,18 +32,21 @@
     <section id="screen-village" class="screen">
       <header class="vhud">
         <div class="vhud-item"><span class="lbl">村の資金</span><b id="v-funds">0</b>G</div>
-        <div class="vhud-item"><span class="lbl">村</span><b id="v-stage">小さなお店</b></div>
+        <div class="vhud-item"><span class="lbl" id="v-stage-lbl">村</span><b id="v-stage">小さなお店</b></div>
         <div class="vhud-item"><span class="lbl">最深</span><b id="v-best">-</b></div>
         <button id="v-menu" class="icon-btn" aria-label="メニュー">≡</button>
       </header>
+      <div id="v-goal" class="vgoal"></div>
       <div id="village-view"><canvas id="village-canvas"></canvas></div>
       <div class="vbuttons">
         <button data-fac="shop" class="fac"><span class="ico">🏪</span>サイの店</button>
         <button data-fac="storage" class="fac"><span class="ico">📦</span>倉庫</button>
         <button data-fac="smith" class="fac"><span class="ico">🔨</span>鍛冶屋</button>
+        <button data-fac="diner" class="fac"><span class="ico">🍛</span>食堂</button>
+        <button data-fac="museum" class="fac"><span class="ico">🏛️</span>展示室</button>
         <button data-fac="develop" class="fac"><span class="ico">🏮</span>村の発展</button>
         <button data-fac="bag" class="fac"><span class="ico">🎒</span>持ち物</button>
-        <button data-fac="depart" class="fac depart"><span class="ico">🧭</span>遺跡へ出発</button>
+        <button data-fac="depart" class="fac depart"><span class="ico">🧭</span>出発</button>
       </div>
     </section>
 

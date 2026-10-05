@@ -214,9 +214,13 @@
     </ul>
     <h3>村</h3>
     <ul>
-      <li>サイの店：お宝を売る・食料や薬を買う。無料の貸出品（木刀・おにぎり）もある。</li>
-      <li>倉庫：大事な物を預けておけば、倒れても失わない。</li>
-      <li>村の発展：資金で施設を増やす。鍛冶屋で武器と盾を強化できる。</li>
+      <li><b>サイの店</b>：お宝を売る・食料や薬を買う。無料の貸出品（木刀・おにぎり）もある。</li>
+      <li><b>倉庫</b>：大事な物を預けておけば、倒れても失わない（20→40→60→80枠）。</li>
+      <li><b>村の発展</b>：施設と飾りの価格・効果・解放条件を見て建てる。画面上に「次の目標」が出る。</li>
+      <li><b>鍛冶屋</b>：武器・盾を強化（設備しだいで+3→+5→+8。+4以降は深い階の素材が必要）。</li>
+      <li><b>サイの食堂</b>：出発前に料理を1品。次の探索だけ能力が上がる。</li>
+      <li><b>お宝展示室</b>：珍しいお宝を売らずに寄贈して飾れる。集めると称号と特別な飾りが解放。</li>
+      <li>深い階ほど高価なお宝と素材が見つかる。素材は持ち帰ると素材箱へ。</li>
     </ul></div>`;
   function showHelp(cb) { modal({ title: '遊び方', html: HELP_HTML, onClose: cb }); }
 
@@ -295,9 +299,22 @@
   function updateVillageHud() {
     const V = UI.S.village;
     $('v-funds').textContent = V.funds;
-    $('v-stage').textContent = D.VILLAGE_STAGES[V.stage].name;
+    $('v-stage').textContent = G.title(V) || D.VILLAGE_STAGES[Math.min(3, V.stage)].name;
+    $('v-stage-lbl').textContent = G.title(V) ? '称号' : '村';
     $('v-best').textContent = V.bestFloor ? '地下' + V.bestFloor + '階' : '-';
-    document.querySelector('.fac[data-fac="smith"]').classList.toggle('locked', V.stage < 3);
+    document.querySelector('.fac[data-fac="smith"]').classList.toggle('locked', !V.smithLv);
+    document.querySelector('.fac[data-fac="diner"]').classList.toggle('locked', !V.diner);
+    document.querySelector('.fac[data-fac="museum"]').classList.toggle('locked', !V.museum);
+    // 次に目指せる買い物
+    const g = G.nextGoals(UI.S);
+    const mats = Object.entries(V.materials || {}).filter(([, n]) => n > 0).map(([m, n]) => D.ITEMS[m].name.replace(/の?欠?片$/, '') + n).join(' ');
+    let goal;
+    if (g.can.length) goal = `<b class="ok">✨ ${esc(g.can[0].name)}</b> が建てられます（${g.can[0].price}G）${g.can.length > 1 ? ` ほか${g.can.length - 1}件` : ''}`;
+    else if (g.next) goal = `🎯 次の目標：<b>${esc(g.next.name)}</b>（${g.next.price}G・あと${g.need}G）`;
+    else goal = '🏆 すべての施設が完成しました！';
+    if (V.meal) goal += `<br>🍛 次の探索の料理：${esc(D.MEALS[V.meal].name)}`;
+    if (mats) goal += `<br>🧱 素材：${esc(mats)}`;
+    $('v-goal').innerHTML = goal;
   }
   function villageChanged() { updateVillageHud(); save(); }
 
@@ -307,6 +324,8 @@
       case 'shop': return openShop('buy');
       case 'storage': return openStorage('in');
       case 'smith': return openSmith();
+      case 'diner': return openDiner();
+      case 'museum': return openMuseum();
       case 'develop': return openDevelop();
       case 'bag': return openVillageBag();
       case 'depart': return openDepart();
@@ -349,7 +368,7 @@
       } else if (t === 'sell') {
         html += '<p class="note">売ったお金は村の資金になり、探索で倒れても失いません。</p><div class="list">';
         if (!V.bag.length) html += '<p>バッグは空です。</p>';
-        for (const it of V.bag) html += itemRow(it, G.canSell(it) ? G.sellPrice(it) + 'G' : '売れない', G.canSell(it) ? '' : 'disabled');
+        for (const it of V.bag) html += itemRow(it, (G.canSell(it) ? G.sellPrice(it) + 'G' : '売れない') + (G.canDonate(V, it) ? '<br><small>展示室に未展示</small>' : ''), G.canSell(it) ? '' : 'disabled');
         html += '</div>';
       } else {
         const ls = G.loanStatus(UI.S);
@@ -394,7 +413,7 @@
   // ---- 倉庫 ----
   function openStorage(tab) {
     const V = UI.S.village;
-    const h = modal({ title: '倉庫', tabs: true, buttons: [{ label: '閉じる' }] });
+    const h = modal({ title: '倉庫', right: G.storageSize(V) + '枠', tabs: true, buttons: [{ label: '閉じる' }] });
     const tabs = h.el.querySelector('.tabs');
     tabs.innerHTML = '<button data-t="in">預ける</button><button data-t="out">取り出す</button>';
     tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { AU.sfx('tap'); render(b.dataset.t); }));
@@ -405,7 +424,8 @@
       if (!list.length) html += '<p>' + (t === 'in' ? 'バッグは空です。' : '倉庫は空です。') + '</p>';
       for (const it of list) html += itemRow(it, t === 'in' ? (G.canStore(it) ? '預ける' : '不可') : '出す', t === 'in' && !G.canStore(it) ? 'disabled' : '');
       html += '</div>';
-      if (V.stage < 2) html += '<p class="note">「村の発展」で倉庫を40枠に拡張できます。</p>';
+      const nx = ['storage2', 'storage3', 'storage4'].map(G.facility).find((f) => !G.hasFacility(V, f.id));
+      if (nx) html += `<p class="note">次の拡張：「${esc(nx.name)}」${nx.price}G（村の発展から）</p>`;
       h.body.innerHTML = html;
       h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
         const res = t === 'in' ? G.deposit(UI.S, +r.dataset.uid) : G.withdraw(UI.S, +r.dataset.uid);
@@ -418,28 +438,38 @@
   }
 
   // ---- 鍛冶屋 ----
+  function matsText(mats) { return Object.entries(mats || {}).map(([m, n]) => esc(D.ITEMS[m].name) + '×' + n).join('、'); }
+  function materialsBox(V) {
+    const all = ['amber_shard', 'bronze_shard', 'crystal_shard', 'gold_leaf'];
+    return '<div class="kv">' + all.map((m) => `<span>${esc(D.ITEMS[m].name)}</span><span>${V.materials[m] || 0}個 <small class="note">（${D.ITEMS[m].depth}階〜）</small></span>`).join('') + '</div>';
+  }
   function openSmith() {
     const V = UI.S.village;
-    if (V.stage < 3) {
-      info('鍛冶屋', `<p>鍛冶屋はまだありません。</p><p>「村の発展」で<b>${esc(D.VILLAGE_STAGES[3].name)}</b>（${D.VILLAGE_STAGES[3].cost}G）を建てると、武器と盾を強化できるようになります。</p>`);
+    if (!V.smithLv) {
+      const f = G.facility('smith1');
+      info('鍛冶屋', `<p>鍛冶屋はまだありません。</p><p>「村の発展」で<b>${esc(f.name)}</b>（${f.price}G）を建てると、武器と盾を強化できるようになります。</p>`);
       return;
     }
     const h = modal({ title: '鍛冶屋', right: V.funds + 'G', buttons: [{ label: '閉じる' }] });
     function render() {
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
       const list = V.bag.concat(V.storage).filter((i) => ['weapon', 'shield'].includes(G.def(i).type));
-      let html = '<p class="note">武器・盾を最大+3まで強化できます（バッグと倉庫の品）。</p><div class="list">';
-      if (!list.length) html += '<p>強化できる武器・盾がありません。</p>';
+      const nx = ['smith2', 'smith3'].map(G.facility).find((f) => !G.hasFacility(V, f.id));
+      let html = `<p>設備：<b>Lv${V.smithLv}</b>　強化の上限：<b>+${G.smithMax(V)}</b>${nx ? `<br><span class="note">次の設備「${esc(nx.name)}」${nx.price}G＋${matsText(nx.mats)}</span>` : ''}</p>`;
+      html += '<details><summary class="note">素材箱を見る</summary>' + materialsBox(V) + '</details><div class="list">';
+      if (!list.length) html += '<p>強化できる武器・盾がありません（バッグと倉庫の品が対象）。</p>';
       for (const it of list) {
         const ok = G.canSmith(V, it);
-        html += itemRow(it, ok ? G.smithCost(it) + 'G' : (G.def(it).loan ? '貸出品' : '最大'), ok ? '' : 'disabled');
+        const m = G.smithMats(it);
+        const right = ok ? G.smithCost(it) + 'G' + (Object.keys(m).length ? '<br><small>' + matsText(m) + '</small>' : '') : (G.def(it).loan ? '貸出品' : (it.plus || 0) >= D.SMITH.maxPlus ? '最大' : '上限');
+        html += itemRow(it, right, ok ? '' : 'disabled');
       }
       h.body.innerHTML = html + '</div>';
       h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
         const it = list.find((i) => i.uid === +r.dataset.uid);
-        if (!G.canSmith(V, it)) return;
-        const cost = G.smithCost(it);
-        confirmBox('強化', `<p><b>${esc(G.itemName(it))}</b>を <b>${cost}G</b> で+${(it.plus || 0) + 1}に強化しますか？</p><p class="note">資金 ${V.funds}G → ${V.funds - cost}G</p>`, '強化する', () => {
+        if (!G.canSmith(V, it)) { if (!G.def(it).loan && (it.plus || 0) < D.SMITH.maxPlus) info('鍛冶屋', '今の設備ではここまで。「村の発展」で鍛冶屋を拡張しよう。'); return; }
+        const cost = G.smithCost(it), m = G.smithMats(it);
+        confirmBox('強化', `<p><b>${esc(G.itemName(it))}</b>を <b>${cost}G</b>${Object.keys(m).length ? '＋' + matsText(m) : ''} で+${(it.plus || 0) + 1}に強化しますか？</p><p class="note">資金 ${V.funds}G → ${V.funds - cost}G</p>`, '強化する', () => {
           const res = G.smith(UI.S, it.uid);
           AU.sfx(res.ok ? 'levelup' : 'bump');
           villageChanged(); render();
@@ -450,31 +480,118 @@
     render();
   }
 
-  // ---- 村の発展 ----
-  function openDevelop() {
+  // ---- 村の発展（施設と飾り） ----
+  const BUILD_TALK = {
+    storage2: [['sai', '倉庫が広くなったよ！灯りも増えて、村がにぎやかになってきた。'], ['take', 'お宝をたくさん預けられるね。']],
+    smith1: [['sai', '鍛冶屋さんと屋台が来てくれたよ！夕方はいい匂いがするね。'], ['take', '装備を鍛えて、もっと奥まで行けそうだ！']],
+    diner: [['sai', '食堂を開いたよ！出発の前に、私の料理を食べていってね。'], ['take', 'サイのガパオ、楽しみだなあ。']],
+    museum: [['sai', '展示室ができたよ。珍しいお宝はここに飾れるんだ。'], ['take', '売るか飾るか、迷っちゃうね。']],
+    storage3: [['sai', '倉庫を増築したよ。二階もあるんだ。'], ['take', 'これで深い階のお宝もしまえるね。']],
+    smith2: [['sai', '鍛冶屋さん、大きな炉に大喜びだったよ。'], ['take', '+5まで鍛えられるのか…！']],
+    storage4: [['sai', '大倉庫が完成！村で一番大きな建物だよ。'], ['take', 'すごいなあ。サイのお店も有名になってきたね。']],
+    smith3: [['sai', '黄金の炉に火が入ったよ。最高の装備を作れるって！'], ['take', '30階の守り手にも負けないぞ。']],
+    lanterns: [['sai', '灯籠が並ぶと、夕方の水路がきれいだね。'], ['take', '遺跡から帰るとき、遠くからでも村が見えるよ。']],
+    garden: [['sai', '蓮の庭、気に入ってくれた？'], ['take', 'いい香り。ほっとするね。']],
+    stalls: [['sai', '屋台通りができたよ！夜までにぎやかだね。'], ['take', 'カオニャオの屋台、毎日寄っちゃいそう。']],
+    bridge: [['sai', '赤い橋がかかったよ。向こう岸まで散歩できるね。'], ['take', '今度いっしょに渡ろう。']],
+    statue: [['sai', '象の像、展示室を見に来た人がみんな触っていくよ。'], ['take', '幸運のおまじないかな。']],
+    fountain: [['sai', '噴水ができて、子どもたちが大はしゃぎ！'], ['take', '村がどんどん明るくなるね。']],
+    gate: [['sai', '黄金の門だよ。遺跡に向かうたけを見送る門。'], ['take', 'くぐるたびに、気合いが入るよ。']],
+  };
+  function facilityRow(f) {
+    const V = UI.S.village, st = G.facilityStatus(UI.S, f.id);
+    const status = st.built ? '<span class="ok">✔ 完成</span>'
+      : !st.unlocked ? '🔒 ' + st.missing.map((r) => esc(D.REQ_TEXT[r])).join('・')
+        : st.lackMats.length ? '素材不足：' + st.lackMats.map(([m, n]) => esc(D.ITEMS[m].name) + '×' + n).join('、')
+          : st.affordable ? '<span class="ok">建てられます</span>' : 'あと' + (f.price - V.funds) + 'G';
+    const cls = st.built ? 'done' : st.unlocked && st.affordable && !st.lackMats.length ? 'next' : '';
+    return `<button class="stage ${cls}" data-id="${f.id}"><div><b>${esc(f.name)}</b>　<span class="price">${st.built ? '' : f.price + 'G' + (f.mats ? '＋' + matsText(f.mats) : '')}</span></div><div class="note">${esc(f.desc)}</div><div class="cond">${status}</div></button>`;
+  }
+  function openDevelop(tab) {
     const V = UI.S.village;
-    let html = `<p>資金：<b>${V.funds}G</b></p>`;
-    for (let i = 1; i < D.VILLAGE_STAGES.length; i++) {
-      const s = D.VILLAGE_STAGES[i];
-      const cls = i <= V.stage ? 'done' : i === V.stage + 1 ? 'next' : '';
-      html += `<div class="stage ${cls}"><div><b>${i}. ${esc(s.name)}</b>　${i <= V.stage ? '✔ 完成' : s.cost + 'G'}</div><div class="note">${esc(s.desc)}</div></div>`;
-    }
-    const next = D.VILLAGE_STAGES[V.stage + 1];
-    modal({ title: '村の発展', html, buttons: next ? [
-      { label: '閉じる' },
-      { label: `${next.name}（${next.cost}G）`, cls: 'primary', disabled: V.funds < next.cost, onClick: () => {
-        confirmBox('村の発展', `<p><b>${esc(next.name)}</b>を <b>${next.cost}G</b> で作りますか？</p><p class="note">${esc(next.desc)}</p>`, '作る', () => {
-          const res = G.upgradeVillage(UI.S);
-          if (res.ok) {
-            AU.sfx('levelup'); villageChanged();
-            const lines = V.stage === 2
-              ? [['sai', '倉庫が広くなったよ！灯りも増えて、村がにぎやかになってきた。'], ['take', 'お宝をたくさん預けられるね。']]
-              : [['sai', '鍛冶屋さんと屋台が来てくれたよ！夕方はいい匂いがするね。'], ['take', '装備を鍛えて、もっと奥まで行けそうだ！']];
-            talk(lines);
-          } else info('村の発展', res.msg);
+    const h = modal({ title: '村の発展', right: V.funds + 'G', tabs: true, buttons: [{ label: '閉じる' }] });
+    const tabs = h.el.querySelector('.tabs');
+    tabs.innerHTML = '<button data-t="facility">施設</button><button data-t="decor">村の飾り</button>';
+    tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { AU.sfx('tap'); render(b.dataset.t); }));
+    function render(t) {
+      tab = t;
+      tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+      h.el.querySelector('h2 .right').textContent = V.funds + 'G';
+      let html = t === 'facility' ? '<p class="note">価格・効果・解放条件を確認して建てられます。</p>' : '<p class="note">好きな飾りを選んで村を整えよう。お宝を寄贈すると特別な飾りが解放されます。</p>';
+      html += '<div class="list">' + D.FACILITIES.filter((f) => f.kind === t).map(facilityRow).join('') + '</div>';
+      h.body.innerHTML = html;
+      h.body.querySelectorAll('.stage').forEach((r) => r.addEventListener('click', () => {
+        const f = G.facility(r.dataset.id), st = G.facilityStatus(UI.S, f.id);
+        if (st.built) return;
+        if (!st.unlocked || st.lackMats.length || !st.affordable) { info(f.name, `<p>${esc(f.desc)}</p><p>価格：${f.price}G${f.mats ? '＋' + matsText(f.mats) : ''}</p><p class="warnbox">${!st.unlocked ? '解放条件：' + st.missing.map((x) => esc(D.REQ_TEXT[x])).join('・') : st.lackMats.length ? '素材が足りません' : '資金が足りません（あと' + (f.price - V.funds) + 'G）'}</p>`); return; }
+        confirmBox(f.kind === 'decor' ? '村の飾り' : '施設', `<p><b>${esc(f.name)}</b>を <b>${f.price}G</b>${f.mats ? '＋' + matsText(f.mats) : ''} で作りますか？</p><p class="note">${esc(f.desc)}</p><p class="note">資金 ${V.funds}G → ${V.funds - f.price}G</p>`, '作る', () => {
+          const res = G.buildFacility(UI.S, f.id);
+          if (res.ok) { AU.sfx('levelup'); villageChanged(); render(tab); talk(BUILD_TALK[f.id] || [['sai', res.msg]]); }
+          else info('村の発展', res.msg);
         });
-      } },
-    ] : [{ label: '閉じる' }] });
+      }));
+    }
+    render(tab || 'facility');
+  }
+
+  // ---- サイの食堂 ----
+  function openDiner() {
+    const V = UI.S.village;
+    if (!V.diner) { const f = G.facility('diner'); info('サイの食堂', `<p>食堂はまだありません。</p><p>「村の発展」で<b>${esc(f.name)}</b>（${f.price}G）を建てると、出発前に料理を食べられます。</p>`); return; }
+    const h = modal({ title: 'サイの食堂', right: V.funds + 'G', buttons: [{ label: '閉じる' }] });
+    function render() {
+      h.el.querySelector('h2 .right').textContent = V.funds + 'G';
+      let html = `<p class="note">料理は次の探索だけ効果があります。1品だけ選べて、重ねがけはできません（帰還・敗北で終わります）。</p>`;
+      html += V.meal ? `<div class="okbox">注文済み：<b>${esc(D.MEALS[V.meal].name)}</b> — ${esc(D.MEALS[V.meal].desc)}</div>` : '';
+      html += '<div class="list">' + Object.entries(D.MEALS).map(([id, m]) => `<button class="row ${V.meal === id || V.funds < m.price ? 'disabled' : ''}" data-id="${id}"><span class="dish">🍛</span><span class="nm">${esc(m.name)}<small>${esc(m.desc)}</small></span><span class="pr">${m.price}G</span></button>`).join('') + '</div>';
+      h.body.innerHTML = html;
+      h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
+        const id = r.dataset.id, m = D.MEALS[id];
+        if (V.meal === id) return;
+        confirmBox('料理', `<p><b>${esc(m.name)}</b>を <b>${m.price}G</b> で注文しますか？</p><p class="note">${esc(m.desc)}</p>${V.meal ? `<p class="warnbox">今の注文（${esc(D.MEALS[V.meal].name)}）は取り消しになり、お金は戻りません。</p>` : ''}`, '注文する', () => {
+          const res = G.buyMeal(UI.S, id);
+          if (res.ok) { AU.sfx('buy'); villageChanged(); render(); talk([['sai', m.name + 'だね。出発前に用意しておくよ！']]); }
+          else info('サイの食堂', res.msg);
+        });
+      }));
+    }
+    render();
+  }
+
+  // ---- お宝展示室 ----
+  function openMuseum() {
+    const V = UI.S.village;
+    if (!V.museum) { const f = G.facility('museum'); info('お宝展示室', `<p>展示室はまだありません。</p><p>「村の発展」で<b>${esc(f.name)}</b>（${f.price}G）を建てると、珍しいお宝を飾れます。</p>`); return; }
+    const h = modal({ title: 'お宝展示室', right: G.donatedCount(V) + '/' + D.MUSEUM_ITEMS.length, buttons: [{ label: '閉じる' }] });
+    function render() {
+      h.el.querySelector('h2 .right').textContent = G.donatedCount(V) + '/' + D.MUSEUM_ITEMS.length;
+      let html = `<p>称号：<b>${esc(G.title(V) || 'なし')}</b></p><div class="museum">`;
+      for (const id of D.MUSEUM_ITEMS) {
+        const d = D.ITEMS[id], has = V.donated[id];
+        html += `<div class="pedestal ${has ? 'has' : ''}"><img src="${SP.iconURL(d)}" alt=""><small>${has ? esc(d.name) : '？？？'}</small></div>`;
+      }
+      html += '</div><p class="note">' + D.TITLES.map(([n, t]) => `${n}種：${esc(t)}`).join('　') + '<br>3・6・9種で特別な飾り（象の像・噴水・黄金の門）が解放されます。初めて寄贈したお宝だけ、売値の3割をお礼としてもらえます。</p>';
+      const cand = V.bag.concat(V.storage).filter((it) => D.MUSEUM_ITEMS.includes(it.id));
+      html += '<h3 class="sub">寄贈できるお宝（バッグと倉庫）</h3><div class="list">';
+      if (!cand.length) html += '<p class="note">寄贈できるお宝を持っていません。</p>';
+      for (const it of cand) html += itemRow(it, G.canDonate(V, it) ? '寄贈' : '展示済み', G.canDonate(V, it) ? '' : 'disabled');
+      h.body.innerHTML = html + '</div>';
+      h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
+        const it = cand.find((i) => i.uid === +r.dataset.uid);
+        if (!G.canDonate(V, it)) { info('展示室', '同じお宝はもう飾ってあります。売ればお金になります。'); return; }
+        const thanks = Math.floor(G.def(it).sell * D.MUSEUM_THANKS);
+        confirmBox('寄贈', `<p><b>${esc(G.itemName(it))}</b>を展示室に寄贈しますか？</p><div class="kv"><span>売ると</span><span>${G.sellPrice(it)}G</span><span>寄贈すると</span><span>お礼${thanks}G＋展示（1回だけ）</span></div>`, '寄贈する', () => {
+          const res = G.donate(UI.S, it.uid);
+          if (res.ok) {
+            AU.sfx('levelup'); villageChanged(); render();
+            const lines = [['sai', esc(G.def(it).name).replace(/&amp;/g, '&') + '、きれいに飾ったよ！']];
+            if (res.newTitle) lines.push(['sai', 'たけ、村のみんなが「' + res.newTitle + '」って呼んでるよ！']);
+            talk(lines);
+          } else info('展示室', res.msg);
+        });
+      }));
+    }
+    render();
   }
 
   // ---- 持ち物（村） ----
@@ -523,6 +640,8 @@
     let html = `<p><b>持ち物 ${V.bag.length}/${D.BAG_SIZE}</b>　武器：${w ? esc(G.itemName(w)) : 'なし'}　盾：${s ? esc(G.itemName(s)) : 'なし'}　食料：${food}個</p>`;
     html += `<div class="warnbox">⚠ 倒れると、<b>持ち物すべて</b>と<b>探索中に拾ったお金</b>を失います。<br>村の資金・倉庫・施設は失いません。</div>`;
     html += `<div class="okbox">帰還の巻物を1枚無料で持っていきます。使えばいつでも持ち物を持って帰れます。</div>`;
+    if (V.meal) html += `<div class="okbox">🍛 ${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）</div>`;
+    else if (V.diner) html += '<p class="note">サイの食堂で料理を注文すると、この探索が少し楽になります。</p>';
     if (!w && ls.weapon) html += '<p class="note">武器がありません。サイの店の「貸出」で木刀を無料で借りられます。</p>';
     if (!chk.ok) html += `<p class="warnbox">${esc(chk.msg)}</p>`;
     const buttons = [{ label: 'やめる' }];
@@ -959,11 +1078,19 @@
       if (res.orb) return ending(res.firstClear);
       const V = S.village;
       const sellable = V.bag.filter((i) => G.def(i).type === 'treasure').length;
-      const lines = [['sai', 'おかえり、たけ！' + (res.gold ? res.gold + 'Gも持って帰ってきたんだね。' : 'けがはない？')]];
-      if (sellable) lines.push(['take', 'お宝も見つけたよ！お店で見てくれる？'], ['sai', 'まかせて！売ったお金で村をもっとにぎやかにしよう。']);
+      const decor = Object.values(V.decor || {}).filter(Boolean).length;
+      // サイのあいさつは村の発展に合わせて変わる
+      const hello = decor >= 4 ? 'おかえり！村のみんなも、たけの帰りを待ってたよ。'
+        : V.diner ? 'おかえり、たけ！食堂でごはんができてるよ。'
+          : V.smithLv ? 'おかえり！鍛冶屋さんも、たけの装備を見たがってたよ。'
+            : V.stage >= 2 ? 'おかえり、たけ！倉庫もちゃんと空けてあるよ。' : 'おかえり、たけ！';
+      const lines = [['sai', hello + (res.gold ? '　' + res.gold + 'Gも持って帰ってきたんだね。' : '')]];
+      if (res.materials && Object.keys(res.materials).length) lines.push(['take', '深い階の素材も拾ってきたよ。鍛冶屋さんに見せてあげて。']);
+      if (sellable) lines.push(['take', 'お宝も見つけたよ！'], ['sai', V.museum ? '売ってもいいし、展示室に飾ってもいいね。' : 'お店で見せて！売ったお金で村をもっとにぎやかにしよう。']);
       else lines.push(['take', 'ただいま！次はもっと奥まで行ってみる。']);
-      const next = D.VILLAGE_STAGES[V.stage + 1];
-      if (next && V.funds >= next.cost) lines.push(['sai', '資金がたまったね！「村の発展」で' + next.name + 'が作れるよ。']);
+      const g = G.nextGoals(S);
+      if (g.can.length) lines.push(['sai', '資金がたまったね！「村の発展」で' + g.can[0].name + 'が作れるよ。']);
+      else if (g.next) lines.push(['sai', '次は「' + g.next.name + '」を目指そう。あと' + g.need + 'Gだよ。']);
       talk(lines);
     };
     modal({ title: '帰還！', html, onClose: after, buttons: [{ label: 'OK', cls: 'primary' }] });

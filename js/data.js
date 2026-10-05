@@ -134,8 +134,15 @@
       desc: '遺跡の奥に眠っていた宝珠。村へ持ち帰ろう！' },
   };
 
-  // 鍛冶屋の強化
-  D.SMITH = { maxPlus: 3, cost: (plus) => 80 * (plus + 1), sellPerPlus: 15 };
+  /* 鍛冶屋の強化：設備の段階で上限が上がる（なし/+3/+5/+8）。
+   * +4以降は深い階の素材も必要。売値の上がり方は強化費用よりずっと小さい（換金の抜け道にならない）。 */
+  D.SMITH = {
+    maxPlusByLv: [0, 3, 5, 8],
+    maxPlus: 8,
+    cost: (plus) => (plus < 3 ? 80 * (plus + 1) : 150 * (plus + 1)),
+    mats: (plus) => (plus === 3 || plus === 4 ? { amber_shard: 1 } : plus === 5 ? { bronze_shard: 1 } : plus === 6 ? { crystal_shard: 1 } : plus === 7 ? { gold_leaf: 1 } : {}),
+    sellPerPlus: 15,
+  };
 
   /* 敵
    * ai: melee 普通 / slow 2ターンに1回 / ranged 吹き矢 / dormant 近づくまで眠る / erratic ふらふら
@@ -254,19 +261,55 @@
   // 床に落ちているお金（浅い階は控えめ、深いほど多い）
   D.goldAmount = (floor, r) => Math.round((8 + r * 12) * (1 + 0.28 * (floor - 1)));
 
-  // 村の発展（3段階）
+  // 村の段階（お店の品ぞろえ）。施設の購入で上がる
   D.VILLAGE_STAGES = [
     null,
-    { name: '小さなお店', cost: 0, desc: 'サイの小さなお店と倉庫（20枠）。' },
-    { name: '倉庫の拡張', cost: 200, desc: '倉庫が40枠になり、お店に眠りのお香と見通しの巻物が並ぶ。灯りが増える。' },
-    { name: '鍛冶屋と屋台', cost: 600, desc: '鍛冶屋で武器・盾を強化（最大+3）。屋台でカオニャオと霊薬が買える。夕暮れの屋台が並ぶ。' },
+    { name: '小さなお店' },
+    { name: '倉庫のある店' },
+    { name: '鍛冶屋と屋台の村' },
   ];
-  D.STORAGE_SIZE = { 1: 20, 2: 40, 3: 40 };
+  D.STORAGE_SIZE = { 1: 20, 2: 40, 3: 60, 4: 80 };
   D.SHOP_STOCK = {
     1: ['herb', 'banana', 'bamboo_shield', 'bronze_sword'],
     2: ['herb', 'banana', 'sleep_incense', 'sight_scroll', 'bamboo_shield', 'bronze_sword'],
-    3: ['herb', 'banana', 'khaoniao', 'elixir', 'sleep_incense', 'sight_scroll', 'bamboo_shield', 'bronze_sword'],
+    3: ['herb', 'banana', 'khaoniao', 'elixir', 'sleep_incense', 'sight_scroll', 'smoke_ball', 'antidote', 'bamboo_shield', 'bronze_sword'],
   };
+
+  /* 施設・村の飾り。price: 資金、mats: 素材、req: 解放条件（文字列は表示用）
+   * 浅い階の収入（1回の帰還で約150〜550G）で最初の施設に届き、
+   * 大きな施設や上位の強化は深い階での複数回の冒険が必要な価格にしている。 */
+  D.FACILITIES = [
+    { id: 'storage2', kind: 'facility', name: '倉庫の拡張（40枠）', price: 200, desc: '倉庫が40枠に。お店に眠りのお香・見通しの巻物が並ぶ。灯りが増える。', req: [] },
+    { id: 'smith1', kind: 'facility', name: '鍛冶屋と屋台', price: 600, desc: '鍛冶屋で武器・盾を+3まで強化できる。屋台でカオニャオ・霊薬・煙玉・解毒の葉が買える。', req: ['storage2'] },
+    { id: 'diner', kind: 'facility', name: 'サイの食堂', price: 800, desc: '出発前に料理を1品えらべる。次の探索だけ能力が上がる。', req: ['storage2'] },
+    { id: 'museum', kind: 'facility', name: 'お宝展示室', price: 1200, desc: '珍しいお宝を寄贈して飾れる。集めると称号と飾りが解放される。', req: ['smith1'] },
+    { id: 'storage3', kind: 'facility', name: '倉庫の増築（60枠）', price: 1500, desc: '倉庫が60枠に。', req: ['storage2', 'floor10'] },
+    { id: 'smith2', kind: 'facility', name: '鍛冶屋の大きな炉（+5）', price: 2500, mats: { amber_shard: 3, bronze_shard: 2 }, desc: '強化の上限が+5になる。', req: ['smith1'] },
+    { id: 'storage4', kind: 'facility', name: '大倉庫（80枠）', price: 4000, desc: '倉庫が80枠に。', req: ['storage3', 'floor20'] },
+    { id: 'smith3', kind: 'facility', name: '黄金の炉（+8）', price: 7000, mats: { crystal_shard: 3, gold_leaf: 2 }, desc: '強化の上限が+8になる。', req: ['smith2'] },
+    { id: 'lanterns', kind: 'decor', name: '灯籠の並木', price: 300, desc: '道ぞいに灯籠が並び、夕暮れの村が明るくなる。', req: [] },
+    { id: 'garden', kind: 'decor', name: '蓮の庭', price: 400, desc: '花壇と蓮が増える。', req: ['storage2'] },
+    { id: 'stalls', kind: 'decor', name: '屋台通り', price: 700, desc: '水路ぞいに色とりどりの屋台が並ぶ。', req: ['smith1'] },
+    { id: 'bridge', kind: 'decor', name: '水路の赤い橋', price: 900, desc: '水路に赤い橋がかかる。', req: ['floor10'] },
+    { id: 'statue', kind: 'decor', name: '象の像', price: 500, desc: '白い象の像。', req: ['donate3'] },
+    { id: 'fountain', kind: 'decor', name: '噴水', price: 900, desc: '村の真ん中に噴水。', req: ['donate6'] },
+    { id: 'gate', kind: 'decor', name: '黄金の門', price: 1500, desc: '遺跡へ続く道に黄金の門。', req: ['donate9'] },
+  ];
+  D.REQ_TEXT = {
+    storage2: '「倉庫の拡張」の後', smith1: '「鍛冶屋と屋台」の後', smith2: '「鍛冶屋の大きな炉」の後', storage3: '「倉庫の増築」の後',
+    floor10: '地下10階に到達', floor20: '地下20階に到達', donate3: 'お宝を3種類寄贈', donate6: 'お宝を6種類寄贈', donate9: 'お宝を9種類寄贈',
+  };
+  // 食堂の料理（次の探索だけ有効・重ねがけ不可。帰還・敗北で終わる）
+  D.MEALS = {
+    kaomangai: { name: 'カオマンガイ', price: 120, desc: '満腹度が減りにくくなる（約1.5倍長持ち）。', hungerMul: 1.5 },
+    gapao:     { name: 'ガパオライス', price: 150, desc: '最大HP+20。', maxhp: 20 },
+    tomyum:    { name: 'トムヤムクン', price: 180, desc: '攻撃力+3。', atk: 3 },
+    mango:     { name: 'マンゴーもち米', price: 180, desc: '防御力+3。', def: 3 },
+  };
+  // 展示室：寄贈できるお宝（各1回まで）、称号
+  D.MUSEUM_ITEMS = ['old_coin', 'jade_elephant', 'golden_lotus', 'guardian_gem', 'amber_pendant', 'bronze_bell', 'sunken_crown', 'river_pearl', 'giant_crystal', 'prism_flower', 'golden_elephant', 'dream_crown'];
+  D.MUSEUM_THANKS = 0.3; // 初めて寄贈したときだけ、売値の3割を村からお礼としてもらえる
+  D.TITLES = [[3, '見習い収集家'], [6, '遺跡の目利き'], [9, '宝物殿の主'], [12, 'アユタヤの語り部']];
   D.START_FUNDS = 50;
 
   TS.Data = D;

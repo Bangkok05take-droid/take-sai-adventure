@@ -61,8 +61,8 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 .icon-btn { width: 48px; height: 48px; font-size: 24px; padding: 0; flex: none; }
 #village-view { flex: 1; min-height: 0; position: relative; }
 #village-view canvas { width: 100%; height: 100%; }
-.vbuttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 8px; background: var(--panel); border-top: 3px solid #1a0f1c; }
-.fac { min-height: 64px; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; padding: 4px; }
+.vbuttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 8px; background: var(--panel); border-top: 3px solid #1a0f1c; }
+.fac { min-height: 64px; font-size: 15px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; padding: 4px; }
 .fac .ico { font-size: 22px; }
 .fac.depart { background: #c4532e; }
 .fac.locked { opacity: 0.6; }
@@ -124,7 +124,8 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
   #actions { grid-area: acts; grid-template-columns: 1fr; padding: 8px; max-width: none; background: var(--panel); }
   .act { min-height: 48px; }
   #screen-dungeon.active > #controls, #screen-dungeon.active { background: var(--panel); }
-  #screen-village.active { display: grid; grid-template-columns: 1fr minmax(220px, 34vw); grid-template-rows: auto 1fr; grid-template-areas: "hud hud" "view btns"; }
+  #screen-village.active { display: grid; grid-template-columns: 1fr minmax(220px, 34vw); grid-template-rows: auto auto 1fr; grid-template-areas: "hud hud" "goal btns" "view btns"; }
+  .vgoal { grid-area: goal; }
   .vhud { grid-area: hud; } #village-view { grid-area: view; } .vbuttons { grid-area: btns; grid-template-columns: 1fr 1fr; align-content: center; border-top: 0; border-left: 3px solid #1a0f1c; }
   .fac { min-height: 54px; }
   #screen-title { flex-direction: row; flex-wrap: wrap; align-content: center; gap: 6px 24px; }
@@ -185,3 +186,19 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 #flash.on { opacity: 0.85; transition: none; }
 .ending { text-align: center; }
 .ending .big-t { font-size: 26px; color: #ffe04a; font-weight: bold; margin: 8px 0; }
+
+.vgoal { padding: 6px 10px; background: #2a1830; border-bottom: 2px solid #1a0f1c; font-size: 14.5px; line-height: 1.45; }
+.vgoal b { color: var(--accent); }
+.vgoal b.ok, .ok { color: var(--good); }
+.stage { display: block; width: 100%; text-align: left; box-shadow: none; }
+.stage .price { color: var(--accent); font-weight: bold; }
+.stage .cond { font-size: 13.5px; margin-top: 2px; color: #ffcf9a; }
+.museum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 6px 0 8px; }
+.pedestal { background: #2a1a30; border: 2px solid #1a0f1c; border-radius: 10px; text-align: center; padding: 4px 2px; }
+.pedestal img { width: 36px; height: 36px; image-rendering: pixelated; filter: brightness(0) opacity(0.35); }
+.pedestal.has { background: linear-gradient(#4a3060, #2a1a30); border-color: #ffd84a; }
+.pedestal.has img { filter: none; }
+.pedestal small { display: block; font-size: 11px; color: var(--muted); line-height: 1.2; min-height: 2.4em; }
+h3.sub { font-size: 16px; margin: 8px 0 4px; color: var(--accent); }
+.dish { font-size: 26px; width: 36px; text-align: center; }
+details summary { cursor: pointer; margin: 4px 0; }

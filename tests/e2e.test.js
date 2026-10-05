@@ -144,7 +144,10 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
 
   await test('ダッシュ：オンで押し続けると連続移動（1マス1ターン）、離すと即停止、壁で止まり押し直すまで再開しない', async () => {
     await p.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; r.floorItems = [];
-      const room = r.map.rooms.slice().sort((a, b) => b.w - a.w)[0]; r.player.x = room.x; r.player.y = room.y; r._room = room; TS.Game.updateVision(r); });
+      const room = r.map.rooms.slice().sort((a, b) => b.w - a.w)[0]; r.player.x = room.x; r.player.y = room.y; r._room = room;
+      // 階段・帰還の碑をこの部屋の外へ
+      const other = r.map.rooms.find((o) => o !== room); r.stairs = { x: other.x, y: other.y }; r.returnPoint = null;
+      TS.Game.updateVision(r); });
     await p.tap('#b-dash'); await p.waitForTimeout(100);
     assert(await p.$eval('#b-dash', (b) => b.classList.contains('on') && b.textContent.includes('オン')), 'dash on shown');
     const press = (d) => p.evaluate((d) => document.querySelector(`#dpad [data-dir="${d}"]`).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 7 })), d);
@@ -247,28 +250,57 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(v.run === null && v.funds === funds + 77 && v.bag.includes('jade_elephant') && !v.bag.includes('return_scroll'), JSON.stringify(v));
   });
 
-  await test('お宝を確認して売却 → 村の発展を購入し、村の絵が変わる', async () => {
+  await test('お宝を確認して売却 → 施設一覧で価格・効果・条件を見て購入し、村の絵と次の目標が変わる', async () => {
     await p.tap('.fac[data-fac="shop"]'); await p.waitForTimeout(150);
     await p.tap('.tabs button[data-t="sell"]'); await p.waitForTimeout(100);
     await p.tap('.row:has-text("翡翠の象")'); await p.waitForTimeout(100);
     assert(await p.isVisible('text=売りますか'));
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
     await p.tap('.modal-buttons button'); await p.waitForTimeout(100);
-    await p.evaluate(() => { TS.UI.S.village.funds += 1000; });
+    const goal0 = await p.textContent('#v-goal');
+    await p.evaluate(() => { TS.UI.S.village.funds += 5000; TS.UI.S.village.bestFloor = 12; });
     await p.tap('.fac[data-fac="develop"]'); await p.waitForTimeout(150);
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
-    await closeTalk();
-    await p.tap('.fac[data-fac="develop"]'); await p.waitForTimeout(150);
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
-    await closeTalk();
-    assert(await p.evaluate(() => TS.UI.S.village.stage) === 3);
+    assert(await p.isVisible('.stage[data-id="storage2"]:has-text("200G")'), 'price shown');
+    assert(await p.isVisible('.stage[data-id="smith2"]:has-text("🔒")'), 'condition shown');
+    await shot('14a_develop');
+    const build = async (id) => {
+      await p.tap(`.stage[data-id="${id}"]`); await p.waitForTimeout(120);
+      await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(120);
+      await closeTalk();
+    };
+    for (const id of ['storage2', 'smith1', 'diner', 'museum']) await build(id);
+    await p.tap('.tabs button[data-t="decor"]'); await p.waitForTimeout(100);
+    await build('lanterns');
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(150);
+    const v = await p.evaluate(() => ({ stage: TS.UI.S.village.stage, smith: TS.UI.S.village.smithLv, diner: TS.UI.S.village.diner, museum: TS.UI.S.village.museum, lan: TS.UI.S.village.decor.lanterns, funds: TS.UI.S.village.funds }));
+    assert(v.stage === 3 && v.smith === 1 && v.diner && v.museum && v.lan, JSON.stringify(v));
+    assert((await p.textContent('#v-goal')) !== goal0, 'goal panel updates');
     await p.waitForTimeout(200);
-    await shot('14_village_stage3');
+    await shot('14_village_built');
+    // 鍛冶屋
     await p.tap('.fac[data-fac="smith"]'); await p.waitForTimeout(150);
+    assert(await p.isVisible('text=強化の上限'), 'smith level shown');
     await shot('15_smith');
     await p.tap('.modal-buttons button'); await p.waitForTimeout(100);
+    // 食堂
+    const f1 = await p.evaluate(() => TS.UI.S.village.funds);
+    await p.tap('.fac[data-fac="diner"]'); await p.waitForTimeout(150);
+    await p.tap('.row[data-id="gapao"]'); await p.waitForTimeout(100);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(120);
+    await closeTalk();
+    await shot('15b_diner');
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
+    assert(await p.evaluate((f) => TS.UI.S.village.meal === 'gapao' && TS.UI.S.village.funds === f - 150, f1), 'meal bought');
+    // 展示室
+    await p.evaluate(() => { const S = TS.UI.S; S.village.bag.push(TS.Game.makeItem(S, 'golden_lotus')); });
+    await p.tap('.fac[data-fac="museum"]'); await p.waitForTimeout(150);
+    await p.tap('.row:has-text("黄金の蓮")'); await p.waitForTimeout(100);
+    assert(await p.isVisible('text=寄贈すると'), 'sell vs donate shown');
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(120);
+    await closeTalk();
+    await shot('15c_museum');
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
+    assert(await p.evaluate(() => TS.UI.S.village.donated.golden_lotus === true), 'donated');
   });
 
   await test('倒れると原因と到達階を表示し、すぐ再挑戦できる', async () => {
@@ -290,6 +322,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
       TS.Game.updateVision(r);
     });
     const funds = await p.evaluate(() => TS.UI.S.village.funds);
+    assert(await p.evaluate(() => TS.UI.S.run.meal === 'gapao' && TS.UI.S.village.meal === null), 'meal applied on depart');
     for (let i = 0; i < 20 && !(await p.$('text=探索失敗')); i++) { await p.tap('#b-wait'); await p.waitForTimeout(150); }
     await p.waitForTimeout(400);
     assert(await p.isVisible('text=探索失敗'));

@@ -551,7 +551,7 @@ test('村の発展：費用を消費、資金不足では不可、3段階で鍛�
   eq(S.village.stage, 3); eq(S.village.funds, 0); assert(!G.upgradeVillage(S).ok);
 });
 test('鍛冶屋：お金を払って+3まで強化。売値の上昇は強化費用より小さい', () => {
-  const S = G.newState(); S.village.stage = 3; S.village.funds = 10000;
+  const S = G.newState(); S.village.stage = 3; G.applyFacilities(S.village); S.village.funds = 10000;
   const sw = G.makeItem(S, 'bronze_sword'); S.village.bag.push(sw);
   for (let i = 0; i < 5; i++) G.smith(S, sw.uid);
   eq(sw.plus, 3); eq(S.village.funds, 10000 - 80 - 160 - 240);
@@ -585,6 +585,99 @@ test('バッグが満杯だと出発できない（巻物が消えない）', ()
   const S = G.newState();
   while (S.village.bag.length < D.BAG_SIZE) S.village.bag.push(G.makeItem(S, 'herb'));
   assert(!G.depart(S, 1).ok); eq(S.run, null);
+});
+
+console.log('お金の使い道（施設・鍛冶屋・食堂・展示室）');
+test('施設：価格・解放条件・素材を確認でき、満たさないと建てられない。建てると効果が出る', () => {
+  const S = G.newState(); const V = S.village;
+  V.funds = 100000;
+  let st = G.facilityStatus(S, 'storage3');
+  assert(!st.unlocked && st.missing.includes('storage2') && st.missing.includes('floor10'), 'locked');
+  assert(!G.buildFacility(S, 'storage3').ok);
+  assert(G.buildFacility(S, 'storage2').ok); eq(G.storageSize(V), 40); eq(V.funds, 100000 - 200);
+  V.bestFloor = 10; assert(G.buildFacility(S, 'storage3').ok); eq(G.storageSize(V), 60);
+  V.bestFloor = 20; assert(G.buildFacility(S, 'storage4').ok); eq(G.storageSize(V), 80);
+  assert(!G.buildFacility(S, 'storage4').ok, 'no double build');
+  assert(G.buildFacility(S, 'smith1').ok); eq(G.smithMax(V), 3); eq(V.stage, 3);
+  const before = V.funds;
+  const r = G.buildFacility(S, 'smith2'); assert(!r.ok && /素材/.test(r.msg), 'needs materials'); eq(V.funds, before, 'no charge on failure');
+  V.materials = { amber_shard: 3, bronze_shard: 2 };
+  assert(G.buildFacility(S, 'smith2').ok); eq(G.smithMax(V), 5); eq(V.materials.amber_shard, 0); eq(V.materials.bronze_shard, 0);
+  assert(G.buildFacility(S, 'lanterns').ok); assert(V.decor.lanterns);
+  assert(!G.buildFacility(S, 'statue').ok, 'statue needs donations');
+});
+test('鍛冶屋：設備の段階で上限+3/+5/+8。+4以降は素材が必要', () => {
+  const S = G.newState(); const V = S.village; V.funds = 100000; V.bestFloor = 30;
+  G.buildFacility(S, 'storage2'); G.buildFacility(S, 'smith1');
+  const sw = G.makeItem(S, 'jade_sword'); V.bag.push(sw);
+  for (let i = 0; i < 5; i++) G.smith(S, sw.uid);
+  eq(sw.plus, 3, 'cap +3 at Lv1');
+  V.materials = { amber_shard: 5, bronze_shard: 5, crystal_shard: 5, gold_leaf: 5 };
+  G.buildFacility(S, 'smith2');
+  assert(G.smith(S, sw.uid).ok); eq(V.materials.amber_shard, 1); // 3使って建設、1使って強化
+  assert(G.smith(S, sw.uid).ok); eq(sw.plus, 5); assert(!G.smith(S, sw.uid).ok, 'cap +5');
+  G.buildFacility(S, 'smith3');
+  for (let i = 0; i < 5; i++) G.smith(S, sw.uid);
+  eq(sw.plus, 8, 'cap +8'); eq(V.materials.bronze_shard, 2); eq(V.materials.crystal_shard, 1); eq(V.materials.gold_leaf, 2);
+  // 素材がないと強化できない（お金も減らない）
+  const sh = G.makeItem(S, 'moss_shield', { plus: 7 }); V.bag.push(sh); V.materials.gold_leaf = 0;
+  const f = V.funds; assert(!G.smith(S, sh.uid).ok); eq(V.funds, f);
+  // 強化の総費用は売値の上昇よりずっと大きい
+  let total = 0; for (let p = 0; p < 8; p++) total += D.SMITH.cost(p);
+  assert(total > 8 * D.SMITH.sellPerPlus * 10, 'no profit from smithing');
+});
+test('食堂：料理は次の探索だけ有効、重ねがけ不可、帰還・敗北で終わる', () => {
+  const S = G.newState(); const V = S.village; V.funds = 5000;
+  assert(!G.buyMeal(S, 'gapao').ok, 'no diner');
+  G.buildFacility(S, 'storage2'); G.buildFacility(S, 'diner');
+  assert(G.buyMeal(S, 'gapao').ok); eq(V.meal, 'gapao');
+  assert(G.buyMeal(S, 'tomyum').ok); eq(V.meal, 'tomyum', 'replaced, not stacked');
+  const funds = V.funds;
+  G.takeLoan(S, 'weapon'); G.depart(S, 3);
+  eq(S.run.meal, 'tomyum'); eq(V.meal, null);
+  const atk = G.playerAtk(S.run);
+  G.useReturnScroll(S); G.finishRun(S);
+  G.depart(S, 4); assert(!S.run.meal, 'meal ended'); eq(G.playerAtk(S.run), atk - 3);
+  G.useReturnScroll(S); G.finishRun(S);
+  G.buyMeal(S, 'gapao'); G.depart(S, 5); eq(S.run.player.maxhp, 50); eq(S.run.player.hp, 50);
+  eq(V.funds, funds - 150);
+});
+test('食堂：カオマンガイで満腹度が減りにくい', () => {
+  const S = G.newState(); const V = S.village; V.funds = 5000;
+  G.buildFacility(S, 'storage2'); G.buildFacility(S, 'diner'); G.buyMeal(S, 'kaomangai');
+  G.depart(S, 6); bigRoomFloor(S);
+  for (let i = 0; i < 120; i++) G.act(S, { type: 'wait' });
+  eq(S.run.player.hunger, 100 - Math.floor(120 / G.hungerTurns(S.run)));
+  assert(G.hungerTurns(S.run) > D.PLAYER.hungerTurns);
+});
+test('展示室：同じお宝は1回だけ寄贈でき、お礼も1回だけ。称号と飾りが解放される', () => {
+  const S = G.newState(); const V = S.village; V.funds = 5000;
+  G.buildFacility(S, 'storage2'); G.buildFacility(S, 'smith1'); G.buildFacility(S, 'museum');
+  const a = G.makeItem(S, 'golden_lotus'), b = G.makeItem(S, 'golden_lotus'), h = G.makeItem(S, 'herb');
+  V.bag.push(a, b, h);
+  const f0 = V.funds;
+  const r = G.donate(S, a.uid); assert(r.ok); eq(V.funds, f0 + Math.floor(260 * 0.3));
+  assert(!G.donate(S, b.uid).ok, 'same item again'); eq(V.funds, f0 + 78); assert(V.bag.includes(b));
+  assert(!G.donate(S, h.uid).ok, 'not a treasure');
+  // 売る方が多くもらえる（売る・寄贈の選択）
+  assert(G.sellPrice(b) > Math.floor(G.def(b).sell * D.MUSEUM_THANKS));
+  for (const id of ['old_coin', 'jade_elephant']) { const it = G.makeItem(S, id); V.storage.push(it); G.donate(S, it.uid); }
+  eq(G.donatedCount(V), 3); eq(G.title(V), '見習い収集家');
+  assert(G.facilityStatus(S, 'statue').unlocked, 'statue unlocked');
+  assert(!G.facilityStatus(S, 'fountain').unlocked);
+});
+test('浅い階でたまるお金で最初の施設に届き、大きな施設は高額', () => {
+  const cheap = D.FACILITIES.filter((f) => f.req.length === 0).map((f) => f.price);
+  assert(Math.min(...cheap) <= 300, 'first goal reachable in 1-2 returns');
+  assert(G.facility('smith3').price >= 5000 && G.facility('storage4').price >= 3000, 'big goals');
+  for (const m of Object.values(D.MEALS)) assert(m.price <= 200 && m.price >= 100);
+  // 生活必需品は安い
+  assert(D.ITEMS.herb.price <= 40 && D.ITEMS.banana.price <= 30);
+});
+test('次の目標の表示', () => {
+  const S = G.newState(); S.village.funds = 50;
+  let g = G.nextGoals(S); eq(g.can.length, 0); eq(g.next.id, 'storage2'); eq(g.need, 150);
+  S.village.funds = 250; g = G.nextGoals(S); assert(g.can.some((f) => f.id === 'storage2'));
 });
 
 console.log('保存と読み込み');
@@ -635,6 +728,7 @@ test('旧セーブ（v1・10階クリア済み）を移行：旧記録として�
   const L = SV.deserialize(fixture('save-v1-cleared.json'));
   eq(L.village.legacyClear10, true); eq(L.village.cleared, false); eq(L.village.legacyClears, 1);
   eq(L.village.funds, raw.village.funds); eq(L.village.stage, 3); eq(L.village.bestFloor, 10);
+  assert(L.village.built.storage2 && L.village.built.smith1, 'facilities from old stage'); eq(L.village.smithLv, 1); eq(L.village.storageLv, 2); eq(G.storageSize(L.village), 40);
   eq(JSON.stringify(L.village.bag), JSON.stringify(raw.village.bag));
   eq(JSON.stringify(L.village.storage), JSON.stringify(raw.village.storage));
   assert(G.depart(L, 5).ok, 'can depart');

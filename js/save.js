@@ -41,6 +41,8 @@
     fill(data, def);
     fill(data.village, def.village);
     fill(data.settings, def.settings);
+    // 施設の段階（旧セーブの「村の発展」段階から倉庫・鍛冶屋の段階を引き継ぐ）
+    G.applyFacilities(data.village);
     if (data.run) {
       if (!data.run.map || !data.run.player) data.run = null;
       else fill(data.run.player, { poison: 0, poisonGuard: 0 });

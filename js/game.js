@@ -27,12 +27,15 @@
 
   // ---------- 生成 ----------
   G.newVillage = function () {
-    return {
+    const V = {
       funds: D.START_FUNDS, stage: 1, bag: [], storage: [], nextUid: 1,
       cleared: false, clears: 0, runs: 0, returns: 0, defeats: 0, bestFloor: 0,
       legacyClear10: false, bossKills: {}, materials: {},
+      storageLv: 1, smithLv: 0, built: {}, decor: {}, diner: false, museum: false, meal: null, donated: {},
       lastResult: null, seenIntro: false, seenEnding: false,
     };
+    G.applyFacilities(V);
+    return V;
   };
   G.newState = function () {
     return { version: D.SAVE_VERSION, village: G.newVillage(), run: null, settings: { sound: true, minimap: 1 } };
@@ -63,17 +66,20 @@
   G.canStore = (it) => !G.def(it).noStore && !G.def(it).loan;
 
   // ---------- プレイヤー能力 ----------
-  G.maxHpFor = (lvl) => D.PLAYER.baseHp + D.PLAYER.hpPerLevel * (lvl - 1);
+  G.maxHpFor = (lvl, run) => D.PLAYER.baseHp + D.PLAYER.hpPerLevel * (lvl - 1) + (run && run.meal && D.MEALS[run.meal] ? (D.MEALS[run.meal].maxhp || 0) : 0);
+  G.hungerTurns = (run) => Math.round(D.PLAYER.hungerTurns * (run.meal && D.MEALS[run.meal] ? (D.MEALS[run.meal].hungerMul || 1) : 1));
   G.equipped = function (bag, type) {
     return bag.find((it) => it.eq && G.def(it).type === type) || null;
   };
   G.playerAtk = function (run) {
     const w = G.equipped(run.bag, 'weapon');
-    return D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (run.player.lvl - 1) + (w ? G.def(w).atk + (w.plus || 0) : 0);
+    const meal = run.meal && D.MEALS[run.meal];
+    return D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (run.player.lvl - 1) + (w ? G.def(w).atk + (w.plus || 0) : 0) + (meal && meal.atk || 0);
   };
   G.playerDef = function (run) {
     const s = G.equipped(run.bag, 'shield');
-    return s ? G.def(s).def + (s.plus || 0) : 0;
+    const meal = run.meal && D.MEALS[run.meal];
+    return (s ? G.def(s).def + (s.plus || 0) : 0) + (meal && meal.def || 0);
   };
 
   // ---------- 探索の開始 ----------
@@ -100,7 +106,14 @@
       enemies: [], floorItems: [], map: null, explored: null, stairs: null, returnPoint: null, portal: null,
       log: [], over: false, result: null, nextEnemyId: 1, killedBy: null, revealed: false,
     };
-    G.log(S.run, 'たけは遺跡へ出発した！');
+    // 食堂の料理（この探索だけ）
+    if (V.meal && D.MEALS[V.meal]) {
+      S.run.meal = V.meal;
+      V.meal = null;
+      const p = S.run.player;
+      p.maxhp = p.hp = G.maxHpFor(1, S.run);
+    }
+    G.log(S.run, 'たけは遺跡へ出発した！' + (S.run.meal ? '（' + D.MEALS[S.run.meal].name + 'で元気いっぱい）' : ''));
     enterFloor(S, 1);
     return { ok: true };
   };
@@ -367,7 +380,7 @@
     while (p.lvl < D.EXP_TABLE.length - 1 && p.exp >= D.EXP_TABLE[p.lvl + 1]) {
       p.lvl++;
       const old = p.maxhp;
-      p.maxhp = G.maxHpFor(p.lvl);
+      p.maxhp = G.maxHpFor(p.lvl, run);
       p.hp += p.maxhp - old;
       G.log(run, 'たけのレベルが' + p.lvl + 'に上がった！');
       ev.push({ t: 'levelup', x: p.x, y: p.y });
@@ -587,7 +600,7 @@
     run.turn++;
     // 満腹度
     p.hungerAcc++;
-    if (p.hungerAcc >= D.PLAYER.hungerTurns) {
+    if (p.hungerAcc >= G.hungerTurns(run)) {
       p.hungerAcc = 0;
       if (p.hunger > 0) {
         p.hunger--;
@@ -1003,8 +1016,8 @@
   }
 
   // ---------- 村 ----------
-  G.storageSize = (V) => D.STORAGE_SIZE[V.stage];
-  G.shopStock = (V) => D.SHOP_STOCK[V.stage];
+  G.storageSize = (V) => D.STORAGE_SIZE[V.storageLv || 1];
+  G.shopStock = (V) => D.SHOP_STOCK[Math.min(3, V.stage)];
 
   G.buy = function (S, id) {
     const V = S.village, d = D.ITEMS[id];
@@ -1057,32 +1070,125 @@
     return { ok: true, msg: G.itemName(it) + 'を手放した。' };
   };
 
+  // ---- 施設・飾り ----
+  G.facility = (id) => D.FACILITIES.find((f) => f.id === id);
+  G.hasFacility = (V, id) => !!(V.built && V.built[id]);
+  G.donatedCount = (V) => Object.keys(V.donated || {}).length;
+  G.reqMet = function (V, r) {
+    if (r.startsWith('floor')) return V.bestFloor >= +r.slice(5);
+    if (r.startsWith('donate')) return G.donatedCount(V) >= +r.slice(6);
+    return G.hasFacility(V, r);
+  };
+  /* 購入前に確認できる状態：{ built, unlocked, missing:[未達の条件], affordable, lackMats } */
+  G.facilityStatus = function (S, id) {
+    const V = S.village, f = G.facility(id);
+    const missing = f.req.filter((r) => !G.reqMet(V, r));
+    const lackMats = Object.entries(f.mats || {}).filter(([m, n]) => (V.materials[m] || 0) < n).map(([m, n]) => [m, n - (V.materials[m] || 0)]);
+    return { built: G.hasFacility(V, id), unlocked: !missing.length, missing, affordable: V.funds >= f.price, lackMats };
+  };
+  G.buildFacility = function (S, id) {
+    const V = S.village, f = G.facility(id);
+    if (!f) return { ok: false, msg: '見つかりません。' };
+    const st = G.facilityStatus(S, id);
+    if (st.built) return { ok: false, msg: 'もう完成しています。' };
+    if (!st.unlocked) return { ok: false, msg: 'まだ建てられません：' + st.missing.map((r) => D.REQ_TEXT[r]).join('、') };
+    if (!st.affordable) return { ok: false, msg: '資金が足りません。（' + f.price + 'G 必要）' };
+    if (st.lackMats.length) return { ok: false, msg: '素材が足りません：' + st.lackMats.map(([m, n]) => D.ITEMS[m].name + '×' + n).join('、') };
+    V.funds -= f.price;
+    for (const [m, n] of Object.entries(f.mats || {})) V.materials[m] -= n;
+    V.built[id] = true;
+    G.applyFacilities(V);
+    return { ok: true, msg: '「' + f.name + '」が完成した！' };
+  };
+  // 建てた施設から村の各段階を決める（旧セーブの stage とも整合させる）
+  G.applyFacilities = function (V) {
+    V.built = V.built || {}; V.decor = V.decor || {};
+    if (V.stage >= 2) V.built.storage2 = true;
+    if (V.stage >= 3) V.built.smith1 = true;
+    if (V.storageLv >= 3) V.built.storage3 = true;
+    if (V.storageLv >= 4) V.built.storage4 = true;
+    if (V.smithLv >= 2) V.built.smith2 = true;
+    if (V.smithLv >= 3) V.built.smith3 = true;
+    const b = V.built;
+    V.stage = Math.max(V.stage || 1, b.smith1 ? 3 : b.storage2 ? 2 : 1);
+    V.storageLv = b.storage4 ? 4 : b.storage3 ? 3 : b.storage2 ? 2 : 1;
+    V.smithLv = b.smith3 ? 3 : b.smith2 ? 2 : b.smith1 ? 1 : 0;
+    V.diner = !!b.diner; V.museum = !!b.museum;
+    for (const f of D.FACILITIES) if (f.kind === 'decor') V.decor[f.id] = !!b[f.id];
+  };
+  // 旧API（村の発展を1段階進める）
   G.upgradeVillage = function (S) {
     const V = S.village;
-    const next = D.VILLAGE_STAGES[V.stage + 1];
-    if (!next) return { ok: false, msg: '村はこれ以上発展できません。' };
-    if (V.funds < next.cost) return { ok: false, msg: '資金が足りません。（' + next.cost + 'G 必要）' };
-    V.funds -= next.cost;
-    V.stage++;
-    return { ok: true, msg: '「' + next.name + '」が完成した！' };
+    const id = !G.hasFacility(V, 'storage2') ? 'storage2' : !G.hasFacility(V, 'smith1') ? 'smith1' : null;
+    if (!id) return { ok: false, msg: '村はこれ以上発展できません。' };
+    return G.buildFacility(S, id);
+  };
+  // 次に目指せる買い物（村の画面に表示）
+  G.nextGoals = function (S) {
+    const V = S.village;
+    const list = D.FACILITIES.filter((f) => !G.hasFacility(V, f.id)).map((f) => ({ f, st: G.facilityStatus(S, f.id) }));
+    const ready = list.filter((x) => x.st.unlocked && !x.st.lackMats.length).sort((a, b) => a.f.price - b.f.price);
+    const can = ready.filter((x) => x.st.affordable);
+    const next = ready.find((x) => !x.st.affordable);
+    return { can: can.map((x) => x.f), next: next ? next.f : null, need: next ? next.f.price - V.funds : 0 };
   };
 
+  // ---- 鍛冶屋 ----
+  G.smithMax = (V) => D.SMITH.maxPlusByLv[V.smithLv || 0];
   G.smithCost = (it) => D.SMITH.cost(it.plus || 0);
+  G.smithMats = (it) => D.SMITH.mats(it.plus || 0);
   G.canSmith = function (V, it) {
     const t = G.def(it).type;
-    return V.stage >= 3 && (t === 'weapon' || t === 'shield') && !G.def(it).loan && (it.plus || 0) < D.SMITH.maxPlus;
+    return (V.smithLv || 0) >= 1 && (t === 'weapon' || t === 'shield') && !G.def(it).loan && (it.plus || 0) < G.smithMax(V);
   };
   G.smith = function (S, uid) {
     const V = S.village;
     const it = V.bag.find((i) => i.uid === uid) || V.storage.find((i) => i.uid === uid);
     if (!it) return { ok: false, msg: '見つかりません。' };
-    if (V.stage < 3) return { ok: false, msg: '鍛冶屋がまだありません。' };
-    if (!G.canSmith(V, it)) return { ok: false, msg: 'これ以上強化できません。' };
-    const cost = G.smithCost(it);
+    if (!V.smithLv) return { ok: false, msg: '鍛冶屋がまだありません。' };
+    if (!G.canSmith(V, it)) return { ok: false, msg: (it.plus || 0) >= G.smithMax(V) && G.smithMax(V) < D.SMITH.maxPlus ? '今の設備ではここまで。鍛冶屋を拡張しよう。' : 'これ以上強化できません。' };
+    const cost = G.smithCost(it), mats = G.smithMats(it);
     if (V.funds < cost) return { ok: false, msg: 'お金が足りません。（' + cost + 'G 必要）' };
+    for (const [m, n] of Object.entries(mats)) if ((V.materials[m] || 0) < n) return { ok: false, msg: '素材が足りません：' + D.ITEMS[m].name + '×' + n };
     V.funds -= cost;
+    for (const [m, n] of Object.entries(mats)) V.materials[m] -= n;
     it.plus = (it.plus || 0) + 1;
     return { ok: true, msg: G.itemName(it) + 'に強化した！' };
+  };
+
+  // ---- 食堂 ----
+  G.buyMeal = function (S, id) {
+    const V = S.village, m = D.MEALS[id];
+    if (!V.diner) return { ok: false, msg: '食堂がまだありません。' };
+    if (!m) return { ok: false, msg: '見つかりません。' };
+    if (V.meal === id) return { ok: false, msg: 'もう注文しています。' };
+    if (V.funds < m.price) return { ok: false, msg: 'お金が足りません。' };
+    V.funds -= m.price;
+    V.meal = id; // 前の料理は上書き（重ねがけしない・払い戻しなし）
+    return { ok: true, msg: m.name + 'を注文した。次の探索だけ効果がある。' };
+  };
+
+  // ---- 展示室 ----
+  G.canDonate = (V, it) => !!V.museum && D.MUSEUM_ITEMS.includes(it.id) && !(V.donated || {})[it.id];
+  G.donate = function (S, uid) {
+    const V = S.village;
+    const it = V.bag.find((i) => i.uid === uid) || V.storage.find((i) => i.uid === uid);
+    if (!it) return { ok: false, msg: '見つかりません。' };
+    if (!V.museum) return { ok: false, msg: '展示室がまだありません。' };
+    if (!D.MUSEUM_ITEMS.includes(it.id)) return { ok: false, msg: 'これは展示できません。' };
+    if (V.donated[it.id]) return { ok: false, msg: '同じお宝はもう飾ってあります。' };
+    const before = G.title(V);
+    (V.bag.includes(it) ? V.bag : V.storage).splice((V.bag.includes(it) ? V.bag : V.storage).indexOf(it), 1);
+    V.donated[it.id] = true;
+    const thanks = Math.floor(G.def(it).sell * D.MUSEUM_THANKS);
+    V.funds += thanks;
+    const after = G.title(V);
+    return { ok: true, msg: G.def(it).name + 'を寄贈した。お礼に' + thanks + 'G。', thanks, newTitle: after !== before ? after : null };
+  };
+  G.title = function (V) {
+    let t = null;
+    for (const [n, name] of D.TITLES) if (G.donatedCount(V) >= n) t = name;
+    return t;
   };
 
   // 貸出品：持っていないときだけ1つ借りられる（売却・預入不可なので増やせない）
