@@ -369,6 +369,12 @@
   G.visibleEnemies = (run) => run.enemies.filter((e) => G.isVisible(run, e.x, e.y));
 
   // ---------- 行動 ----------
+  // 足元の道具をその場で使えるか（使う種類だけ。装備・お宝・素材などは拾うだけ）
+  const FLOOR_USE = ['heal', 'food', 'cure', 'sleep', 'staff', 'map', 'sense', 'warp', 'slow', 'fire', 'clear', 'return'];
+  G.canUseFromFloor = function (run) {
+    const f = G.itemAt(run, run.player.x, run.player.y);
+    return !!(f && f.item && FLOOR_USE.includes(G.def(f.item).type));
+  };
   G.enemyAt = (run, x, y) => run.enemies.find((e) => e.x === x && e.y === y) || null;
   G.itemAt = (run, x, y) => run.floorItems.find((f) => f.x === x && f.y === y) || null;
   G.onStairs = (run) => !!run.stairs && DG.same(run.stairs, run.player);
@@ -393,6 +399,7 @@
       case 'wait': consumed = true; ev.push({ t: 'wait' }); break;
       case 'pickup': consumed = pickup(S, ev, true); break;
       case 'use': consumed = useItem(S, a.uid, a.dir, ev); break;
+      case 'useFloor': consumed = G.canUseFromFloor(run) ? useItem(S, a.uid, a.dir, ev, true) : false; break;
       case 'equip': consumed = toggleEquip(S, a.uid, ev); break;
       case 'drop': consumed = dropItem(S, a.uid, ev); break;
       case 'face': if (DIRS[a.dir]) run.player.dir = a.dir; break;
@@ -753,12 +760,15 @@
   // 持っているだけで効く護符
   G.hasCharm = (run, effect) => !!effect && run.bag.some((it) => G.def(it).type === 'charm' && G.def(it).effect === effect);
 
-  function useItem(S, uid, dir, ev) {
+  /* 道具を使う。fromFloor が true なら、バッグではなく足元に落ちている道具を使う（バッグの中身は変わらない。
+   * 消費する道具は床から1個なくなる。効果・ターン・対象の選び方はバッグから使うときと同じ処理） */
+  function useItem(S, uid, dir, ev, fromFloor) {
     const run = S.run, p = run.player;
-    const it = G.findBag(run, uid);
+    const fl = fromFloor ? G.itemAt(run, p.x, p.y) : null;
+    const it = fromFloor ? (fl && fl.item && fl.item.uid === uid ? fl.item : null) : G.findBag(run, uid);
     if (!it) return false;
     const d = G.def(it);
-    const remove = () => run.bag.splice(run.bag.indexOf(it), 1);
+    const remove = () => { if (fromFloor) run.floorItems.splice(run.floorItems.indexOf(fl), 1); else run.bag.splice(run.bag.indexOf(it), 1); };
     switch (d.type) {
       case 'heal': {
         const before = p.hp;

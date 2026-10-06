@@ -1507,14 +1507,29 @@
     if (G.onReturnPoint(run) || G.onPortal(run)) return promptReturnPoint();
     const f = G.itemAt(run, run.player.x, run.player.y);
     if (f) {
-      if (run.bag.length >= D.BAG_SIZE && !f.gold) {
-        modal({ title: '足元', html: `<p>${esc(G.itemName(f.item))}がある。</p><p class="warnbox">バッグがいっぱい（${D.BAG_SIZE}個）で拾えません。「道具」から何かを置くか使ってください。</p>` });
-        return;
-      }
-      doAct({ type: 'pickup' });
+      if (f.gold) { doAct({ type: 'pickup' }); return; }
+      footItemMenu(f);
       return;
     }
     toast('足元には何もない');
+  }
+
+  /* 足元の道具：名前と説明、できる操作（拾う・使う）を出す。使うときはバッグに入れずに床の1個を使う。
+   * 向きを選ぶ道具は、向きを決めるまで使わない（やめるとターンも道具も減らない）。使えない種類には「使う」を出さない */
+  function footItemMenu(f) {
+    const run = UI.S.run, it = f.item, d = G.def(it), full = run.bag.length >= D.BAG_SIZE;
+    const useFloor = (dir) => { closeAllModals(); UI.lockUntil = 0; doAct({ type: 'useFloor', uid: it.uid, dir }); };
+    const buttons = [{ label: 'やめる' }];
+    if (!full) buttons.push({ label: '拾う（1ターン）', onClick: () => { closeAllModals(); UI.lockUntil = 0; doAct({ type: 'pickup' }); } });
+    if (G.canUseFromFloor(run)) {
+      if (d.type === 'staff') buttons.push({ label: 'その場でふる（向きを選ぶ）', cls: 'primary', onClick: () => { setTimeout(() => pickDir((dir) => useFloor(dir)), 0); } });
+      else if (d.type === 'return') buttons.push({ label: 'その場で使う', cls: 'primary', onClick: () => { setTimeout(() => confirmBox('帰還の巻物', '<p>足元の帰還の巻物を使って村へ帰りますか？</p>', '帰る', () => useFloor(), 'やめる'), 0); } });
+      else buttons.push({ label: 'その場で' + USE_LABEL[d.type], cls: 'primary', onClick: () => useFloor() });
+    }
+    const html = `<div class="detail-head"><img src="${SP.iconURL(d)}" alt=""><div><b>${esc(G.itemName(it))}</b></div></div><p>${esc(d.desc)}</p>` +
+      (full ? `<p class="warnbox">バッグがいっぱい（${D.BAG_SIZE}個）で拾えません。${G.canUseFromFloor(run) ? 'その場で使うことはできます。' : ''}</p>` : '') +
+      (G.canUseFromFloor(run) ? '<p class="note">「その場で使う」はバッグに入れずに足元の1個を使います。</p>' : '');
+    modal({ title: '足元', html, buttons });
   }
 
   // ---- 道具 ----
