@@ -225,6 +225,7 @@ body.calm .hpwrap.hurt .bar { animation: none; }
 .help li { margin-bottom: 3px; }
 #flash { position: fixed; inset: 0; pointer-events: none; background: #fff; opacity: 0; transition: opacity 0.25s; z-index: 20; }
 #flash.on { opacity: 0.85; transition: none; }
+#flash.on.soft { opacity: 0.3; }
 .ending { text-align: center; }
 .ending .big-t { font-size: 26px; color: #ffe04a; font-weight: bold; margin: 8px 0; }
 

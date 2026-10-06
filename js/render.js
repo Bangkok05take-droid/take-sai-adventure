@@ -192,8 +192,7 @@
         g.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},0.95)`; g.lineWidth = k;
         g.strokeRect(x + 1.5 * k, y + 1.5 * k, ts - 3 * k, ts - 3 * k);
         if (h.kind === 'trap') { g.strokeStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.moveTo(x + ts * 0.3, y + ts * 0.3); g.lineTo(x + ts * 0.7, y + ts * 0.7); g.moveTo(x + ts * 0.7, y + ts * 0.3); g.lineTo(x + ts * 0.3, y + ts * 0.7); g.stroke(); }
-        g.lineWidth = k * 2.5; g.strokeStyle = '#1a0a10'; g.strokeText(String(Math.max(0, n)), x + ts / 2, y + ts * 0.66);
-        g.fillStyle = '#ffffff'; g.fillText(String(Math.max(0, n)), x + ts / 2, y + ts * 0.66);
+        // 発動までの数字は、人物やボスの絵の上に描く（あとで1回だけ）
       }
       g.textAlign = 'left';
     }
@@ -247,11 +246,11 @@
       if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       if (e.charge) badge(g, '！', sx + ts / 2, sy + ts - dw - ts * 0.05, ts, k, '#ff5050', '#400');
       else if (e.rest > 0) { g.font = `bold ${Math.round(ts * 0.3)}px sans-serif`; g.fillStyle = '#bde0ff'; g.fillText('…', sx + ts * 0.65, sy + ts * 0.2); }
-      if (e.slow > 0) { g.fillStyle = '#c8b8ff'; g.font = `bold ${Math.round(ts * 0.26)}px sans-serif`; g.fillText('鈍', sx + k, sy + ts * 0.3); }
-      if (e.sleep > 0) {
-        g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(ts * 0.35)}px sans-serif`;
-        g.fillText('z', sx + ts * 0.72, sy + ts * 0.25 - (Math.floor(now / 500) % 2) * k * 2);
-      }
+      // 状態異常のしるし（眠り＝月、鈍足＝砂時計）。頭の上に横に並べ、重ならないようにする
+      const st = [];
+      if (e.sleep > 0) st.push('sleep');
+      if (e.slow > 0) st.push('slow');
+      if (st.length) RD.drawStatus(g, st, sx + ts / 2, sy + ts - dw * (img.art ? 0.78 : 0.95) - ts * 0.18, k, now);
       if (e.hp < e.maxhp && !e.boss) {
         g.fillStyle = '#000'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, ts - 4 * k, 3 * k);
         g.fillStyle = '#ff5050'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, Math.max(1, (ts - 4 * k) * e.hp / e.maxhp), 2 * k);
@@ -265,15 +264,16 @@
         g.strokeStyle = `rgba(255,90,90,${0.55 + 0.3 * Math.sin(now / 120)})`;
         for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 2 * k, oy + t.y * ts + 2 * k, ts - 4 * k, ts - 4 * k);
       }
-      if (run.hazards && run.hazards.length) {
-        g.textAlign = 'center'; g.font = `bold ${Math.round(ts * 0.32)}px sans-serif`;
-        for (const h of run.hazards) {
-          const x = ox + h.x * ts, y = oy + h.y * ts, n = Math.max(0, h.t - 1);
-          g.strokeStyle = 'rgba(255,240,200,0.7)'; g.strokeRect(x + 2 * k, y + 2 * k, ts - 4 * k, ts - 4 * k);
-          g.lineWidth = k * 2; g.strokeStyle = '#1a0a10'; g.strokeText(String(n), x + ts * 0.82, y + ts * 0.36); g.fillStyle = '#ffffff'; g.fillText(String(n), x + ts * 0.82, y + ts * 0.36); g.lineWidth = k * 1.5;
-        }
-        g.textAlign = 'left';
+      if (run.hazards && run.hazards.length) for (const h of run.hazards) { g.strokeStyle = 'rgba(255,240,200,0.7)'; g.strokeRect(ox + h.x * ts + 2 * k, oy + h.y * ts + 2 * k, ts - 4 * k, ts - 4 * k); }
+    }
+    // 床の危険の数字（発動までにたけが動ける回数）：マスの中央に1回だけ、絵の上に描く
+    if (run.hazards && run.hazards.length) {
+      g.textAlign = 'center'; g.font = `bold ${Math.round(ts * 0.38)}px sans-serif`;
+      for (const h of run.hazards) {
+        const x = ox + h.x * ts + ts / 2, y = oy + h.y * ts + ts * 0.66, n = String(Math.max(0, h.t - 1));
+        g.lineWidth = k * 2.5; g.strokeStyle = '#1a0a10'; g.strokeText(n, x, y); g.fillStyle = '#ffffff'; g.fillText(n, x, y);
       }
+      g.textAlign = 'left';
     }
     // たけ（歩くと足踏み、攻撃でポーズ、ダメージで揺れる）
     {
@@ -289,7 +289,8 @@
       const drawP = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, walking ? (Math.floor(now / 85) % 2) : 0) : g.drawImage(img, sx, sy, ts, ts);
       drawP();
       if (hurt) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55; drawP(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
-      if (p.poison) { g.fillStyle = '#c070ff'; g.fillRect(sx + ts * 0.8, sy + ts * 0.1 + (fr(300, 2) ? k : 0), 3 * k, 3 * k); }
+      // たけの状態異常のしるし（毒＝しずく、拘束＝鎖）
+      { const st = []; if (p.poison) st.push('poison'); if (p.bound > 0) st.push('bound'); if (st.length) RD.drawStatus(g, st, sx + ts / 2, sy + ts - (set.art ? 66 : 34) * k, k, now); }
       if (p.bound > 0) { // 拘束：闇の糸
         g.strokeStyle = 'rgba(190,150,255,0.9)'; g.lineWidth = k * 1.5;
         for (let i = 0; i < 3; i++) { g.beginPath(); g.ellipse(sx + ts / 2, sy + ts * (0.45 + i * 0.16), ts * 0.36, ts * 0.08, 0.2 * Math.sin(now / 200 + i), 0, Math.PI * 2); g.stroke(); }
@@ -325,6 +326,29 @@
     if (S.settings.minimap) drawMinimap(g, run, W, H, dpr, S.settings.minimap === 2);
   };
 
+  /* 状態異常のしるし：色だけでなく形で区別する小さなアイコン（9×9ドットの丸い台の上）。
+   * sleep：三日月　slow：砂時計　poison：しずく　bound：鎖の輪。複数は横に並べる */
+  RD.drawStatus = function (g, list, cx, cy, k, now) {
+    const S = 10 * k, x0 = cx - (list.length * S) / 2 + S / 2;
+    list.forEach((kind, i) => {
+      const x = Math.round(x0 + i * S), y = Math.round(cy + (kind === 'sleep' ? Math.sin(now / 400) * k : 0));
+      g.fillStyle = 'rgba(16,10,28,0.85)'; g.beginPath(); g.arc(x, y, 4.6 * k, 0, Math.PI * 2); g.fill();
+      g.lineWidth = Math.max(1, k * 0.8);
+      if (kind === 'sleep') {
+        g.fillStyle = '#ffe9a0'; g.beginPath(); g.arc(x, y, 3 * k, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(16,10,28,1)'; g.beginPath(); g.arc(x + 1.4 * k, y - 0.9 * k, 2.5 * k, 0, Math.PI * 2); g.fill();
+      } else if (kind === 'slow') {
+        g.strokeStyle = '#d8c0ff'; g.beginPath(); g.moveTo(x - 2.4 * k, y - 3 * k); g.lineTo(x + 2.4 * k, y - 3 * k); g.lineTo(x - 2.4 * k, y + 3 * k); g.lineTo(x + 2.4 * k, y + 3 * k); g.closePath(); g.stroke();
+        g.fillStyle = '#ffd890'; g.fillRect(x - 1.4 * k, y + 1.4 * k, 2.8 * k, 1.2 * k);
+      } else if (kind === 'poison') {
+        g.fillStyle = '#a8f070'; g.beginPath(); g.moveTo(x, y - 3.2 * k); g.quadraticCurveTo(x + 3 * k, y + 0.5 * k, x, y + 3 * k); g.quadraticCurveTo(x - 3 * k, y + 0.5 * k, x, y - 3.2 * k); g.fill();
+        g.fillStyle = '#5a2a8a'; g.fillRect(x - 0.6 * k, y - 0.2 * k, 1.2 * k, 1.6 * k);
+      } else if (kind === 'bound') {
+        g.strokeStyle = '#c8a8ff'; g.beginPath(); g.ellipse(x - 1.4 * k, y, 1.8 * k, 1.2 * k, 0, 0, Math.PI * 2); g.stroke();
+        g.beginPath(); g.ellipse(x + 1.4 * k, y, 1.8 * k, 1.2 * k, 0, 0, Math.PI * 2); g.stroke();
+      }
+    });
+  };
   function badge(g, text, x, y, ts, k, col, stroke) {
     g.font = `bold ${Math.round(ts * 0.5)}px sans-serif`; g.textAlign = 'center';
     g.lineWidth = k * 2; g.strokeStyle = stroke; g.strokeText(text, x, y);

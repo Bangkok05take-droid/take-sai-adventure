@@ -28,6 +28,7 @@
 
     UI.S = SV.load() || G.newState();
     AU.setEnabled(UI.S.settings.sound);
+    applyFxSetting();
     bindTitleImages(); bindTitle(); bindVillage(); bindDungeon();
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup', onKeyUp);
@@ -43,6 +44,8 @@
 
   function showScreen(name) {
     if (UI.stopHold) UI.stopHold();
+    if (UI.screen !== name) RD.clearFx();     // 画面が変わったら古い演出・数字を残さない
+    applyFxSetting();
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
     AU.playBgm(name === 'dungeon' ? (UI.S.run && G.F(UI.S.run).boss ? 'boss' : 'dungeon') : 'village');
@@ -335,8 +338,10 @@
     clearTimeout(UI.toastTimer);
     UI.toastTimer = setTimeout(() => { t.className = ''; }, 1300);
   }
-  function flash() {
+  // 画面全体の白い点滅。「演出：控えめ」では弱く（soft）する
+  function flash(soft) {
     const f = $('flash');
+    f.classList.toggle('soft', !!soft || (UI.S && UI.S.settings && UI.S.settings.fx === 'calm'));
     f.classList.add('on');
     requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
   }
@@ -424,11 +429,19 @@
     $('btn-sound-title').textContent = '音：' + (UI.S.settings.sound ? 'オン' : 'オフ');
     save();
   }
+  // 演出：通常／控えめ（控えめ：画面の揺れなし・点滅を弱く・粒を半分）
+  function toggleFx() {
+    UI.S.settings.fx = UI.S.settings.fx === 'calm' ? 'normal' : 'calm';
+    applyFxSetting(); save();
+  }
+  function applyFxSetting() { document.body.classList.toggle('calm', !!(UI.S && UI.S.settings && UI.S.settings.fx === 'calm')); }
+  UI.applyFxSetting = applyFxSetting;
   function newGame() {
-    const sound = UI.S.settings.sound;
+    const sound = UI.S.settings.sound, fxs = UI.S.settings.fx;
     SV.clear();
     UI.S = G.newState();
     UI.S.settings.sound = sound;
+    if (fxs) UI.S.settings.fx = fxs;
     UI.started = true;
     save();
     showScreen('village');
@@ -911,6 +924,7 @@
       { label: 'ヤナイの記録', onClick: () => { setTimeout(showRecords, 0); } },
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(villageMenu, 0); } },
+      { label: '演出：' + (UI.S.settings.fx === 'calm' ? '控えめ' : '通常'), onClick: () => { toggleFx(); setTimeout(villageMenu, 0); } },
       { label: 'タイトルへ', onClick: () => { save(); setTimeout(showTitle, 0); } },
       { label: '閉じる', cls: 'primary' },
     ] });
@@ -942,7 +956,8 @@
     // どこで指を離しても・画面が隠れても入力を確実に解除する
     window.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse' || !e.buttons) releaseAllPointers(); });
     window.addEventListener('pointercancel', releaseAllPointers);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopAllInput(); });
+    // 裏に回したら入力を止め、戻ったときに古い演出がまとめて流れないよう消しておく
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { stopAllInput(); RD.clearFx(); } });
     window.addEventListener('blur', stopAllInput);
     window.addEventListener('pagehide', stopAllInput);
     updateModeButtons();
@@ -1190,8 +1205,10 @@
     save();
     updateHud();
     pushLog(logLen);
-    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, 350); return; }
+    // 探索の終わり：帰還は魔法陣の光を見せてから村へ（少し長め）。倒れたときは短く
+    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, res.events.some((e) => e.t === 'return') ? 760 : 350); return; }
     if (res.floorChanged) {
+      RD.clearFx();
       stopHold(); AU.playBgm(G.F(S.run).boss ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階');
       const boss = G.F(S.run).boss;
       // ボスの登場：名前の表示と短い会話（会話中は時間が進まない）
@@ -1253,10 +1270,12 @@
         case 'loot': RD.addFx({ t: 'loot', x: e.x, y: e.y, delay: 320, dur: 450 }); break;
         // 回復：やわらかい緑の光が足元から上へ。実際の回復量を「+数値」で
         case 'heal':
-          RD.addFx({ t: 'healrise', x: e.x, y: e.y, dur: 650 });
+          if (e.kind === 'cure' || e.kind === 'clear') RD.addFx({ t: 'cleanse', x: e.x, y: e.y, dur: 600 });
+          if (e.kind !== 'clear') RD.addFx({ t: 'healrise', x: e.x, y: e.y, dur: 650 });
           if (e.n > 0) RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0', dur: 750 });
           AU.sfx('heal'); break;
-        case 'eat': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe08a', dur: 600 }); AU.sfx('eat'); break;
+        // 食事：小さな湯気とあたたかい光（満腹度のゲージも光る）
+        case 'eat': RD.addFx({ t: 'steam', x: e.x, y: e.y, dur: 650 }); if (e.n > 0) RD.addFx({ t: 'num', x: e.x, y: e.y, text: '満腹+' + e.n, color: '#ffd890', small: true, dur: 750 }); AU.sfx('eat'); break;
         case 'levelup': RD.addFx({ t: 'banner', x: e.x, y: e.y, text: 'LEVEL UP!', dur: 1100 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe04a', dur: 900 }); AU.sfx('levelup'); toast('レベル' + p.lvl + 'になった！', 'levelup'); break;
         case 'move': RD.noteMove(); break;
         case 'pickup': AU.sfx('pickup'); break;
@@ -1269,7 +1288,11 @@
           break;
         case 'fizzle': toast('杖の力が残っていない（回数0）'); AU.sfx('bump'); break;
         case 'dart': RD.addFx({ t: 'dart', from: e.from, to: e.to, dur: 300 }); AU.sfx('dart'); break;
-        case 'sleep': for (const t of e.targets) RD.addFx({ t: 'num', x: t.x, y: t.y, text: 'Zzz', color: '#c8b8ff' }); AU.sfx('sleep'); break;
+        // 眠り：淡い紫の粒と Zzz（眠っている間は敵の頭に月のしるし）。だれもいなければ理由だけ
+        case 'sleep':
+          if (e.targets.length) { RD.addFx({ t: 'zzz', targets: e.targets, dur: 900 }); AU.sfx('sleep'); }
+          else { toast('見えている敵がいない（効果なし）'); AU.sfx('bump'); }
+          break;
         case 'lunge': {
           const dx = Math.sign(p.x - e.x), dy = Math.sign(p.y - e.y);
           RD.addFx({ t: 'lunge', id: e.id, dx, dy, dur: 140 });
@@ -1287,16 +1310,26 @@
         case 'steal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
         case 'summon': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 }); AU.sfx('warn'); break;
         case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600 }); break;
-        case 'fire': for (const t of e.targets) RD.addFx({ t: 'sparkle', x: t.x, y: t.y, color: '#fff36a', dur: 600 }); flash(); AU.sfx('bolt'); break;
-        case 'slow': for (const t of e.targets) RD.addFx({ t: 'num', x: t.x, y: t.y, text: '鈍', color: '#c8b8ff' }); AU.sfx('sleep'); break;
-        case 'warp': AU.sfx('stairs'); flash(); break;
+        // 雷鳴の巻物：見えている敵それぞれに空から雷
+        case 'fire':
+          if (e.targets.length) { RD.addFx({ t: 'thunder', targets: e.targets, dur: 520 }); flash(true); AU.sfx('bolt'); }
+          else { toast('見えている敵がいない（雷は空に消えた）'); AU.sfx('bump'); }
+          break;
+        // 鈍足の粉：粉が対象へ飛び、紫の粉が広がる（鈍足の間は砂時計のしるし）
+        case 'slow':
+          RD.addFx({ t: 'powder', from: { x: p.x, y: p.y }, targets: e.targets, dur: 700 }); AU.sfx('sleep');
+          if (!e.targets.length) toast('見えている敵がいない（粉は風に消えた）');
+          break;
+        // けむり玉：元の場所と着いた場所に煙
+        case 'warp': if (e.from) RD.addFx({ t: 'smoke', x: e.from.x, y: e.from.y, dur: 520 }); if (e.to) RD.addFx({ t: 'smoke', x: e.to.x, y: e.to.y, dur: 520, delay: 120 }); AU.sfx('stairs'); break;
         case 'bagFull': toast('バッグがいっぱい！'); break;
         case 'monsterHouse': toast('モンスターハウスだ！', 'danger'); AU.sfx('warn'); break;
         case 'bossDown': case 'finalWin': for (let i = 0; i < 4; i++) RD.addFx({ t: 'sparkle', x: p.x + (i % 2 ? 2 : -2), y: p.y + (i < 2 ? 1 : -1), color: '#ffe080', dur: 1200 }); AU.sfx('levelup'); break;
         case 'finalTransform': AU.sfx('warn'); break;
         case 'stairs': AU.sfx('stairs'); flash(); break;
-        case 'reveal': AU.sfx('heal'); break;
-        case 'return': AU.sfx('return'); flash(); break;
+        case 'reveal': RD.addFx({ t: 'reveal', x: p.x, y: p.y, dur: 700 }); AU.sfx('heal'); break;
+        // 帰還（成立したときだけ）：足元に青緑の魔法陣と光の柱 → 村へ
+        case 'return': RD.addFx({ t: 'circle', x: e.x !== undefined ? e.x : p.x, y: e.y !== undefined ? e.y : p.y, dur: 720 }); AU.sfx('return'); break;
         case 'portal': AU.sfx('levelup'); toast('帰還口が開いた！', 'levelup'); break;
         default: break;
       }
@@ -1485,6 +1518,7 @@
       { label: 'メッセージ履歴', onClick: () => { setTimeout(showLog, 0); } },
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(dungeonMenu, 0); } },
+      { label: '演出：' + (UI.S.settings.fx === 'calm' ? '控えめ' : '通常'), onClick: () => { toggleFx(); setTimeout(dungeonMenu, 0); } },
       { label: '中断してタイトルへ', onClick: () => { save(); setTimeout(showTitle, 0); } },
       { label: '閉じる', cls: 'primary' },
     ] });

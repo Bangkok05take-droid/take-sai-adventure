@@ -601,7 +601,11 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(150);
     assert(await p.isVisible('text=帰還の巻物を使って村へ帰りますか'));
     await shot('12_return_confirm');
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(250);
+    // 帰還が成立したときだけ、足元に魔法陣が出てから村へ切り替わる
+    assert(await p.evaluate(() => TS.Render.fx.some((f) => f.t === 'circle')), 'return circle');
+    await shot('12b_return_circle');
+    for (let i = 0; i < 20 && !(await p.$('text=帰還！')); i++) await p.waitForTimeout(100);
     assert(await p.isVisible('text=帰還！'));
     await shot('13_return_result');
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
@@ -928,6 +932,46 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       for (const id of ['dpad', 'actions', 'view']) assert(m[id][2] <= m.iw + 1 && m[id][3] <= m.ih + 1 && m[id][2] - m[id][0] > 50 && m[id][3] - m[id][1] > 50, name + ' ' + id + JSON.stringify(m));
       await c2.close();
     }
+  });
+
+  await test('戦闘の演出：1回の攻撃で戦闘処理は1回だけ・連打をため込まない・「演出：控えめ」・階の移動や裏に回したときに古い演出が残らない', async () => {
+    await p.evaluate(() => {
+      const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S;
+      while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
+      G.depart(S, 5150); const r = S.run;
+      while (r.floor < 3) { r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+      const room = r.map.rooms.find((q) => q.w >= 4 && q.h >= 3);
+      r.enemies = []; r.floorItems = []; r.player.x = room.x + 1; r.player.y = room.y + 1; r.player.hp = r.player.maxhp = 500;
+      r.enemies.push({ id: 801, type: 'turtle', x: r.player.x + 1, y: r.player.y, hp: 9999, maxhp: 9999, atk: 1, def: 0, exp: 1, dir: 'left', sleep: 99 });
+      G.updateVision(r); TS.Render.clearFx();
+      document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; UI.lockUntil = 0;
+    });
+    const st = () => p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.enemies[0].hp, patk: TS.Render.fx.filter((f) => f.t === 'patk').length, slash: TS.Render.fx.filter((f) => f.t === 'slash' || f.t === 'punch').length }));
+    const a = await st();
+    await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(60);
+    const b = await st();
+    eq2(b.turn, a.turn + 1, 'one turn'); eq2(b.patk, 1, 'one attack motion'); assert(b.hp <= a.hp, 'hit or miss once');
+    await shot('33_attack');
+    // 演出中に5回連打しても、受け付けた分だけその場で処理され、あとからまとめて実行されない
+    for (let i = 0; i < 5; i++) await p.tap('#dpad [data-dir="right"]');
+    const c = await st(); await p.waitForTimeout(700); const d = await st();
+    eq2(d.turn, c.turn, 'no queued actions after the animation'); assert(c.turn - b.turn <= 5, 'no extra actions');
+    // 「演出：控えめ」：メニューから切り替え、画面の揺れを出さない
+    await p.tap('#b-menu'); await p.waitForTimeout(150);
+    await p.tap('.modal-buttons button >> text=演出：通常'); await p.waitForTimeout(150);
+    assert(await p.evaluate(() => TS.UI.S.settings.fx === 'calm' && document.body.classList.contains('calm')), 'calm on');
+    await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); });
+    eq2(await p.evaluate(() => { TS.FX.shake(TS.Render, 4, 300); return TS.Render.fx.filter((f) => f.t === 'shake').length; }), 0, 'no shake when calm');
+    await p.tap('#b-menu'); await p.waitForTimeout(150);
+    await p.tap('.modal-buttons button >> text=演出：控えめ'); await p.waitForTimeout(150);
+    await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); });
+    assert(await p.evaluate(() => TS.UI.S.settings.fx === 'normal' && !document.body.classList.contains('calm')), 'back to normal');
+    // 階を移動すると古い演出は消える
+    await p.evaluate(() => { TS.Render.addFx({ t: 'num', x: 1, y: 1, text: '9', dur: 5000 }); const r = TS.UI.S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); });
+    eq2(await p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'num' && f.text === '9').length), 0, 'cleared on floor change');
+    // 裏に回したら、入力を止めて演出を消す（戻ったときに古い演出がまとめて流れない）
+    const hid = await p.evaluate(() => { TS.Render.addFx({ t: 'healrise', x: 1, y: 1, dur: 5000 }); Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); const n = TS.Render.fx.length; delete document.hidden; return n; });
+    eq2(hid, 0, 'cleared when hidden');
   });
 
   await test('すべての地域の地形と部屋の見せ場（レンガの遺跡・水晶の地下神殿・封印の最深部ほか）がエラーなく描ける', async () => {

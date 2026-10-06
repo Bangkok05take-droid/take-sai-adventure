@@ -775,7 +775,7 @@
         p.hunger = Math.min(D.PLAYER.maxHunger, p.hunger + d.food);
         remove();
         G.log(run, d.name + 'を食べた。満腹度が' + (p.hunger - before) + '回復した。');
-        ev.push({ t: 'eat', x: p.x, y: p.y });
+        ev.push({ t: 'eat', x: p.x, y: p.y, n: p.hunger - before });
         return true;
       }
       case 'sleep': {
@@ -820,6 +820,7 @@
       }
       case 'warp': {
         remove();
+        const from = { x: p.x, y: p.y };   // 演出用（煙を出す場所）
         // 今いる部屋以外で、できるだけ遠い部屋へ
         const here = G.roomForView(run, p.x, p.y);
         let best = null, bd = -1;
@@ -832,7 +833,7 @@
         }
         if (best) { p.x = best.x; p.y = best.y; G.updateVision(run); }
         G.log(run, 'けむり玉を投げた！たけは煙にまぎれて逃げ出した。');
-        ev.push({ t: 'warp' });
+        ev.push({ t: 'warp', from, to: { x: p.x, y: p.y } });
         checkMonsterHouse(run, ev);
         return true;
       }
@@ -856,7 +857,7 @@
         remove();
         run.fog = 0; p.bound = 0; p.bindGuard = 12;
         G.log(run, d.name + 'をたいた。霧が晴れ、体が軽くなった！');
-        ev.push({ t: 'heal', x: p.x, y: p.y, n: 0 });
+        ev.push({ t: 'heal', x: p.x, y: p.y, n: 0, kind: 'clear' });
         G.updateVision(run);
         return true;
       }
@@ -865,12 +866,12 @@
         p.poison = 0; p.poisonGuard = 30;
         const before = p.hp; p.hp = Math.min(p.maxhp, p.hp + 20);
         G.log(run, d.name + 'を使った。毒が消え、体が軽くなった。');
-        ev.push({ t: 'heal', x: p.x, y: p.y, n: p.hp - before });
+        ev.push({ t: 'heal', x: p.x, y: p.y, n: p.hp - before, kind: 'cure' });
         return true;
       }
       case 'return': {
         endRun(S, 'return', '帰還の巻物で村へ戻った。');
-        ev.push({ t: 'return' });
+        ev.push({ t: 'return', scroll: true, x: p.x, y: p.y });
         return false; // 探索終了（敵の行動なし）
       }
       case 'weapon': case 'shield':
