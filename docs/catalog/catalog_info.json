@@ -1,0 +1,781 @@
+{
+ "enemies": {
+  "frog": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 24,
+    "h": 23,
+    "x0": 4,
+    "y0": 7,
+    "x1": 27,
+    "y1": 29
+   },
+   "same": false
+  },
+  "turtle": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 26,
+    "h": 25,
+    "x0": 3,
+    "y0": 4,
+    "x1": 28,
+    "y1": 28
+   },
+   "same": false
+  },
+  "monkey": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 30,
+    "h": 29,
+    "x0": 2,
+    "y0": 3,
+    "x1": 31,
+    "y1": 31
+   },
+   "same": false
+  },
+  "root": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 26,
+    "h": 32,
+    "x0": 3,
+    "y0": 0,
+    "x1": 28,
+    "y1": 31
+   },
+   "same": false
+  },
+  "jelly": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 24,
+    "h": 27,
+    "x0": 4,
+    "y0": 4,
+    "x1": 27,
+    "y1": 30
+   },
+   "same": false
+  },
+  "statue": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 25,
+    "h": 32,
+    "x0": 4,
+    "y0": 0,
+    "x1": 28,
+    "y1": 31
+   },
+   "same": false
+  },
+  "bat": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 32,
+    "h": 16,
+    "x0": 0,
+    "y0": 6,
+    "x1": 31,
+    "y1": 21
+   },
+   "same": false
+  },
+  "shaman": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 22,
+    "h": 31,
+    "x0": 7,
+    "y0": 1,
+    "x1": 28,
+    "y1": 31
+   },
+   "same": false
+  },
+  "lizard": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 30,
+    "h": 19,
+    "x0": 2,
+    "y0": 10,
+    "x1": 31,
+    "y1": 28
+   },
+   "same": false
+  },
+  "thief": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 29,
+    "h": 28,
+    "x0": 1,
+    "y0": 3,
+    "x1": 29,
+    "y1": 30
+   },
+   "same": false
+  },
+  "golem": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 26,
+    "h": 30,
+    "x0": 3,
+    "y0": 2,
+    "x1": 28,
+    "y1": 31
+   },
+   "same": false
+  },
+  "wisp": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 27,
+    "h": 24,
+    "x0": 3,
+    "y0": 4,
+    "x1": 29,
+    "y1": 27
+   },
+   "same": false
+  },
+  "guard": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 25,
+    "h": 32,
+    "x0": 1,
+    "y0": 0,
+    "x1": 25,
+    "y1": 31
+   },
+   "same": false
+  },
+  "darkknight": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 26,
+    "h": 32,
+    "x0": 5,
+    "y0": 0,
+    "x1": 30,
+    "y1": 31
+   },
+   "same": false
+  },
+  "imp": {
+   "n": 2,
+   "w": 32,
+   "h": 32,
+   "art": false,
+   "bb": {
+    "w": 24,
+    "h": 30,
+    "x0": 5,
+    "y0": 1,
+    "x1": 28,
+    "y1": 30
+   },
+   "same": false
+  },
+  "lion": {
+   "n": 2,
+   "w": 48,
+   "h": 48,
+   "art": false,
+   "bb": {
+    "w": 34,
+    "h": 46,
+    "x0": 7,
+    "y0": 1,
+    "x1": 40,
+    "y1": 46
+   },
+   "same": false
+  },
+  "catfish": {
+   "n": 2,
+   "w": 48,
+   "h": 48,
+   "art": false,
+   "bb": {
+    "w": 48,
+    "h": 37,
+    "x0": 0,
+    "y0": 5,
+    "x1": 47,
+    "y1": 41
+   },
+   "same": false
+  },
+  "elephant": {
+   "n": 2,
+   "w": 48,
+   "h": 48,
+   "art": false,
+   "bb": {
+    "w": 48,
+    "h": 46,
+    "x0": 0,
+    "y0": 2,
+    "x1": 47,
+    "y1": 47
+   },
+   "same": false
+  },
+  "croc": {
+   "n": 2,
+   "w": 96,
+   "h": 96,
+   "art": true,
+   "bb": {
+    "w": 60,
+    "h": 73,
+    "x0": 14,
+    "y0": 19,
+    "x1": 73,
+    "y1": 91
+   },
+   "same": true
+  },
+  "flame": {
+   "n": 2,
+   "w": 96,
+   "h": 96,
+   "art": true,
+   "bb": {
+    "w": 50,
+    "h": 67,
+    "x0": 24,
+    "y0": 25,
+    "x1": 73,
+    "y1": 91
+   },
+   "same": true
+  },
+  "kill": {
+   "n": 2,
+   "w": 96,
+   "h": 96,
+   "art": true,
+   "bb": {
+    "w": 60,
+    "h": 69,
+    "x0": 24,
+    "y0": 23,
+    "x1": 83,
+    "y1": 91
+   },
+   "same": true
+  },
+  "baran": {
+   "n": 2,
+   "w": 96,
+   "h": 96,
+   "art": true,
+   "bb": {
+    "w": 49,
+    "h": 65,
+    "x0": 24,
+    "y0": 27,
+    "x1": 72,
+    "y1": 91
+   },
+   "same": true
+  },
+  "mist": {
+   "n": 2,
+   "w": 96,
+   "h": 96,
+   "art": true,
+   "bb": {
+    "w": 57,
+    "h": 67,
+    "x0": 18,
+    "y0": 25,
+    "x1": 74,
+    "y1": 91
+   },
+   "same": true
+  },
+  "vearn": {
+   "n": 2,
+   "w": 96,
+   "h": 96,
+   "art": true,
+   "bb": {
+    "w": 54,
+    "h": 70,
+    "x0": 22,
+    "y0": 22,
+    "x1": 75,
+    "y1": 91
+   },
+   "same": true
+  },
+  "truevearn": {
+   "n": 2,
+   "w": 96,
+   "h": 96,
+   "art": true,
+   "bb": {
+    "w": 56,
+    "h": 66,
+    "x0": 21,
+    "y0": 26,
+    "x1": 76,
+    "y1": 91
+   },
+   "same": true
+  }
+ },
+ "items": {
+  "wood_sword": {
+   "key": "sword:wood",
+   "art": true,
+   "file": "sword_wood",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "bronze_sword": {
+   "key": "sword:copper",
+   "art": true,
+   "file": "sword_copper",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "iron_katana": {
+   "key": "sword:iron",
+   "art": true,
+   "file": "sword_iron",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "ivory_blade": {
+   "key": "sword:steel",
+   "art": true,
+   "file": "sword_steel",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "bamboo_shield": {
+   "key": "shield:wood",
+   "art": true,
+   "file": "shield_wood",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "bronze_shield": {
+   "key": "shield:iron",
+   "art": true,
+   "file": "shield_iron",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "turtle_shield": {
+   "key": "shield:steel",
+   "art": true,
+   "file": "shield_steel",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "herb": {
+   "key": "herb:",
+   "art": true,
+   "file": "herb",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "elixir": {
+   "key": "potion:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "banana": {
+   "key": "banana:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "khaoniao": {
+   "key": "bento:",
+   "art": true,
+   "file": "bento",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "loan_rice": {
+   "key": "onigiri:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "sleep_incense": {
+   "key": "sleepgrass:",
+   "art": true,
+   "file": "sleepgrass",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "thunder_staff": {
+   "key": "staff:",
+   "art": true,
+   "file": "staff",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "thunder_king_staff": {
+   "key": "staff:king",
+   "art": true,
+   "file": "staff_king",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "jade_sword": {
+   "key": "sword:jade",
+   "art": true,
+   "file": "sword_jade",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "crystal_blade": {
+   "key": "sword:crystal",
+   "art": true,
+   "file": "sword_crystal",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "golden_sword": {
+   "key": "sword:gold",
+   "art": true,
+   "file": "sword_gold",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "moss_shield": {
+   "key": "shield:jade",
+   "art": true,
+   "file": "shield_jade",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "crystal_shield": {
+   "key": "shield:crystal",
+   "art": true,
+   "file": "shield_crystal",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "golden_shield": {
+   "key": "shield:gold",
+   "art": true,
+   "file": "shield_gold",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "big_herb": {
+   "key": "herb:big",
+   "art": true,
+   "file": "herb_big",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "smoke_ball": {
+   "key": "smoke:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "slow_powder": {
+   "key": "powder:",
+   "art": true,
+   "file": "powder",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "fire_charm": {
+   "key": "scroll:thunder",
+   "art": true,
+   "file": "scroll_thunder",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "antidote": {
+   "key": "herb:cure",
+   "art": true,
+   "file": "herb_cure",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "return_scroll": {
+   "key": "scroll:return",
+   "art": true,
+   "file": "scroll_return",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "dragon_shield": {
+   "key": "shield:dragon",
+   "art": true,
+   "file": "shield_dragon",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "frost_sword": {
+   "key": "sword:frost",
+   "art": true,
+   "file": "sword_frost",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "moon_shield": {
+   "key": "shield:moon",
+   "art": true,
+   "file": "shield_moon",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "dragon_sword": {
+   "key": "sword:dragon",
+   "art": true,
+   "file": "sword_dragon",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "hero_sword": {
+   "key": "sword:hero",
+   "art": true,
+   "file": "sword_hero",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "hero_shield": {
+   "key": "shield:hero",
+   "art": true,
+   "file": "shield_hero",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "water_charm": {
+   "key": "charm:water",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "truth_mirror": {
+   "key": "mirror:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "bolt_charm": {
+   "key": "charm:bolt",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "clear_incense": {
+   "key": "incense:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "sense_scroll": {
+   "key": "scroll:sense",
+   "art": true,
+   "file": "scroll_sense",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "sight_scroll": {
+   "key": "scroll:sight",
+   "art": true,
+   "file": "scroll_sight",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "old_coin": {
+   "key": "coin:",
+   "art": true,
+   "file": "coin",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "jade_elephant": {
+   "key": "elephant:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "golden_lotus": {
+   "key": "lotus:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "guardian_gem": {
+   "key": "gem:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "amber_pendant": {
+   "key": "pendant:",
+   "art": true,
+   "file": "pendant_amber",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "bronze_bell": {
+   "key": "bell:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "sunken_crown": {
+   "key": "crown:blue",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "river_pearl": {
+   "key": "pearl:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "giant_crystal": {
+   "key": "gem:crystal",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "prism_flower": {
+   "key": "lotus:prism",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "golden_elephant": {
+   "key": "elephant:gold",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "dream_crown": {
+   "key": "crown:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "amber_shard": {
+   "key": "shard:amber",
+   "art": true,
+   "file": "shard_amber",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "bronze_shard": {
+   "key": "shard:bronze",
+   "art": true,
+   "file": "shard_bronze",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "crystal_shard": {
+   "key": "shard:crystal",
+   "art": true,
+   "file": "shard_crystal",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "gold_leaf": {
+   "key": "shard:gold",
+   "art": true,
+   "file": "shard_gold",
+   "floorW": 32,
+   "floorH": 32
+  },
+  "wish_orb": {
+   "key": "orb:",
+   "art": true,
+   "file": "orb",
+   "floorW": 32,
+   "floorH": 32
+  }
+ },
+ "unusedFiles": [
+  "pendant",
+  "plan",
+  "robe",
+  "shield",
+  "soup",
+  "sword"
+ ]
+}
