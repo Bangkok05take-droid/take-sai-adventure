@@ -44,7 +44,7 @@
     if (UI.stopHold) UI.stopHold();
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
-    AU.playBgm(name === 'dungeon' ? (UI.S.run && D.FLOORS[UI.S.run.floor].boss ? 'boss' : 'dungeon') : 'village');
+    AU.playBgm(name === 'dungeon' ? (UI.S.run && G.F(UI.S.run).boss ? 'boss' : 'dungeon') : 'village');
     if (name === 'village') updateVillageHud();
     if (name === 'dungeon') updateHud();
   }
@@ -52,7 +52,12 @@
   // ================= 描画ループ =================
   function loop(now) {
     try {
-      if (UI.screen === 'dungeon' && UI.S.run) RD.drawDungeon($('dungeon-canvas'), UI.S, now);
+      if (UI.screen === 'dungeon' && UI.S.run) {
+        RD.drawDungeon($('dungeon-canvas'), UI.S, now);
+        // 最終決戦の準備中は、道具の確認などを閉じたら準備画面に戻す（準備中は時間が止まっている）
+        const fin = UI.S.run.final;
+        if (fin && fin.stage === 'prep' && fin.cutsceneSeen && !UI.prepHold && !UI.modals.length && !UI.S.run.over) openFinalPrep();
+      }
       else if (UI.screen === 'village') UI.villageHits = RD.drawVillage($('village-canvas'), UI.S.village, now);
       else if (UI.screen === 'title') drawTitleScene();
     } catch (e) { console.error(e); }
@@ -281,24 +286,45 @@
   function info(title, html, cb) { return modal({ title, html, onClose: cb }); }
 
   // 会話：lines = [[who, text], ...]
-  function talk(lines, done) {
+  /* 会話。lines：[話す人, セリフ]。話す人は D.CAST のID、ボスは 'boss:敵ID'、'narration' は語り（顔絵なし）。
+   * opts.skip が true なら「スキップ」ボタン（再挑戦時など一度見た会話）。 */
+  function speaker(w) {
+    if (String(w).startsWith('boss:')) { const E = D.ENEMIES[w.slice(5)]; return { name: E ? E.name : '', portrait: w }; }
+    const c = D.CAST[w] || D.CAST.villager;
+    return { name: c.name, portrait: c.portrait && (TS.ASSETS && TS.ASSETS.portraits && TS.ASSETS.portraits[w] ? w : c.portrait) };
+  }
+  const fillNames = (t) => String(t).replace(/\{(\w+)\}/g, (m, k) => (D.CAST[k] ? D.CAST[k].name : m));
+  function talk(lines, done, opts) {
     let i = 0;
+    lines = lines.filter(Boolean);
+    const buttons = [{ label: '▶ つぎへ', cls: 'primary', keep: true, onClick: () => { i++; if (i >= lines.length) { h.close(); } else show(); } }];
+    if (opts && opts.skip && lines.length > 1) buttons.unshift({ label: 'スキップ', onClick: () => {} });
     const h = modal({
       html: '<div class="talk"><img alt=""><div><div class="who"></div><div class="txt"></div></div></div>',
-      buttons: [{ label: '▶ つぎへ', cls: 'primary', keep: true, onClick: () => { i++; if (i >= lines.length) { h.close(); } else show(); } }],
-      noClose: true, onClose: done,
+      buttons, noClose: true, onClose: done,
     });
     const img = h.body.querySelector('img'), who = h.body.querySelector('.who'), txt = h.body.querySelector('.txt');
-    const ports = { take: SP.portraitURL('take', 72), sai: SP.portraitURL('sai', 72) };
+    const ports = {};
     function show() {
       const [w, t] = lines[i];
-      img.src = ports[w];
-      who.textContent = w === 'take' ? 'たけ' : 'サイ';
-      txt.textContent = t;
+      const sp = speaker(w);
+      if (sp.portrait) { img.style.display = ''; img.src = ports[sp.portrait] || (ports[sp.portrait] = SP.portraitURL(sp.portrait, 72)); }
+      else img.style.display = 'none';
+      h.body.querySelector('.talk').classList.toggle('narration', !sp.portrait);
+      who.textContent = sp.name;
+      txt.textContent = fillNames(t);
     }
     show();
     h.body.addEventListener('click', (e) => { if (h.accept(e)) { const b = h.el.querySelector('.modal-buttons button'); if (b) b.click(); } });
     return h;
+  }
+
+  // 物語の会話：一度見たものは2回目から「スキップ」できる
+  function storyTalk(key, lines, done) {
+    const st = UI.S.village.story;
+    const seen = !!st.seen[key];
+    st.seen[key] = true; save();
+    talk(lines, done, { skip: seen });
   }
 
   function toast(msg, cls) {
@@ -317,7 +343,15 @@
   // ================= 遊び方 =================
   const HELP_HTML = `<div class="help">
     <h3>目的</h3>
-    <p>たけを操作して遺跡（地下30階）を探索し、最深部の「願いの宝珠」を村へ持ち帰ろう。10階と20階には強い守り手がいる。拾ったお宝はサイの店で売って村を発展させよう。</p>
+    <p>師匠マスターヤナイが大魔王を封じた遺跡へ、勇者たけが挑む。第1〜5章は、1階から30階をめざし、30階で待つ魔王軍の将を倒す。倒すと報酬と帰還口が現れ、村へ帰ると次の章へ進む。第5章のあと、35階の大魔王に挑む最終章が始まる。</p>
+    <p>途中で帰還しても、倒れても、章はそのまま（クリアした章をやり直すことはない）。拾ったお宝はサイの店で売って村を復興させ、次の挑戦の準備をしよう。</p>
+    <h3>ボス戦</h3>
+    <ul>
+      <li>大技の前には必ず予告がある：<b>赤いマス</b>（次の行動で攻撃）と、<b>色つきの床の印</b>（数字は発動までに動ける回数。0で発動）。印のない床へ移ればかわせる。</li>
+      <li>大技のあとには隙ができる。反撃のチャンス。ボスにも眠り・鈍足が短く効く。</li>
+      <li>分身には影がない。霧の中でも予告と印は見える。拘束（移動できない）の間も、攻撃・道具・足踏みはできる。</li>
+      <li>章ごとにお店へ並ぶ護符・お香が、そのボスへの備えになる。</li>
+    </ul>
     <h3>操作</h3>
     <ul>
       <li><b>方向ボタン</b>（3×3）：8方向に1マス移動。斜めも1ターン。押し続けると連続で進む（敵が隣に来た・道具や階段の上などで止まる）。</li>
@@ -397,14 +431,8 @@
     UI.started = true;
     save();
     showScreen('village');
-    talk([
-      ['sai', 'たけ、見て！水路の向こうの遺跡、今日も夕日できれいだね。'],
-      ['take', 'あの遺跡の奥に「願いの宝珠」が眠ってるって、本当かな？'],
-      ['sai', 'うわさだけどね。でも、拾ったお宝を売れば、このお店も大きくできるよ。'],
-      ['take', 'よし、ぼくが探してくる！サイはお店をよろしく。'],
-      ['sai', 'うん。無理しないでね。危なくなったら帰還の巻物で帰ってきて！'],
-    ], () => {
-      UI.S.village.seenIntro = true; save();
+    talk(D.STORY.intro.concat([['sai', '装備がなくても大丈夫。お店で木刀とおにぎりを無料で貸すからね。危なくなったら帰還の巻物で帰ってきて！']]), () => {
+      UI.S.village.seenIntro = true; UI.S.village.story.introDone = true; save();
       showHelp(() => info('はじめの一歩', '<p>下の<b>「遺跡へ出発」</b>から探索に出かけよう。</p><p class="note">装備がなくても、出発前にサイの店で<b>かしだしの木刀と旅人のおにぎりを無料で借りられます</b>。</p>'));
     });
   }
@@ -417,8 +445,11 @@
     if (UI.S.run) {
       showScreen('dungeon');
       if (UI.S.run.over) handleRunOver();
-      else { pushLog(); toast('地下' + UI.S.run.floor + '階から再開'); }
-    } else showScreen('village');
+      else {
+        pushLog(); toast('地下' + UI.S.run.floor + '階から再開');
+        if (UI.S.run.final && UI.S.run.final.stage === 'prep') setTimeout(() => finalCutscene(), 300);
+      }
+    } else { showScreen('village'); showStoryPending(); }
   }
 
   // ================= 村 =================
@@ -436,6 +467,10 @@
   }
   function updateVillageHud() {
     const V = UI.S.village;
+    const ss = G.storyStatus(V);
+    $('v-chapter').innerHTML = ss.cleared
+      ? `<b>★ 全章クリア</b>　最終章の35階には、何度でも挑戦できます`
+      : `<b>${esc(ss.name)}「${esc(ss.title)}」</b>　次のボス：<b>${esc(ss.bossName)}</b>　目標：<b>地下${ss.goal}階</b>`;
     $('v-funds').textContent = V.funds;
     $('v-stage').textContent = G.title(V) || D.VILLAGE_STAGES[Math.min(3, V.stage)].name;
     $('v-stage-lbl').textContent = G.title(V) ? '称号' : '村';
@@ -805,19 +840,17 @@
     showScreen('dungeon');
     pushLog();
     const V = UI.S.village;
-    const lines = V.runs === 1
-      ? [['sai', 'いってらっしゃい、たけ！お腹がすいたらちゃんと食べてね。'], ['take', 'いってきます！お宝、たくさん持って帰るよ。']]
-      : V.cleared ? [['sai', '宝珠のおかげで村がにぎやかだね。今日も気をつけて！'], ['take', 'まだ見てない部屋があるはず。いってきます！']]
-      : V.bestFloor >= 20 ? [['sai', '結晶の洞窟の先に、金色の神殿があるんだって。'], ['take', '宝珠はきっとその奥だ。準備して行ってくる！']]
-      : V.bestFloor >= 10 ? [['sai', '守護獅子の先にも、まだ遺跡は続いてるんだね。'], ['take', 'うん、30階まであるらしい。少しずつ進むよ。']]
-      : [['sai', '今日はどこまで行くの？無理はしないでね。'], ['take', 'うん。危なくなったら帰ってくるよ。']];
-    talk(lines);
+    const ch = UI.S.run.chapter;
+    if (V.story.endingDone) talk([['sai', '大魔王はもういないけど、遺跡にはまだお宝が眠ってるよ。気をつけてね！'], ['take', 'いってきます！']]);
+    else storyTalk('depart' + ch, D.STORY.depart[ch]);
   }
 
   function villageMenu() {
     modal({ title: 'メニュー', html: `<p class="note">セーブは自動で行われます。</p><p>帰還 ${UI.S.village.returns}回　敗北 ${UI.S.village.defeats}回　最深 地下${UI.S.village.bestFloor}階</p>
-      <p>${UI.S.village.cleared ? '★ 30階の願いの宝珠：入手済み（' + UI.S.village.clears + '回）' : '目標：地下30階の「願いの宝珠」'}</p>
+      <p>${(() => { const ss = G.storyStatus(UI.S.village); return ss.cleared ? '★ 全章クリア（最終決戦の勝利 ' + UI.S.village.clears + '回）' : '現在：' + esc(ss.name + '「' + ss.title + '」') + '　次のボス：' + esc(ss.bossName) + '（地下' + ss.goal + '階）'; })()}</p>
+      ${UI.S.village.legacyClear30 ? '<p class="note">旧版のクリア記録：30階「願いの宝珠」（以前の版・' + (UI.S.village.legacyClears30 || 1) + '回）</p>' : ''}
       ${UI.S.village.legacyClear10 ? '<p class="note">旧記録：10階「宝珠の間」踏破（以前の版）</p>' : ''}`, buttons: [
+      { label: 'ヤナイの記録', onClick: () => { setTimeout(showRecords, 0); } },
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(villageMenu, 0); } },
       { label: 'タイトルへ', onClick: () => { save(); setTimeout(showTitle, 0); } },
@@ -1091,7 +1124,22 @@
     updateHud();
     pushLog(logLen);
     if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, 350); return; }
-    if (res.floorChanged) { stopHold(); AU.playBgm(D.FLOORS[S.run.floor].boss ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階'); }
+    if (res.floorChanged) {
+      stopHold(); AU.playBgm(G.F(S.run).boss ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階');
+      const boss = G.F(S.run).boss;
+      // ボスの登場：名前の表示と短い会話（会話中は時間が進まない）
+      if (boss && G.chapterOf(S.run) !== 'legacy' && D.STORY.bossPre[boss]) {
+        setTimeout(() => { flash(); toast(D.ENEMIES[boss].name + ' 出現！', 'danger'); AU.sfx('warn'); storyTalk('pre_' + boss, D.STORY.bossPre[boss]); }, 400);
+      }
+    }
+    if (res.events.some((e) => e.t === 'bossDown')) {
+      const b = res.events.find((e) => e.t === 'bossDown').boss;
+      stopHold();
+      setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b]); }, 500);
+      return;
+    }
+    if (res.events.some((e) => e.t === 'finalTransform')) { stopHold(); setTimeout(() => finalCutscene(), 500); return; }
+    if (res.events.some((e) => e.t === 'finalWin')) { stopHold(); setTimeout(() => { flash(); storyTalk('final_win', D.STORY.finalWin); }, 500); return; }
     // 階段などに乗ったら確認
     const ev = res.events;
     if (ev.some((e) => e.t === 'onStairs')) { stopHold(); setTimeout(() => promptStairs(), 60); }
@@ -1135,6 +1183,8 @@
         case 'warp': AU.sfx('stairs'); flash(); break;
         case 'bagFull': toast('バッグがいっぱい！'); break;
         case 'monsterHouse': toast('モンスターハウスだ！', 'danger'); AU.sfx('warn'); break;
+        case 'bossDown': case 'finalWin': for (let i = 0; i < 4; i++) RD.addFx({ t: 'sparkle', x: p.x + (i % 2 ? 2 : -2), y: p.y + (i < 2 ? 1 : -1), color: '#ffe080', dur: 1200 }); AU.sfx('levelup'); break;
+        case 'finalTransform': AU.sfx('warn'); break;
         case 'stairs': AU.sfx('stairs'); flash(); break;
         case 'reveal': AU.sfx('heal'); break;
         case 'return': AU.sfx('return'); flash(); break;
@@ -1185,9 +1235,10 @@
   function promptStairs() {
     if (!UI.S.run || UI.modals.length || !G.onStairs(UI.S.run)) return;
     const f = UI.S.run.floor;
-    const nextBoss = D.FLOORS[f + 1] && D.FLOORS[f + 1].boss;
-    const bossWarn = nextBoss ? `<div class="warnbox">この先は「${D.THEMES[D.FLOORS[f + 1].theme].name}」。${D.ENEMIES[nextBoss].name}が待っています。HPと道具を整えてから進もう。</div>` : '';
-    const region = D.FLOORS[f + 1] && D.FLOORS[f + 1].theme !== D.FLOORS[f].theme && !nextBoss ? `<p class="note">この先は「${D.THEMES[D.FLOORS[f + 1].theme].name}」。</p>` : '';
+    const run = UI.S.run, F1 = G.F(run, f + 1), F0 = G.F(run, f);
+    const nextBoss = F1.boss;
+    const bossWarn = nextBoss ? `<div class="warnbox">この先は「${D.THEMES[F1.theme].name}」。${D.ENEMIES[nextBoss].name}が待っています。HPと道具を整えてから進もう。</div>` : '';
+    const region = F1.theme !== F0.theme && !nextBoss ? `<p class="note">この先は「${D.THEMES[F1.theme].name}」。</p>` : '';
     modal({ title: '階段', html: `<p>下へ続く階段がある。地下${f + 1}階へ降りますか？</p>${bossWarn}${region}<p class="note">降りなかった場合も「足元」ボタンからいつでも降りられます。</p>`, buttons: [
       { label: 'まだ探索する' },
       { label: '降りる', cls: 'primary', onClick: () => { setTimeout(() => doDescend(), 0); } },
@@ -1204,7 +1255,7 @@
     if (!portal && !G.onReturnPoint(run)) return;
     const orb = run.bag.some((i) => i.id === 'wish_orb');
     const html = portal
-      ? `<p>光る帰還口だ。村へ帰りますか？</p>${!orb && run.floorItems.some((f) => f.item && (f.item.id === 'wish_orb')) ? '<div class="warnbox">まだ宝珠を拾っていません！</div>' : ''}`
+      ? `<p>光る帰還口だ。村へ帰りますか？</p>${run.floorItems.some((f) => f.item && G.F(run).boss) ? '<div class="warnbox">まだ拾っていない品（ボスの報酬など）があります！</div>' : ''}`
       : `<p>帰還の碑がある。ここから村へ帰れます。</p><p>持ち物 ${run.bag.length}個・探索中のお金 ${run.runGold}G を持ち帰れます。</p><p class="note">先に進めば、もっと良いお宝があるかもしれません。帰還の巻物は残ります（帰還すると消えます）。</p>`;
     modal({ title: portal ? '帰還口' : '帰還の碑', html, buttons: [
       { label: portal ? 'まだ残る' : '先に進む' },
@@ -1261,7 +1312,7 @@
 
   // 使える消耗品の種類と、そのボタンの表示（ここにない種類は「置く」だけ）
   const USE_LABEL = { heal: '使う（1ターン）', food: '食べる（1ターン）', sleep: 'たく（1ターン）', map: '読む（1ターン）',
-    slow: 'まく（1ターン）', warp: '投げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）' };
+    slow: 'まく（1ターン）', warp: '投げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）', clear: 'たく（1ターン）' };
   UI.USE_LABEL = USE_LABEL;
   function itemDetail(it, listModal) {
     const d = G.def(it);
@@ -1304,7 +1355,8 @@
     const run = UI.S.run;
     const p = run.player;
     const nextExp = D.EXP_TABLE[p.lvl + 1];
-    const html = `<div class="kv"><span>場所</span><span>地下${run.floor}階（${D.THEMES[D.FLOORS[run.floor].theme].name}）</span>
+    const html = `<div class="kv"><span>場所</span><span>地下${run.floor}階（${D.THEMES[G.F(run).theme].name}）</span>
+      <span>章</span><span>${G.chapterOf(run) === 'legacy' ? '以前の版の冒険（帰還後に第1章へ）' : esc(D.CHAPTERS[run.chapter].name + '「' + D.CHAPTERS[run.chapter].title + '」')}</span>
       <span>レベル</span><span>${p.lvl}（次まで ${nextExp ? nextExp - p.exp : '-'}）</span>
       <span>HP</span><span>${p.hp}/${p.maxhp}</span><span>満腹度</span><span>${p.hunger}%</span>
       <span>攻撃/防御</span><span>${G.playerAtk(run)} / ${G.playerDef(run)}</span>
@@ -1318,6 +1370,69 @@
       { label: '中断してタイトルへ', onClick: () => { save(); setTimeout(showTitle, 0); } },
       { label: '閉じる', cls: 'primary' },
     ] });
+  }
+
+  // ================= 35階の最終決戦 =================
+  /* 静寂 → ミストバーンの再出現と変身 → サイたちの支援（回復はゲーム処理で1回だけ済んでいる） → 準備画面。
+   * 演出は一度だけ（再読み込みで繰り返さない）。準備中は時間が止まっている。 */
+  function finalCutscene() {
+    const run = UI.S.run;
+    if (!run || !run.final || run.final.stage !== 'prep') return;
+    if (run.final.cutsceneSeen) { openFinalPrep(); return; }
+    closeAllModals();
+    talk(D.STORY.finalSilence, () => {
+      flash(); AU.sfx('warn');
+      talk(D.STORY.finalTransform, () => { G.markFinalCutscene(UI.S); save(); updateHud(); openFinalPrep(); });
+    });
+  }
+  function openFinalPrep() {
+    const run = UI.S.run;
+    if (!run || !run.final || run.final.stage !== 'prep' || UI.modals.length) return;
+    const p = run.player, w = G.equipped(run.bag, 'weapon'), sh = G.equipped(run.bag, 'shield');
+    const heal = run.bag.filter((i) => ['heal', 'food', 'cure'].includes(G.def(i).type)).length;
+    UI.prepOpen = true;
+    modal({ title: '最終決戦の準備', noClose: true, html: `<p>サイたちの祈りで、たけのHPが全回復した。</p>
+      <div class="kv"><span>HP</span><span>${p.hp}/${p.maxhp}</span><span>満腹度</span><span>${p.hunger}%</span>
+      <span>武器</span><span>${w ? esc(G.itemName(w)) : 'なし'}</span><span>盾</span><span>${sh ? esc(G.itemName(sh)) : 'なし'}</span>
+      <span>回復・食料</span><span>${heal}個</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
+      <p class="note">準備の間は時間が止まっています（敵は動きません）。「道具を確認」で装備の付け替えや回復ができます。</p>
+      <div class="warnbox">真大魔王バーン：天地の掌（周り8マス）・滅びの炎（3列）・魔界の炎（輪）。どれも予告を見てからかわせる。</div>`,
+      onClose: () => { UI.prepOpen = false; },
+      buttons: [
+        { label: '道具を確認', onClick: () => { UI.prepHold = true; setTimeout(() => { UI.prepHold = false; openItems(); }, 0); } },
+        { label: '最終決戦へ', cls: 'primary', onClick: () => { G.startFinalBattle(UI.S); save(); AU.playBgm('boss'); flash(); toast('最終決戦！', 'danger'); updateHud(); } },
+      ] });
+  }
+
+  // ================= 村での章のできごと =================
+  /* 章クリアの帰還イベント・エンディングは story.pending に残してあるので、読み込み直しても必ず一度見られる。 */
+  function showStoryPending() {
+    const V = UI.S.village, st = V.story, pend = st.pending;
+    if (!pend || UI.modals.length) return false;
+    const finish = () => { st.pending = null; save(); updateVillageHud(); };
+    if (pend.type === 'chapterClear') {
+      const ch = pend.chapter, C = D.CHAPTERS[ch], next = D.CHAPTERS[ch + 1];
+      const rec = D.STORY.records[ch];
+      talk(D.STORY.chapterClear[ch] || [], () => {
+        modal({ title: C.name + ' クリア！', html: `<div class="ending"><p class="big-t">${esc(D.ENEMIES[C.boss].name)}を倒した！</p></div>
+          <div class="kv"><span>復興支援金</span><span>${pend.funds ? pend.funds + 'G（村の資金へ）' : '受け取り済み'}</span>
+          <span>ヤナイの記録</span><span>${rec ? '「' + esc(rec.title) + '」が読めるようになった' : '-'}</span>
+          <span>次の章</span><span>${next ? esc(next.name + '「' + next.title + '」') + '　目標：地下' + next.goal + '階' : '-'}</span></div>
+          <p class="note">村の人が増え、景色も少しずつ元に戻っていきます。記録は村のメニューから読めます。</p>`,
+        onClose: finish, buttons: [{ label: 'OK', cls: 'primary' }] });
+      });
+      return true;
+    }
+    if (pend.type === 'ending') { ending(true, finish); return true; }
+    finish();
+    return false;
+  }
+  function showRecords() {
+    const st = UI.S.village.story, recs = D.STORY.records;
+    const html = recs.map((r, i) => i < st.records
+      ? `<details${i === st.records - 1 ? ' open' : ''}><summary><b>${esc(r.title)}</b></summary><p>${esc(r.text)}</p></details>`
+      : `<p class="note">？？？（章を進めると読める）</p>`).join('');
+    modal({ title: 'マスターヤナイの記録', right: `${Math.min(st.records, recs.length)}/${recs.length}`, html, buttons: [{ label: '閉じる', cls: 'primary' }] });
   }
 
   // ================= 探索の終了 =================
@@ -1352,14 +1467,14 @@
         ['sai', 'たけ！気がついた？遺跡の入口で倒れてたんだよ…。'],
         ['take', 'ごめん、地下' + res.floor + '階で無理しちゃった。'],
         ['sai', '無事でよかった。お店のお金と倉庫はそのままだよ。木刀とおにぎりも無料で貸せるからね。'],
-      ], () => { if (retry) openDepart(); });
+      ], () => { if (showStoryPending()) return; if (retry) openDepart(); }, { skip: UI.S.village.defeats > 1 });
       return;
     }
     const mats = Object.entries(res.materials || {}).map(([id, n]) => D.ITEMS[id].name + '×' + n).join('、');
     const html = `<div class="kv"><span>到達</span><span>地下${res.floor}階</span><span>持ち帰ったお金</span><span>${res.gold}G（村の資金へ）</span><span>持ち帰った道具</span><span>${res.items}個</span>${mats ? `<span>素材</span><span>${esc(mats)}（素材箱へ）</span>` : ''}</div>
       <p class="note">お宝はサイの店で売るとお金になります。</p>`;
     const after = () => {
-      if (res.orb) return ending(res.firstClear);
+      if (showStoryPending()) return;
       const V = S.village;
       const sellable = V.bag.filter((i) => G.def(i).type === 'treasure').length;
       const decor = Object.values(V.decor || {}).filter(Boolean).length;
@@ -1380,33 +1495,22 @@
     modal({ title: '帰還！', html, onClose: after, buttons: [{ label: 'OK', cls: 'primary' }] });
   }
 
-  function ending(first) {
+  function ending(first, done) {
     const V = UI.S.village;
-    const lines = first ? [
-      ['take', 'サイ！見て、これが願いの宝珠だよ！'],
-      ['sai', 'わあ…夕日みたいにあったかい光。本当にあったんだね。'],
-      ['take', '30階の奥で、夢見の黄金象が道を開けてくれたんだ。'],
-      ['sai', 'この宝珠、村の真ん中にまつろうよ。みんなが集まる場所になるように。'],
-      ['take', 'うん。ぼくの願いは…このお店と村が、ずっとにぎやかでありますように。'],
-      ['sai', 'ふふ、私も同じ願い。これからもよろしくね、たけ。'],
-    ] : [
-      ['take', 'また30階まで行ってきたよ！'],
-      ['sai', 'すごい！宝珠も、たけの帰りを喜んでるみたい。'],
-    ];
-    talk(lines, () => {
-      if (!first) return;
+    talk(D.STORY.ending, () => {
       V.seenEnding = true; save();
-      modal({ title: 'エンディング', noClose: true, html: `<div class="ending"><p class="big-t">願いの宝珠を手に入れた！</p>
-        <p>たけとサイの小さなお店は、宝珠の光に照らされて、今日もにぎやかです。</p>
+      modal({ title: 'エンディング', noClose: true, html: `<div class="ending"><p class="big-t">大魔王の封印は守られた！</p>
+        <p>勇者たけとサイ、そして村のみんなの力で、アユタヤの村に平和が戻りました。</p>
+        <p>マスターヤナイの想いは、これからも村とともに。</p>
         <p>帰還 ${V.returns}回・敗北 ${V.defeats}回</p>
         <p class="big-t">THANK YOU FOR PLAYING!</p>
-        <p class="note">このあとも探索と村の発展を続けられます。30階の黄金象は、次からは「夢見の宝冠」を落とします。</p></div>`,
-      buttons: [{ label: '村へ', cls: 'primary' }] });
+        <p class="note">このあとも探索・収集・強化・村の発展を続けられます。最終章の35階には何度でも挑戦できます。</p></div>`,
+      onClose: done, buttons: [{ label: '村へ', cls: 'primary' }] });
     });
   }
 
   // テスト用に一部を公開
-  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save };
+  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save, finalCutscene, openFinalPrep, showStoryPending, showRecords };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(globalThis.TS = globalThis.TS || {});
