@@ -61,6 +61,18 @@
    28,
    47
   ],
+  "merchant_front": [
+   32,
+   50
+  ],
+  "merchant_side": [
+   30,
+   51
+  ],
+  "merchant_back": [
+   33,
+   50
+  ],
   "yanai_front": [
    41,
    61

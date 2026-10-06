@@ -13,6 +13,7 @@ async function test(name, fn) {
   catch (e) { failed++; try { await CUR.screenshot({ path: path.join(OUT, 'FAIL_' + failed + '.png') }); } catch (_) {} console.log('  NG  ' + name + '\n      ' + String(e.stack || e).split('\n').slice(0, 3).join('\n      ')); }
 }
 function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
+function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.stringify(a) + ' !== ' + JSON.stringify(b)); }
 
 (async () => {
   const PORT = 8765;
@@ -804,6 +805,78 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(200);
     assert(await p.evaluate(() => TS.UI.S.village.story.endingDone && TS.UI.S.village.cleared && !TS.UI.S.run));
     await shot('20_village_cleared');
+  });
+
+  await test('謎の旅商人：長押しはとなりで止まり、押し直すと話しかける。見る・説明・やめるではターンが進まない。所持金不足・持ち物満杯・連打・売り切れ・再読み込み', async () => {
+    const setup = await p.evaluate(() => {
+      const UI = TS.UI, G = TS.Game;
+      while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
+      let S = null;
+      for (let s = 7700; s < 8200 && !S; s++) {
+        const T = G.newState(); T.village.story.chapter = 3; G.depart(T, s);
+        while (T.run.floor < 29 && !(T.run.merchant && T.run.floor >= 13)) { T.run.player.x = T.run.stairs.x; T.run.player.y = T.run.stairs.y; G.act(T, { type: 'descend' }); }
+        if (T.run.merchant && T.run.floor >= 13) S = T;
+      }
+      UI.S = S; const r = S.run, m = r.merchant;
+      r.enemies = []; r.player.hp = r.player.maxhp = 200;
+      const room = TS.Dungeon.roomAt(r.map, m.x, m.y), sy = m.y === room.y ? 1 : -1;
+      r.player.x = m.x; r.player.y = m.y + sy * 3; G.updateVision(r);
+      r.runGold = 0; S.village.funds = 10;   // まずはお金が足りない
+      TS.UI.debug.save();
+      document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon';
+      return { dir: sy > 0 ? 'up' : 'down', m: { x: m.x, y: m.y }, sy, stock: m.stock.map((g) => ({ ...g })) };
+    });
+    const st = () => p.evaluate(() => { const r = TS.UI.S.run; return { turn: r.turn, x: r.player.x, y: r.player.y, gold: r.runGold, funds: TS.UI.S.village.funds, bag: r.bag.length, left: r.merchant.stock.map((g) => g.left), modal: !!document.querySelector('.modal') }; });
+    // 長押し：商人のとなりで止まる（話しかけない）
+    await p.dispatchEvent(`#dpad [data-dir="${setup.dir}"]`, 'pointerdown', { pointerId: 7 });
+    await p.waitForTimeout(1200);
+    await p.dispatchEvent(`#dpad [data-dir="${setup.dir}"]`, 'pointerup', { pointerId: 7 });
+    let s0 = await st();
+    assert(s0.y === setup.m.y + setup.sy && !s0.modal, 'stopped next to merchant ' + JSON.stringify(s0));
+    // 押し直すと話しかける（ターンは進まない）
+    await p.tap(`#dpad [data-dir="${setup.dir}"]`); await p.waitForTimeout(250);
+    assert(await p.isVisible('.modal h2:has-text("謎の旅商人")'), 'merchant modal');
+    await shot('31_merchant');
+    const s1 = await st(); eq2(s1.turn, s0.turn, 'talk no turn');
+    // お金が足りない：説明は読めるが「買う」は押せない
+    await p.tap('.modal .row >> nth=0'); await p.waitForTimeout(200);
+    assert(await p.isVisible('.warnbox:has-text("お金が足りません")'), 'no money msg');
+    assert(await p.$eval('.modal-buttons button.primary', (b) => b.disabled), 'buy disabled');
+    await p.tap('.modal-buttons button >> text=やめる'); await p.waitForTimeout(150);
+    // お金を用意して、確定ボタンを連打 → 1個だけ買える
+    await p.evaluate(() => { TS.UI.S.village.funds = 100000; });
+    await p.tap('.modal .row >> nth=0'); await p.waitForTimeout(200);
+    await shot('32_merchant_detail');
+    await p.evaluate(() => { const b = [...document.querySelectorAll('.modal-buttons button.primary')].pop(); b.click(); b.click(); b.click(); });
+    await p.waitForTimeout(250);
+    const s2 = await st();
+    eq2(s2.left[0], setup.stock[0].left - 1, 'bought exactly one'); eq2(s2.bag, s0.bag + 1, 'one item'); eq2(s2.turn, s0.turn, 'buy no turn');
+    eq2(s2.funds, 100000 - setup.stock[0].price, 'paid once');
+    // 再読み込みしても在庫・お金は買ったあとのまま
+    await p.reload(); await p.waitForTimeout(500);
+    await p.tap('#btn-continue'); await p.waitForTimeout(400); await closeTalk();
+    const s3 = await st();
+    eq2(JSON.stringify(s3.left), JSON.stringify(s2.left), 'stock after reload'); eq2(s3.funds, s2.funds); eq2(s3.bag, s2.bag);
+    // 残りを買い切る → 売り切れ（話しかけ直しても復活しない）
+    await p.tap(`#dpad [data-dir="${setup.dir}"]`); await p.waitForTimeout(250);
+    for (let k = 0; k < 4 && await p.evaluate(() => TS.UI.S.run.merchant.stock[0].left > 0); k++) {
+      await p.tap('.modal .row >> nth=0'); await p.waitForTimeout(150);
+      await p.tap('.modal-buttons button.primary >> nth=-1'); await p.waitForTimeout(200);
+    }
+    assert(await p.$eval('.modal .row', (r) => r.classList.contains('disabled') && r.textContent.includes('売り切れ')), 'sold out row');
+    await p.tap('.modal-buttons button >> text=立ち去る'); await p.waitForTimeout(150);
+    await p.reload(); await p.waitForTimeout(500);
+    await p.tap('#btn-continue'); await p.waitForTimeout(400); await closeTalk();
+    eq2(await p.evaluate(() => TS.UI.S.run.merchant.stock[0].left), 0, 'not restocked by reload');
+    // 持ち物がいっぱいなら買えない
+    await p.evaluate(() => { const S = TS.UI.S; while (S.run.bag.length < 15) S.run.bag.push(TS.Game.makeItem(S, 'herb')); });
+    await p.tap(`#dpad [data-dir="${setup.dir}"]`); await p.waitForTimeout(250);
+    await p.tap('.modal .row >> nth=1'); await p.waitForTimeout(200);
+    assert(await p.isVisible('.warnbox:has-text("持ち物がいっぱい")'), 'bag full msg');
+    assert(await p.$eval('.modal-buttons button.primary', (b) => b.disabled), 'buy disabled when full');
+    await p.tap('.modal-buttons button >> text=やめる'); await p.waitForTimeout(100);
+    await p.tap('.modal-buttons button >> text=立ち去る'); await p.waitForTimeout(100);
+    const s4 = await st(); eq2(s4.turn, s0.turn, 'whole visit took no turns');
   });
 
   await test('旧バージョン（v1）のセーブで「つづきから」：村・装備・探索途中を引き継いで再開', async () => {

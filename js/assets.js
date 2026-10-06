@@ -16,6 +16,7 @@
     chars: {
       take: views('take', true), sai: views('sai', true), yanai: views('yanai', true),
       koi: views('koi'), mot: views('mot'), waan: views('waan'), tiw: views('tiw'),
+      merchant: views('merchant', true),   // 謎の旅商人（見本 merchant.png。ほかの人物と背丈をそろえて約50ドット）
     },
     charBox: { w: 52, h: 64, foot: 62 },
     items: {

@@ -1062,6 +1062,11 @@
     const st = { dir, source, timer: null, stopped: false, dash, ctx: null };
     UI.hold = st;
     const [dx, dy] = G.DIRS[dir];
+    // 押した方向に商人がいれば、話しかける（ターンは進まない。長押し・ダッシュは商人のとなりで止まるので、ここへは押し直したときだけ来る）
+    if (G.merchantAt(run, run.player.x + dx, run.player.y + dy)) {
+      st.stopped = true; run.player.dir = dir; openMerchant();
+      return;
+    }
     // 押した方向に敵がいれば、その1回だけ攻撃して止まる（押しっぱなしで攻撃を繰り返さない）
     if (G.enemyAt(run, run.player.x + dx, run.player.y + dy)) {
       doAct({ type: 'move', dir });
@@ -1179,6 +1184,9 @@
   function afterAction(res, action, logLen) {
     const S = UI.S;
     handleEvents(res.events, action);
+    // 謎の旅商人を初めて見つけたとき
+    const mc = S.run && S.run.merchant;
+    if (mc && !mc.seen && G.isVisible(S.run, mc.x, mc.y)) { mc.seen = true; G.log(S.run, '謎の旅商人がいる。話しかけると、珍しい素材を買える。'); toast('謎の旅商人がいる…'); }
     save();
     updateHud();
     pushLog(logLen);
@@ -1439,6 +1447,69 @@
       { label: '閉じる', cls: 'primary' },
     ] });
   }
+
+  // ================= 謎の旅商人（ダンジョンの希少素材商人） =================
+  /* 商品を見る・説明を読む・やめる・買うのどれもターンは進まない（G.act を通さない）。
+   * 買うときは確認を1回はさみ、確定ボタンは1回だけ受け付ける（連打で二重に買わない）。買ったらすぐ保存する。 */
+  function materialUses(id) {
+    const out = [];
+    const pl = [];
+    for (let plus = 0; plus < D.SMITH.maxPlus; plus++) { const m = D.SMITH.mats(plus); if (m[id]) pl.push('+' + (plus + 1)); }
+    if (pl.length) out.push('鍛冶の強化（' + pl.join('・') + 'にするとき1個）');
+    for (const f of D.FACILITIES) if (f.mats && f.mats[id]) out.push(f.name + '（' + f.mats[id] + '個）');
+    return out.join('／');
+  }
+  function openMerchant() {
+    const run = UI.S.run;
+    if (!run || run.over || !run.merchant || UI.modals.length) return;
+    stopAllInput();
+    const m = run.merchant, ML = D.STORY.merchant;
+    const soldOut = () => m.stock.every((g) => g.left <= 0);
+    let line = !m.met ? ML.greet : soldOut() ? ML.soldOut : ML.lines[(UI.merchantTalk = ((UI.merchantTalk || 0) + 1)) % ML.lines.length];
+    if (!m.met) { m.met = true; save(); }
+    const port = SP.portraitURL('merchant', 72);
+    const h = modal({ title: esc(D.MERCHANT.name), buttons: [{ label: '立ち去る' }] });
+    function render() {
+      const w = G.merchantWallet(UI.S);
+      let html = `<div class="talk merchant"><img alt="" src="${port}"><div><div class="who">${esc(D.MERCHANT.name)}</div><div class="txt">${esc(line)}</div></div></div>`;
+      html += `<p class="note">お代：探索中のお金 <b>${w.run}G</b> ＋ 村の資金 <b>${w.village}G</b>（探索中のお金から先に使い、足りない分は村の資金からのつけ払い）。持ち物 ${run.bag.length}/${D.BAG_SIZE}</p><div class="list">`;
+      m.stock.forEach((g, i) => {
+        const d = D.ITEMS[g.id];
+        const right = g.left > 0 ? `${g.price}G<br><small>残り${g.left}</small>` : '売り切れ';
+        html += `<button class="row ${g.left > 0 ? '' : 'disabled'}" data-i="${i}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(d.name)}<small>${esc(materialUses(g.id))}</small></span><span class="pr">${right}</span></button>`;
+      });
+      html += '</div><p class="note">素材は持ち帰ると素材箱に入ります。倒れると、買った素材も持ち物と一緒に失います。</p>';
+      h.body.innerHTML = html;
+      h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); detail(+r.dataset.i); }));
+    }
+    function detail(i) {
+      const g = m.stock[i], d = D.ITEMS[g.id], w = G.merchantWallet(UI.S);
+      let why = '';
+      if (g.left <= 0) why = '売り切れです。';
+      else if (run.bag.length >= D.BAG_SIZE) why = '持ち物がいっぱいです（' + D.BAG_SIZE + '個まで）。何か置いてから買えます。';
+      else if (w.total < g.price) why = 'お金が足りません（あと' + (g.price - w.total) + 'G）。';
+      const payRun = Math.min(w.run, g.price), payV = g.price - payRun;
+      const html = `<div class="detail-head"><img src="${SP.iconURL(d)}" alt=""><div><b>${esc(d.name)}</b></div></div><p>${esc(d.desc)}</p>
+        <div class="kv"><span>使い道</span><span>${esc(materialUses(g.id))}</span><span>値段</span><span>${g.price}G（残り${g.left}）</span>
+        <span>支払い</span><span>探索中のお金 ${payRun}G${payV ? '＋村の資金 ' + payV + 'G' : ''}</span>
+        <span>買ったあと</span><span>探索中 ${w.run - payRun}G／村 ${w.village - payV}G</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
+        ${why ? `<p class="warnbox">${esc(why)}</p>` : '<p class="note">ターンは進みません。</p>'}`;
+      let done = false;
+      modal({ title: '素材を買う', html, buttons: [
+        { label: 'やめる' },
+        { label: '買う', cls: 'primary', disabled: !!why, onClick: () => {
+          if (done) return false; done = true;           // 確定は1回だけ
+          const res = G.merchantBuy(UI.S, i);
+          if (res.ok) { AU.sfx('buy'); line = ML.thanks; toast(res.msg + (res.paidVillage ? '（村の資金から' + res.paidVillage + 'G）' : '')); }
+          else { line = /お金/.test(res.msg) ? ML.noMoney : /持ち物/.test(res.msg) ? ML.bagFull : ML.soldOut; info(D.MERCHANT.name, esc(res.msg)); }
+          save(); updateHud(); pushLog();
+          setTimeout(render, 0);
+        } },
+      ] });
+    }
+    render();
+  }
+  UI.openMerchant = openMerchant;
 
   // ================= 35階の最終決戦 =================
   /* 静寂 → ミストバーンの再出現と変身 → サイたちの支援（回復はゲーム処理で1回だけ済んでいる） → 準備画面。

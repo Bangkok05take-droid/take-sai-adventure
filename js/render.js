@@ -195,6 +195,20 @@
       g.textAlign = 'left';
     }
     const shadow = (cx, cy, rw) => { g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.ellipse(cx, cy, rw, rw * 0.32, 0, 0, Math.PI * 2); g.fill(); };
+    // 謎の旅商人（たけの方を向く。見本に無い向きは左右反転で作った横向きだけ）
+    const mc = run.merchant;
+    if (mc && G.isVisible(run, mc.x, mc.y) && SP.art && SP.art.chars && SP.art.chars.merchant && SP.art.chars.merchant.front) {
+      const a = SP.art.chars.merchant, dx = p.x - mc.x, dy = p.y - mc.y;
+      const img = dy < 0 && Math.abs(dy) >= Math.abs(dx) ? a.back : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? a.sideR : a.side) : a.front;
+      const sx = ox + mc.x * ts, sy = oy + mc.y * ts;
+      shadow(sx + ts / 2, sy + ts * 0.9, ts * 0.32);
+      RD.drawChar(g, img || a.front, sx + ts / 2, sy + ts - k, k, Math.floor(now / 700) % 2);
+      // 話しかけられる印（金の袋のふきだし）
+      const bx = sx + ts * 0.5, by = sy - ts * 0.72 + Math.sin(now / 300) * k;
+      g.fillStyle = 'rgba(20,12,30,0.85)'; g.beginPath(); g.arc(bx, by, ts * 0.2, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#e2b23c'; g.lineWidth = k; g.stroke();
+      g.fillStyle = '#ffe08a'; g.font = `bold ${Math.round(ts * 0.24)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('商', bx, by + k * 0.5); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    }
     // 敵（奥の行から順に描く。大きなボスの絵が手前の敵を隠さない）
     for (const e of run.enemies.slice().sort((a, b) => a.y - b.y)) {
       if (!G.isVisible(run, e.x, e.y)) continue;

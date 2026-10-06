@@ -205,6 +205,7 @@
       run.enemies.push(makeEnemy(run, R.weighted(rng, F.enemies), pos.x, pos.y));
     }
     placeMonsterHouse(S, gen, occupied);
+    placeMerchant(S, gen);
     if (F.boss) {
       const b = makeEnemy(run, F.boss, gen.bossPos.x, gen.bossPos.y);
       b.boss = true;
@@ -253,6 +254,59 @@
       run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id, D.ITEMS[id].type === 'staff' ? { charges: R.int(rng, 3, 5) } : null) });
     }
   }
+  /* 謎の旅商人：階を作るときに一度だけ決める（出現・場所・品ぞろえ・価格・在庫は run.merchant に保存。
+   * 再読み込みや話しかけ直しで作り直さない）。この階の乱数とは別の乱数を使い、ほかの出現を変えない。
+   * 場所：ふつうの部屋（3×3以上。モンスターハウス・開始部屋以外）の角のマス。入口（通路）のとなり・階段・帰還の碑・道具・敵の上には置かない。 */
+  function placeMerchant(S, gen) {
+    const run = S.run, f = run.floor, M = D.MERCHANT, F = G.F(run);
+    run.merchant = null;
+    if (F.boss || f < M.minFloor || f >= G.maxFloor(run)) return;
+    const mr = R.create(((run.seed ^ Math.imul(f + 1, 0x9E3779B1)) >>> 0) ^ 0x5bd1e995);
+    if (!R.chance(mr, M.chance)) return;
+    const m = run.map, W = m.w;
+    const roomTile = (x, y) => { const r = DG.roomAt(m, x, y); return !!r; };
+    const blocked = (x, y) => (run.stairs && DG.same(run.stairs, { x, y })) || (run.returnPoint && DG.same(run.returnPoint, { x, y })) ||
+      DG.same(gen.start, { x, y }) || G.itemAt(run, x, y) || G.enemyAt(run, x, y);
+    const rooms = R.shuffle(mr, m.rooms.filter((r) => r.id !== gen.startRoom && r.id !== m.monsterHouse && r.w >= 3 && r.h >= 3));
+    for (const r of rooms) {
+      const corners = R.shuffle(mr, [[r.x, r.y], [r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1], [r.x + r.w - 1, r.y + r.h - 1]]);
+      for (const [x, y] of corners) {
+        if (blocked(x, y)) continue;
+        let nearDoor = false;   // 8方向のとなりに、部屋の外の歩ける所（通路）があれば入口のそば
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && DG.passable(m, x + dx, y + dy) && !roomTile(x + dx, y + dy)) nearDoor = true;
+        if (nearDoor) continue;
+        // 品ぞろえ：この階で並べられる素材のうち、貴重なものから最大3種類
+        const kinds = M.goods.filter((gd) => f >= gd.from).sort((a, b) => b.price - a.price).slice(0, M.maxKinds);
+        const stock = kinds.map((gd) => ({ id: gd.id, price: Math.round(gd.price * (1 + (R.next(mr) * 2 - 1) * M.priceSpread) / 10) * 10, left: R.int(mr, M.stock[0], M.stock[1]) }));
+        run.merchant = { x, y, stock, met: false };
+        return;
+      }
+    }
+  }
+  G.merchantAt = (run, x, y) => !!(run.merchant && run.merchant.x === x && run.merchant.y === y);
+  // 敵が入れないマス（ほかの敵・商人）
+  const blockedForEnemy = (run, x, y) => !!G.enemyAt(run, x, y) || G.merchantAt(run, x, y);
+  // 払えるお金：探索中のお金＋村の資金
+  G.merchantWallet = (S) => ({ run: S.run ? S.run.runGold : 0, village: S.village.funds, total: (S.run ? S.run.runGold : 0) + S.village.funds });
+  /* 商人から1つ買う。ターンは進まない。お金・持ち物の空き・在庫を確かめてから、まとめて差し引く。
+   * 戻り値 { ok, msg, paidRun, paidVillage } */
+  G.merchantBuy = function (S, idx) {
+    const run = S.run, V = S.village;
+    if (!run || run.over || !run.merchant) return { ok: false, msg: '商人がいない。' };
+    const g = run.merchant.stock[idx];
+    if (!g) return { ok: false, msg: 'その品はない。' };
+    if (g.left <= 0) return { ok: false, msg: '売り切れです。' };
+    if (run.bag.length >= D.BAG_SIZE) return { ok: false, msg: '持ち物がいっぱいです（' + D.BAG_SIZE + '個まで）。' };
+    const w = G.merchantWallet(S);
+    if (w.total < g.price) return { ok: false, msg: 'お金が足りません（あと' + (g.price - w.total) + 'G）。' };
+    const paidRun = Math.min(run.runGold, g.price), paidVillage = g.price - paidRun;
+    run.runGold -= paidRun; V.funds -= paidVillage;
+    g.left--;
+    run.bag.push(G.makeItem(S, g.id));
+    G.log(run, D.MERCHANT.name + 'から' + D.ITEMS[g.id].name + 'を' + g.price + 'Gで買った。');
+    return { ok: true, msg: D.ITEMS[g.id].name + 'を買った。', paidRun, paidVillage };
+  };
+
   // たけがモンスターハウスに初めて入ったか（入ったら敵が目を覚ます）
   function checkMonsterHouse(run, ev) {
     const m = run.map;
@@ -368,6 +422,8 @@
     p.dir = dir;
     const nx = p.x + d[0], ny = p.y + d[1];
     if (!G.canStep(run.map, p.x, p.y, d[0], d[1])) return false; // 壁・角：ターン消費なし
+    // 商人には攻撃しない。ぶつかると話しかける（ターンは進まない）
+    if (G.merchantAt(run, nx, ny)) { ev.push({ t: 'merchant' }); return false; }
     const e = G.enemyAt(run, nx, ny);
     if (e) { playerAttack(S, e, ev); return true; }
     if (p.bound > 0) { // 拘束中は移動できない（攻撃・道具・足踏みはできる）。ターンは消費しない
@@ -564,7 +620,7 @@
    * 戻り値 { res, stop }。stop が null 以外ならダッシュを止める（理由の文字列）。
    * 敵への自動攻撃はしない。 */
   G.DASH_STOP = { enemy: '敵を発見', near: '敵が近い', attackBlocked: '前に敵がいる', damage: 'ダメージを受けた', wall: '壁の前', branch: '分かれ道',
-    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', danger: 'HP・満腹度が危険', room: '部屋の出入り', over: '探索終了', event: 'できごと', monsterHouse: 'モンスターハウス' };
+    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', merchant: '商人がいる', danger: 'HP・満腹度が危険', room: '部屋の出入り', over: '探索終了', event: 'できごと', monsterHouse: 'モンスターハウス' };
   /* ダッシュ開始時の状況を記録する。すでに見えている敵や、すでに危険域であることでは
    * 毎回止まらない（押し直せば必ず進める）。新しく起きたことだけで止まる。 */
   G.dashContext = function (S) {
@@ -579,6 +635,7 @@
     const p = run.player, [dx, dy] = DIRS[dir];
     if (!G.canStep(run.map, p.x, p.y, dx, dy)) { p.dir = dir; return { res: { consumed: false, events: [] }, stop: 'wall' }; }
     if (G.enemyAt(run, p.x + dx, p.y + dy)) return { res: { consumed: false, events: [] }, stop: 'attackBlocked' };
+    if (G.merchantAt(run, p.x + dx, p.y + dy)) return { res: { consumed: false, events: [] }, stop: 'merchant' };
     const hp = p.hp;
     const roomBefore = G.roomForView(run, p.x, p.y);
     const from = { x: p.x, y: p.y };
@@ -597,6 +654,7 @@
     if (p.hp < hpBefore || ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (G.visibleEnemies(run).some((e) => !ctx.seen.includes(e.id))) return 'enemy';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
+    if (run.merchant && G.adjacent(run, p, run.merchant)) return 'merchant';
     if (G.onStairs(run)) return 'stairs';
     if (G.onReturnPoint(run) || G.onPortal(run)) return 'returnPoint';
     if (G.itemAt(run, p.x, p.y) || ev.some((e) => e.t === 'pickup' || e.t === 'gold' || e.t === 'bagFull')) return 'item';
@@ -631,6 +689,7 @@
     if (ev.some((e) => e.t === 'monsterHouse')) return 'monsterHouse';
     if (ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
+    if (run.merchant && G.adjacent(run, p, run.merchant)) return 'merchant';
     if (G.onStairs(run)) return 'stairs';
     if (G.onReturnPoint(run) || G.onPortal(run)) return 'returnPoint';
     if (G.itemAt(run, p.x, p.y) || ev.some((e) => e.t === 'pickup' || e.t === 'gold' || e.t === 'bagFull')) return 'item';
@@ -766,7 +825,7 @@
         for (let i = 0; i < 12; i++) {
           const room = R.pick(run.rng, run.map.rooms.filter((r) => r !== here).concat(run.map.rooms.length === 1 ? run.map.rooms : []));
           const t = DG.randomRoomTile(run.rng, room);
-          if (G.enemyAt(run, t.x, t.y)) continue;
+          if (G.enemyAt(run, t.x, t.y) || G.merchantAt(run, t.x, t.y)) continue;
           const d = Math.abs(t.x - p.x) + Math.abs(t.y - p.y);
           if (d > bd) { bd = d; best = t; }
         }
@@ -1046,7 +1105,7 @@
     let best = null, bd = cheb(e, p);
     for (const [dx, dy] of STEP8) {
       const nx = e.x + dx, ny = e.y + dy;
-      if (!G.canStep(run.map, e.x, e.y, dx, dy) || G.enemyAt(run, nx, ny) || (nx === p.x && ny === p.y)) continue;
+      if (!G.canStep(run.map, e.x, e.y, dx, dy) || blockedForEnemy(run, nx, ny) || (nx === p.x && ny === p.y)) continue;
       const d = Math.max(Math.abs(nx - p.x), Math.abs(ny - p.y));
       if (d > bd) { bd = d; best = [nx, ny]; }
     }
@@ -1208,7 +1267,7 @@
   }
 
   function stepTo(run, e, nx, ny) {
-    if (!G.canStep(run.map, e.x, e.y, nx - e.x, ny - e.y) || G.enemyAt(run, nx, ny) || (nx === run.player.x && ny === run.player.y)) return false;
+    if (!G.canStep(run.map, e.x, e.y, nx - e.x, ny - e.y) || blockedForEnemy(run, nx, ny) || (nx === run.player.x && ny === run.player.y)) return false;
     e.dir = G.dirOf(nx - e.x, ny - e.y) || e.dir;
     e.x = nx; e.y = ny;
     return true;
@@ -1235,7 +1294,7 @@
       for (const [dx, dy] of STEP8) {
         const nx = x + dx, ny = y + dy, k = ny * W + nx;
         if (!G.canStep(m, x, y, dx, dy) || prev[k] !== -1) continue;
-        if (k !== goal && G.enemyAt(run, nx, ny)) continue;
+        if (k !== goal && blockedForEnemy(run, nx, ny)) continue;
         prev[k] = c;
         if (k === goal) { found = true; break; }
         q.push(k);

@@ -27,6 +27,9 @@ SHEETS = {
         'waan_front': (820, 800, 948, 1002), 'waan_back': (970, 800, 1098, 1002),
         'tiw_front': (1186, 800, 1314, 1002), 'tiw_back': (1336, 800, 1468, 1002),
     },
+    'merchant.png': {
+        'merchant_front': (684, 884, 848, 1150), 'merchant_side': (862, 884, 1016, 1150), 'merchant_back': (1042, 884, 1212, 1150),
+    },
     'yanai.png': {
         'yanai_front': (692, 862, 868, 1122), 'yanai_side': (866, 862, 1018, 1122), 'yanai_back': (1046, 862, 1198, 1122),
     },
@@ -114,7 +117,9 @@ def main():
     for sheet, boxes in SHEETS.items():
         im = Image.open(os.path.join(REF, sheet))
         for name, box in boxes.items():
-            a, _ = pg.depixel(im, box, s=4.0)
+            # 旅商人の見本は人物が大きめに描かれている（同じ4ピクセルのドットで背丈60）。
+            # ほかの人物（背丈47〜49）と頭身・背丈をそろえるため、少し粗い格子（4.8ピクセル）で読みとって背丈を約50にする
+            a, _ = pg.depixel(im, box, s=4.8 if name.startswith('merchant') else 4.0)
             canvas, size = place(cutout(a))
             Image.fromarray(canvas, 'RGBA').save(os.path.join(OUT, name + '.png'))
             info[name] = size

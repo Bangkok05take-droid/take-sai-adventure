@@ -1131,6 +1131,119 @@ test('初めて入ると「モンスターハウスだ！」、ダッシュは�
   }
   assert(tested >= 3, 'tested ' + tested);
 });
+// ---- 謎の旅商人 ----
+function findMerchant(seed0, ch, minF) {
+  for (let s = seed0; s < seed0 + 400; s++) {
+    const S = G.newState(); S.village.story.chapter = ch || 3;
+    G.depart(S, s);
+    const r = S.run;
+    while (r.floor < 29) {
+      r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' });
+      if (r.merchant && r.floor >= (minF || 8)) return S;
+    }
+  }
+  throw new Error('no merchant');
+}
+test('謎の旅商人：8階以降の約14%の階に、ふつうの部屋の角（入口・階段・道具・敵の上ではない）に出る。ボスの階・モンスターハウスには出ない', () => {
+  let floors = 0, n = 0;
+  for (let s = 0; s < 120; s++) {
+    const S = G.newState(); S.village.story.chapter = 2; G.depart(S, 3000 + s); const r = S.run;
+    while (true) {
+      if (r.merchant) {
+        const m = r.merchant, room = TS.Dungeon.roomAt(r.map, m.x, m.y);
+        assert(room && room.id !== r.map.monsterHouse, 'in normal room');
+        assert((m.x === room.x || m.x === room.x + room.w - 1) && (m.y === room.y || m.y === room.y + room.h - 1), 'corner');
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) assert(!(TS.Dungeon.passable(r.map, m.x + dx, m.y + dy) && !TS.Dungeon.roomAt(r.map, m.x + dx, m.y + dy)), 'not by a door');
+        assert(!TS.Dungeon.same(r.stairs, m) && !G.itemAt(r, m.x, m.y) && !G.enemyAt(r, m.x, m.y), 'free tile');
+        assert(r.floor >= D.MERCHANT.minFloor && !G.F(r).boss, 'floor rule');
+      }
+      if (r.floor >= 8) { floors++; if (r.merchant) n++; }
+      if (G.F(r).boss || r.floor >= 30) break;
+      r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' });
+    }
+    assert(!r.merchant, 'no merchant on boss floor');
+  }
+  const rate = n / floors;
+  assert(rate > 0.09 && rate < 0.2, 'rate ' + rate);
+  // 浅い階には貴重な素材を並べない
+  for (let s = 0; s < 60; s++) {
+    const S = findMerchant(5000 + s * 7, 2, 8), r = S.run;
+    for (const g of r.merchant.stock) assert(r.floor >= D.MERCHANT.goods.find((x) => x.id === g.id).from, 'tier ' + g.id + '@' + r.floor);
+    if (r.floor < 23) assert(!r.merchant.stock.some((g) => g.id === 'gold_leaf'), 'no gold leaf before 23F');
+  }
+});
+test('謎の旅商人：同じ階を保存・再読み込みしても出現・場所・品ぞろえ・価格・在庫が変わらず、売り切れは復活しない', () => {
+  const S = findMerchant(8100, 3, 13), r = S.run;
+  const before = JSON.stringify(r.merchant);
+  // 同じシード・同じ階なら同じ商人
+  const S2 = G.newState(); S2.village.story.chapter = 3; G.depart(S2, r.seed);
+  while (S2.run.floor < r.floor) { S2.run.player.x = S2.run.stairs.x; S2.run.player.y = S2.run.stairs.y; G.act(S2, { type: 'descend' }); }
+  eq(JSON.stringify(S2.run.merchant), before, 'deterministic');
+  S.village.funds = 99999;
+  const g0 = r.merchant.stock[0];
+  while (g0.left > 0) assert(G.merchantBuy(S, 0).ok);
+  const L = SV.deserialize(SV.serialize(S));
+  eq(L.run.merchant.stock[0].left, 0, 'sold out kept');
+  assert(!G.merchantBuy(L, 0).ok, 'sold out after reload');
+  eq(JSON.stringify(L.run.merchant.stock.slice(1)), JSON.stringify(r.merchant.stock.slice(1)), 'others kept');
+});
+test('謎の旅商人：買う前にお金と持ち物の空きを確かめる。探索中のお金から先に払い、足りない分は村の資金。ターンは進まず、在庫以上は買えない', () => {
+  const S = findMerchant(8300, 3, 13), r = S.run, V = S.village, m = r.merchant;
+  const g = m.stock[0], turn = r.turn, hp = r.player.hp;
+  r.runGold = 100; V.funds = g.price - 101;
+  let res = G.merchantBuy(S, 0);
+  assert(!res.ok && /足りません/.test(res.msg), 'not enough');
+  eq(r.runGold, 100); eq(V.funds, g.price - 101); eq(r.bag.length, 1);
+  V.funds = g.price - 100;
+  while (r.bag.length < D.BAG_SIZE) r.bag.push(G.makeItem(S, 'herb'));
+  res = G.merchantBuy(S, 0);
+  assert(!res.ok && /いっぱい/.test(res.msg), 'bag full'); eq(r.runGold, 100); eq(V.funds, g.price - 100);
+  r.bag.pop();
+  const left = g.left;
+  res = G.merchantBuy(S, 0);
+  assert(res.ok, res.msg); eq(res.paidRun, 100); eq(res.paidVillage, g.price - 100);
+  eq(r.runGold, 0); eq(V.funds, 0); eq(g.left, left - 1);
+  eq(r.bag[r.bag.length - 1].id, g.id);
+  eq(r.turn, turn, 'no turn'); eq(r.player.hp, hp);
+  // 連続で呼んでもお金がなければ2個目は買えない
+  res = G.merchantBuy(S, 0); assert(!res.ok); eq(r.bag.length, D.BAG_SIZE);
+  // 在庫を超えて買えない
+  V.funds = 999999; r.bag.length = 3;
+  while (g.left > 0) assert(G.merchantBuy(S, 0).ok);
+  const n = r.bag.length; assert(!G.merchantBuy(S, 0).ok); eq(r.bag.length, n);
+});
+test('謎の旅商人：攻撃の対象にならない（ぶつかると話しかけるだけでターンは進まない）。敵は商人のマスに入らない。ダッシュ・長押しは商人のとなりで止まる', () => {
+  const S = findMerchant(8500, 3, 13), r = S.run, m = r.merchant, p = r.player;
+  const room = TS.Dungeon.roomAt(r.map, m.x, m.y);
+  const sy = m.y === room.y ? 1 : -1, sx = m.x === room.x ? 1 : -1;   // 部屋の内側へ向かう向き
+  r.enemies = [];
+  p.x = m.x; p.y = m.y + sy; G.updateVision(r);
+  const dir = sy > 0 ? 'up' : 'down', turn = r.turn;
+  const res = G.act(S, { type: 'move', dir });
+  assert(!res.consumed && res.events.some((e) => e.t === 'merchant') && !res.events.some((e) => e.t === 'hit'), 'talk, not attack');
+  eq(r.turn, turn); eq(p.x, m.x); eq(p.y, m.y + sy);
+  // ダッシュ：商人のマスへは進まず止まる
+  eq(G.dashStep(S, dir, G.dashContext(S)).stop, 'merchant');
+  // 2マス離れた所からのダッシュ・長押しは、となりで止まる
+  p.x = m.x; p.y = m.y + sy * 3; G.updateVision(r);
+  const d1 = G.dashStep(S, dir, G.dashContext(S));
+  eq(d1.stop, null); const d2 = G.dashStep(S, dir, G.dashContext(S));
+  eq(d2.stop, 'merchant'); eq(p.y, m.y + sy);
+  p.x = m.x; p.y = m.y + sy * 2; G.updateVision(r);
+  const w1 = G.act(S, { type: 'move', dir }); eq(G.walkCheck(S, dir, w1), 'merchant');
+  // 敵は商人のマスに入らない（周りを何度も動かしても重ならない）
+  p.x = m.x + sx * 2; p.y = m.y + sy * 2; G.updateVision(r);
+  const ids = Object.keys(D.ENEMIES).filter((k) => !D.ENEMIES[k].boss && !D.ENEMIES[k].clone && D.ENEMIES[k].ai !== 'boss' && D.ENEMIES[k].ai !== 'clone');
+  for (let t = 0; t < 4; t++) {
+    r.enemies = [];
+    // 商人をはさんだ向こう側に敵を置き、たけへ近づかせる
+    for (const [dx, dy] of [[-sx, 0], [0, -sy], [-sx, -sy]]) {
+      const x = m.x + dx, y = m.y + dy;
+      if (TS.Dungeon.passable(r.map, x, y)) { const e = { id: 900 + r.enemies.length, type: ids[(t * 3 + r.enemies.length) % ids.length], x, y, hp: 50, maxhp: 50, atk: 1, def: 0, exp: 1, dir: 'down', sleep: 0 }; r.enemies.push(e); }
+    }
+    for (let k = 0; k < 8; k++) { G.act(S, { type: 'wait' }); assert(!r.enemies.some((e) => e.x === m.x && e.y === m.y), 'enemy on merchant'); }
+  }
+});
 test('モンスターハウス：保存・再開しても敵とお宝は作り直されず、入ったかどうかも引き継ぐ', () => {
   for (let seed = 1; seed <= 40; seed++) {
     const S = mhRun(seed, 6);
