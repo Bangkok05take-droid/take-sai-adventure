@@ -91,7 +91,20 @@
         for (let yy = Math.round(pbase - h * 0.62); yy < pbase - h * 0.32; yy += 4) P.rect(Math.round(px - w * 0.5), yy, Math.round(w), 1, '#6a3020');
         P.rect(px - 3, Math.round(pbase - h * 0.3), 6, Math.round(h * 0.12), '#3a1a10');      // 入口のくぼみ
       };
-      pr(cx - 44, base - 18, 9, 30); pr(cx + 44, base - 18, 9, 30); pr(cx, base - 20, 16, 66);
+      pr(cx - 44, base - 18, 9, 30); pr(cx + 44, base - 18, 9, 30);
+      // 章が進むと寺院が直っていく：第1章は崩れた塔、第2〜3章は足場をかけて修理中、第4章以降は金の尖塔
+      const ch = lv.chapter || 1;
+      if (ch <= 1) {
+        pr(cx, base - 20, 16, 44);
+        P.poly([[cx - 9, base - 46], [cx - 4, base - 54], [cx, base - 49], [cx + 5, base - 56], [cx + 9, base - 46]], '#a45634');   // 崩れた頂
+        for (const [x, y] of [[cx - 22, base - 22], [cx + 20, base - 21], [cx - 12, base - 21]]) P.ball(x, y, 2.5, 1.6, R('#b0603a'));
+      } else {
+        pr(cx, base - 20, 16, 66);
+        if (ch <= 3) { // 竹の足場
+          for (let x = cx - 14; x <= cx + 14; x += 7) P.line(x, base - 20, x, base - 62 + Math.abs(x - cx), '#c8a060');
+          for (let y = base - 26; y > base - 62; y -= 9) P.line(cx - 14, y, cx + 14, y, '#a88040');
+        } else { P.rect(cx - 1, base - 92, 2, 8, '#ffd84a'); P.set(cx, base - 93, '#ffffff'); }
+      }
       // 石段
       for (let i = 0; i < 6; i++) P.rect(cx - 10 + i, base + i * 3, 20 - i * 2 + i * 2, 3, i % 2 ? '#c8b088' : '#d8c098');
       for (let y = base + 18; y < BACK - 34; y++) P.rect(cx - 4, y, 8, 1, (y % 4) ? '#c4a274' : '#a88660');  // 寺への小道
@@ -309,6 +322,22 @@
     if (lv.decor.garden) { // 花壇
       for (let i = 0; i < 18; i++) { const x = 200 + i * 10, y = FRONT + 24 + (i % 2) * 2; P.ball(x, y, 4, 2.4, R('#3a8a40'), { dither: false }); P.ball(x, y - 2, 1.8, 1.8, R(['#ff8fb8', '#ffe04a', '#ffffff'][i % 3]), { dither: false }); }
       lotus(160, 446); lotus(230, 460); lotus(320, 464);
+    }
+    // ---- 章による復興の様子（購入した施設は変えない。背景の飾りで表す） ----
+    const ch = lv.chapter || 1;
+    if (ch <= 2) { // 魔王軍に壊された跡（がれき）。章が進むと片づく
+      for (const [x, y, r] of (ch === 1 ? [[224, BACK + 40, 6], [300, BACK + 58, 5], [352, BACK + 44, 4], [250, FRONT - 6, 5]] : [[300, BACK + 58, 4], [250, FRONT - 6, 3]])) {
+        P.ball(x, y, r * 1.4, r * 0.8, R('#8a7a6a')); P.ball(x - r * 0.6, y - r * 0.5, r * 0.6, r * 0.5, R('#a8987a')); P.set(x + r, y - 1, '#5a4a3a');
+      }
+    }
+    if (ch >= 3) { // 広場に渡した旗（市場が戻ってきた）
+      const fy = BACK + 22;
+      for (let x = 196; x < 384; x += 2) P.set(x, fy + Math.round(Math.abs(Math.sin((x - 196) / 30 * Math.PI)) * 3), '#5a3a22');
+      const cols = ['#e24a4a', '#ffd84a', '#2e8b88', '#ffffff', '#8a4ac0'];
+      for (let i = 0; i < 12; i++) { const x = 200 + i * 15, y = fy + Math.round(Math.abs(Math.sin((x - 196) / 30 * Math.PI)) * 3) + 1; P.poly([[x, y], [x + 6, y], [x + 3, y + 6]], cols[i % cols.length]); }
+    }
+    if (ch >= 5 || lv.ending) { // 祭りの花飾り
+      for (let i = 0; i < 8; i++) { const x = 206 + i * 22, y = FRONT + 12; P.ball(x, y, 2.5, 2.5, R(['#ff8fb8', '#ffe04a', '#ffffff'][i % 3]), { dither: false }); P.set(x, y, '#ffb040'); }
     }
     if (lv.decor.gate) { // 遺跡へ続く黄金の門（丘の上）
       const x = 182, y = BACK - 62, G2 = R('#ffd84a');

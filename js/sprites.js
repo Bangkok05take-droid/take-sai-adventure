@@ -387,6 +387,40 @@
     return P.outline(0.92);
   }
 
+  /* マスターヤナイ（会話の顔絵 64×64）：赤い衣に金の縁、白い髪とひげ、太い眉とやさしい目。温かさと威厳のある師匠。 */
+  function portraitYanai() {
+    const P = new Pix(64, 64), Rr = ramp('#c0302a'), Mg = ramp('#e8c040'), Hh = ramp('#f0ece4'), Sk = ramp('#dca880');
+    P.poly([[2, 64], [8, 44], [22, 38], [42, 38], [56, 44], [62, 64]], (x, y) => Rr[P.idx(1.1 + (x - 2) / 60 * 1.6 + (y - 38) / 60, x, y, false)]);
+    P.line(22, 40, 32, 56, Mg[1]); P.line(42, 40, 32, 56, Mg[2]); P.line(32, 56, 32, 64, Mg[2]);       // 合わせの金の縁
+    P.rect(8, 60, 48, 2, Mg[2]);
+    P.box(26, 34, 12, 8, Sk);
+    P.ball(32, 22, 16, 17, Sk);
+    P.poly([[14, 18], [18, 6], [32, 2], [46, 6], [50, 18], [44, 12], [32, 9], [20, 12]], (x) => Hh[x < 32 ? 1 : 2]);   // 白い髪
+    P.ball(32, 4, 5, 3.5, Hh, { bias: -0.2 });                                                                         // まげ
+    P.rect(19, 18, 9, 3, Hh[2]); P.rect(36, 18, 9, 3, Hh[2]);                                                           // 太い眉
+    P.rect(21, 23, 6, 2, '#3a2418'); P.rect(37, 23, 6, 2, '#3a2418'); P.set(22, 23, '#7a5a40'); P.set(38, 23, '#7a5a40');
+    P.rect(18, 27, 4, 2, '#f09a88'); P.rect(42, 27, 4, 2, '#f09a88');
+    P.poly([[20, 30], [44, 30], [42, 46], [32, 52], [22, 46]], (x, y) => Hh[P.idx(0.6 + (x - 20) / 24 + (y - 30) / 30, x, y, false)]);   // ひげ
+    P.rect(28, 31, 8, 2, '#a85040');
+    return P.outline(0.85);
+  }
+  // 村の人（32×32）：服の色と頭の形を変えて数種類。名前や姿を決めた人物は後から差し替える
+  function villager(v) {
+    const P = new Pix(32, 32), cols = ['#3a8a6a', '#c8603a', '#6a5ab0', '#d8a030', '#4a7ac8'], hairs = ['#2a2238', '#6a3a1a', '#1a1a2a', '#8a6a3a', '#2a2238'];
+    const C = ramp(cols[v % cols.length]), Sk = ramp(v % 2 ? '#e2a678' : '#f2c09a'), Hh = ramp(hairs[v % hairs.length]);
+    const kid = v === 3;
+    const top = kid ? 12 : 8, s = kid ? 0.8 : 1;
+    P.poly([[16 - 6 * s, top + 9], [16 + 6 * s, top + 9], [16 + 7 * s, 29], [16 - 7 * s, 29]], (x, y) => C[P.idx(0.8 + (x - 9) / 14 * 1.4, x, y, false)]);
+    P.rect(12, 29, 3, 2, '#5a3a22'); P.rect(17, 29, 3, 2, '#5a3a22');
+    P.ball(16, top + 4, 5 * s, 5 * s, Sk);
+    P.ball(16, top + 1, 5.2 * s, 3.2 * s, Hh, { clip: (x, y) => y <= top + 2 });
+    if (v === 0) { P.poly([[7, top + 1], [16, top - 5], [25, top + 1]], '#d8c080'); P.rect(7, top + 1, 18, 1, '#a89050'); }   // 編み笠
+    if (v === 1) { P.ball(24, 22, 3.5, 2.5, ramp('#b07a45')); P.set(24, 20, '#ff8a6a'); }                                   // かご
+    if (v === 4) { P.rect(11, top - 1, 10, 2, '#ffffff'); }
+    P.set(14, top + 4, '#2a1a10'); P.set(18, top + 4, '#2a1a10');
+    return P.outline();
+  }
+
   // ---------------- 会話用の顔絵（64×64） ----------------
   function portraitTake() {
     const P = new Pix(64, 64);
@@ -641,18 +675,193 @@
     return P.outline();
   };
 
+  /* ---------------- 章のボスと最終章（64×64。マスより大きく描き、立っているマスには足元の円で当たり判定を示す） ----------------
+   * どれもこのゲームのためのオリジナルのドット絵（既存作品の画像は使わない）。光は左上から。f は2コマのアニメ。 */
+  const litPoly = (P, R, x0, w, base) => (x, y) => R[P.idx((base == null ? 1 : base) + (x - x0) / w * 2, x, y, false)];
+  // クロコダイン：大斧をかついだワニの獣王。緑のうろこ、金の肩当て、赤い鉢巻き
+  E.croc = (f) => {
+    const P = new Pix(64, 64), G1 = ramp('#4f9a4a'), B = ramp('#e8d8a0'), M = ramp('#c8a040'), S = ramp('#c8d4e0'), W = ramp('#7a4a24');
+    P.poly([[34, 46], [52, 50], [62, 58], [58, 62], [40, 56]], litPoly(P, G1, 34, 28, 1.6));                   // しっぽ
+    P.box(19, 44, 10, 16, G1); P.box(35, 44, 10, 16, G1);                                                      // 脚
+    P.rect(17, 59, 13, 3, G1[3]); P.rect(34, 59, 13, 3, G1[3]); for (const x of [18, 22, 26, 35, 39, 43]) P.set(x, 61, '#f8f0d8');
+    P.ball(32, 34, 16, 15, G1);                                                                              // 胴
+    P.ball(32, 38, 9, 10, B, { bias: -0.2 }); for (let y = 31; y < 47; y += 3) P.rect(25, y, 14, 1, B[3]);    // 腹のうろこ
+    P.line(18, 22, 44, 44, M[1]); P.line(19, 22, 45, 44, M[3]);                                               // たすき
+    P.box(8, 26, 8, 17, G1); P.box(48, 26 - f, 8, 17, G1);                                                    // 腕
+    P.ball(12, 44, 4.5, 4, G1); P.ball(52, 43 - f, 4.5, 4, G1);
+    P.ball(16, 24, 7, 6, M, { bias: -0.3 }); P.ball(48, 24, 7, 6, M, { bias: -0.1 });                         // 肩当て
+    for (const [x, y] of [[13, 21], [16, 20], [45, 20], [49, 21]]) P.set(x, y, '#fff6c0');
+    // 大斧（右手）
+    P.line(53, 8 - f, 53, 50 - f, W[2]); P.line(54, 8 - f, 54, 50 - f, W[3]);
+    P.poly([[55, 4 - f], [63, 8 - f], [63, 22 - f], [55, 26 - f], [58, 15 - f]], litPoly(P, S, 55, 8, 0.6));
+    P.line(55, 4 - f, 63, 8 - f, M[1]); P.line(63, 22 - f, 55, 26 - f, M[2]);
+    // 頭：長い口、黄色い目、赤い鉢巻き
+    P.ball(32, 12, 11, 9, G1);
+    P.box(25, 14, 14, 10, G1, { round: true });
+    P.rect(25, 21 + f, 14, 2, '#5a1a14'); for (let x = 26; x < 39; x += 2) { P.set(x, 20 + f, '#ffffff'); P.set(x + 1, 23 + f, '#ffffff'); }
+    P.set(29, 15, G1[4]); P.set(34, 15, G1[4]);
+    P.rect(23, 6, 18, 2, '#d03a2a'); P.rect(40, 7, 4, 2, '#d03a2a'); P.rect(42, 9, 3, 3, '#a02418');
+    P.rect(26, 9, 3, 2, '#ffd84a'); P.rect(35, 9, 3, 2, '#ffd84a'); P.set(27, 9, '#2a1a10'); P.set(36, 9, '#2a1a10');
+    return P.outline(0.9);
+  };
+  // フレイザード：左半身が炎、右半身が氷の岩の将。胸に核の宝石
+  E.flame = (f) => {
+    const P = new Pix(64, 64), F = ramp('#ff6a2a'), I2 = ramp('#7ad8ff'), K = ramp('#5a3a4a');
+    const body = (x, y) => (x < 32 ? F[P.idx(1.2 + ((SP.hash(x >> 1, (y + f * 3) >> 2, 5) & 3) * 0.35) + (y - 20) / 50, x, y, false)]
+      : I2[P.idx(1.0 + (((x - 32) + (y >> 1)) % 6 < 2 ? 0 : 1) + (x - 32) / 30, x, y, false)]);
+    P.poly([[12, 22], [52, 22], [56, 42], [46, 58], [18, 58], [8, 42]], body);
+    P.box(18, 50, 9, 12, K); P.box(37, 50, 9, 12, K);                                                        // 脚（岩）
+    // 炎の舌（左）と氷のとげ（右）
+    for (const [x, h] of [[12, 12], [18, 16], [24, 10]]) P.poly([[x - 4, 24], [x + (f ? 1 : -1), 24 - h], [x + 4, 24]], (xx, yy) => F[P.idx(0.4 + (24 - yy) / 12, xx, yy, false)]);
+    for (const [x, h] of [[42, 12], [48, 16], [54, 10]]) P.poly([[x - 3, 24], [x, 24 - h], [x + 3, 24]], (xx) => I2[xx < x ? 0 : 2]);
+    // 腕
+    P.ball(7, 36, 6, 8, F); P.ball(57, 36, 6, 8, I2);
+    for (let i = 0; i < 3; i++) P.ball(5 + i * 2, 46 + i * 4 - f, 2, 2, ramp('#ffd060'));
+    P.poly([[54, 44], [62, 48], [58, 56]], I2[0]);
+    // 頭
+    P.ball(32, 14, 10, 10, ramp('#8a6a7a'));
+    P.ball(28, 14, 6, 9, F, { clip: (x) => x < 32 }); P.ball(36, 14, 6, 9, I2, { clip: (x) => x >= 32 });
+    P.rect(26, 13, 4, 3, '#ffe060'); P.rect(34, 13, 4, 3, '#e8ffff'); P.set(27, 14, '#5a1a00'); P.set(35, 14, '#0a3a5a');
+    P.rect(28, 19, 8, 2, '#2a1018');
+    // 胸の核
+    P.ball(32, 34, 5, 5, ramp(f ? '#ff5aa0' : '#e04a8a')); P.set(30, 32, '#ffffff');
+    return P.outline(0.85);
+  };
+  // キルバーン：黒いマントの死神道化。仮面、二又の帽子と鈴、大鎌
+  E.kill = (f) => {
+    const P = new Pix(64, 64), C = ramp('#2a2440'), R = ramp('#c03040'), W = ramp('#f0ece8'), S = ramp('#c8d0e0');
+    // 大鎌（後ろ）
+    P.line(46, 6, 38, 60, '#3a2a30'); P.line(47, 6, 39, 60, '#5a4a50');
+    P.poly([[46, 6], [30, 2], [18, 8], [32, 7], [44, 12]], litPoly(P, S, 18, 28, 0.4)); P.line(18, 8, 30, 2, '#ffffff');
+    // マント
+    P.poly([[18, 22], [46, 22], [56, 62], [8, 62]], (x, y) => C[P.idx(1.2 + (x - 8) / 48 * 1.6 + ((x + y) % 9 === 0 ? 0.6 : 0), x, y, false)]);
+    P.line(32, 26, 32, 62, C[4]);
+    // えりのひだ
+    for (let x = 18; x < 47; x += 4) P.poly([[x, 21], [x + 2, 26], [x + 4, 21]], W[1]);
+    // 手（骨ばった）
+    P.ball(14, 42, 3, 3, ramp('#c8c0d0')); P.ball(44, 38, 3, 3, ramp('#c8c0d0'));
+    // 仮面と帽子
+    P.ball(32, 15, 8, 9, W);
+    P.rect(27, 13, 4, 3, '#1a1018'); P.rect(34, 13, 4, 3, '#1a1018'); P.set(35, 14, f ? '#ff3030' : '#c02020');
+    P.line(28, 20, 36, 19, '#7a2a3a'); P.set(37, 18, '#7a2a3a');
+    P.poly([[23, 9], [32, 4], [41, 9], [52, 18 - f], [44, 6], [32, 0], [20, 6], [12, 18 + f]], (x) => (x < 32 ? R[2] : C[1]));
+    P.ball(12, 19 + f, 2, 2, ramp('#ffd84a')); P.ball(52, 19 - f, 2, 2, ramp('#ffd84a'));
+    return P.outline(0.8);
+  };
+  // バラン：銀と青の鎧の竜の騎士。赤いマント、額の竜の紋章、大剣
+  E.baran = (f) => {
+    const P = new Pix(64, 64), A = ramp('#a8bcd8'), B = ramp('#3a62b0'), M = ramp('#e8c040'), Rc = ramp('#a8282a');
+    P.poly([[14, 22], [50, 22], [58, 62], [6, 62]], litPoly(P, Rc, 6, 52, 1.4));                            // マント
+    P.box(22, 44, 9, 16, A); P.box(34, 44, 9, 16, A); P.rect(21, 58, 11, 4, B[3]); P.rect(33, 58, 11, 4, B[3]);
+    P.box(19, 23, 26, 23, A, { round: true });                                                                // 胴の鎧
+    P.poly([[24, 26], [40, 26], [36, 40], [28, 40]], B[1]); P.rect(31, 27, 2, 12, M[1]);
+    P.rect(19, 42, 26, 3, M[2]);                                                                               // 腰帯
+    P.ball(15, 25, 8, 7, A, { bias: -0.2 }); P.ball(49, 25, 8, 7, A); P.rect(8, 28, 15, 2, M[1]); P.rect(42, 28, 15, 2, M[2]);
+    P.box(9, 30, 7, 14, A); P.box(48, 30, 7, 14, A); P.ball(12, 45, 3.5, 3.5, ramp('#e2a678')); P.ball(51, 44, 3.5, 3.5, ramp('#e2a678'));
+    // 大剣
+    P.rect(51, 6, 3, 34, ramp('#e8eef8')[1]); P.rect(54, 6, 1, 34, ramp('#e8eef8')[3]); P.set(52, 5, '#ffffff');
+    P.rect(46, 40, 13, 2, M[1]); P.rect(51, 42, 3, 6, '#5a3a20');
+    if (f) for (const [x, y] of [[48, 10], [57, 16], [49, 22], [58, 4]]) { P.set(x, y, '#fff36a'); P.set(x + 1, y + 1, '#ffe040'); }
+    // 兜と顔
+    P.ball(32, 13, 9, 9, A);
+    P.poly([[23, 10], [16, 2], [25, 7]], M[1]); P.poly([[41, 10], [48, 2], [39, 7]], M[2]);                 // 竜のひれ
+    P.ball(32, 17, 5.5, 4.5, ramp('#e2a678'));
+    P.rect(28, 16, 3, 1, '#2a1a10'); P.rect(34, 16, 3, 1, '#2a1a10');
+    P.poly([[30, 9], [32, 6], [34, 9], [32, 12]], ramp('#ff4a4a')[f ? 0 : 1]);                              // 竜の紋章
+    return P.outline(0.85);
+  };
+  // ミストバーン：白い頭巾の衣に包まれた影。顔は闇、光る目、影の手
+  E.mist = (f) => {
+    const P = new Pix(64, 64), W = ramp('#e8e4f0'), V = ramp('#5a3a8a');
+    for (let i = 0; i < 6; i++) P.ball(12 + i * 8, 58 + ((i + f) % 2) * 2, 6, 4, V, { dither: true });       // 足元の闇の霧
+    P.poly([[16, 18], [48, 18], [58, 60], [6, 60]], (x, y) => W[P.idx(1.0 + (x - 6) / 52 * 1.8 + ((x * 3 + y) % 11 === 0 ? 0.5 : 0), x, y, false)]);
+    P.line(32, 30, 32, 60, W[3]); P.line(22, 30, 16, 60, W[3]); P.line(42, 30, 48, 60, W[3]);
+    P.rect(18, 34, 28, 3, ramp('#c8a040')[2]);                                                                // 帯
+    // 影の手と糸
+    P.ball(10, 38, 4, 4, ramp('#2a1a3a')); P.ball(54, 38, 4, 4, ramp('#2a1a3a'));
+    for (let i = 0; i < 6; i++) { P.set(6 - (i % 2), 42 + i * 3, '#8a6ac8'); P.set(58 + (i % 2), 42 + i * 3, '#8a6ac8'); }
+    // 頭巾と闇の顔
+    P.ball(32, 15, 13, 13, W, { bias: 0.1 });
+    P.ball(32, 17, 8, 8, ramp('#140c20'), { dither: false });
+    P.rect(28, 16, 2, 2, f ? '#ffffff' : '#c8f8ff'); P.rect(34, 16, 2, 2, f ? '#ffffff' : '#c8f8ff');
+    return P.outline(0.7);
+  };
+  // 大魔王バーン：紫と金の衣の老いた魔王。額の第三の目、長い白髪、宝珠の杖
+  E.vearn = (f) => {
+    const P = new Pix(64, 64), Vt = ramp('#5a2a8a'), M = ramp('#e8c040'), H = ramp('#f0ece8'), Sk = ramp('#d8a888');
+    P.poly([[14, 20], [50, 20], [60, 62], [4, 62]], (x, y) => Vt[P.idx(1.0 + (x - 4) / 56 * 1.8, x, y, false)]);
+    P.line(14, 20, 4, 62, M[1]); P.line(50, 20, 60, 62, M[2]); P.rect(4, 60, 57, 2, M[2]);
+    for (let y = 26; y < 60; y += 6) { P.set(32, y, M[0]); P.set(31, y + 1, M[1]); P.set(33, y + 1, M[1]); }
+    P.poly([[22, 20], [42, 20], [38, 36], [26, 36]], M[2]);                                                  // 胸の飾り
+    P.ball(32, 28, 3, 3, ramp('#c03060'));
+    // 杖
+    P.line(54, 8, 54, 60, M[2]); P.line(55, 8, 55, 60, M[3]);
+    P.ball(54.5, 7, 5, 5, ramp(f ? '#ff70c0' : '#c84ab0')); P.set(53, 5, '#ffffff');
+    P.ball(52, 32, 3.5, 3.5, Sk); P.ball(12, 34, 3.5, 3.5, Sk);
+    // 白髪と顔
+    P.poly([[20, 10], [44, 10], [48, 34], [16, 34]], (x) => H[x < 32 ? 1 : 2]);
+    P.ball(32, 15, 8, 9, Sk);
+    P.poly([[24, 8], [28, 0], [32, 6], [36, 0], [40, 8]], M[1]);                                             // 冠の角
+    P.rect(28, 14, 3, 1, '#2a1018'); P.rect(34, 14, 3, 1, '#2a1018');
+    P.ball(32, 10, 1.6, 2, ramp('#ff3060'));                                                                 // 第三の目
+    P.poly([[27, 20], [37, 20], [35, 30], [32, 32], [29, 30]], H[0]);                                        // ひげ
+    return P.outline(0.85);
+  };
+  // 真大魔王バーン：若い姿の大魔王。紫の気をまとい、黒と金の鎧、角、第三の目
+  E.truevearn = (f) => {
+    const P = new Pix(64, 64), A = ramp('#2a2040'), M = ramp('#e8c040'), Sk = ramp('#e0b090'), Hh = ramp('#3a2a5a'), Au = ramp('#b070ff');
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + f * 0.3; P.ball(32 + Math.cos(a) * 26, 34 + Math.sin(a) * 26, 3, 3, Au, { dither: true }); }
+    P.poly([[12, 22], [52, 22], [62, 62], [2, 62]], (x, y) => ramp('#4a1a6a')[P.idx(1.4 + (x - 2) / 60 * 1.6, x, y, false)]);  // マント
+    P.box(22, 44, 9, 16, A); P.box(34, 44, 9, 16, A);
+    P.box(18, 22, 28, 24, A, { round: true }); P.rect(18, 42, 28, 3, M[1]);
+    P.poly([[24, 24], [40, 24], [32, 40]], M[2]); P.ball(32, 30, 3, 3, ramp('#ff3060'));
+    P.ball(14, 25, 8, 7, A); P.ball(50, 25, 8, 7, A); P.rect(7, 22, 14, 2, M[1]); P.rect(43, 22, 14, 2, M[1]);
+    P.ball(9, 40, 4, 4, Sk); P.ball(55, 40, 4, 4, Sk);
+    P.ball(9, 40 - f, 3, 3, Au, { dither: false }); P.ball(55, 40 + f, 3, 3, Au, { dither: false });        // 手の気
+    // 長い黒紫の髪と顔、角
+    P.poly([[20, 8], [44, 8], [50, 34], [14, 34]], (x) => Hh[x < 32 ? 1 : 3]);
+    P.ball(32, 14, 7.5, 8.5, Sk);
+    P.poly([[24, 8], [16, 0], [27, 6]], M[0]); P.poly([[40, 8], [48, 0], [37, 6]], M[1]);
+    P.rect(28, 13, 3, 2, '#ff4060'); P.rect(34, 13, 3, 2, '#ff4060');
+    P.ball(32, 8.5, 1.6, 2, ramp('#ff3060'));
+    return P.outline(0.85);
+  };
+  // 最終章の敵（32×32）
+  E.darkknight = (f) => {
+    const P = new Pix(32, 32), A = ramp('#3a3448'), Rc = ramp('#8a1a2a');
+    P.poly([[9, 12], [23, 12], [26, 30], [6, 30]], Rc[2]);
+    P.box(11, 23, 4, 8, A); P.box(17, 23, 4, 8, A);
+    P.box(9, 12, 14, 12, A, { round: true }); P.rect(9, 21, 14, 2, ramp('#c8a040')[2]);
+    P.ball(16, 8, 6, 6, A); P.rect(12, 8, 8, 2, '#140c18'); P.rect(13, 8, 2, 1, f ? '#ff3030' : '#c02020'); P.rect(17, 8, 2, 1, f ? '#ff3030' : '#c02020');
+    P.poly([[12, 3], [16, 0], [20, 3]], Rc[1]);
+    for (let i = 0; i < 16; i++) { P.set(27, 26 - i - f, '#c8d0e0'); P.set(28, 26 - i - f, '#7a8090'); }
+    P.rect(25, 26 - f, 5, 2, ramp('#c8a040')[2]);
+    return P.outline();
+  };
+  E.imp = (f) => {
+    const P = new Pix(32, 32), Rr = ramp('#c8403a');
+    P.poly([[6, 10], [14, 14], [10, 20]], ramp('#5a2a3a')[2 + f % 2]); P.poly([[26, 10], [18, 14], [22, 20]], ramp('#5a2a3a')[2 + f % 2]);   // 羽
+    P.ball(16, 20, 6, 7, Rr); P.box(12, 25, 3, 5, Rr); P.box(17, 25, 3, 5, Rr);
+    P.ball(16, 11, 6, 5.5, Rr);
+    P.poly([[11, 8], [9, 2], [13, 6]], '#f0e0c0'); P.poly([[21, 8], [23, 2], [19, 6]], '#f0e0c0');
+    P.rect(13, 10, 2, 2, '#ffe060'); P.rect(18, 10, 2, 2, '#ffe060'); P.rect(14, 14, 4, 1, '#3a0a0a');
+    P.ball(25, 19 - f, 3, 3, ramp('#ffa030'));
+    return P.outline();
+  };
+
   // ---------------- 道具アイコン（16×16）：色だけでなく形と小さな印で見分ける ----------------
   const TINT = {
     wood: '#b07a45', copper: '#d98a4a', iron: '#aab4c0', steel: '#dfe8f2', jade: '#4fd08a', crystal: '#9ae8ff', gold: '#ffd84a',
+    dragon: '#3ac8a0', frost: '#8ad8ff', moon: '#c8b8ff', hero: '#7ab0ff',
   };
   const I = {};
   // 剣：材質で刃の色、強さで刃の長さ・つばの形が変わる
   I.sword = (t) => {
     const P = new Pix(16, 16); const R = ramp(TINT[t] || '#cfd8e0');
-    const len = { wood: 7, copper: 8, iron: 9, steel: 10, jade: 10, crystal: 11, gold: 11 }[t] || 9;
+    const len = { wood: 7, copper: 8, iron: 9, steel: 10, jade: 10, crystal: 11, gold: 11, frost: 11, dragon: 12, hero: 12 }[t] || 9;
     for (let i = 0; i < len; i++) { P.set(5 + i, 10 - i, R[1]); P.set(6 + i, 10 - i, R[2]); P.set(6 + i, 11 - i, R[3]); }
     P.set(5 + len, 10 - len + 1, R[0]);
-    const guard = t === 'gold' || t === 'crystal' ? ramp('#ffd84a') : t === 'wood' ? ramp('#7a4a24') : ramp('#8a6a40');
+    const guard = t === 'gold' || t === 'crystal' || t === 'hero' || t === 'dragon' ? ramp('#ffd84a') : t === 'wood' ? ramp('#7a4a24') : t === 'frost' ? ramp('#ff7a3a') : ramp('#8a6a40');
     P.line(2, 9, 6, 13, guard[2]); P.line(3, 9, 7, 13, guard[1]);
     if (t === 'steel' || t === 'gold' || t === 'jade' || t === 'crystal') { P.set(1, 8, guard[1]); P.set(8, 14, guard[1]); }
     P.rect(2, 12, 2, 2, '#5a3a20'); P.set(1, 14, guard[2]);
@@ -671,7 +880,7 @@
       P.poly([[2, 2], [14, 2], [13, 9], [8, 15], [3, 9]], (x, y) => R[P.idx(0.4 + (x - 2) / 9 + (y - 2) / 16, x, y)]);
       P.rect(3, 3, 10, 1, R[0]);
       if (t === 'steel') for (const [x, y] of [[4, 4], [11, 4], [4, 8], [11, 8], [8, 12]]) P.set(x, y, '#ffffff');
-      else { const G = ramp(t === 'gold' ? '#ff4a6a' : t === 'jade' ? '#2aff9a' : '#ffffff'); P.ball(8, 7, 2.2, 2.6, G); P.rect(3, 2, 10, 1, ramp('#ffd84a')[1]); }
+      else { const G = ramp({ gold: '#ff4a6a', jade: '#2aff9a', dragon: '#ff5a4a', moon: '#fff6b0', hero: '#ffd84a' }[t] || '#ffffff'); P.ball(8, 7, 2.2, 2.6, G); P.rect(3, 2, 10, 1, ramp('#ffd84a')[1]); }
     }
     return P.outline();
   };
@@ -727,6 +936,17 @@
     else { P.poly([[8, 4], [12, 8], [4, 8]], '#c0392b'); P.rect(5, 8, 6, 3, '#c0392b'); P.rect(7, 9, 2, 2, '#f5e6c0'); }
     return P.outline();
   };
+  // 護符（持っているだけで効く）：水＝青い雫、雷＝黄色い稲妻
+  I.charm = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'bolt' ? '#e8c040' : '#3a9ad8');
+    P.line(4, 1, 8, 5, '#c8a060'); P.line(12, 1, 8, 5, '#c8a060');
+    P.poly([[3, 6], [13, 6], [13, 12], [8, 15], [3, 12]], (x, y) => R[P.idx(0.6 + (x - 3) / 10 + (y - 6) / 12, x, y)]);
+    if (t === 'bolt') { P.line(9, 7, 6, 10, '#fff6c0'); P.line(6, 10, 10, 10, '#fff6c0'); P.line(10, 10, 7, 13, '#fff6c0'); }
+    else { P.ball(8, 10.5, 2, 2.6, ramp('#bff0ff')); P.set(8, 7, '#bff0ff'); }
+    return P.outline(); };
+  I.mirror = () => { const P = new Pix(16, 16); P.rect(7, 11, 2, 5, '#8a5a2a'); P.ball(8, 6.5, 5.5, 5.5, ramp('#e8c040')); P.ball(8, 6.5, 4, 4, ramp('#cfe8ff'));
+    P.line(6, 4, 9, 3, '#ffffff'); P.set(10, 8, '#ffffff'); return P.outline(); };
+  I.incense = () => { const P = new Pix(16, 16); P.box(4, 10, 8, 5, ramp('#b0603a'), { round: true }); P.rect(4, 10, 8, 1, '#e8a060');
+    P.line(8, 9, 8, 6, '#6a4a2a'); for (let i = 0; i < 5; i++) P.set(7 + Math.round(Math.sin(i) * 2), 5 - i, '#dfe8f0'); P.set(11, 2, '#c8d8e8'); P.set(5, 3, '#c8d8e8'); return P.outline(); };
   I.coin = () => { const P = new Pix(16, 16); P.ball(8, 8, 6, 6, ramp('#ffd84a')); P.ball(8, 8, 3.2, 3.2, ramp('#e0a820')); P.rect(7, 6, 2, 4, '#fff6b0'); return P.outline(); };
   I.elephant = (t) => { const P = new Pix(16, 16); const R = ramp(t === 'gold' ? '#ffd84a' : '#4fc08a');
     P.ball(9, 9, 5, 4, R); P.ball(4, 7, 3, 3, R); P.line(2, 8, 2, 13, R[2]); P.box(6, 12, 2, 3, R); P.box(10, 12, 2, 3, R); P.set(4, 6, '#111'); P.ball(6, 6, 1.6, 2.4, R); return P.outline(); };
@@ -766,6 +986,14 @@
     crystal: { floor: '#6c6c98', floor2: '#5e5e88', wall: '#4a4a78', top: '#12122a', deco: '#7af0ff', bg: '#04040c', light: '#7af0ff' },
     gold:    { floor: '#b89a5a', floor2: '#a4884c', wall: '#a07a30', top: '#34260c', deco: '#ffe060', bg: '#0c0802', light: '#ffe080' },
     shrine:  { floor: '#c4a6dc', floor2: '#b094c8', wall: '#8a6ab0', top: '#26183a', deco: '#ffd84a', bg: '#0a0614', light: '#ffd8ff' },
+    // 最終章とボス部屋
+    demon:       { floor: '#4a3a5a', floor2: '#40324e', wall: '#3a2a48', top: '#140c1c', deco: '#e8c040', bg: '#06030a', light: '#c070ff' },
+    throne:      { floor: '#5a4a6a', floor2: '#4e405e', wall: '#4a3a5a', top: '#180e24', deco: '#ffd84a', bg: '#08040e', light: '#ffb0f0' },
+    arena_croc:  { floor: '#8a9468', floor2: '#7a845c', wall: '#5a6a48', top: '#1a2414', deco: '#6aaa48', bg: '#040a04', light: '#c8ff9a' },
+    arena_flame: { floor: '#7a6060', floor2: '#6a5454', wall: '#5a3a40', top: '#1c1014', deco: '#ff8a3a', bg: '#0a0406', light: '#ffa060' },
+    arena_kill:  { floor: '#5a2a3a', floor2: '#3a2030', wall: '#4a2a40', top: '#14080e', deco: '#e8c040', bg: '#080206', light: '#ff7090' },
+    arena_baran: { floor: '#c8c0a8', floor2: '#b8b098', wall: '#8a9ab8', top: '#1e2434', deco: '#e8c040', bg: '#04060c', light: '#a0c8ff' },
+    arena_mist:  { floor: '#4a3e6a', floor2: '#40365e', wall: '#3a3058', top: '#100c1e', deco: '#b090ff', bg: '#04030a', light: '#c8b0ff' },
   };
   SP.themeColors = THEME;
   const hash = (x, y, s) => { let h = (x * 374761393 + y * 668265263 + (s || 0) * 2246822519) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; };
@@ -774,7 +1002,7 @@
   function floorTile(theme, v) {
     const T = THEME[theme], P = new Pix(32, 32);
     const A = ramp(T.floor), B = ramp(T.floor2);
-    const style = { brick: 'stone', roots: 'flag', water: 'tile', orb: 'tile', garden: 'flag', sunken: 'tile', crystal: 'cave', gold: 'tile', shrine: 'tile' }[theme];
+    const style = { brick: 'stone', roots: 'flag', water: 'tile', orb: 'tile', garden: 'flag', sunken: 'tile', crystal: 'cave', gold: 'tile', shrine: 'tile' }[theme] || 'tile';
     if (style === 'cave') {
       for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
         const n = (hash(x >> 2, y >> 2, v) & 15) / 15;
@@ -911,7 +1139,9 @@
     }
     s.take.left = { walk: s.take.right.walk.map(flipCanvas), atk: flipCanvas(s.take.right.atk) };
     s.sai = [drawSai(0).canvas(), drawSai(1).canvas()];
-    s.portrait = { take: portraitTake().canvas(), sai: portraitSai().canvas() };
+    s.portrait = { take: portraitTake().canvas(), sai: portraitSai().canvas(), yanai: portraitYanai().canvas() };
+    s.villagers = [0, 1, 2, 3, 4].map((v) => villager(v).canvas());
+    s.portrait.villager = s.villagers[2];
     s.big = { take: bigTake().canvas(), sai: bigSai().canvas() };
     s.enemy = {};
     for (const k of Object.keys(E)) s.enemy[k] = [E[k](0).canvas(), E[k](1).canvas()];
@@ -943,14 +1173,35 @@
     return urlCache[key];
   };
   // 会話の顔絵（顔のあたりを拡大）
+  // who：顔絵の種類（take / sai / yanai / villager / friend1 …）か、'boss:敵ID'（ボスの絵をそのまま使う）
   SP.portraitURL = function (who, size) {
-    const src = who === 'sai' ? SP.s.portrait.sai : SP.s.portrait.take;
+    let src;
+    if (String(who).startsWith('boss:')) { const E = TS.Data.ENEMIES[who.slice(5)]; src = E && SP.s.enemy[E.sprite] ? SP.s.enemy[E.sprite][0] : SP.s.portrait.villager; }
+    else src = SP.s.portrait[who] || SP.s.portrait.villager;
     const c = document.createElement('canvas');
     c.width = c.height = size || 64;
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
     g.drawImage(src, 0, 0, c.width, c.height);
     return c.toDataURL();
+  };
+
+  /* 完成画像への差し替え（js/assets.js の TS.ASSETS に画像のパスを書くと、コードで描いた絵の代わりに使う）。
+   * 読み込めなかったときは、いつものドット絵のまま。 */
+  SP.loadOverrides = function (onDone) {
+    const A = TS.ASSETS || {}, jobs = [];
+    const load = (src, cb) => { const img = new Image(); jobs.push(1); img.onload = () => { cb(img); done(); }; img.onerror = done; img.src = src; };
+    let left = 0;
+    function done() { left--; if (left <= 0 && onDone) onDone(); }
+    for (const [k, src] of Object.entries(A.portraits || {})) if (src) { left++; load(src, (img) => { SP.s.portrait[k] = img; }); }
+    for (const [k, src] of Object.entries(A.bosses || {})) if (src) {
+      left++;
+      load(src, (img) => { // 横に2コマ並べた画像（1コマは正方形）
+        const n = Math.max(1, Math.round(img.width / img.height)), w = img.width / n;
+        SP.s.enemy[k] = [0, 1].map((i) => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.drawImage(img, Math.min(i, n - 1) * w, 0, w, img.height, 0, 0, 64, 64); return c; });
+      });
+    }
+    if (!left && onDone) onDone();
   };
 
   SP.buildTiles = function () {

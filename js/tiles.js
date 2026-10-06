@@ -103,12 +103,73 @@
       pillar: '#efe4ff', accent: '#ffd84a', mural: '#9a7ac0',
       feats: ['goldtrim', 'mosaic', 'pillars'],
     },
+    // ---- 最終章：大魔王の城（暗い大理石と金の装飾） ----
+    demon: {
+      floor: ['#4a3a5a', '#42344f', '#524264', '#3c2f4a'], grout: '#1a1020', slab: 'temple',
+      corr: ['#3a2e46', '#34283e', '#42354e'], dirt: '#140c1a',
+      wall: ['#3a2a48', '#443252', '#322440', '#4c3a5a'], mortar: '#160e1e', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#140c1c', '#1a1024', '#100816'], topGap: '#08040c', rim: '#8a6ab0',
+      pillar: '#8a7aa8', accent: '#e8c040', mural: '#6a4a8a',
+      feats: ['goldtrim', 'pillars', 'mural', 'statue', 'pillars'],
+    },
+    // 35階：封印の玉座（赤い絨毯）
+    throne: {
+      floor: ['#5a4a6a', '#52445f', '#62526f', '#4c3e5c'], grout: '#1e1228', slab: 'temple', carpet: '#9a1a2a',
+      corr: ['#4a3e5a', '#443852', '#524662'], dirt: '#180e20',
+      wall: ['#4a3a5a', '#544366', '#40324e', '#5c4a6e'], mortar: '#1a1024', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#180e24', '#1e142c', '#140a1e'], topGap: '#0a0612', rim: '#c8a0f0',
+      pillar: '#c8b8e0', accent: '#ffd84a', mural: '#7a5a9a',
+      feats: ['pillars'],
+    },
+    // ---- 章のボス部屋 ----
+    arena_croc: {  // 獣王の沼の広間：苔むした石と沼の水
+      floor: ['#8a9468', '#7e885e', '#96a070', '#747e56'], grout: '#3a4024', slab: 'flag',
+      corr: ['#6e6a4c', '#646046', '#787452'], dirt: '#2a2a18',
+      wall: ['#5a6a48', '#647452', '#526040', '#6c7c58'], mortar: '#2a3018', brickW: 18, brickH: 8,
+      top: 'earth', topC: ['#1e2a18', '#24321c', '#182414'], topGap: '#0e160a', rim: '#5a7a48',
+      water: '#3a7a5a', deep: '#1e4a3a', ledge: '#b0b890', lotus: true,
+      pillar: '#a8b090', accent: '#c8a040', mural: '#7a8a5a', moss: '#4f8a38', root: '#4a3018', leaf: '#6aaa48',
+      feats: ['overgrown'],
+    },
+    arena_flame: { // 炎と氷の祭壇：左が熱く、右が冷たい床
+      floor: ['#6a5a5a', '#625252', '#726262', '#5a4c4c'], grout: '#20141a', slab: 'temple', split: true, warm: '#a8482a', cold: '#3a78a8',
+      corr: ['#5a4a4a', '#524444', '#625050'], dirt: '#1a1014',
+      wall: ['#5a3a40', '#64444a', '#523438', '#6c4c52'], mortar: '#1c1014', brickW: 20, brickH: 8,
+      top: 'rock', topC: ['#1c1014', '#22141a', '#160c10'], topGap: '#0a0608', rim: '#8a5a5a',
+      pillar: '#a89090', accent: '#ff8a3a', mural: '#8a5a50',
+      feats: ['pillars'],
+    },
+    arena_kill: {  // 死神の遊技場：黒と赤の市松模様
+      floor: ['#3a2a34', '#342630', '#40303a', '#30222c'], grout: '#120810', slab: 'tile', checker: ['#2a1c26', '#7a2434'],
+      corr: ['#3a2a34', '#342630', '#40303a'], dirt: '#120810',
+      wall: ['#4a2a40', '#54344a', '#422438', '#5c3c52'], mortar: '#160a12', brickW: 16, brickH: 8,
+      top: 'temple', topC: ['#14080e', '#1a0c14', '#10060a'], topGap: '#08030a', rim: '#8a4a6a',
+      pillar: '#a88aa0', accent: '#e8c040', mural: '#6a3a5a',
+      feats: ['mural'],
+    },
+    arena_baran: { // 竜の騎士の神殿：白い石と青い壁、金の縁
+      floor: ['#c8c0a8', '#bcb49c', '#d2caB2', '#b2aa92'], grout: '#6a6250', slab: 'temple',
+      corr: ['#a8a088', '#9e9680', '#b2aa92'], dirt: '#3a3628',
+      wall: ['#8a9ab8', '#94a4c2', '#8090ae', '#9eaecc'], mortar: '#3a4258', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#1e2434', '#242a3c', '#181e2c'], topGap: '#0a0e18', rim: '#a0b8e0',
+      pillar: '#e8ecf4', accent: '#e8c040', mural: '#6a7a9a',
+      feats: ['goldtrim'],
+    },
+    arena_mist: {  // 影の霧の間：紫の岩と淡い光の筋
+      floor: ['#4a3e6a', '#443860', '#504474', '#3e3458'], grout: '#1c1630', slab: 'cave', crystal: '#b090ff',
+      corr: ['#3e3458', '#382e50', '#463c62'], dirt: '#140f22',
+      wall: ['#3a3058', '#443a64', '#342a50', '#4c4270'], mortar: '#140f22', brickW: 0, brickH: 0,
+      top: 'rock', topC: ['#100c1e', '#161226', '#0c0818'], topGap: '#060410', rim: '#6a5a9a',
+      pillar: '#8a7ab8', accent: '#b090ff', mural: '#5a4a8a', crystal2: '#e8d8ff',
+      feats: ['statue'],
+    },
   };
   // 色を配列に変換しておく
   for (const k of Object.keys(M)) {
     const t = M[k];
     for (const f of ['floor', 'corr', 'wall', 'topC', 'flower']) if (t[f]) t[f] = t[f].map(rgb);
-    for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2']) if (t[f]) t[f] = rgb(t[f]);
+    for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2', 'warm', 'cold', 'carpet']) if (t[f]) t[f] = rgb(t[f]);
+    if (t.checker) t.checker = t.checker.map(rgb);
     t.isWater = !!t.water;
   }
   TL.isWaterTheme = (theme) => !!(M[theme] && M[theme].isWater);
@@ -235,6 +296,13 @@
           const vein = noise(wx / 40, wy / 40, seed + 10) > 0.55;   // 結晶の筋は床の一部だけ
           if (vein && v < 0.011) c = mixc(T.crystal, c, 0.35); else if (vein && v < 0.026) c = mixc(c, T.crystal, 0.2);
         } else c = slabPixel(T, wx, wy, seed);
+        // ボス部屋の特別な床：炎と氷の左右、市松模様、玉座への絨毯
+        if (k === FLOOR && T.split) c = mixc(c, wx < (rm ? (rm.x + rm.w / 2) * 32 : W * 16) ? T.warm : T.cold, 0.5);
+        if (k === FLOOR && T.checker && c !== T.grout) c = mixc(c, T.checker[((wx >> 4) + (wy >> 4)) & 1], 0.7);
+        if (k === FLOOR && T.carpet && rm && rm.w >= 7) {
+          const dx = Math.abs(wx + 0.5 - (rm.x + rm.w / 2) * 32);
+          if (dx < 30) c = dx > 26 ? T.accent : dx > 24 ? sh(T.accent, -0.4) : sh(T.carpet, ((wy >> 3) % 2 ? 0.05 : -0.05) + (noise(wx / 14, wy / 14, seed) - 0.5) * 0.15);
+        }
         // 苔・草（庭園・根の地域、草むらの部屋）
         if (T.moss && (feat === 'overgrown' || theme === 'garden' || theme === 'roots')) {
           // 壁ぎわ・継ぎ目に寄せて生える（床全体を埋めない）
