@@ -34,7 +34,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
   const { ctx, p } = await mk(phone);
   CUR = p;
   const shot = (n) => p.screenshot({ path: path.join(OUT, n + '.png') });
-  const closeTalk = async () => { for (let i = 0; i < 12 && await p.$('.talk'); i++) { await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(40); } };
+  const closeTalk = async () => { for (let i = 0; i < 40 && await p.$('.talk'); i++) { await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(40); } };
   const run = () => p.evaluate(() => TS.UI.S.run && { turn: TS.UI.S.run.turn, floor: TS.UI.S.run.floor, x: TS.UI.S.run.player.x, y: TS.UI.S.run.player.y, hp: TS.UI.S.run.player.hp });
 
   await test('サブパスで読み込め、素材がすべて相対パスで取得できる', async () => {
@@ -412,7 +412,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
   });
 
   await test('消耗品はすべて使う操作がある。どんそくの粉：「戻る」では減らず、「まく」で1個減って1ターン・見えている敵が鈍足', async () => {
-    const missing = await p.evaluate(() => Object.entries(TS.Data.ITEMS).filter(([id, d]) => !['weapon', 'shield', 'staff', 'return', 'treasure', 'material', 'orb'].includes(d.type) && !TS.UI.USE_LABEL[d.type]).map(([id]) => id));
+    const missing = await p.evaluate(() => Object.entries(TS.Data.ITEMS).filter(([id, d]) => !['weapon', 'shield', 'staff', 'return', 'treasure', 'material', 'orb', 'charm'].includes(d.type) && !TS.UI.USE_LABEL[d.type]).map(([id]) => id));
     assert(!missing.length, 'no use action: ' + missing.join());
     await openRoom();
     const b = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game;
@@ -668,42 +668,95 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(await p.isVisible('#screen-dungeon'), 'retried');
   });
 
-  await test('30階で最終ボスを倒して宝珠を拾い、帰還口から帰るとエンディング（10・20階の中ボスも突破）', async () => {
+  await test('第1章：30階のクロコダインに登場の表示と会話。倒すと報酬と帰還口。帰ると章クリアの会話と第2章の表示', async () => {
     await p.evaluate(() => {
       const S = TS.UI.S, G = TS.Game;
-      const killBoss = () => { const r = S.run, b = r.enemies.find((e) => e.boss); if (!b) return;
-        r.player.hp = r.player.maxhp = 9999; b.hp = 1;
-        for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) { const x = b.x - dx, y = b.y - dy;
-          if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); for (let i = 0; i < 50 && r.enemies.includes(b); i++) G.act(S, { type: 'move', dir }); return; } } };
-      while (S.run.floor < 30) { if (TS.Data.FLOORS[S.run.floor].boss) killBoss(); const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
-      const r = S.run, b = r.enemies.find((e) => e.boss);
-      b.hp = 5;
-      // ボスの左（通行可能な隣）に立つ
-      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 500;
-      G.updateVision(r);
+      S.run.player.hp = S.run.player.maxhp = 9999;
+      while (S.run.floor < 29) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+      const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; r.enemies = [];
     });
+    await p.tap('#b-foot'); await p.waitForTimeout(200);       // 階段の確認
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(900);
+    assert(await p.isVisible('.talk'), 'boss intro talk');
+    assert(await p.isVisible('.who:has-text("クロコダイン")'), 'boss speaks');
+    await closeTalk();
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 5; b.cds = { rush: 9, axe: 9 }; r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 900; G.updateVision(r); });
     await p.waitForTimeout(200);
     await shot('17_boss');
     for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
-    assert(await p.evaluate(() => !!TS.UI.S.run.portal), 'portal opened');
-    await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(200); // 宝珠のマスへ
-    if (await p.$('.modal')) { await p.tap('.modal-buttons button'); await p.waitForTimeout(100); }
-    assert(await p.evaluate(() => TS.UI.S.run.bag.some((i) => i.id === 'wish_orb')), 'orb picked');
-    await shot('18_orb');
-    // 帰還口の隣の床から、帰還口へ1歩
+    await p.waitForTimeout(700); await closeTalk();
+    assert(await p.evaluate(() => !!TS.UI.S.run.portal && TS.UI.S.village.story.defeated.croc), 'portal opened');
+    assert(await p.evaluate(() => TS.UI.S.run.floorItems.some((f) => f.item && f.item.id === 'dragon_shield')), 'reward on floor');
     const dir = await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game;
       for (const [d, [dx, dy]] of Object.entries(G.DIRS)) { const x = r.portal.x - dx, y = r.portal.y - dy;
         if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); return d; } } });
-    await p.tap(`#dpad [data-dir="${dir}"]`); await p.waitForTimeout(200);
-    if (await p.$('text=足元には')) await p.waitForTimeout(10);
+    await p.tap(`#dpad [data-dir="${dir}"]`); await p.waitForTimeout(250);
     assert(await p.isVisible('.modal h2:has-text("帰還口")'), 'portal prompt');
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(150);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(300);   // 帰還の結果
+    assert(await p.isVisible('.talk'), 'chapter clear talk');
     await closeTalk();
-    assert(await p.isVisible('text=THANK YOU FOR PLAYING'));
-    await shot('19_ending');
+    assert(await p.isVisible('.modal h2:has-text("第1章 クリア")'), 'chapter clear summary');
+    await shot('18_chapter_clear');
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(200);
+    const ch = await p.evaluate(() => ({ ch: TS.UI.S.village.story.chapter, txt: document.getElementById('v-chapter').textContent, pend: TS.UI.S.village.story.pending }));
+    assert(ch.ch === 2 && ch.txt.includes('第2章') && ch.txt.includes('フレイザード') && !ch.pend, JSON.stringify(ch));
+  });
+
+  await test('最終章：35階で大魔王バーン→静寂と変身の演出→準備画面（時間停止）→「最終決戦へ」→真大魔王バーン→帰還口→エンディング', async () => {
+    await p.evaluate(() => {
+      const S = TS.UI.S, G = TS.Game;
+      S.village.story.chapter = 6; S.village.bag = [];
+      G.depart(S, 777);
+      S.run.player.hp = S.run.player.maxhp = 9999;
+      while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+      const r = S.run, b = r.enemies.find((e) => e.boss);
+      b.hp = 5; b.cds = { circle: 9, bird: 9, summon: 9 };
+      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 100; r.player.maxhp = 900;
+      G.updateVision(r);
+      document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-dungeon')); TS.UI.screen = 'dungeon';
+    });
+    await p.waitForTimeout(200);
+    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.final.stage === 'battle1'); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
+    await p.waitForTimeout(700);
+    assert(await p.isVisible('.talk'), 'silence / transform talk');
+    await closeTalk(); await p.waitForTimeout(150); await closeTalk();
+    assert(await p.isVisible('.modal h2:has-text("最終決戦の準備")'), 'prep screen');
+    await shot('19_final_prep');
+    const prep = await p.evaluate(() => ({ hp: TS.UI.S.run.player.hp, max: TS.UI.S.run.player.maxhp, turn: TS.UI.S.run.turn, seen: TS.UI.S.run.final.cutsceneSeen }));
+    assert(prep.hp === prep.max && prep.seen, 'healed once ' + JSON.stringify(prep));
+    // 準備中に再読み込みしても、回復や演出は繰り返さず、準備画面に戻る
+    await p.evaluate(() => { TS.UI.S.run.player.hp = 321; TS.UI.debug.save(); });
+    await p.reload(); await p.waitForTimeout(400);
+    await p.tap('#btn-continue'); await p.waitForTimeout(400);
+    for (let i = 0; i < 10 && !(await p.$('.modal h2:has-text("最終決戦の準備")')); i++) await p.waitForTimeout(100);
+    assert(await p.isVisible('.modal h2:has-text("最終決戦の準備")'), 'prep restored');
+    assert(await p.evaluate(() => TS.UI.S.run.player.hp === 321 && TS.UI.S.run.final.stage === 'prep'), 'no second heal');
+    // 「道具を確認」→ 閉じると準備画面に戻る（ターンは進まない）
+    const t0 = await p.evaluate(() => TS.UI.S.run.turn);
+    await p.tap('.modal-buttons button >> text=道具を確認'); await p.waitForTimeout(250);
+    assert(await p.isVisible('.modal h2:has-text("道具")'), 'items from prep');
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(300);
+    assert(await p.isVisible('.modal h2:has-text("最終決戦の準備")'), 'prep back after items');
+    assert(await p.evaluate((t0) => TS.UI.S.run.turn === t0 && TS.UI.S.run.final.stage === 'prep', t0), 'no turn in prep');
+    await p.tap('.modal-buttons button >> text=最終決戦へ'); await p.waitForTimeout(250);
+    assert(await p.evaluate(() => TS.UI.S.run.final.stage === 'battle2' && TS.UI.S.run.enemies.some((e) => e.type === 'truevearn')), 'final battle');
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 5; b.hold = 3; b.cds = { ring: 9, palm: 9, flame: 9 }; r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 900; G.updateVision(r); });
+    await p.waitForTimeout(200);
+    await shot('20_truevearn');
+    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
+    await p.waitForTimeout(700); await closeTalk();
+    assert(await p.evaluate(() => TS.UI.S.run.final.stage === 'won' && !!TS.UI.S.run.portal), 'won, portal');
+    const dir = await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game;
+      for (const [d, [dx, dy]] of Object.entries(G.DIRS)) { const x = r.portal.x - dx, y = r.portal.y - dy;
+        if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y) && !G.itemAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); return d; } } });
+    await p.tap(`#dpad [data-dir="${dir}"]`); await p.waitForTimeout(250);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(300);
-    assert(await p.evaluate(() => TS.UI.S.village.cleared && !TS.UI.S.run));
+    await closeTalk();
+    assert(await p.isVisible('.modal h2:has-text("エンディング")'), 'ending');
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(200);
+    assert(await p.evaluate(() => TS.UI.S.village.story.endingDone && TS.UI.S.village.cleared && !TS.UI.S.run));
     await shot('20_village_cleared');
   });
 
@@ -714,10 +767,10 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.tap('#btn-continue'); await p.waitForTimeout(400);
     const st = await p.evaluate(() => ({ screen: TS.UI.screen, floor: TS.UI.S.run && TS.UI.S.run.floor, ver: TS.UI.S.version, funds: TS.UI.S.village.funds, storage: TS.UI.S.village.storage.length }));
     const raw = JSON.parse(v1);
-    assert(st.screen === 'dungeon' && st.floor === 4 && st.ver === 2 && st.funds === raw.village.funds && st.storage === raw.village.storage.length, JSON.stringify(st));
+    assert(st.screen === 'dungeon' && st.floor === 4 && st.ver === 3 && st.funds === raw.village.funds && st.storage === raw.village.storage.length, JSON.stringify(st));
     await p.tap('#b-wait'); await p.waitForTimeout(200);
     const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('takeSaiAdventure.save')).version);
-    assert(saved === 2, 'saved as v2');
+    assert(saved === 3, 'saved as v3');
     await shot('24_migrated');
   });
 
@@ -737,7 +790,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
       await p2.goto(URL); await p2.waitForTimeout(300);
       await p2.screenshot({ path: path.join(OUT, `21_${name}_title.png`) });
       await p2.click('#btn-newgame'); await p2.waitForTimeout(150);
-      for (let i = 0; i < 8 && await p2.$('.modal'); i++) { await p2.click('.modal-buttons button >> nth=-1'); await p2.waitForTimeout(60); }
+      for (let i = 0; i < 24 && await p2.$('.modal'); i++) { await p2.click('.modal-buttons button >> nth=-1'); await p2.waitForTimeout(60); }
       await p2.screenshot({ path: path.join(OUT, `22_${name}_village.png`) });
       await p2.click('.fac.depart'); await p2.waitForTimeout(100);
       await p2.click('text=無料で借りる'); await p2.waitForTimeout(100);
