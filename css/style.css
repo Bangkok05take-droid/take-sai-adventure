@@ -275,3 +275,8 @@ details summary { cursor: pointer; margin: 4px 0; }
 .vchapter b { color: var(--accent); }
 .talk.narration .who { display: none; }
 .talk.narration .txt { font-style: normal; color: #e8e0f0; }
+
+/* 倉庫の素材一覧：名前は省略せず折り返す */
+.row.mat { cursor: default; }
+.row .nm.wrap { white-space: normal; overflow: visible; text-overflow: clip; }
+.tabs button { font-size: 14px; }

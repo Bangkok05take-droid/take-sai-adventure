@@ -1545,6 +1545,17 @@
     return G.buildFacility(S, id);
   };
   // 次に目指せる買い物（村の画面に表示）
+  /* 村の発展の一覧に出す項目：まだ完成していないものだけ。倉庫・鍛冶屋の段階式の拡張は、いちばん手前の未完成の段階だけ */
+  G.unbuiltFacilities = function (V) {
+    const seen = {};
+    return D.FACILITIES.filter((f) => {
+      if (G.hasFacility(V, f.id)) return false;
+      const m = /^(storage|smith)\d$/.exec(f.id);
+      if (!m) return true;
+      if (seen[m[1]]) return false;
+      seen[m[1]] = true; return true;
+    });
+  };
   G.nextGoals = function (S) {
     const V = S.village;
     const list = D.FACILITIES.filter((f) => !G.hasFacility(V, f.id)).map((f) => ({ f, st: G.facilityStatus(S, f.id) }));

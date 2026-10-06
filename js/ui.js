@@ -651,14 +651,20 @@
   function openStorage(tab) {
     const V = UI.S.village;
     const h = modal({ title: '倉庫', right: G.storageSize(V) + '枠', tabs: true, buttons: [
-      { label: '整理', keep: true, onClick: () => { sortList(tab === 'in' ? V.bag : V.storage); render(tab); } },
+      { label: '整理', keep: true, onClick: () => { if (tab === 'mat') return; sortList(tab === 'in' ? V.bag : V.storage); render(tab); } },
       { label: '閉じる' }] });
     const tabs = h.el.querySelector('.tabs');
-    tabs.innerHTML = '<button data-t="in">預ける</button><button data-t="out">取り出す</button>';
+    tabs.innerHTML = '<button data-t="in">道具：預ける</button><button data-t="out">道具：取り出す</button><button data-t="mat">素材</button>';
     tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { AU.sfx('tap'); render(b.dataset.t); }));
     function render(t) {
       tab = t;
       tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+      const sortBtn = [...h.el.querySelectorAll('.modal-buttons button')].find((b) => b.textContent === '整理');
+      if (sortBtn) sortBtn.disabled = t === 'mat';
+      if (t === 'mat') { // 素材：素材箱（鍛冶・建設で実際に使う数）をそのまま表示する。見るだけで何も消費しない
+        h.body.innerHTML = materialsList(V);
+        return;
+      }
       let html = `<p class="note">「整理」は${t === 'in' ? 'バッグ' : '倉庫'}を種類順に並べます。<br>倉庫 ${V.storage.length}/${G.storageSize(V)}　バッグ ${V.bag.length}/${D.BAG_SIZE}</p><div class="list">`;
       const list = t === 'in' ? V.bag : V.storage;
       if (!list.length) html += '<p>' + (t === 'in' ? 'バッグは空です。' : '倉庫は空です。') + '</p>';
@@ -679,6 +685,14 @@
 
   // ---- 鍛冶屋 ----
   function matsText(mats) { return Object.entries(mats || {}).map(([m, n]) => esc(D.ITEMS[m].name) + '×' + n).join('、'); }
+  // 倉庫の「素材」タブ：アイコン・正式名称・保管数を1行ずつ（素材箱の数。倉庫やバッグの枠は使わない）
+  function materialsList(V) {
+    const ids = Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === 'material');
+    const have = ids.filter((id) => (V.materials[id] || 0) > 0);
+    if (!have.length) return '<p class="note">素材は鍛冶屋の強化と拡張に使います。持ち帰ると素材箱に入ります。</p><p>素材はまだありません</p>';
+    return '<p class="note">素材は鍛冶屋の強化と拡張に使います。持ち帰ると素材箱に入ります（倉庫の枠は使いません）。</p><div class="list mats">' +
+      have.map((id) => `<div class="row mat" data-id="${id}"><img src="${SP.iconURL(D.ITEMS[id])}" alt=""><span class="nm wrap">${esc(D.ITEMS[id].name)}</span><span class="pr">${V.materials[id]}個</span></div>`).join('') + '</div>';
+  }
   function materialsBox(V) {
     const all = ['amber_shard', 'bronze_shard', 'crystal_shard', 'gold_leaf'];
     return '<div class="kv">' + all.map((m) => `<span>${esc(D.ITEMS[m].name)}</span><span>${V.materials[m] || 0}個 <small class="note">（${D.ITEMS[m].depth}階〜）</small></span>`).join('') + '</div>';
@@ -758,9 +772,16 @@
       tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
       let html = t === 'facility' ? '<p class="note">価格・効果・解放条件を確認して建てられます。</p>' : '<p class="note">好きな飾りを選んで村を整えよう。お宝を寄贈すると特別な飾りが解放されます。</p>';
-      html += '<div class="list">' + D.FACILITIES.filter((f) => f.kind === t).map(facilityRow).join('') + '</div>';
+      // 完成済みは一覧から外す（効果・外観・記録はそのまま）。段階式の拡張（倉庫・鍛冶屋）は次の1段階だけ
+      const left = G.unbuiltFacilities(V);
+      const list = left.filter((f) => f.kind === t);
+      if (!left.length) html += '<div class="okbox">🏆 すべて完成しました！</div>';
+      else if (!list.length) html += `<div class="okbox">${t === 'facility' ? '施設' : '村の飾り'}はすべて完成しました！</div>`;
+      html += '<div class="list">' + list.map(facilityRow).join('') + '</div>';
       h.body.innerHTML = html;
+      const shownAt = performance.now();   // 一覧が変わった直後の連打で、次の項目を誤って選ばない
       h.body.querySelectorAll('.stage').forEach((r) => r.addEventListener('click', () => {
+        if (performance.now() - shownAt < 350) return;
         const f = G.facility(r.dataset.id), st = G.facilityStatus(UI.S, f.id);
         if (st.built) return;
         if (!st.unlocked || st.lackMats.length || !st.affordable) { info(f.name, `<p>${esc(f.desc)}</p><p>価格：${f.price}G${f.mats ? '＋' + matsText(f.mats) : ''}</p><p class="warnbox">${!st.unlocked ? '解放条件：' + st.missing.map((x) => esc(D.REQ_TEXT[x])).join('・') : st.lackMats.length ? '素材が足りません' : '資金が足りません（あと' + (f.price - V.funds) + 'G）'}</p>`); return; }
