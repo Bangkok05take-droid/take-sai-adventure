@@ -411,6 +411,93 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.evaluate(() => { const r = TS.UI.S.run; r.bag = r.bag.filter((i) => !['golden_lotus', 'banana'].includes(i.id) || i.uid < 50); });
   });
 
+  await test('消耗品はすべて使う操作がある。どんそくの粉：「戻る」では減らず、「まく」で1個減って1ターン・見えている敵が鈍足', async () => {
+    const missing = await p.evaluate(() => Object.entries(TS.Data.ITEMS).filter(([id, d]) => !['weapon', 'shield', 'staff', 'return', 'treasure', 'material', 'orb'].includes(d.type) && !TS.UI.USE_LABEL[d.type]).map(([id]) => id));
+    assert(!missing.length, 'no use action: ' + missing.join());
+    await openRoom();
+    const b = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game;
+      r.bag = r.bag.filter((i) => i.id !== 'slow_powder');
+      r.bag.push(G.makeItem(S, 'slow_powder'));
+      const e = G.makeEnemy(r, 'frog', r.player.x + 4, r.player.y); e.atk = 0; e.hp = e.maxhp = 999; r.enemies.push(e); G.updateVision(r);
+      return { turn: r.turn, n: r.bag.length }; });
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await p.tap('.row:has-text("どんそくの粉")'); await p.waitForTimeout(120);
+    assert(await p.isVisible('.modal-buttons button.primary >> text=まく'), 'use button shown');
+    await p.tap('.modal-buttons button >> text=戻る'); await p.waitForTimeout(80);
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(80);
+    let a = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, n: TS.UI.S.run.bag.length }));
+    assert(a.turn === b.turn && a.n === b.n, 'cancel keeps item');
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await p.tap('.row:has-text("どんそくの粉")'); await p.waitForTimeout(120);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(200);
+    a = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, n: TS.UI.S.run.bag.length, slow: TS.UI.S.run.enemies[0].slow }));
+    assert(a.turn === b.turn + 1 && a.n === b.n - 1 && a.slow > 0, JSON.stringify(a));
+    await p.evaluate(() => { TS.UI.S.run.enemies = []; });
+  });
+  await test('雷帝の杖：向きを選ぶ画面で「やめる」なら回数が減らず、方向を選ぶと最初の敵に54ダメージ', async () => {
+    await openRoom();
+    const b = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game;
+      const st = G.makeItem(S, 'thunder_king_staff', { charges: 3 }); r.bag.push(st);
+      const e = G.makeEnemy(r, 'frog', r.player.x - 3, r.player.y - 3); e.atk = 0; e.def = 99; e.hp = e.maxhp = 999; r.enemies.push(e); G.updateVision(r);
+      return { turn: r.turn, uid: st.uid }; });
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await p.tap('.row:has-text("雷帝の杖")'); await p.waitForTimeout(120);
+    await shot('29_king_staff');
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(120);
+    await p.tap('.modal-buttons button >> text=やめる'); await p.waitForTimeout(100);
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);  // 道具一覧に戻っている
+    let a = await p.evaluate((uid) => ({ turn: TS.UI.S.run.turn, c: TS.UI.S.run.bag.find((i) => i.uid === uid).charges }), b.uid);
+    assert(a.turn === b.turn && a.c === 3, 'cancel ' + JSON.stringify(a));
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await p.tap('.row:has-text("雷帝の杖")'); await p.waitForTimeout(120);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(120);
+    await p.tap('.dir-pick button[data-d="upleft"]'); await p.waitForTimeout(250);
+    a = await p.evaluate((uid) => ({ turn: TS.UI.S.run.turn, c: TS.UI.S.run.bag.find((i) => i.uid === uid).charges, hp: TS.UI.S.run.enemies[0].hp }), b.uid);
+    assert(a.turn === b.turn + 1 && a.c === 2 && a.hp === 999 - 54, JSON.stringify(a));
+    await p.evaluate((uid) => { const r = TS.UI.S.run; r.enemies = []; r.bag = r.bag.filter((i) => i.uid !== uid); }, b.uid);
+  });
+  await test('モンスターハウス：入ると「モンスターハウスだ！」と表示し、ダッシュが止まる', async () => {
+    await openRoom();
+    const ok = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game, m = r.map;
+      // 部屋の左に通路と出入口だけを残し（ほかの地形は壁に）、部屋をモンスターハウスにする
+      for (let i = 0; i < m.tiles.length; i++) { const x = i % m.w, y = (i / m.w) | 0; if (!(x >= 8 && x < 25 && y >= 6 && y < 19)) m.tiles[i] = 0; }
+      for (let x = 2; x < 8; x++) m.tiles[12 * m.w + x] = 2;
+      m.monsterHouse = 99; r.mhTriggered = false;
+      r.player.x = 4; r.player.y = 12; r.player.dir = 'right';
+      for (const [x, y] of [[14, 8], [18, 16], [22, 10]]) { const e = G.makeEnemy(r, 'frog', x, y); e.mh = true; e.sleep = 999; e.atk = 0; r.enemies.push(e); }
+      G.updateVision(r); TS.Render.resetLayer(); return true; });
+    assert(ok);
+    await p.tap('#b-dash'); await p.waitForTimeout(80);
+    await pdown('right'); await p.waitForTimeout(900); await pup('right');
+    await p.waitForTimeout(150);
+    // 入口で眠っている敵が見えて一度止まる → 押し直すと部屋に入り、そこで止まる
+    const atDoor = await p.evaluate(() => TS.UI.S.run.player.x);
+    assert(atDoor === 7, 'stopped at the door first ' + atDoor);
+    await pdown('right'); await p.waitForTimeout(900); await pup('right');
+    await p.waitForTimeout(150);
+    await shot('30_monster_house');
+    const st = await p.evaluate(() => ({ x: TS.UI.S.run.player.x, trig: TS.UI.S.run.mhTriggered, toast: document.getElementById('toast').textContent }));
+    assert(st.trig && st.x === 8, 'stopped at room entrance ' + JSON.stringify(st));
+    assert(st.toast.includes('モンスターハウス'), 'toast ' + st.toast);
+    await p.tap('#b-dash'); await p.waitForTimeout(80);
+    await p.evaluate(() => { TS.UI.S.run.enemies = []; TS.UI.S.run.map.monsterHouse = null; });
+  });
+  await test('持ち物は15枠：道具画面に「/15」、15個で拾えず品物は床に残る', async () => {
+    await openRoom();
+    await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game;
+      r._keepBag = r.bag.length;
+      while (r.bag.length < 15) r.bag.push(G.makeItem(S, 'herb'));
+      r.floorItems.push({ x: r.player.x + 1, y: r.player.y, item: G.makeItem(S, 'banana') }); });
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    const right = await p.textContent('#modal-root .back:last-child h2 .right');
+    assert(right.trim() === '15/15', right);
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(80);
+    await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(250);
+    const a = await p.evaluate(() => ({ n: TS.UI.S.run.bag.length, onFloor: TS.UI.S.run.floorItems.length }));
+    assert(a.n === 15 && a.onFloor === 1, JSON.stringify(a));
+    await p.evaluate(() => { const r = TS.UI.S.run; r.bag = r.bag.slice(0, r._keepBag); delete r._keepBag; r.floorItems = []; });
+  });
+
   await test('道具メニューを開いている間は時間が進まない／道具を使うと1ターン', async () => {
     const b = await run();
     await p.tap('#b-items'); await p.waitForTimeout(150);

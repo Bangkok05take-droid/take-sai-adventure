@@ -16,7 +16,7 @@
   D.BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
   // 3階ごとに帰還の碑（ボスの階は倒すと帰還口が開く）
   D.RETURN_POINT_FLOORS = [3, 6, 9, 12, 15, 18, 21, 24, 27];
-  D.BAG_SIZE = 12;
+  D.BAG_SIZE = 15;
 
   // プレイヤー
   D.PLAYER = {
@@ -71,7 +71,9 @@
     sleep_incense: { name: 'ねむり草', type: 'sleep', turns: 10, price: 90, sell: 35, icon: 'sleepgrass',
       desc: '香りで見えている敵を10ターン眠らせる（守護者は3ターン）。' },
     thunder_staff: { name: 'いかずちの杖', type: 'staff', dmg: 30, sell: 60, icon: 'staff',
-      desc: '向いている方向にまっすぐ雷を飛ばし、最初に当たった敵に30ダメージ。防御を無視する。' },
+      desc: '選んだ方向（8方向）にまっすぐ雷を飛ばし、最初に当たった敵に30ダメージ。防御を無視する。壁で止まる。' },
+    thunder_king_staff: { name: '雷帝の杖', type: 'staff', dmg: 54, sell: 170, icon: 'staff', tint: 'king',
+      desc: '雷帝の力が宿る上位の杖。選んだ方向（8方向）に激しい雷を飛ばし、最初に当たった敵に54ダメージ。防御を無視する。壁で止まる。' },
     jade_sword:    { name: 'ひすいのつるぎ', type: 'weapon', atk: 12, sell: 360, icon: 'sword', tint: 'jade',
       desc: '苔の庭園に眠っていた、ひすい色に光る剣。' },
     crystal_blade: { name: 'すいしょうのつるぎ', type: 'weapon', atk: 15, sell: 520, icon: 'sword', tint: 'crystal',
@@ -89,7 +91,7 @@
     smoke_ball:    { name: 'けむり玉', type: 'warp', price: 120, sell: 40, icon: 'smoke',
       desc: '煙にまぎれて、この階の離れた部屋へ逃げる。' },
     slow_powder:   { name: 'どんそくの粉', type: 'slow', turns: 15, price: 110, sell: 35, icon: 'powder',
-      desc: '見えている敵の動きを15ターン遅くする（2ターンに1回しか動けない）。' },
+      desc: 'まくと、見えている敵すべての動きを15ターン遅くする（2ターンに1回しか動けない。守護者は6ターン）。見えている敵がいないと効果はない。' },
     fire_charm:    { name: '雷鳴の巻物', type: 'fire', dmg: 35, price: 160, sell: 50, icon: 'scroll', tint: 'thunder',
       desc: '読むと雷が鳴り、見えている敵すべてに35ダメージ（防御無視）。' },
     antidote:      { name: 'どくけしそう', type: 'cure', price: 40, sell: 12, icon: 'herb', tint: 'cure',
@@ -207,6 +209,7 @@
     add(f >= 5, [['elixir', 1]]);
     add(f >= 6, [['smoke_ball', 1]]);
     add(f >= 8, [['slow_powder', 1]]);
+    add(f >= 16, [['thunder_king_staff', 0.5]]);   // 上位の杖：深い階でまれに
     add(f >= 11, [['big_herb', 2], ['fire_charm', 1]]);
     add(f >= 14, [['antidote', 1]]);
     // 装備
@@ -258,6 +261,8 @@
   D.rebuildFloors = function () { for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS[f] = floorDef(f); };
 
   D.ENEMY_DROP_RATE = 0.12;
+  // モンスターハウス：地下6階以降の通常階でまれに。1階に1部屋まで。敵とお宝が多い部屋
+  D.MONSTER_HOUSE = { minFloor: 6, chance: 0.08, minArea: 12, enemiesMax: 10, extraItems: 3 };
   // 床に落ちているお金（浅い階は控えめ、深いほど多い）
   D.goldAmount = (floor, r) => Math.round((8 + r * 12) * (1 + 0.28 * (floor - 1)));
 

@@ -1134,6 +1134,7 @@
         case 'slow': for (const t of e.targets) RD.addFx({ t: 'num', x: t.x, y: t.y, text: '鈍', color: '#c8b8ff' }); AU.sfx('sleep'); break;
         case 'warp': AU.sfx('stairs'); flash(); break;
         case 'bagFull': toast('バッグがいっぱい！'); break;
+        case 'monsterHouse': toast('モンスターハウスだ！', 'danger'); AU.sfx('warn'); break;
         case 'stairs': AU.sfx('stairs'); flash(); break;
         case 'reveal': AU.sfx('heal'); break;
         case 'return': AU.sfx('return'); flash(); break;
@@ -1258,6 +1259,10 @@
     if (UI.screen === 'village') updateVillageHud();
   }
 
+  // 使える消耗品の種類と、そのボタンの表示（ここにない種類は「置く」だけ）
+  const USE_LABEL = { heal: '使う（1ターン）', food: '食べる（1ターン）', sleep: 'たく（1ターン）', map: '読む（1ターン）',
+    slow: 'まく（1ターン）', warp: '投げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）' };
+  UI.USE_LABEL = USE_LABEL;
   function itemDetail(it, listModal) {
     const d = G.def(it);
     const buttons = [{ label: '戻る' }];
@@ -1265,7 +1270,7 @@
     if (d.type === 'weapon' || d.type === 'shield') buttons.push({ label: it.eq ? '外す（1ターン）' : '装備する（1ターン）', cls: 'primary', onClick: () => finish({ type: 'equip', uid: it.uid }) });
     else if (d.type === 'staff') buttons.push({ label: 'ふる（向きを選ぶ）', cls: 'primary', onClick: () => { setTimeout(() => pickDir((dir) => finish({ type: 'use', uid: it.uid, dir })), 0); } });
     else if (d.type === 'return') buttons.push({ label: '使う', cls: 'primary', onClick: () => { setTimeout(() => confirmReturnScroll(it), 0); } });
-    else if (['heal', 'food', 'sleep', 'map'].includes(d.type)) buttons.push({ label: d.type === 'food' ? '食べる（1ターン）' : '使う（1ターン）', cls: 'primary', onClick: () => finish({ type: 'use', uid: it.uid }) });
+    else if (USE_LABEL[d.type]) buttons.push({ label: USE_LABEL[d.type], cls: 'primary', onClick: () => finish({ type: 'use', uid: it.uid }) });
     buttons.push({ label: '置く（1ターン）', onClick: () => {
       const run = UI.S.run;
       if (G.itemAt(run, run.player.x, run.player.y) || G.onStairs(run) || G.onReturnPoint(run) || G.onPortal(run)) { setTimeout(() => info('置けません', 'ここには置けません。'), 0); return; }
@@ -1276,7 +1281,7 @@
 
   function pickDir(cb) {
     const run = UI.S.run;
-    const h = modal({ title: 'いかずちの向き', html: `<p class="note">今の向き：${G.DIR_NAMES[run.player.dir]}（斜めにも撃てます）</p><div class="dir-pick">
+    const h = modal({ title: '雷を飛ばす向き', html: `<p class="note">今の向き：${G.DIR_NAMES[run.player.dir]}（斜めにも撃てます）</p><div class="dir-pick">
       <button data-d="upleft">◤</button><button data-d="up">▲</button><button data-d="upright">◥</button>
       <button data-d="left">◀</button><button data-d="${run.player.dir}" class="primary">今の向き</button><button data-d="right">▶</button>
       <button data-d="downleft">◣</button><button data-d="down">▼</button><button data-d="downright">◢</button></div>`, buttons: [{ label: 'やめる' }] });

@@ -151,7 +151,7 @@
       if (!pos) break;
       occupied.push(pos);
       const id = R.weighted(rng, F.items);
-      run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id, id === 'thunder_staff' ? { charges: R.int(rng, 3, 5) } : null) });
+      run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id, D.ITEMS[id].type === 'staff' ? { charges: R.int(rng, 3, 5) } : null) });
     }
     const nGold = R.int(rng, F.goldCount[0], F.goldCount[1]);
     for (let i = 0; i < nGold; i++) {
@@ -169,6 +169,7 @@
       occupied.push(pos);
       run.enemies.push(makeEnemy(run, R.weighted(rng, F.enemies), pos.x, pos.y));
     }
+    placeMonsterHouse(S, gen, occupied);
     if (F.boss) {
       const b = makeEnemy(run, F.boss, gen.bossPos.x, gen.bossPos.y);
       b.boss = true;
@@ -179,6 +180,55 @@
     if (F.boss) G.log(run, '奥から大きな気配がする…。' + D.ENEMIES[F.boss].name + 'が待ち構えている！');
     G.updateVision(run);
   }
+
+  /* モンスターハウス：敵とお宝の多い部屋。階を作るときに一度だけ置く（出入りや再読み込みで作り直さない）。
+   * 開始部屋・帰還の碑のある部屋・ボス階は対象外。敵は深さに合った通常の出現表から選び、重ならないように置く。
+   * 部屋の敵は眠っていて、たけが初めて部屋に入ると目を覚ます（その直後のターンは動かない＝入室直後の追加攻撃なし）。 */
+  function placeMonsterHouse(S, gen, occupied) {
+    const run = S.run, rng = run.rng, f = run.floor, F = D.FLOORS[f], MH = D.MONSTER_HOUSE;
+    run.map.monsterHouse = null;
+    if (F.boss || f < MH.minFloor || !R.chance(rng, MH.chance)) return;
+    const rp = run.returnPoint;
+    const cand = run.map.rooms.filter((r) => r.id !== gen.startRoom && r.w * r.h >= MH.minArea &&
+      !(rp && rp.x >= r.x && rp.x < r.x + r.w && rp.y >= r.y && rp.y < r.y + r.h));
+    if (!cand.length) return;
+    const room = R.pick(rng, cand);
+    run.map.monsterHouse = room.id;
+    const free = [];
+    for (let y = room.y; y < room.y + room.h; y++) for (let x = room.x; x < room.x + room.w; x++) {
+      if (occupied.some((o) => o.x === x && o.y === y) || G.enemyAt(run, x, y)) continue;
+      free.push({ x, y });
+    }
+    R.shuffle(rng, free);
+    const nE = Math.min(MH.enemiesMax, 4 + Math.floor(room.w * room.h / 6), Math.floor(free.length * 0.6));
+    for (let i = 0; i < nE; i++) {
+      const pos = free.pop();
+      occupied.push(pos);
+      const e = makeEnemy(run, R.weighted(rng, F.enemies), pos.x, pos.y);
+      e.mh = true; e.sleep = 999;
+      run.enemies.push(e);
+    }
+    const nI = MH.extraItems + Math.floor(f / 10);
+    for (let i = 0; i < nI && free.length; i++) {
+      const pos = free.pop();
+      occupied.push(pos);
+      if (i % 3 === 2) { run.floorItems.push({ x: pos.x, y: pos.y, gold: D.goldAmount(f, R.next(rng)) * 2 }); continue; }
+      const id = R.weighted(rng, F.items);
+      run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id, D.ITEMS[id].type === 'staff' ? { charges: R.int(rng, 3, 5) } : null) });
+    }
+  }
+  // たけがモンスターハウスに初めて入ったか（入ったら敵が目を覚ます）
+  function checkMonsterHouse(run, ev) {
+    const m = run.map;
+    if (m.monsterHouse == null || run.mhTriggered) return;
+    const r = DG.roomAt(m, run.player.x, run.player.y);
+    if (!r || r.id !== m.monsterHouse) return;
+    run.mhTriggered = true;
+    for (const e of run.enemies) if (e.mh && e.sleep > 0) { e.sleep = 0; e.hold = 1; }
+    G.log(run, 'モンスターハウスだ！');
+    ev.push({ t: 'monsterHouse' });
+  }
+  G.checkMonsterHouse = checkMonsterHouse;
 
   function makeEnemy(run, type, x, y) {
     const E = D.ENEMIES[type], f = run.floor;
@@ -277,6 +327,7 @@
     ev.push({ t: 'move' });
     G.updateVision(run);
     pickup(S, ev, false);
+    checkMonsterHouse(run, ev);
     if (G.onStairs(run)) ev.push({ t: 'onStairs' });
     if (G.onReturnPoint(run)) ev.push({ t: 'onReturnPoint' });
     if (G.onPortal(run)) ev.push({ t: 'onPortal' });
@@ -369,7 +420,7 @@
     } else if (R.chance(run.rng, D.ENEMY_DROP_RATE) && !G.itemAt(run, e.x, e.y) && !DG.same(run.stairs, e) && !DG.same(run.returnPoint, e)) {
       const F = D.FLOORS[run.floor];
       const id = R.weighted(run.rng, F.items);
-      run.floorItems.push({ x: e.x, y: e.y, item: G.makeItem(S, id, id === 'thunder_staff' ? { charges: R.int(run.rng, 3, 5) } : null) });
+      run.floorItems.push({ x: e.x, y: e.y, item: G.makeItem(S, id, D.ITEMS[id].type === 'staff' ? { charges: R.int(run.rng, 3, 5) } : null) });
       G.log(run, E.name + 'は何かを落とした。');
     }
   }
@@ -392,7 +443,7 @@
    * 戻り値 { res, stop }。stop が null 以外ならダッシュを止める（理由の文字列）。
    * 敵への自動攻撃はしない。 */
   G.DASH_STOP = { enemy: '敵を発見', near: '敵が近い', attackBlocked: '前に敵がいる', damage: 'ダメージを受けた', wall: '壁の前', branch: '分かれ道',
-    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', danger: 'HP・満腹度が危険', room: '部屋の出入り', over: '探索終了', event: 'できごと' };
+    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', danger: 'HP・満腹度が危険', room: '部屋の出入り', over: '探索終了', event: 'できごと', monsterHouse: 'モンスターハウス' };
   /* ダッシュ開始時の状況を記録する。すでに見えている敵や、すでに危険域であることでは
    * 毎回止まらない（押し直せば必ず進める）。新しく起きたことだけで止まる。 */
   G.dashContext = function (S) {
@@ -421,6 +472,7 @@
     ctx = ctx || { seen: [], danger: false };
     if (run.over) return 'over';
     const ev = res.events;
+    if (ev.some((e) => e.t === 'monsterHouse')) return 'monsterHouse';
     if (p.hp < hpBefore || ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (G.visibleEnemies(run).some((e) => !ctx.seen.includes(e.id))) return 'enemy';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
@@ -455,6 +507,7 @@
     if (!res.consumed) return 'wall';
     const ev = res.events;
     if (!ev.some((e) => e.t === 'move')) return 'attackBlocked'; // 攻撃や行動になった
+    if (ev.some((e) => e.t === 'monsterHouse')) return 'monsterHouse';
     if (ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
     if (G.onStairs(run)) return 'stairs';
@@ -597,6 +650,7 @@
         if (best) { p.x = best.x; p.y = best.y; G.updateVision(run); }
         G.log(run, 'けむり玉を投げた！たけは煙にまぎれて逃げ出した。');
         ev.push({ t: 'warp' });
+        checkMonsterHouse(run, ev);
         return true;
       }
       case 'slow': {
@@ -757,6 +811,8 @@
 
   function enemyAct(S, e, ev) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type];
+    // モンスターハウスで目を覚ました直後のターンは動かない
+    if (e.hold > 0) { e.hold--; return; }
     // 眠り（眠ると予告中の攻撃も中断される）
     if (e.sleep > 0) {
       if (e.charge) { e.charge = null; G.log(run, E.name + 'の構えがとけた。'); }

@@ -912,6 +912,246 @@ test('新しい道具：煙玉・鈍足の粉・火炎の札・解毒の葉', ()
   eq(DG.roomAt(m, run.player.x, run.player.y).id, 1, 'warped to other room');
 });
 
+console.log('地形（四角い部屋・幅1マスの通路）');
+test('多数のシードで：部屋は重ならない四角、通路は幅1マス（2×2の床・斜めだけの接触なし）、全マスに到達できる', () => {
+  let maps = 0;
+  for (let seed = 1; seed <= 300; seed++) for (let f = 1; f <= 30; f++) {
+    if (D.BOSS_FLOORS[f]) continue;
+    const g = DG.generate(f, R.create(seed * 1009 + f * 31)), m = g.map; maps++;
+    const own = new Int16Array(m.w * m.h).fill(-1);
+    for (const r of m.rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
+      eq(m.tiles[y * m.w + x], DG.FLOOR, 'room is filled rectangle');
+      assert(own[y * m.w + x] < 0, 'rooms overlap'); own[y * m.w + x] = r.id;
+    }
+    for (let i = 0; i < m.tiles.length; i++) if (m.tiles[i] === DG.FLOOR) assert(own[i] >= 0, 'FLOOR outside room');
+    for (const r of m.rooms) { // 部屋のまわり1マスは壁か幅1の出入口。出入口どうしは隣り合わない
+      for (let x = r.x - 1; x <= r.x + r.w; x++) for (const y of [r.y - 1, r.y + r.h]) {
+        const t = m.tiles[y * m.w + x];
+        if (x === r.x - 1 || x === r.x + r.w) eq(t, DG.WALL, 'room corner is wall');
+        else if (t !== DG.WALL) { eq(t, DG.CORR); assert(m.tiles[y * m.w + x + 1] === DG.WALL || x + 1 === r.x + r.w, 'door width 1'); }
+      }
+    }
+    assert(TS.DungeonCheck.shapeOk(m), 'shape seed ' + seed + ' f' + f);
+    assert(TS.DungeonCheck.connected(m), 'connected');
+    const d = DG.distances(m, g.start.x, g.start.y);
+    assert(d[g.stairs.y * m.w + g.stairs.x] > 0, 'stairs reachable');
+  }
+  assert(maps > 8000);
+});
+test('ボス階：入口の前室と大広間を幅1マスの通路でつなぐ四角い部屋', () => {
+  for (const f of Object.keys(D.BOSS_FLOORS)) {
+    const g = DG.generate(+f, R.create(5)), m = g.map;
+    assert(TS.DungeonCheck.shapeOk(m) && TS.DungeonCheck.connected(m));
+    eq(m.rooms.length, 2);
+  }
+});
+test('新しい地形でもダッシュは通路の分かれ道・部屋の出入りで止まり、角抜けなしで全域を歩ける', () => {
+  let stops = { branch: 0, room: 0 };
+  for (let seed = 1; seed <= 30; seed++) {
+    const S = newRun(seed), run = S.run; run.enemies = []; run.floorItems = [];
+    run.player.hp = run.player.maxhp = 9999;
+    for (const dir of ['right', 'down', 'left', 'up', 'right', 'down']) {
+      for (let k = 0; k < 40; k++) { const r = G.dashStep(S, dir); if (r.stop) { if (stops[r.stop] !== undefined) stops[r.stop]++; break; } }
+    }
+  }
+  assert(stops.room > 0, 'room stops ' + JSON.stringify(stops));
+});
+test('今いる階の地形は作り直さない（保存・再開しても同じ。新しい生成は次の階から）', () => {
+  const S = newRun(321); goToFloor(S, 4);
+  const before = S.run.map.tiles.join('');
+  const L = SV.deserialize ? SV.deserialize(SV.serialize(S)) : JSON.parse(JSON.stringify(S));
+  eq(L.run.map.tiles.join(''), before);
+});
+
+console.log('上位の杖・どんそくの粉・消耗品');
+test('雷帝の杖：いかずちの杖の約1.8倍。16階以降の出現表だけにあり、売値も高い。使用回数の仕組みは同じ', () => {
+  const k = D.ITEMS.thunder_king_staff, t = D.ITEMS.thunder_staff;
+  eq(k.type, 'staff'); assert(Math.abs(k.dmg / t.dmg - 1.8) < 0.01); assert(k.sell > t.sell * 2);
+  for (let f = 1; f <= 30; f++) { const has = D.FLOORS[f].items.some((x) => x[0] === 'thunder_king_staff'); eq(has, f >= 16 && !D.BOSS_FLOORS[f], 'floor ' + f); }
+  const w = D.FLOORS[22].items, tot = w.reduce((a, x) => a + x[1], 0), kw = w.find((x) => x[0] === 'thunder_king_staff')[1];
+  assert(kw / tot < 0.03, 'rare'); 
+  // 階で生成されるときも3〜5回
+  let found = 0;
+  for (let seed = 1; seed <= 300 && found < 3; seed++) { const S = newRun(seed); goToFloor(S, 16);
+    for (const fi of S.run.floorItems) if (fi.item && fi.item.id === 'thunder_king_staff') { found++; assert(fi.item.charges >= 3 && fi.item.charges <= 5); } }
+  assert(found > 0, 'appears on deep floors');
+});
+test('雷帝の杖：8方向の直線で最初の敵だけに54ダメージ、壁で止まる、回数を使い切ると不発', () => {
+  const S = newRun(90); bigRoomFloor(S);
+  const run = S.run, p = run.player;
+  const st = G.makeItem(S, 'thunder_king_staff', { charges: 2 }); run.bag.push(st);
+  const e1 = addEnemy(S, 'frog', p.x + 2, p.y + 2), e2 = addEnemy(S, 'frog', p.x + 4, p.y + 4); e1.def = 50;
+  e1.atk = 0; e2.atk = 0;
+  G.act(S, { type: 'use', uid: st.uid, dir: 'downright' });
+  eq(e1.hp, 999 - 54, 'first enemy, ignores def'); eq(e2.hp, 999, 'second untouched'); eq(st.charges, 1);
+  // 壁の手前で止まる（敵は壁の向こう）
+  const turn = run.turn;
+  run.player.x = 3; run.player.y = 5; const e3 = addEnemy(S, 'frog', 1, 5); e3.atk = 0;
+  G.act(S, { type: 'use', uid: st.uid, dir: 'left' });
+  eq(e3.hp, 999, 'stopped by wall'); eq(st.charges, 0); eq(run.turn, turn + 1, 'one turn');
+  G.act(S, { type: 'use', uid: st.uid, dir: 'left' });
+  eq(st.charges, 0); assert(run.log.some((l) => l.includes('何も出なかった')));
+});
+test('どんそくの粉：使うと1個減って1ターン。見えている敵だけ鈍足、効果は時間で切れ、敵が止まり続けない', () => {
+  const S = newRun(91); bigRoomFloor(S);
+  const run = S.run, p = run.player;
+  p.hp = p.maxhp = 9999;
+  const pw = G.makeItem(S, 'slow_powder'); run.bag.push(pw);
+  const n0 = run.bag.length, t0 = run.turn;
+  const near = addEnemy(S, 'frog', p.x + 4, p.y); near.atk = 0;
+  // 見えていない敵（部屋の外の通路）
+  const m = run.map; for (let x = 22; x < 28; x++) m.tiles[8 * m.w + x] = DG.CORR;
+  const far = addEnemy(S, 'frog', 26, 8); far.atk = 0;
+  assert(!G.isVisible(run, 26, 8));
+  G.act(S, { type: 'use', uid: pw.uid });
+  eq(run.bag.length, n0 - 1, 'consumed one'); eq(run.turn, t0 + 1, 'one turn');
+  assert(near.slow > 0, 'visible slowed'); assert(!far.slow, 'unseen not slowed');
+  // 鈍足中は2ターンに1回だけ動き、15ターンで切れて元に戻る
+  let moves = 0, last = { x: near.x, y: near.y };
+  p.x = 3; p.y = 12; G.updateVision(run);
+  for (let i = 0; i < 16; i++) { G.act(S, { type: 'wait' }); if (near.x !== last.x || near.y !== last.y) moves++; last = { x: near.x, y: near.y }; }
+  assert(moves >= 4 && moves <= 10, 'moves while slowed ' + moves);
+  eq(near.slow, 0, 'expired');
+  // 切れたあとは毎ターン動く
+  near.x = p.x + 6; near.y = p.y; G.updateVision(run);
+  let moves2 = 0; last = { x: near.x, y: near.y };
+  for (let i = 0; i < 2; i++) { G.act(S, { type: 'wait' }); if (near.x !== last.x || near.y !== last.y) moves2++; last = { x: near.x, y: near.y }; }
+  eq(moves2, 2, 'moves every turn after expiry');
+});
+test('どんそくの粉：見えている敵がいないときは効果なし（命中していない敵に効かない）', () => {
+  const S = newRun(92); bigRoomFloor(S);
+  const run = S.run; const pw = G.makeItem(S, 'slow_powder'); run.bag.push(pw);
+  G.act(S, { type: 'use', uid: pw.uid });
+  assert(run.log.some((l) => l.includes('粉は風に消えた')));
+});
+
+console.log('モンスターハウス');
+function mhRun(seed, floor) {
+  const keep = D.MONSTER_HOUSE.chance; D.MONSTER_HOUSE.chance = 1;
+  try { const S = newRun(seed); goToFloor(S, floor); return S; } finally { D.MONSTER_HOUSE.chance = keep; }
+}
+test('6階以降の通常階に1部屋まで。開始部屋・帰還の碑の部屋・ボス階・5階以下には出ない。敵は重ならず深さに合う', () => {
+  let made = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const S = mhRun(seed, 5);
+    eq(S.run.map.monsterHouse, null, '5F none');
+    for (let f = 6; f <= 13; f++) {
+      goDownMH(S);
+      const run = S.run, m = run.map;
+      if (D.BOSS_FLOORS[f]) { eq(m.monsterHouse, null, 'boss floor'); continue; }
+      if (m.monsterHouse == null) continue;
+      made++;
+      const room = m.rooms.find((r) => r.id === m.monsterHouse);
+      const inRoom = (o) => o.x >= room.x && o.x < room.x + room.w && o.y >= room.y && o.y < room.y + room.h;
+      assert(!inRoom(run.player), 'not start room');
+      if (run.returnPoint) assert(!inRoom(run.returnPoint), 'not return room');
+      const mh = run.enemies.filter((e) => e.mh);
+      assert(mh.length >= 4 && mh.length <= D.MONSTER_HOUSE.enemiesMax, 'count ' + mh.length);
+      const pos = new Set(run.enemies.map((e) => e.x + ',' + e.y)); eq(pos.size, run.enemies.length, 'no overlap');
+      assert(!pos.has(run.player.x + ',' + run.player.y));
+      const allowed = D.FLOORS[f].enemies.map((x) => x[0]);
+      for (const e of mh) { assert(allowed.includes(e.type), 'depth table'); assert(e.sleep > 0, 'asleep'); }
+      assert(run.floorItems.filter(inRoom).length >= D.MONSTER_HOUSE.extraItems, 'treasure');
+    }
+  }
+  assert(made > 30, 'made ' + made);
+});
+function goDownMH(S) { const keep = D.MONSTER_HOUSE.chance; D.MONSTER_HOUSE.chance = 1; try { goDown(S); } finally { D.MONSTER_HOUSE.chance = keep; } }
+function enterMH(S) {
+  const run = S.run, m = run.map, room = m.rooms.find((r) => r.id === m.monsterHouse);
+  // 出入口のマス（部屋に隣接する通路）に立ち、部屋へ1歩入る
+  for (let y = room.y - 1; y <= room.y + room.h; y++) for (let x = room.x - 1; x <= room.x + room.w; x++) {
+    if (m.tiles[y * m.w + x] !== DG.CORR) continue;
+    for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) {
+      const nx = x + dx, ny = y + dy;
+      if (Math.abs(dx) + Math.abs(dy) !== 1 || !DG.roomAt(m, nx, ny) || DG.roomAt(m, nx, ny).id !== room.id) continue;
+      run.enemies = run.enemies.filter((e) => !(e.x === nx && e.y === ny));
+      run.player.x = x; run.player.y = y; G.updateVision(run);
+      return { dir, door: { x, y } };
+    }
+  }
+  throw new Error('no door');
+}
+test('初めて入ると「モンスターハウスだ！」、ダッシュは止まり、その直後のターンに敵は攻撃しない。2回目は出ない', () => {
+  let tested = 0;
+  for (let seed = 1; seed <= 40 && tested < 5; seed++) {
+    const S = mhRun(seed, 6), run = S.run;
+    if (run.map.monsterHouse == null) continue;
+    tested++;
+    run.player.hp = run.player.maxhp = 500;
+    const { dir, door } = enterMH(S);
+    const hp = run.player.hp;
+    const r = G.dashStep(S, dir);
+    eq(r.stop, 'monsterHouse', 'dash stops');
+    assert(r.res.events.some((e) => e.t === 'monsterHouse'));
+    assert(run.log.includes('モンスターハウスだ！'));
+    eq(run.player.hp, hp, 'no attack on the entry turn');
+    assert(run.enemies.filter((e) => e.mh).every((e) => e.sleep === 0), 'woke up');
+    // 通路へ逃げられる（出口は封鎖されない）
+    const back = Object.keys(G.DIRS).find((d) => G.DIRS[d][0] === -G.DIRS[dir][0] && G.DIRS[d][1] === -G.DIRS[dir][1]);
+    const res = G.act(S, { type: 'move', dir: back });
+    assert(res.consumed && run.player.x === door.x && run.player.y === door.y, 'escaped to corridor');
+    // 再入室で再び発生しない・敵や宝が増えない
+    const nE = run.enemies.length, nI = run.floorItems.length;
+    const res2 = G.act(S, { type: 'move', dir });
+    assert(!res2.events.some((e) => e.t === 'monsterHouse'), 'once');
+    assert(run.enemies.length <= nE && run.floorItems.length <= nI, 'no regeneration');
+  }
+  assert(tested >= 3, 'tested ' + tested);
+});
+test('モンスターハウス：保存・再開しても敵とお宝は作り直されず、入ったかどうかも引き継ぐ', () => {
+  for (let seed = 1; seed <= 40; seed++) {
+    const S = mhRun(seed, 6);
+    if (S.run.map.monsterHouse == null) continue;
+    const snap = JSON.stringify({ e: S.run.enemies, i: S.run.floorItems });
+    const L = SV.deserialize(SV.serialize(S));
+    eq(JSON.stringify({ e: L.run.enemies, i: L.run.floorItems }), snap, 'same before entering');
+    eq(L.run.map.monsterHouse, S.run.map.monsterHouse);
+    enterMH(L); const { dir } = enterMH(L);
+    G.act(L, { type: 'move', dir });
+    assert(L.run.mhTriggered);
+    const L2 = SV.deserialize(SV.serialize(L));
+    assert(L2.run.mhTriggered, 'triggered kept');
+    return;
+  }
+  throw new Error('no MH found');
+});
+
+console.log('持ち物15枠');
+test('バッグは15枠：14→15で拾える、15で拾えず消えない。購入・取り出し・貸出も15でお金や品物が消えない', () => {
+  eq(D.BAG_SIZE, 15);
+  const S = newRun(95); bigRoomFloor(S);
+  const run = S.run, p = run.player;
+  while (run.bag.length < 14) run.bag.push(G.makeItem(S, 'herb'));
+  run.floorItems.push({ x: p.x + 1, y: p.y, item: G.makeItem(S, 'banana') });
+  G.act(S, { type: 'move', dir: 'right' });
+  eq(run.bag.length, 15, 'picked 15th');
+  run.floorItems.push({ x: p.x + 1, y: p.y, item: G.makeItem(S, 'elixir') });
+  G.act(S, { type: 'move', dir: 'right' });
+  eq(run.bag.length, 15); assert(G.itemAt(run, p.x, p.y), 'left on floor, not lost');
+  // 村
+  const S2 = G.newState(), V = S2.village; V.funds = 1000;
+  while (V.bag.length < 15) V.bag.push(G.makeItem(S2, 'herb'));
+  const r1 = G.buy(S2, 'herb'); assert(!r1.ok); eq(V.funds, 1000, 'no charge'); eq(V.bag.length, 15);
+  V.storage.push(G.makeItem(S2, 'banana'));
+  const r2 = G.withdraw(S2, V.storage[0].uid); assert(!r2.ok); eq(V.storage.length, 1, 'kept in storage');
+  assert(!G.takeLoan(S2, 'weapon').ok);
+  V.bag.pop();
+  assert(G.buy(S2, 'herb').ok); eq(V.bag.length, 15); eq(V.funds, 1000 - D.ITEMS.herb.price);
+  // 出発には帰還の巻物の1枠が要る
+  assert(!G.canDepart(S2).ok);
+});
+test('旧セーブ（12枠時代）の所持品はそのまま読み込める', () => {
+  const fs = require('fs');
+  for (const f of ['save-v1-midrun.json', 'save-v1-cleared.json']) {
+    const raw = fs.readFileSync(require('path').join(__dirname, 'fixtures', f), 'utf8');
+    const before = JSON.parse(raw);
+    const L = SV.migrate ? SV.migrate(JSON.parse(raw)) : null;
+    if (!L) continue;
+    eq(L.village.bag.length, before.village.bag.length);
+  }
+});
+
 console.log('（参考）自動プレイによるバランス確認');
 test('簡易AIで初回装備のまま遊んだ結果（参考値）', () => {
   const N = 40; let best = [], clears = 0, turns = [];

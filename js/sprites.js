@@ -702,7 +702,19 @@
     P.ball(6, 6, 2.6, 2.6, F); P.ball(10, 8, 2.2, 2.2, F); P.set(6, 6, '#ffe04a'); P.set(10, 8, '#ffe04a');
     P.rect(11, 1, 4, 1, '#ffffff'); P.set(13, 2, '#ffffff'); P.set(12, 3, '#ffffff'); P.rect(11, 4, 4, 1, '#ffffff'); // Z
     return P.outline(); };
-  I.staff = () => { const P = new Pix(16, 16); P.line(3, 15, 10, 6, '#8a5a2a'); P.line(4, 15, 11, 6, '#5a3a20');
+  // 杖：いかずちの杖は木の柄に青い宝珠。雷帝の杖は金の柄・王冠の飾り・紫の宝珠に雷をまとう
+  I.staff = (t) => {
+    const P = new Pix(16, 16);
+    if (t === 'king') {
+      P.line(2, 15, 9, 7, '#e8b830'); P.line(3, 15, 10, 7, '#9a6a10'); P.set(5, 12, '#ffffff'); P.set(7, 10, '#c0402a');
+      P.ball(11.5, 4.5, 3.4, 3.4, ramp('#b070ff'));
+      P.set(9, 1, '#ffe04a'); P.set(11, 0, '#ffe04a'); P.set(13, 1, '#ffe04a'); P.line(9, 2, 13, 2, '#e8b830');   // 王冠
+      P.set(10, 3, '#ffffff');
+      P.outline();
+      P.line(15, 3, 14, 6, '#fff36a'); P.line(14, 6, 15, 8, '#fff36a'); P.set(8, 6, '#fff36a'); P.set(7, 5, '#fff8b0'); // 雷
+      return P;
+    }
+    P.line(3, 15, 10, 6, '#8a5a2a'); P.line(4, 15, 11, 6, '#5a3a20');
     P.ball(12, 4, 3, 3, ramp('#7ac8ff')); P.line(11, 2, 13, 4, '#ffe04a'); P.line(13, 4, 12, 6, '#ffe04a'); return P.outline(); };
   // 巻物：帰還＝赤いひもと家の印、みとおし＝青いひもと目の印、雷鳴＝黄色いひもと稲妻の印
   I.scroll = (t) => {
