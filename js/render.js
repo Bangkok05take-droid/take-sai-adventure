@@ -29,7 +29,17 @@
     return { x: a.fx + (a.x - a.fx) * t, y: a.fy + (a.y - a.fy) * t };
   }
   RD.moving = (now) => { const a = anims.p; return !!a && now - a.t0 < a.dur; };
-  RD.noteMove = function () { RD.lastMove = performance.now(); };
+  RD.noteMove = function () { RD.lastMove = performance.now(); RD.stepCount = (RD.stepCount || 0) + 1; };
+  /* 歩行のコマ：1マスの移動を前半・後半に分け、「左足→通過→右足→通過」をくり返す（2マスで1周）。
+   * 止まったら待機。向きだけ変えたときは歩かない（移動していないので待機のまま）。
+   * prog：このマスの移動の進み具合（0〜1）、steps：これまでの歩数。戻り値は idle / w1 / w2 のどれか */
+  RD.walkFrame = function (set, moving, prog, steps) {
+    if (!moving) return set.idle;
+    const half = (steps * 2 + (prog >= 0.5 ? 1 : 0)) % 4;
+    return half === 0 ? set.w1 : half === 2 ? set.w2 : set.idle;
+  };
+  /* 攻撃のコマ：構え（0〜25%）→ 振り抜き（25〜80%。命中の点滅・数字はこの間に出る）→ 待機 */
+  RD.attackFrame = function (set, a) { return a < 0.25 ? set.a1 : a < 0.8 ? set.a2 : set.idle; };
 
   function fit(canvas) {
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -283,15 +293,21 @@
     // たけ（歩くと足踏み、攻撃でポーズ、ダメージで揺れる）
     {
       const l = lungeOffset('p', now, ts);
-      const set = SP.s.take[G.faceOf(p.dir)] || SP.s.take.down;
-      const attacking = RD.fx.some((f) => (f.t === 'lunge' && f.id === 'p' && now - f.t0 < 180) || (f.t === 'patk' && now - f.t0 < f.dur));
-      const walking = now - RD.lastMove < Math.max(260, RD.stepDur * 2.2);
-      const img = attacking ? set.atk : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
+      // 8方向：ななめは左右の横向きの絵を使う（ななめ専用の絵は無い）
+      const set0 = SP.s.take[G.faceOf(p.dir)] || SP.s.take.down;
+      const set = set0.art && set0.nw && !G.equipped(run.bag, 'weapon') ? set0.nw : set0;   // 武器なしは剣のない絵
+      const atkFx = RD.fx.find((f) => f.t === 'patk' && now - f.t0 < f.dur);
+      const attacking = !!atkFx || RD.fx.some((f) => f.t === 'lunge' && f.id === 'p' && now - f.t0 < 180);
+      const pa = anims.p, moving = !!pa && now - pa.t0 < pa.dur;
+      const walking = moving;
+      let img;
+      if (set.art && set.idle) img = atkFx ? RD.attackFrame(set, (now - atkFx.t0) / atkFx.dur) : RD.walkFrame(set, moving, moving ? (now - pa.t0) / pa.dur : 0, RD.stepCount || 0);
+      else img = attacking ? set.atk : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
       const hurt = hitFx(p.x, p.y, 'player', now);
       const sx = Math.round(ox + pp.x * ts + l[0] + (hurt ? Math.sin(now / 18) * k * 2 : 0)), sy = Math.round(oy + pp.y * ts + l[1]);
       shadow(sx + ts / 2, sy + ts * 0.92, ts * 0.3);
       // 見本から作った絵（52×64、足元そろえ）は1マスより背が高いので、足元をマスの下端に合わせて描く
-      const drawP = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, walking ? (Math.floor(now / 85) % 2) : 0) : g.drawImage(img, sx, sy, ts, ts);
+      const drawP = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, 0) : g.drawImage(img, sx, sy, ts, ts);
       drawP();
       if (hurt) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55; drawP(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
       // たけの状態異常のしるし（毒＝しずく、拘束＝鎖）
@@ -537,10 +553,15 @@
     for (const ct of vc.cats) list.push({ y: (ct.y + 1) * T - 2, small: ct.cv, fx: ct.x, fy: ct.y, bob: 0 });
     // たけ
     {
-      const t = pal.take, dir = W8 ? W8.dir : 'up';
-      const img = t && (dir === 'up' ? t.back : dir === 'left' ? t.side : dir === 'right' ? t.sideR : t.front);
-      const walking = W8 && W8.moving;
-      list.push({ y: (wp.y + 1) * T - 0.5, char: img, fx: wp.x, fy: wp.y, bob: walking ? (Math.floor(now / 110) % 2) : bob2(0), take: true, dir });
+      // 村でも同じ歩行コマ（左足・通過・右足・通過）。止まると待機。武器を装備していなければ剣のない絵
+      const dir = W8 ? W8.dir : 'up';
+      const set0 = SP.s.take[dir === 'up' ? 'up' : dir === 'left' ? 'left' : dir === 'right' ? 'right' : 'down'];
+      const set = set0 && set0.nw && !G.equipped(V.bag, 'weapon') ? set0.nw : set0;
+      const moving = !!(W8 && W8.moving && now - W8.t0 < W8.dur);
+      let img = null;
+      if (set && set.art && set.idle) img = RD.walkFrame(set, moving, moving ? (now - W8.t0) / W8.dur : 0, W8 ? (W8.steps || 0) : 0);
+      else { const t = pal.take; img = t && (dir === 'up' ? t.back : dir === 'left' ? t.side : dir === 'right' ? t.sideR : t.front); }
+      list.push({ y: (wp.y + 1) * T - 0.5, char: img, fx: wp.x, fy: wp.y, bob: 0, take: true, dir });
     }
     // ヤナイの記念像（青銅の像）：台座と同じ重なり順
     if (SP.art && SP.art.statue && vc.statue) list.push({ y: 13 * T - 0.9, statue: true });

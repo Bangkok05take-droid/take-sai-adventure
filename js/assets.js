@@ -19,6 +19,15 @@
       merchant: views('merchant', true),   // 謎の旅商人（見本 merchant.png。ほかの人物と背丈をそろえて約50ドット）
     },
     charBox: { w: 52, h: 64, foot: 62 },
+    /* たけの歩行・攻撃のコマ（tools/make-walk.py で、見本の静止画の脚・剣・体を動かして作る）。
+     * 向き：front（下）・back（上）・side（左）・right（右。剣を体の向こうに持ち、手前に盾＝持ち手は入れ替えない）。
+     * コマ：（無印）待機、_w1／_w2 左足・右足、_a1 構え、_a2 振り抜き。_nw は武器なし（剣を消した絵。正面と左だけ。右と背面は剣が見えない） */
+    takeFrames: (() => {
+      const out = {};
+      for (const v of ['front', 'back', 'side', 'right']) for (const f of ['', '_w1', '_w2', '_a1', '_a2']) out[v + f] = C + 'take_' + v + f + '.png';
+      for (const v of ['front', 'side']) for (const f of ['', '_w1', '_w2', '_a1', '_a2']) out[v + '_nw' + f] = C + 'take_' + v + '_nw' + f + '.png';
+      return out;
+    })(),
     items: {
       dir: I,
       map: {

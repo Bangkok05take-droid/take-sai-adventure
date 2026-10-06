@@ -989,6 +989,34 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(r.art && r.w === 64 && r.two && r.turtleSame, JSON.stringify(r));
   });
 
+  await test('歩行アニメとダッシュの速さ：移動中は左足・右足のコマが交互に出て、止まると待機。ダッシュは1マス約60ms、指を離すと止まる', async () => {
+    await p.evaluate(() => {
+      const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; S.settings.dash = true;
+      while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
+      for (let seed = 1; seed < 2000; seed++) {
+        G.depart(S, seed); const r = S.run, room = r.map.rooms.find((q) => q.w >= 8);
+        if (!room) continue;
+        r.enemies = []; r.floorItems = []; r.stairs = { x: -5, y: -5 }; r.returnPoint = null;
+        r.player.x = room.x; r.player.y = room.y + (room.h >> 1); G.updateVision(r); break;
+      }
+      document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon';
+      window.__st = []; window.__fr = new Set();
+      const orig = TS.Render.walkFrame; TS.Render.walkFrame = function (set, mv, pr, st) { const f = orig.apply(this, arguments); window.__fr.add(f === set.w1 ? 'w1' : f === set.w2 ? 'w2' : 'idle'); return f; };
+      const oa = G.__oa || G.act; G.__oa = oa; G.act = function (S2, a) { const out = oa.apply(this, arguments); if (a.type === 'move') window.__st.push(performance.now()); return out; };
+    });
+    const x0 = await p.evaluate(() => TS.UI.S.run.player.x);
+    await p.dispatchEvent('#dpad [data-dir="right"]', 'pointerdown', { pointerId: 9 });
+    await p.waitForTimeout(170);
+    await p.dispatchEvent('#dpad [data-dir="right"]', 'pointerup', { pointerId: 9 });
+    const mid = await p.evaluate(() => TS.UI.S.run.player.x);
+    await p.waitForTimeout(400);
+    const r = await p.evaluate(() => { const s = window.__st, d = []; for (let i = 1; i < s.length; i++) d.push(s[i] - s[i - 1]); TS.Game.act = TS.Game.__oa; return { x: TS.UI.S.run.player.x, avg: d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0, fr: [...window.__fr] }; });
+    assert(r.x === mid, 'stopped on release ' + JSON.stringify([mid, r.x]));
+    assert(mid - x0 >= 2 && r.avg > 45 && r.avg < 75, 'dash speed ' + JSON.stringify(r));
+    assert(r.fr.includes('w1') && r.fr.includes('w2') && r.fr.includes('idle'), 'walk frames ' + JSON.stringify(r.fr));
+    await p.evaluate(() => { TS.UI.S.settings.dash = false; });
+  });
+
   await test('すべての地域の地形と部屋の見せ場（レンガの遺跡・水晶の地下神殿・封印の最深部ほか）がエラーなく描ける', async () => {
     const bad = await p.evaluate(() => {
       const out = [], G = TS.Game, RD = TS.Render, UI = TS.UI, keep = UI.S, keepScreen = UI.screen;

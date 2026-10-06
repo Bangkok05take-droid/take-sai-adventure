@@ -512,7 +512,7 @@
     if (UI.modals.length) { w.path = []; w.goal = null; return; }
     if (w.path && w.path.length) {
       const n = w.path.shift(), dx = n.x - w.x, dy = n.y - w.y;
-      w.from = { x: w.x, y: w.y }; w.x = n.x; w.y = n.y;
+      w.from = { x: w.x, y: w.y }; w.x = n.x; w.y = n.y; w.steps = (w.steps || 0) + 1;
       w.dir = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
       w.t0 = now; w.dur = dx && dy ? VSTEP * 1.4 : VSTEP; w.moving = true;
       return;
@@ -1032,7 +1032,7 @@
   }
 
   // ---- 移動モード（通常・ダッシュ・向き変更） ----
-  const WALK_DELAY = 300, WALK_MS = 170, DASH_MS = 85;
+  const WALK_DELAY = 300, WALK_MS = 170, DASH_MS = 60;   // ダッシュは1マス60ms（以前は85ms＋処理時間で実測約87ms）
   UI.timing = { WALK_DELAY, WALK_MS, DASH_MS };
   function toggleDash() {
     UI.S.settings.dash = !UI.S.settings.dash;
@@ -1092,6 +1092,7 @@
     RD.stepDur = dash ? DASH_MS : 120;
     const tick = (first) => {
       if (UI.hold !== st || st.stopped) return;
+      const t0 = performance.now();
       if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden || !UI.S.run || UI.S.run.over) { stopHold(); return; }
       let stop;
       if (dash) stop = doDashStep(dir, st.ctx);
@@ -1114,7 +1115,10 @@
         return;
       }
       if (!dash && !first) RD.stepDur = WALK_MS - 10;
-      st.timer = setTimeout(() => tick(false), dash ? DASH_MS : (first ? WALK_DELAY : WALK_MS));
+      // 次の1歩まで：処理（ターン・敵の行動・保存）にかかった時間を差し引き、設定の間隔より遅くならないようにする。
+      // 遅れても次の1歩は1回だけ（たまった分をまとめて実行しない）
+      const want = dash ? DASH_MS : (first ? WALK_DELAY : WALK_MS);
+      st.timer = setTimeout(() => tick(false), Math.max(8, want - (performance.now() - t0)));
     };
     tick(true);
   }

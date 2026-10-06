@@ -1218,7 +1218,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, bosses: {}, enemies: {}, ready: false };
+  SP.art = { chars: {}, items: {}, bosses: {}, enemies: {}, take: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1234,6 +1234,7 @@
       load(IT.dir + 'list/' + name + '.png', (img) => { e.list = toCanvas(img); });
       load(IT.dir + 'floor/' + name + '.png', (img) => { e.floor = toCanvas(img); });
     }
+    for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
     for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {
@@ -1275,10 +1276,22 @@
   function buildFromArt() {
     const ch = SP.art.chars, s = SP.s;
     // ダンジョンのたけ：正面・背面・横（右は反転）。歩きは上下動で表す
-    const t = ch.take;
+    const t = ch.take, F = SP.art.take;
     if (t && t.front && t.back && t.side) {
-      const set = (img) => ({ walk: [img, img, img, img], atk: img, art: true });
-      s.take = { down: set(t.front), up: set(t.back), left: set(t.side), right: set(t.sideR) };
+      // 向きごとのコマの組：idle 待機、w1／w2 左足・右足、a1 構え、a2 振り抜き。nw は武器なしの組（無ければ同じ組）
+      const pack = (v) => {
+        const one = (suf) => F[v + suf] || F[v] || null;
+        const set = { idle: one(''), w1: one('_w1'), w2: one('_w2'), a1: one('_a1'), a2: one('_a2'), art: true };
+        const fin = (o) => { o.art = true; o.walk = [o.idle, o.w1, o.idle, o.w2]; o.atk = o.a2; return o; };   // 以前の呼び方にも合わせる
+        fin(set);
+        set.nw = F[v + '_nw'] ? fin({ idle: F[v + '_nw'], w1: F[v + '_nw_w1'] || F[v + '_nw'], w2: F[v + '_nw_w2'] || F[v + '_nw'], a1: F[v + '_nw_a1'] || F[v + '_nw'], a2: F[v + '_nw_a2'] || F[v + '_nw'] }) : set;
+        return set;
+      };
+      const down = pack('front'), up = pack('back'), left = pack('side');
+      let right = pack('right');
+      if (!right.idle) right = { idle: t.sideR, w1: t.sideR, w2: t.sideR, a1: t.sideR, a2: t.sideR, art: true, walk: [t.sideR, t.sideR, t.sideR, t.sideR], atk: t.sideR };
+      if (!right.nw) right.nw = right;
+      if (down.idle && up.idle && left.idle) s.take = { down, up, left, right };
     }
     for (const who of Object.keys(ch)) if (ch[who].front) s.portrait[who] = headCrop(ch[who].front);
     if (ch.yanai && ch.yanai.front) SP.art.statue = bronze(ch.yanai.front);
