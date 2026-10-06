@@ -4,7 +4,7 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 2;
+  D.SAVE_VERSION = 3;
   D.SAVE_KEY = 'takeSaiAdventure.save';
 
   // マップ（3x3 の区画にランダムな部屋を置く）
@@ -12,10 +12,16 @@
   D.MAP.w = D.MAP.cols * D.MAP.cellW;
   D.MAP.h = D.MAP.rows * D.MAP.cellH;
 
-  D.MAX_FLOOR = 30;
-  D.BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
-  // 3階ごとに帰還の碑（ボスの階は倒すと帰還口が開く）
+  /* 章の進め方：第1〜5章は1階から30階まで。30階でその章のボスが待つ（31階へは進めない）。
+   * 最終章は1階から35階まで。35階で大魔王バーン → 真大魔王バーン。章・会話は js/story.js */
+  D.MAX_FLOOR = 30;          // 第1〜5章の最深階
+  D.BOSS_FLOOR = 30;
+  // 以前の版のボス配置（更新前から続いている探索だけが使う）
+  D.LEGACY_BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
+  D.BOSS_FLOORS = D.LEGACY_BOSS_FLOORS;   // 互換のため残す
+  // 3階ごとに帰還の碑（ボスの階は倒すと帰還口が開く）。最終章は30階・33階にもある
   D.RETURN_POINT_FLOORS = [3, 6, 9, 12, 15, 18, 21, 24, 27];
+  D.returnFloors = (ch) => (ch === 6 ? D.RETURN_POINT_FLOORS.concat([30, 33]) : D.RETURN_POINT_FLOORS);
   D.BAG_SIZE = 15;
 
   // プレイヤー
@@ -98,6 +104,28 @@
       desc: '毒を治し、しばらく毒にかからなくなる。HPも20回復。' },
     return_scroll: { name: '帰還の巻物', type: 'return', sell: 0, noSell: true, noStore: true, icon: 'scroll', tint: 'return',
       desc: 'その場で探索を終え、持ち物と探索中のお金を村へ持ち帰る。出発時に1枚無料支給。帰還・敗北で消える。' },
+    // ---- 章の報酬（ボスを倒すと現れる装備） ----
+    dragon_shield: { name: 'りゅうりんの盾', type: 'shield', def: 15, sell: 520, icon: 'shield', tint: 'dragon',
+      desc: '獣王の大盾から作られた、竜のうろこ模様の盾。第1章の報酬。' },
+    frost_sword:   { name: 'ひょうえんの剣', type: 'weapon', atk: 21, sell: 640, icon: 'sword', tint: 'frost',
+      desc: '炎と氷の力を宿した剣。第2章の報酬。' },
+    moon_shield:   { name: 'げっこうの盾', type: 'shield', def: 17, sell: 620, icon: 'shield', tint: 'moon',
+      desc: '月の光を映す盾。幻にまどわされない心をくれる。第3章の報酬。' },
+    dragon_sword:  { name: 'りゅうきしの剣', type: 'weapon', atk: 24, sell: 760, icon: 'sword', tint: 'dragon',
+      desc: '竜の騎士が認めた者に渡る剣。第4章の報酬。' },
+    hero_sword:    { name: 'ゆうしゃの剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',
+      desc: '師匠ヤナイが遺した、勇者の剣。第5章の報酬。' },
+    hero_shield:   { name: 'ゆうしゃの盾', type: 'shield', def: 19, sell: 860, icon: 'shield', tint: 'hero',
+      desc: '師匠ヤナイが遺した、勇者の盾。第5章の報酬。' },
+    // ---- ボスに備える道具（持っているだけで効く護符・お香） ----
+    water_charm:   { name: 'みずがみの護符', type: 'charm', effect: 'fireice', price: 300, sell: 100, icon: 'charm', tint: 'water',
+      desc: '持っているだけで、炎と氷の床から受けるダメージが半分になる。' },
+    truth_mirror:  { name: 'みやぶりの鏡', type: 'charm', effect: 'truesight', price: 350, sell: 120, icon: 'mirror',
+      desc: '持っているだけで、分身に「幻」の印が見えるようになる。' },
+    bolt_charm:    { name: 'いかずちよけの護符', type: 'charm', effect: 'bolt', price: 350, sell: 120, icon: 'charm', tint: 'bolt',
+      desc: '持っているだけで、雷の印から受けるダメージが半分になる。' },
+    clear_incense: { name: 'きりばらいの香', type: 'clear', price: 160, sell: 50, icon: 'incense',
+      desc: 'たくと霧が晴れ、体の拘束もとける。しばらく拘束されにくくなる。' },
     sight_scroll:  { name: 'みとおしの巻物', type: 'map', price: 80, sell: 30, icon: 'scroll', tint: 'sight',
       desc: 'その階の地形・階段・道具の場所がわかる。' },
     old_coin:      { name: 'アユタヤの古金貨', type: 'treasure', sell: 40, icon: 'coin',
@@ -177,6 +205,22 @@
       pattern: { stomp: 1, stompMult: 2.0, line: 6, lineMult: 1.7, every: 4, summon: 'jelly', summonEvery: 8, summonMax: 2 } },
     elephant: { name: '夢見の黄金象', hp: 720, atk: 36, def: 17, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown',
       pattern: { stomp: 2, stompMult: 1.7, line: 6, lineMult: 2.0, every: 4, summon: 'wisp', summonEvery: 9, summonMax: 2, enrage: 0.5 } },
+    // ---- 最終章の31〜35階 ----
+    darkknight: { name: '魔王軍の騎士', hp: 150, atk: 44, def: 20, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
+      tip: '大剣を振りかぶってから強打する。予告を見たら離れよう。' },
+    imp:    { name: '魔界の小鬼',   hp: 62,  atk: 24, def: 8, exp: 80,  ai: 'magic',   sprite: 'imp', base: 31, shoot: 32, range: 5,
+      tip: '離れた所から火の玉を撃つ。角を使ってかわそう。' },
+    /* ---- 章のボス（30階）と最終章（35階）。boss：専用の行動（js/bossai.js）。arena：ボス部屋の景観 ----
+     * 単にHPが多いだけにしないよう、予告つきの大技・床の危険・分身・霧などで戦い方を変える。大技のあとは隙ができる。 */
+    croc:   { name: 'クロコダイン', hp: 640, atk: 34, def: 15, exp: 700, ai: 'boss', sprite: 'croc', noScale: true, arena: 'arena_croc', big: true },
+    flame:  { name: 'フレイザード', hp: 680, atk: 36, def: 15, exp: 800, ai: 'boss', sprite: 'flame', noScale: true, arena: 'arena_flame', big: true },
+    kill:   { name: 'キルバーン',   hp: 640, atk: 36, def: 14, exp: 900, ai: 'boss', sprite: 'kill', noScale: true, arena: 'arena_kill', big: true },
+    kill_clone: { name: 'キルバーン', hp: 1, atk: 20, def: 0, exp: 0, ai: 'clone', sprite: 'kill', noScale: true, clone: true },
+    baran:  { name: 'バラン',       hp: 780, atk: 40, def: 18, exp: 1000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
+    mist:   { name: 'ミストバーン', hp: 820, atk: 40, def: 19, exp: 1100, ai: 'boss', sprite: 'mist', noScale: true, arena: 'arena_mist', big: true },
+    mist_clone: { name: 'ミストバーン', hp: 1, atk: 22, def: 0, exp: 0, ai: 'clone', sprite: 'mist', noScale: true, clone: true },
+    vearn:  { name: '大魔王バーン', hp: 900, atk: 44, def: 20, exp: 1500, ai: 'boss', sprite: 'vearn', noScale: true, arena: 'throne', big: true },
+    truevearn: { name: '真大魔王バーン', hp: 1200, atk: 48, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'throne', big: true },
   };
   D.POISON = { chance: 0.4, turns: 8, guard: 15, dmgRate: 0.025 }; // 毒：最大HPの2.5%を毎ターン。治った後しばらくかからない
   D.ENEMY_SCALE = { hp: 0.12, atk: 0.08, exp: 0.12 }; // 出現し始めた階から1階ごとの上昇率
@@ -193,15 +237,33 @@
     gold:    { name: '金色の装飾が残る深部の神殿' },
     shrine:  { name: '願いの宝珠の間' },
   };
+  Object.assign(D.THEMES, {
+    demon:       { name: '大魔王の城' },
+    throne:      { name: '封印の玉座' },
+    arena_croc:  { name: '獣王の沼の広間' },
+    arena_flame: { name: '炎と氷の祭壇' },
+    arena_kill:  { name: '死神の遊技場' },
+    arena_baran: { name: '竜の騎士の神殿' },
+    arena_mist:  { name: '影の霧の間' },
+  });
+  // 以前の版の地域（更新前から続く探索用）
   D.themeOf = (f) => (f <= 3 ? 'brick' : f <= 6 ? 'roots' : f <= 9 ? 'water' : f === 10 ? 'orb' : f <= 15 ? 'garden'
     : f <= 20 ? 'sunken' : f <= 25 ? 'crystal' : f <= 29 ? 'gold' : 'shrine');
+  // 章で使う地域（ボスの階は各ボスの景観）
+  D.themeOfFloor = (f) => (f <= 3 ? 'brick' : f <= 6 ? 'roots' : f <= 10 ? 'water' : f <= 15 ? 'garden'
+    : f <= 20 ? 'sunken' : f <= 25 ? 'crystal' : f <= 30 ? 'gold' : 'demon');
 
   /* 階層ごとの出現テーブル [id, 重み] を作る。地域ごとに敵・道具・お宝が変わる。 */
-  function floorDef(f) {
-    if (D.BOSS_FLOORS[f]) {
-      return { theme: D.themeOf(f), boss: D.BOSS_FLOORS[f], enemies: [], enemyCount: [0, 0], itemCount: [3, 3], goldCount: [0, 0],
+  /* ch：章の番号（1〜6）、または以前の版の探索なら 'legacy' */
+  function floorDef(f, ch) {
+    const legacy = ch === 'legacy' || ch == null;
+    const C = legacy ? null : D.CHAPTERS && D.CHAPTERS[ch];
+    const bossId = legacy ? D.LEGACY_BOSS_FLOORS[f] : C ? (C.final ? (f === D.LAST_FLOOR ? 'vearn' : null) : (f === D.BOSS_FLOOR ? C.boss : null)) : null;
+    if (bossId) {
+      return { theme: legacy ? D.themeOf(f) : D.ENEMIES[bossId].arena, boss: bossId, enemies: [], enemyCount: [0, 0], itemCount: [3, 3], goldCount: [0, 0],
         items: [['herb', 2], ['elixir', 1], ['khaoniao', 1]].concat(f >= 20 ? [['big_herb', 2]] : []) };
     }
+    if (f > D.MAX_FLOOR) return demonFloor(f, C);
     const items = [['herb', 4], ['banana', f <= 15 ? 3 : 2], ['sleep_incense', f <= 3 ? 1 : 2], ['thunder_staff', 1]];
     const add = (cond, list) => { if (cond) for (const x of list) items.push(x); };
     add(f >= 3, [['sight_scroll', 1]]);
@@ -235,9 +297,13 @@
     add(f >= 21 && f <= 29, [['giant_crystal', 2]]);
     add(f >= 21 && f <= 25, [['prism_flower', 1], ['crystal_shard', 2]]);
     add(f >= 26, [['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]]);
+    // 章ごとの「ボスに備える道具」（深い階ほど拾いやすい）
+    if (C) add(f >= 6, C.prep.map(([id, w]) => [id, w * (f >= 16 ? 1 : 0.5)]));
+    let enemies = D.enemyTable(f);
+    if (C && C.bias) enemies = enemies.map(([id, w]) => [id, w * (C.bias[id] || 1)]);
     return {
-      theme: D.themeOf(f),
-      enemies: D.enemyTable(f),
+      theme: legacy ? D.themeOf(f) : D.themeOfFloor(f),
+      enemies,
       enemyCount: f === 1 ? [2, 3] : f <= 3 ? [3, 4] : f <= 6 ? [4, 5] : f <= 9 ? [4, 6] : f <= 20 ? [5, 7] : [6, 7],
       itemCount: f <= 3 ? [4, 5] : f <= 9 ? [5, 6] : [5, 7],
       goldCount: f <= 9 ? [2, 3] : [2, 4],
@@ -256,9 +322,26 @@
     if (f <= 25) return [['golem', 2], ['wisp', 3], ['lizard', 2], ['shaman', 2], ['thief', 2], ['bat', 1], ['statue', 1]];
     return [['guard', 3], ['golem', 2], ['wisp', 2], ['shaman', 2], ['thief', 2], ['lizard', 1]];
   };
+  // 最終章の31〜35階：大魔王の城
+  function demonFloor(f, C) {
+    const items = [['herb', 3], ['big_herb', 3], ['elixir', 2], ['khaoniao', 2], ['banana', 1], ['sleep_incense', 2], ['slow_powder', 1],
+      ['fire_charm', 1], ['thunder_king_staff', 0.8], ['antidote', 1], ['sight_scroll', 1], ['clear_incense', 1],
+      ['golden_sword', 0.6], ['golden_shield', 0.6], ['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]];
+    return { theme: 'demon', enemies: [['darkknight', 3], ['imp', 3], ['guard', 2], ['golem', 1], ['wisp', 1]],
+      enemyCount: [6, 7], itemCount: [5, 7], goldCount: [3, 4], items };
+  }
+  // 章・深さごとの階の定義（作った結果は覚えておく）
+  const floorCache = {};
+  D.floorFor = function (ch, f) {
+    const k = (ch == null ? 'legacy' : ch) + ':' + f;
+    return floorCache[k] || (floorCache[k] = floorDef(f, ch == null ? 'legacy' : ch));
+  };
+  // 章による敵の強さ（深い階ほど差がつく。浅い階はほぼ同じ）
+  D.chapterMul = (ch, f) => (typeof ch === 'number' ? 1 + 0.06 * (ch - 1) * Math.min(1, f / 18) : 1);
+  // D.FLOORS は第1章の定義（テスト・表示用の互換）。章のデータを読んだあとに作り直す
   D.FLOORS = [null];
-  for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS.push(floorDef(f));
-  D.rebuildFloors = function () { for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS[f] = floorDef(f); };
+  for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS.push(floorDef(f, 'legacy'));
+  D.rebuildFloors = function () { for (const k of Object.keys(floorCache)) delete floorCache[k]; for (let f = 1; f <= D.MAX_FLOOR; f++) D.FLOORS[f] = D.floorFor(1, f); };
 
   D.ENEMY_DROP_RATE = 0.12;
   // モンスターハウス：地下6階以降の通常階でまれに。1階に1部屋まで。敵とお宝が多い部屋

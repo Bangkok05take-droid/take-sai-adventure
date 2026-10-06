@@ -11,16 +11,18 @@
    *  ・通路を含む2×2の床（幅2マスの道・部屋の横を沿う道・広い通路状の空間）
    *  ・斜めにだけ接する床（角どうしが触れているように見える形）
    * 本線（全域木）が掘れないときは乱数を進めて最初から作り直す。最後に全マスの到達可能性を確かめる。 */
-  function generate(floor, rng) {
-    if (D.BOSS_FLOORS[floor]) return generateBossFloor(rng);
+  // opts：{ boss: ボスの階か, returnPoint: 帰還の碑を置くか }（省略時は以前の版の配置）
+  function generate(floor, rng, opts) {
+    opts = opts || { boss: !!D.LEGACY_BOSS_FLOORS[floor], returnPoint: D.RETURN_POINT_FLOORS.includes(floor) };
+    if (opts.boss) return generateBossFloor(rng);
     for (let attempt = 0; attempt < 80; attempt++) {
-      const g = tryGenerate(floor, rng);
+      const g = tryGenerate(floor, rng, opts);
       if (g) return g;
     }
-    return fallbackFloor(floor, rng);
+    return fallbackFloor(floor, rng, opts);
   }
 
-  function tryGenerate(floor, rng) {
+  function tryGenerate(floor, rng, opts) {
     const M = D.MAP, w = M.w, h = M.h;
     const tiles = new Array(w * h).fill(WALL);
     const n = M.cols * M.rows;
@@ -79,7 +81,7 @@
       if (!ok && must) return null;
     }
     if (!connected(map)) return null;
-    return finishFloor(floor, rng, map);
+    return finishFloor(floor, rng, map, opts);
   }
 
   // 区画AからB（Aは左または上）への通路：部屋の辺の1マスを出入口にして、直角に1回まで曲がる
@@ -126,18 +128,18 @@
   }
   TS.DungeonCheck = { shapeOk, connected };
 
-  function finishFloor(floor, rng, map) {
+  function finishFloor(floor, rng, map, opts) {
     const rooms = map.rooms;
     // 入口と階段は別の部屋に
     const ri = R.shuffle(rng, rooms.map((r) => r.id));
     const start = randomRoomTile(rng, rooms[ri[0]]);
     const stairs = randomRoomTile(rng, rooms[ri[1 % ri.length]]);
     let returnPoint = null;
-    if (D.RETURN_POINT_FLOORS.includes(floor)) returnPoint = freeTile(map, rng, [start, stairs], rooms[ri[2 % ri.length]]);
+    if (opts ? opts.returnPoint : D.RETURN_POINT_FLOORS.includes(floor)) returnPoint = freeTile(map, rng, [start, stairs], rooms[ri[2 % ri.length]]);
     return { map, start, stairs, returnPoint, startRoom: ri[0] };
   }
   // まず起きないが、作り直しが続いたときの予備：中段に3部屋を一直線の通路で
-  function fallbackFloor(floor, rng) {
+  function fallbackFloor(floor, rng, opts) {
     const M = D.MAP, w = M.w, h = M.h, tiles = new Array(w * h).fill(WALL), rooms = [];
     for (let i = 0; i < 3; i++) {
       const r = { id: i, x: i * M.cellW + 2, y: M.cellH + 2, w: 6, h: 4 };
@@ -145,7 +147,7 @@
       for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) tiles[y * w + x] = FLOOR;
       if (i) for (let x = rooms[i - 1].x + 6; x < r.x; x++) tiles[(r.y + 1) * w + x] = CORR;
     }
-    return finishFloor(floor, rng, { w, h, tiles, rooms });
+    return finishFloor(floor, rng, { w, h, tiles, rooms }, opts);
   }
 
   // 10階：小さな前室と、守護者のいる大広間

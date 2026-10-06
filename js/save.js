@@ -37,15 +37,38 @@
       data.village = V;
       data.version = 2;
     }
+    /* v2 → v3：章の進行を追加。以前の30階クリア（願いの宝珠）は「旧版のクリア記録」として残し、
+     * 新しい章は第1章から（旧版クリアで全章攻略済みにはしない）。所持金・道具・装備・施設・倉庫はそのまま。
+     * 更新前から続いている探索は、地形と状態をそのまま残し、以前のルールで村へ帰る（帰還後に章の進行が始まる）。 */
+    if (data.version === 2) {
+      const V = data.village || {};
+      if (V.cleared) { V.legacyClear30 = true; V.legacyClears30 = V.clears || 1; }
+      V.cleared = false; V.clears = 0;
+      const swap = (it) => { if (it && it.id === 'wish_orb') { it.id = 'dream_crown'; V.legacyClear30 = true; } };
+      if (data.run) {
+        (data.run.bag || []).forEach(swap);
+        (data.run.floorItems || []).forEach((f) => swap(f.item));
+        delete data.run.chapter;   // 以前のルールの探索（legacy）
+      }
+      (V.bag || []).forEach(swap); (V.storage || []).forEach(swap);
+      V.story = G.newStory();
+      data.village = V;
+      data.version = 3;
+    }
     const def = G.newState();
     fill(data, def);
     fill(data.village, def.village);
+    const st = fill(data.village.story, G.newStory());
+    for (const k of ['defeated', 'rewardClaimed', 'returnDone']) fill(st[k], G.newStory()[k]);
     fill(data.settings, def.settings);
     // 施設の段階（旧セーブの「村の発展」段階から倉庫・鍛冶屋の段階を引き継ぐ）
     G.applyFacilities(data.village);
     if (data.run) {
       if (!data.run.map || !data.run.player) data.run = null;
-      else fill(data.run.player, { poison: 0, poisonGuard: 0 });
+      else {
+        fill(data.run.player, { poison: 0, poisonGuard: 0, bound: 0, bindGuard: 0 });
+        fill(data.run, { hazards: [], fog: 0 });
+      }
     }
     data.version = D.SAVE_VERSION;
     return data;
