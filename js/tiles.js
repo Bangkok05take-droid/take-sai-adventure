@@ -33,7 +33,7 @@
       floor: ['#b88c62', '#ac8058', '#c29a6e', '#a47a52'], grout: '#5a3a26', slab: 'mixed',
       corr: ['#8c6c4e', '#7e6046', '#967454'], dirt: '#3e2a1e',
       wall: ['#ae542e', '#b8603a', '#9c4a28', '#c06a40'], mortar: '#5e3020', brickW: 14, brickH: 6,
-      top: 'rubble', topC: ['#4a2c20', '#563424', '#3e241a'], topGap: '#24140e', rim: '#8a5a40',
+      top: 'bricktop', topC: ['#4a2c20', '#563424', '#3e241a'], topGap: '#24140e', rim: '#8a5a40', brickRuin: true, cap: '#c8a878',
       pillar: '#d8c4a0', accent: '#e8b84a', mural: '#c89a5a', moss: '#6a8a3a', root: '#5a3a1e', leaf: '#6aaa48',
       feats: ['plain', 'pillars', 'mural', 'statue', 'mosaic', 'overgrown', 'pillars'],
     },
@@ -173,7 +173,7 @@
     t.isWater = !!t.water;
     for (const [f, v] of Object.entries(DEF)) if (!t[f]) Object.defineProperty(t, f, { value: v, writable: true, enumerable: false, configurable: true });
     for (const f of ['floor', 'corr', 'wall', 'topC', 'flower']) if (t[f]) t[f] = t[f].map(rgb);
-    for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2', 'warm', 'cold', 'carpet', 'inlay']) if (t[f]) t[f] = rgb(t[f]);
+    for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2', 'warm', 'cold', 'carpet', 'inlay', 'cap']) if (t[f]) t[f] = rgb(t[f]);
     if (t.checker) t.checker = t.checker.map(rgb);
   }
   TL.isWaterTheme = (theme) => !!(M[theme] && M[theme].isWater);
@@ -347,6 +347,11 @@
       if (wallN) for (let ly = 0; ly < 7; ly++) for (let lx = 0; lx < 32; lx++) dark(lx, ly, 0.5 + ly * 0.072);
       if (wallW) for (let lx = 0; lx < 5; lx++) for (let ly = 0; ly < 32; ly++) dark(lx, ly, 0.62 + lx * 0.076);
       if (wallNW && !wallN && !wallW) for (let ly = 0; ly < 6; ly++) for (let lx = 0; lx < 6 - ly; lx++) dark(lx, ly, 0.6 + (lx + ly) * 0.06);
+      // レンガの遺跡：床のふちに縁石（右・下が壁のとき）。歩ける範囲の境目をはっきりさせる
+      if (T.brickRuin) {
+        if (!walk(x, y + 1)) for (let lx = 0; lx < 32; lx++) { put(lx, 31, sh(T.grout, -0.3)); put(lx, 30, sh(get(lx, 30), 0.12)); }
+        if (!walk(x + 1, y)) for (let ly = 0; ly < 32; ly++) { put(31, ly, sh(T.grout, -0.3)); dark(30, ly, 0.85); }
+      }
       // 水辺の床は少し濡れて暗い
       if (T.isWater) for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) if (waterAt(x + dx, y + dy)) {
         for (let i = 0; i < 32; i++) for (let j = 0; j < 3; j++) { const px = dx === 1 ? 31 - j : dx === -1 ? j : i, py = dy === 1 ? 31 - j : dy === -1 ? j : i; dark(px, py, 0.82 + j * 0.05); }
@@ -394,6 +399,11 @@
         let c;
         if (ly < 5) { // 壁の上面のふち
           c = ly === 4 ? sh(T.rim, 0.25) : ly === 3 ? T.rim : sh(T.topC[0], 0.1 - (3 - ly) * 0.05);
+        } else if (T.brickRuin && ly < 10) { // 砂岩の笠石（壁の一番上の段。張り出して影を落とす）
+          const sx = Math.floor((wx + (y & 1) * 6) / 12), slx = (wx + (y & 1) * 6) % 12;
+          c = ly === 9 ? sh(T.mortar, -0.3) : slx === 0 ? sh(T.cap, -0.45) : sh(T.cap, (ly === 5 ? 0.3 : ly === 8 ? -0.25 : 0.05) + ((hash(sx, y, seed + 5) & 3) - 1.5) * 0.05);
+        } else if (T.brickRuin && ly < 12) { // 笠石の下の影
+          c = sh(T.wall[0], -0.5 + (ly - 10) * 0.12);
         } else if (ly >= 28) { // 根元：暗く湿った帯
           c = sh(T.wall[0], -0.45 - (ly - 28) * 0.07);
         } else if (!T.brickW) { // 岩肌（結晶の洞窟）
@@ -416,6 +426,19 @@
       if (walk(x - 1, y)) for (let ly = 3; ly < 32; ly++) { put(0, ly, sh(get(0, ly), 0.18)); }
       else if (at(x - 1, y) === WALL && !isFace(x - 1, y)) for (let ly = 5; ly < 32; ly++) for (let lx = 0; lx < 3; lx++) dark(lx, ly, 0.6 + lx * 0.13);
       if (walk(x + 1, y)) for (let ly = 3; ly < 32; ly++) { dark(31, ly, 0.55); dark(30, ly, 0.8); }
+      // 通路の入口の両わき：砂岩の柱（壁の端が床に接するとき）。出入り口がはっきり分かるように
+      if (T.brickRuin) {
+        const jamb = (x0j, light) => { for (let ly = 5; ly < 31; ly++) for (let i = 0; i < 4; i++) { const xx = x0j + i; const t = light ? i : 3 - i; put(xx, ly, (ly - 5) % 7 === 6 ? sh(T.cap, -0.5) : sh(T.cap, 0.25 - t * 0.18 - (ly > 27 ? 0.3 : 0))); } };
+        if (walk(x - 1, y)) jamb(0, true);
+        if (walk(x + 1, y)) jamb(28, false);
+        // ところどころ、上から垂れる細い根（床にはみ出さない）
+        const hr = hash(x, y, seed + 71);
+        if (hr % 5 === 0 && !walk(x - 1, y) && !walk(x + 1, y)) {
+          const rx0 = 6 + hr % 18, len = 8 + (hr >> 4) % 12;
+          for (let ly = 5; ly < 5 + len; ly++) { const xx = rx0 + Math.round(Math.sin(ly / 3 + hr) * 1.2); put(xx, ly, sh(T.root || [90, 58, 30], 0.12)); put(xx + 1, ly, sh(T.root || [90, 58, 30], -0.3)); }
+          if (T.leaf) { put(rx0 - 1, 9, T.leaf); put(rx0 + 2, 12, sh(T.leaf, -0.2)); }
+        }
+      }
       // 苔・水あと
       if (T.moss && (feat === 'overgrown' || T.isWater || theme === 'garden')) for (let lx = 0; lx < 32; lx++) {
         const h = Math.floor(noise((x0 + lx) / 6, y, seed + 6) * 9);
@@ -473,6 +496,10 @@
         c = s.lx === 0 || s.ly === 0 ? T.topGap : sh(T.topC[s.id % T.topC.length], s.lx === 1 || s.ly === 1 ? 0.12 : 0);
       } else if (T.top === 'rock') {
         c = cobblePixel(T.topC, T.topGap, wx, wy, seed + 44, 13);
+      } else if (T.top === 'bricktop') { // レンガを上から見た積み面（16×8のレンガを互い違い。上の段ほど明るく）
+        const row = wy >> 3, off = (row & 1) * 8, bx = (wx + off) >> 4, lxb = (wx + off) & 15, lyb = wy & 7;
+        if (lxb === 0 || lyb === 0) c = T.topGap;
+        else c = sh(T.topC[hash(bx, row, seed + 46) % T.topC.length], (lyb === 1 ? 0.14 : lyb === 7 ? -0.12 : 0) + (lxb === 1 ? 0.06 : 0) + (noise(wx / 24, wy / 24, seed + 47) - 0.5) * 0.25);
       } else c = cobblePixel(T.topC, T.topGap, wx, wy, seed + 45, 8); // がれき
       put(lx, ly, c);
     }

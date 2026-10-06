@@ -1078,12 +1078,20 @@
   }
 
   // 動くもの：壁のたいまつ・帰還の碑・帰還口・宝箱
+  // 壁のたいまつ：鉄の受け金（壁に打った留め金と腕木）、木の柄、3コマでゆらぐ炎（芯は白、外は地域の灯りの色）
   function torch(theme, f) {
     const P = new Pix(32, 32), T = THEME[theme];
-    P.box(14, 12, 4, 10, ramp('#5a3a20'));
-    P.rect(12, 11, 8, 2, ramp('#8a8a90')[2]);
-    P.ball(16, 7 - (f % 2), 3.5 + (f === 1 ? 0.5 : 0), 5, ramp(T.light));
-    P.ball(16, 8, 1.8, 2.5, ramp('#ffffff'));
+    const iron = ramp('#5a5660');
+    P.rect(13, 20, 6, 3, iron[3]); P.rect(13, 20, 6, 1, iron[1]);          // 留め金
+    P.rect(15, 23, 2, 2, iron[4]);
+    P.line(16, 20, 16, 16, iron[2]); P.rect(12, 15, 8, 2, iron[2]); P.rect(12, 15, 8, 1, iron[1]);   // 腕木と受け皿
+    P.box(14, 11, 4, 5, ramp('#6a4424'));                                   // 柄
+    P.rect(13, 10, 6, 2, ramp('#3a2a20')[2]);                               // 布を巻いた先
+    const sway = [0, 1, -1][f % 3], tall = [0, 1, 0][f % 3];
+    P.ball(16 + sway * 0.5, 7 - tall, 4, 5.5 + tall * 0.5, ramp(T.light));
+    P.ball(16 + sway, 4 - tall, 2, 3, ramp(T.light), { bias: -0.6 });
+    P.ball(16, 8, 1.6, 2.4, ramp('#ffffff'));
+    P.outline(0.55);
     return P.canvas();
   }
   // 下り階段：石の枠の中に、奥（暗がり）へ下っていく段

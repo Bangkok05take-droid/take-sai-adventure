@@ -284,22 +284,7 @@
       for (let i = 0; i < 3; i++) P.rect(sx + 3, base - 41 + i * 3, 14 - i * 3, 1, '#7a5030');
       return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
     }
-    if (kind === 'shop') {
-      // サイの店：板張りの店と青緑の日よけ、品物の並ぶ台、吊り灯籠
-      const stage = lv.stage, wy = base - 44;
-      wallFront(P, ox + 2, wy, fw * T - 4, 44, stage >= 2 ? 'plaster' : 'plank');
-      roofThai(P, ox, base - fd * T - 18, fw * T, fd * T - 22 + 18 - 10, C.roof, { tiers: stage >= 3 ? 2 : 1, trim: C.teal });
-      awning(P, ox - 2, wy + 2, fw * T + 4, 9, C.teal, '#e8f0e0');
-      // 商品台
-      const cy = base - 14;
-      P.rect(ox + 6, cy, fw * T - 12, 9, C.woodL); P.rect(ox + 6, cy + 9, fw * T - 12, 3, C.woodD); P.rect(ox + 6, cy, fw * T - 12, 1, '#f0c890');
-      const goods = ['#3ab0d0', '#e04a5a', '#f0c040', '#7ac050', '#c070e0', '#f08a40'];
-      for (let i = 0; i < 2 + stage * 2 && i < 8; i++) { const gx = ox + 12 + i * 14; P.ball(gx, cy - 3, 4, 4, R(goods[i % goods.length]), { dither: false }); P.set(gx - 1, cy - 5, '#ffffff'); }
-      // 棚の壺と布
-      for (let i = 0; i < 4; i++) P.box(ox + 14 + i * 26, wy + 16, 8, 10, R(['#4a8ad0', '#d0a040', '#40a090', '#c05a8a'][i]), { round: true });
-      for (let i = 0; i < 3; i++) { const lx = ox + 22 + i * 40; P.rect(lx, wy + 11, 1, 3, C.ol); P.rect(lx - 2, wy + 14, 5, 6, C.ol); P.rect(lx - 1, wy + 15, 3, 4, night ? '#ffd070' : '#ff9a4a'); }
-      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2, lights: [[fx * T + 22, (fy + fd) * T - 26, 14], [fx * T + 62, (fy + fd) * T - 26, 14], [fx * T + 102, (fy + fd) * T - 26, 14]] };
-    }
+    if (kind === 'shop') return shopBuilding(P, fp, lv, W, H, ox, base);
     if (kind === 'storage') {
       // 倉庫：板張りの大きな戸と木箱。段階で大きく（2階・金の飾り）
       const sl = lv.storage, wh = 40 + (sl >= 3 ? 8 : 0), wy = base - wh;
@@ -379,6 +364,126 @@
       return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
     }
     return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
+  }
+
+  /* サイの店（4×3マス）。光は左上から。
+   * 屋根：瓦の段・棟・反りのある両端、厚みのある鼻隠し（板と金の縁）と、その下の壁に落ちる軒の影。
+   * 壁：しっくいと木の柱（柱頭つき）。左の間は格子窓と壺の棚、中央は奥行きのある入口（暗い店内・のれん・敷居の段）、
+   * 右の間は日よけの下の売り台（かご・びん・布）。足元は石の土台。店先の角に木箱・樽・鉢植え（建物のマスの中だけ）。 */
+  function shopBuilding(P, fp, lv, W, H, ox, base) {
+    const [fx, fy, fw, fd] = fp, bw = fw * T, night = lv.night, stage = lv.stage;
+    const roofTop = 8, eave = 62, fasciaH = 7, wy = eave + fasciaH, plinth = base - 4;
+    const L = ox, Rt = ox + bw;                                   // 壁の左右
+    // ---- 壁（しっくい。上ほど軒の影で暗い） ----
+    const plaster = stage >= 2 ? '#efe2c4' : '#d8b98a';
+    for (let y = wy; y < plinth; y++) for (let x = L + 2; x < Rt - 2; x++) {
+      let c = sh(plaster, ((hash(x >> 1, y >> 1, 21) & 7) - 3.5) * 0.012 - (x > Rt - 14 ? 0.06 : 0));
+      const shade = y - wy;
+      if (shade < 9) c = mix(c, '#3a2430', 0.55 - shade * 0.055);   // 軒の影
+      P.set(x, y, c);
+    }
+    // 石の土台と、前の敷石
+    for (let x = L; x < Rt; x++) { P.set(x, plinth, sh(C.stone, 0.2)); for (let y = plinth + 1; y < base + 1; y++) P.set(x, y, ((x + (y > plinth + 2 ? 4 : 0)) % 9 === 0) ? C.stoneD : sh(C.stone, -0.08 - (y - plinth) * 0.03)); }
+    // ---- 柱（4本。左が明るく右が暗い円柱、上に金の柱頭、下に礎石） ----
+    const posts = [L + 1, L + 40, Rt - 44, Rt - 5];
+    for (const px of posts) {
+      for (let y = wy - 1; y < plinth; y++) for (let i = 0; i < 4; i++) P.set(px + i, y, [C.woodL, C.wood, C.wood, C.woodD][i]);
+      P.rect(px - 1, wy, 6, 2, C.gold); P.rect(px - 1, wy + 2, 6, 1, C.goldD);
+      P.rect(px - 1, plinth - 2, 6, 2, sh(C.stone, -0.1));
+      P.rect(px + 4, wy + 3, 1, plinth - wy - 5, mix(plaster, '#2a1a20', 0.35));   // 柱の右に落ちる影
+    }
+    // ---- 左の間：格子窓（窓台・雨戸）と、窓の下の壺の棚 ----
+    { const x0 = L + 10, y0 = wy + 12, w = 24, h = 18;
+      P.rect(x0 - 3, y0 - 2, w + 6, h + 5, C.woodD); P.rect(x0 - 2, y0 - 1, w + 4, h + 3, C.wood);
+      for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) P.set(x, y, night ? mix('#ffcf70', '#ff9a40', (y - y0) / h) : mix('#2a3a52', '#4a6a8a', (x - x0 + y0 - y + h) / (w + h)));
+      for (let x = x0 + 5; x < x0 + w; x += 6) P.rect(x, y0, 1, h, C.woodD);
+      P.rect(x0, y0 + (h >> 1), w, 1, C.woodD);
+      if (!night) { P.set(x0 + 2, y0 + 2, '#bfe8ff'); P.set(x0 + 3, y0 + 2, '#bfe8ff'); P.set(x0 + 2, y0 + 3, '#bfe8ff'); }
+      P.rect(x0 - 4, y0 + h + 2, w + 8, 2, C.woodL); P.rect(x0 - 4, y0 + h + 4, w + 8, 1, C.woodD);   // 窓台
+      const jars = ['#3a7ac0', '#c89a3a', '#2f9a88'];
+      for (let i = 0; i < 3; i++) { const jx = x0 + 1 + i * 8, jy = y0 + h + 4; P.box(jx, jy - 7, 6, 7, R(jars[i]), { round: true }); P.rect(jx + 1, jy - 8, 4, 1, sh(jars[i], -0.3)); }
+    }
+    // ---- 中央：入口（店の奥は暗く、のれんと敷居の段） ----
+    const dx0 = L + 46, dx1 = Rt - 46, dy0 = wy + 8;
+    for (let y = dy0; y < plinth; y++) for (let x = dx0; x < dx1; x++) {
+      const t = (y - dy0) / (plinth - dy0);
+      P.set(x, y, mix('#120a10', '#3a2618', t * 0.8) );
+    }
+    // 店の奥：棚の影と小さな灯り
+    P.rect(dx0 + 3, dy0 + 10, dx1 - dx0 - 6, 1, '#4a3020'); P.rect(dx0 + 3, dy0 + 18, dx1 - dx0 - 6, 1, '#4a3020');
+    for (let i = 0; i < 4; i++) P.rect(dx0 + 5 + i * 8, dy0 + 6, 4, 4, ['#5a7aa0', '#a08040', '#6a9a70', '#a05a7a'][i]);
+    P.rect(dx0 + 2, dy0 + 22, dx1 - dx0 - 4, 2, '#2a1a12');
+    // 入口の枠（左は明るい、右と上は影）
+    P.rect(dx0 - 2, dy0 - 2, 2, plinth - dy0 + 2, C.woodL); P.rect(dx1, dy0 - 2, 2, plinth - dy0 + 2, C.woodD);
+    P.rect(dx0 - 2, dy0 - 3, dx1 - dx0 + 4, 3, C.wood); P.rect(dx0 - 2, dy0 - 3, dx1 - dx0 + 4, 1, C.goldD);
+    // のれん（青緑の布を3枚。すそが波打つ）
+    for (let i = 0; i < 3; i++) {
+      const nx = dx0 + i * ((dx1 - dx0) / 3) | 0, nw = ((dx1 - dx0) / 3 | 0) - 1;
+      for (let y = 0; y < 13; y++) for (let x = 0; x < nw; x++) { if (y > 10 && (x + i) % 3 === 0) continue; P.set(nx + x, dy0 + y, sh(C.teal, (x < 2 ? 0.18 : x > nw - 3 ? -0.2 : 0) - y * 0.01)); }
+      P.rect(nx + 2, dy0 + 4, nw - 4, 1, C.goldL);
+    }
+    // 敷居の段（2段）
+    P.rect(dx0 - 4, plinth - 1, dx1 - dx0 + 8, 2, sh(C.stone, 0.25)); P.rect(dx0 - 6, plinth + 1, dx1 - dx0 + 12, 2, sh(C.stone, 0.05)); P.rect(dx0 - 6, plinth + 3, dx1 - dx0 + 12, 1, C.stoneD);
+    // ---- 右の間：日よけの下の売り台（かご・びん・たたんだ布） ----
+    { const x0 = Rt - 40, x1 = Rt - 6, ty = plinth - 14;
+      // 日よけ（青緑と白の縞。すそに房）
+      for (let y = wy + 2; y < wy + 11; y++) for (let x = x0 - 2; x < x1 + 2; x++) { const st = Math.floor((x - x0) / 5) & 1; P.set(x, y, sh(st ? C.teal : '#f2ead8', (y - wy) * -0.02 + (y === wy + 2 ? 0.15 : 0))); }
+      for (let x = x0 - 2; x < x1 + 2; x += 5) { P.set(x + 2, wy + 11, C.goldD); P.set(x + 2, wy + 12, C.gold); }
+      P.rect(x0 - 2, wy + 11, x1 - x0 + 4, 1, sh(C.teal, -0.4));
+      // 台（木の天板と前板）
+      P.rect(x0, ty, x1 - x0, 3, C.woodL); P.rect(x0, ty, x1 - x0, 1, '#f0c890'); P.rect(x0, ty + 3, x1 - x0, 10, C.wood); P.rect(x0, ty + 3, x1 - x0, 1, C.woodD);
+      for (let x = x0 + 3; x < x1; x += 7) P.rect(x, ty + 5, 1, 7, C.woodD);
+      // 果物かご・びん・布
+      P.ball(x0 + 6, ty - 3, 5, 3, R('#b8823e'), { dither: false }); P.ball(x0 + 4, ty - 5, 2, 2, R('#e84a3a'), { dither: false }); P.ball(x0 + 8, ty - 5, 2, 2, R('#f0c040'), { dither: false });
+      for (let i = 0; i < 3; i++) { const bx = x0 + 15 + i * 4; P.rect(bx, ty - 7, 3, 7, ['#3ab0d0', '#9ad05a', '#e07ab0'][i]); P.rect(bx + 1, ty - 9, 1, 2, '#e8e0d0'); P.set(bx, ty - 6, '#ffffff'); }
+      P.rect(x1 - 9, ty - 4, 8, 4, '#c04a6a'); P.rect(x1 - 9, ty - 4, 8, 1, '#e87a9a'); P.rect(x1 - 9, ty - 2, 8, 1, C.goldD);
+    }
+    // ---- 屋根：鼻隠し（厚み）と、瓦の段 ----
+    const ins = 14;
+    for (let y = roofTop; y < eave; y++) {
+      const t = (y - roofTop) / (eave - roofTop), xl = Math.round(L - 4 + ins * (1 - t)), xr = Math.round(Rt + 4 - ins * (1 - t));
+      const row = Math.floor((y - roofTop) / 5), ly = (y - roofTop) % 5;
+      for (let x = xl; x < xr; x++) {
+        const seam = ((x - xl) + (row & 1) * 4) % 8 === 0;
+        let c = sh(C.roof, 0.12 - t * 0.22 + ((hash(x >> 3, row, 5) & 3) - 1.5) * 0.03);
+        if (ly === 4) c = sh(C.roof, -0.45); else if (ly === 0) c = sh(C.roof, 0.28 - t * 0.2);
+        if (seam && ly) c = sh(c, -0.25);
+        if (x - xl < 3) c = sh(c, 0.12); if (xr - x <= 4) c = sh(c, -0.25);
+        P.set(x, y, c);
+      }
+      P.set(xl, y, C.goldD); P.set(xl + 1, y, C.gold); P.set(xr - 1, y, C.goldD); P.set(xr - 2, y, C.gold);
+    }
+    // 棟（屋根のてっぺん）と両端の反り飾り
+    P.rect(L - 4 + ins, roofTop - 3, bw + 8 - ins * 2, 3, C.goldD); P.rect(L - 4 + ins, roofTop - 3, bw + 8 - ins * 2, 1, C.goldL);
+    const cho = (x, d) => { P.set(x, roofTop - 4, C.gold); P.set(x + d, roofTop - 5, C.gold); P.set(x + d * 2, roofTop - 7, C.goldL); P.set(x + d * 2, roofTop - 6, C.gold); P.set(x + d, roofTop - 8, C.goldL); };
+    cho(L - 4 + ins, -1); cho(Rt + 3 - ins, 1);
+    // 鼻隠し（屋根の厚み：板の帯、金の縁、小さな飾り）
+    for (let y = eave; y < eave + fasciaH; y++) for (let x = L - 6; x < Rt + 6; x++) {
+      const t = y - eave;
+      P.set(x, y, t === 0 ? C.goldL : t === 1 ? C.gold : t === fasciaH - 1 ? '#2a1610' : sh(C.woodD, (x < L ? 0.1 : x > Rt ? -0.15 : 0) - t * 0.04));
+    }
+    for (let x = L - 2; x < Rt + 4; x += 6) P.set(x, eave + 3, C.goldL);
+    // 軒の両端の反り
+    P.set(L - 7, eave - 1, C.gold); P.set(L - 8, eave - 3, C.goldL); P.set(Rt + 6, eave - 1, C.gold); P.set(Rt + 7, eave - 3, C.goldL);
+    // 看板（入口の上の鼻隠しに、金の縁の小さな札。文字は焼き込まず、びんと袋の印）
+    { const sx = ((dx0 + dx1) >> 1) - 9, sy = eave - 1;
+      P.rect(sx, sy, 18, 9, C.goldD); P.rect(sx + 1, sy + 1, 16, 7, '#7a2a1e');
+      P.rect(sx + 4, sy + 3, 3, 4, '#5ad0e0'); P.set(sx + 5, sy + 2, '#e8e0d0');
+      P.ball(sx + 12, sy + 5, 2.5, 2, R(C.gold), { dither: false }); }
+    // 吊り灯籠（左右の柱の前、鼻隠しから下がる）
+    const lights = [];
+    for (const lx of [L + 42, Rt - 42]) {
+      P.rect(lx, wy, 1, 3, C.ol); P.rect(lx - 2, wy + 3, 5, 7, C.ol); P.rect(lx - 1, wy + 4, 3, 5, night ? '#ffd070' : '#ff9a4a'); P.set(lx, wy + 10, C.gold);
+      lights.push([fx * T - ox + lx, (fy + fd) * T - H + 2 + wy + 6, 14]);
+    }
+    // ---- 店先の小物（建物のマスの中だけ。左右の角） ----
+    // 左角：木箱の山と布袋
+    crate(P, L + 2, base, 11); crate(P, L + 13, base, 9); crate(P, L + 5, base - 11, 9);
+    P.ball(L + 26, base - 4, 4, 4, R('#d8c49a')); P.rect(L + 25, base - 9, 2, 2, '#8a6a3a');
+    // 右角：樽と鉢植え
+    barrel(P, Rt - 10, base); pot(P, Rt - 21, base, [C.pink, '#ffffff']);
+    P.outline(0.6);
+    return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2, lights };
   }
 
   // 丘の上の寺院（アユタヤの仏塔）。章が進むと修復される：1章は崩れたまま、2〜3章は足場、4章から金の先端
