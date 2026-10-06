@@ -978,13 +978,13 @@
   // ---------------- 地形タイル（32×32） ----------------
   const THEME = {
     brick:   { floor: '#c4875a', floor2: '#b07448', wall: '#a8502e', top: '#4a2418', deco: '#6a9a3a', bg: '#140a08', light: '#ffb060' },
-    roots:   { floor: '#a09a64', floor2: '#8c8656', wall: '#8a5a3a', top: '#2e2214', deco: '#5aa040', root: '#5a3a1e', bg: '#0c0a04', light: '#ffcf70' },
+    roots:   { floor: '#b0855e', floor2: '#9a7050', wall: '#a2502e', top: '#2e2214', deco: '#5aa040', root: '#5a3a1e', bg: '#0c0a04', light: '#ffcf70' },
     water:   { floor: '#8ab4c0', floor2: '#76a0ae', wall: '#3f7f96', top: '#16303e', deco: '#ff8fb8', bg: '#04101a', light: '#9ae8ff' },
     orb:     { floor: '#c8a070', floor2: '#b48c5e', wall: '#b07a3a', top: '#3a2410', deco: '#ffd84a', bg: '#100804', light: '#ffd070' },
-    garden:  { floor: '#84a862', floor2: '#749656', wall: '#6a7a4a', top: '#1e2a16', deco: '#e05a8a', root: '#4a3018', bg: '#060a04', light: '#c8ff8a' },
+    garden:  { floor: '#aa8a62', floor2: '#927452', wall: '#9a5232', top: '#1e2a16', deco: '#e05a8a', root: '#4a3018', bg: '#060a04', light: '#c8ff8a' },
     sunken:  { floor: '#78a0ae', floor2: '#68909e', wall: '#4a6f80', top: '#0e2430', deco: '#ffd84a', bg: '#030c12', light: '#7ad0ff' },
-    crystal: { floor: '#6c6c98', floor2: '#5e5e88', wall: '#4a4a78', top: '#12122a', deco: '#7af0ff', bg: '#04040c', light: '#7af0ff' },
-    gold:    { floor: '#b89a5a', floor2: '#a4884c', wall: '#a07a30', top: '#34260c', deco: '#ffe060', bg: '#0c0802', light: '#ffe080' },
+    crystal: { floor: '#7890a0', floor2: '#647c8c', wall: '#4e6a80', top: '#142430', deco: '#7af0ff', bg: '#030a10', light: '#7af0ff' },
+    gold:    { floor: '#6a5a74', floor2: '#5a4c64', wall: '#4e3e5e', top: '#1c1226', deco: '#ffe060', bg: '#06030a', light: '#c070ff' },
     shrine:  { floor: '#c4a6dc', floor2: '#b094c8', wall: '#8a6ab0', top: '#26183a', deco: '#ffd84a', bg: '#0a0614', light: '#ffd8ff' },
     // 最終章とボス部屋
     demon:       { floor: '#4a3a5a', floor2: '#40324e', wall: '#3a2a48', top: '#140c1c', deco: '#e8c040', bg: '#06030a', light: '#c070ff' },
@@ -1002,7 +1002,7 @@
   function floorTile(theme, v) {
     const T = THEME[theme], P = new Pix(32, 32);
     const A = ramp(T.floor), B = ramp(T.floor2);
-    const style = { brick: 'stone', roots: 'flag', water: 'tile', orb: 'tile', garden: 'flag', sunken: 'tile', crystal: 'cave', gold: 'tile', shrine: 'tile' }[theme] || 'tile';
+    const style = { brick: 'stone', roots: 'flag', water: 'tile', orb: 'tile', garden: 'flag', sunken: 'tile', crystal: 'tile', gold: 'tile', shrine: 'tile' }[theme] || 'tile';
     if (style === 'cave') {
       for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
         const n = (hash(x >> 2, y >> 2, v) & 15) / 15;

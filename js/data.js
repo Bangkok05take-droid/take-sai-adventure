@@ -233,8 +233,8 @@
     orb:     { name: '守護獅子の間' },
     garden:  { name: '木の根と苔の地下庭園' },
     sunken:  { name: '水没した古代都市' },
-    crystal: { name: '結晶に照らされた洞窟' },
-    gold:    { name: '金色の装飾が残る深部の神殿' },
+    crystal: { name: '水晶の地下神殿' },
+    gold:    { name: '封印の最深部' },
     shrine:  { name: '願いの宝珠の間' },
   };
   Object.assign(D.THEMES, {

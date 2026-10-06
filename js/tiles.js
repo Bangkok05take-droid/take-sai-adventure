@@ -35,12 +35,12 @@
       wall: ['#ae542e', '#b8603a', '#9c4a28', '#c06a40'], mortar: '#5e3020', brickW: 14, brickH: 6,
       top: 'rubble', topC: ['#4a2c20', '#563424', '#3e241a'], topGap: '#24140e', rim: '#8a5a40',
       pillar: '#d8c4a0', accent: '#e8b84a', mural: '#c89a5a', moss: '#6a8a3a',
-      feats: ['plain', 'pillars', 'mural', 'statue', 'mosaic', 'plain', 'pillars'],
+      feats: ['plain', 'pillars', 'mural', 'statue', 'mosaic', 'overgrown', 'pillars'],
     },
     roots: {   // 4〜6階：根に覆われた神殿
-      floor: ['#948e66', '#888260', '#a09a70', '#7e785a'], grout: '#3a3622', slab: 'flag',
-      corr: ['#6e6448', '#625a40', '#7a6e50'], dirt: '#2c2416',
-      wall: ['#7e5e42', '#8a684a', '#72543a', '#94704e'], mortar: '#3a2818', brickW: 20, brickH: 8,
+      floor: ['#b0855e', '#a47a56', '#ba9068', '#9a7050'], grout: '#4a3020', slab: 'flag',
+      corr: ['#86684a', '#7a5e42', '#927252'], dirt: '#2c2016',
+      wall: ['#a2502e', '#ac5a36', '#924628', '#b8643e'], mortar: '#4e2a1a', brickW: 14, brickH: 6,
       top: 'earth', topC: ['#33281a', '#3c3020', '#2a2014'], topGap: '#1a140c', rim: '#6a5236',
       pillar: '#b8a888', accent: '#d8b860', mural: '#a8905a', moss: '#4f8a38', root: '#5a3a1e', leaf: '#6aaa48',
       feats: ['overgrown', 'overgrown', 'statue', 'plain', 'pillars'],
@@ -51,8 +51,8 @@
       wall: ['#5a7e8c', '#668a98', '#4e7280', '#6e92a0'], mortar: '#2a4048', brickW: 16, brickH: 8,
       top: 'rubble', topC: ['#1c3440', '#22404c', '#182c36'], topGap: '#0c1c24', rim: '#5a7a84',
       water: '#2a86a6', deep: '#145a78', ledge: '#c4ccc0',
-      pillar: '#d4dcd4', accent: '#7ad8e8', mural: '#8ab0b0', moss: '#4a8a6a', lotus: true,
-      feats: ['plain', 'mosaic', 'pillars', 'statue', 'plain'],
+      pillar: '#d4dcd4', accent: '#e8c050', inlay: '#2aa8a8', mural: '#8ab0b0', moss: '#4a8a6a', lotus: true, crystal: '#8af4ff', crystal2: '#4ad0e8',
+      feats: ['inlay', 'mosaic', 'braziers', 'statue', 'inlay'],
     },
     orb: {     // 10階：宝珠の間（守護獅子）
       floor: ['#c8a272', '#be986a', '#d0aa7a', '#b48e62'], grout: '#7a5a22', slab: 'temple',
@@ -63,9 +63,9 @@
       feats: ['goldtrim'],
     },
     garden: {  // 11〜15階：苔むした庭園
-      floor: ['#9aa274', '#8e966a', '#a6ae7e', '#848c62'], grout: '#465030', slab: 'flag',
-      corr: ['#7e7a54', '#72704c', '#8a865c'], dirt: '#2e3018',
-      wall: ['#7c8660', '#88926a', '#707a56', '#929c72'], mortar: '#3a4226', brickW: 18, brickH: 8,
+      floor: ['#aa8a62', '#9e805a', '#b4946c', '#927452'], grout: '#463424', slab: 'flag',
+      corr: ['#82704e', '#766648', '#8e7a56'], dirt: '#2a2416',
+      wall: ['#9a5232', '#a45c3a', '#8a482c', '#b06842'], mortar: '#4a2a1a', brickW: 14, brickH: 6,
       top: 'hedge', topC: ['#2e5a2a', '#3a6c32', '#24481f'], topGap: '#14280f', rim: '#4f8a3a',
       pillar: '#c8c4a8', accent: '#f0c850', mural: '#a8a46a', moss: '#5a9a3a', leaf: '#6aaa48', root: '#4a3018', flower: ['#e05a8a', '#ffd84a', '#ffffff'],
       feats: ['overgrown', 'mosaic', 'plain', 'statue', 'overgrown'],
@@ -76,24 +76,25 @@
       wall: ['#40687a', '#4a7486', '#385e70', '#527c8e'], mortar: '#1c3440', brickW: 18, brickH: 8,
       top: 'rubble', topC: ['#12303c', '#163846', '#0e2832'], topGap: '#081820', rim: '#3e6a78',
       water: '#1e6c8c', deep: '#0e3c56', ledge: '#9ab4b4',
-      pillar: '#a8c4c4', accent: '#ffd84a', mural: '#6a9aa0', moss: '#4a8a6a', lotus: true,
-      feats: ['plain', 'pillars', 'mural', 'statue'],
+      pillar: '#a8c4c4', accent: '#ffd84a', inlay: '#2a9aa8', mural: '#6a9aa0', moss: '#4a8a6a', lotus: true, crystal: '#8af4ff', crystal2: '#4ad0e8',
+      feats: ['inlay', 'braziers', 'mural', 'statue', 'pillars'],
     },
     crystal: { // 21〜25階：結晶の洞窟
-      floor: ['#625e84', '#58547a', '#6c688e', '#504c70'], grout: '#2a2840', slab: 'cave',
-      corr: ['#4e4a6a', '#464262', '#585474'], dirt: '#1c1a2c',
-      wall: ['#4c4874', '#56527e', '#44406a', '#5e5a88'], mortar: '#221f38', brickW: 0, brickH: 0,
-      top: 'rock', topC: ['#1a1830', '#201e3a', '#141228'], topGap: '#0a0916', rim: '#4a467a',
-      pillar: '#9a96c8', accent: '#7af0ff', crystal: '#7af0ff', crystal2: '#c890ff', mural: '#6a68a0',
-      feats: ['crystals', 'crystals', 'plain', 'statue'],
+      floor: ['#7890a0', '#6e8696', '#829aaa', '#647c8c'], grout: '#2a3a48', slab: 'tile',
+      corr: ['#5e7280', '#566a78', '#687c8a'], dirt: '#1a2630',
+      wall: ['#4e6a80', '#58748a', '#466276', '#607c92'], mortar: '#1e2c38', brickW: 18, brickH: 8,
+      top: 'rubble', topC: ['#142430', '#1a2c3a', '#101e28'], topGap: '#08121a', rim: '#4a7a90',
+      water: '#2a90b0', deep: '#145a78', ledge: '#a8c0c8', lotus: true,
+      pillar: '#b4ccd8', accent: '#e8c050', inlay: '#30b8c0', crystal: '#7af0ff', crystal2: '#4ad0e8', mural: '#5a8aa0',
+      feats: ['crystals', 'inlay', 'braziers', 'crystals', 'statue'],
     },
     gold: {    // 26〜29階：金の神殿
-      floor: ['#c2a464', '#b89a5c', '#ccae6e', '#ae9056'], grout: '#6a4a18', slab: 'temple',
-      corr: ['#9e8450', '#947a48', '#a88e58'], dirt: '#3e2e10',
-      wall: ['#a8823c', '#b48e46', '#9c7634', '#c09a50'], mortar: '#4e3610', brickW: 22, brickH: 8,
-      top: 'temple', topC: ['#32240c', '#3a2a10', '#2a1e08'], topGap: '#180f04', rim: '#d0a040',
-      pillar: '#f0dca0', accent: '#ffd84a', mural: '#c08a30',
-      feats: ['goldtrim', 'pillars', 'mural', 'mosaic', 'statue', 'goldtrim'],
+      floor: ['#6a5a74', '#625268', '#72627c', '#5a4c64'], grout: '#2a1e30', slab: 'temple', carpet: '#9a1e2e',
+      corr: ['#54485e', '#4c4056', '#5c5066'], dirt: '#1e1624',
+      wall: ['#4e3e5e', '#584668', '#463656', '#625070'], mortar: '#1e1428', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#1c1226', '#22162e', '#160e1e'], topGap: '#0c0812', rim: '#c8a040',
+      pillar: '#d8c8a0', accent: '#ffd84a', mural: '#8a5a8a',
+      feats: ['goldtrim', 'seal', 'pillars', 'mural', 'goldtrim', 'statue'],
     },
     shrine: {  // 30階：願いの宝珠の間
       floor: ['#c8b4dc', '#bea8d2', '#d2bee6', '#b49ec8'], grout: '#6e5094', slab: 'temple',
@@ -109,8 +110,8 @@
       corr: ['#3a2e46', '#34283e', '#42354e'], dirt: '#140c1a',
       wall: ['#3a2a48', '#443252', '#322440', '#4c3a5a'], mortar: '#160e1e', brickW: 22, brickH: 8,
       top: 'temple', topC: ['#140c1c', '#1a1024', '#100816'], topGap: '#08040c', rim: '#8a6ab0',
-      pillar: '#8a7aa8', accent: '#e8c040', mural: '#6a4a8a',
-      feats: ['goldtrim', 'pillars', 'mural', 'statue', 'pillars'],
+      pillar: '#8a7aa8', accent: '#e8c040', mural: '#6a4a8a', carpet: '#8a1626',
+      feats: ['goldtrim', 'seal', 'pillars', 'mural', 'seal'],
     },
     // 35階：封印の玉座（赤い絨毯）
     throne: {
@@ -119,7 +120,7 @@
       wall: ['#4a3a5a', '#544366', '#40324e', '#5c4a6e'], mortar: '#1a1024', brickW: 22, brickH: 8,
       top: 'temple', topC: ['#180e24', '#1e142c', '#140a1e'], topGap: '#0a0612', rim: '#c8a0f0',
       pillar: '#c8b8e0', accent: '#ffd84a', mural: '#7a5a9a',
-      feats: ['pillars'],
+      feats: ['seal', 'pillars'],
     },
     // ---- 章のボス部屋 ----
     arena_croc: {  // 獣王の沼の広間：苔むした石と沼の水
@@ -168,7 +169,7 @@
   for (const k of Object.keys(M)) {
     const t = M[k];
     for (const f of ['floor', 'corr', 'wall', 'topC', 'flower']) if (t[f]) t[f] = t[f].map(rgb);
-    for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2', 'warm', 'cold', 'carpet']) if (t[f]) t[f] = rgb(t[f]);
+    for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2', 'warm', 'cold', 'carpet', 'inlay']) if (t[f]) t[f] = rgb(t[f]);
     if (t.checker) t.checker = t.checker.map(rgb);
     t.isWater = !!t.water;
   }
@@ -299,7 +300,7 @@
         // ボス部屋の特別な床：炎と氷の左右、市松模様、玉座への絨毯
         if (k === FLOOR && T.split) c = mixc(c, wx < (rm ? (rm.x + rm.w / 2) * 32 : W * 16) ? T.warm : T.cold, 0.5);
         if (k === FLOOR && T.checker && c !== T.grout) c = mixc(c, T.checker[((wx >> 4) + (wy >> 4)) & 1], 0.7);
-        if (k === FLOOR && T.carpet && rm && rm.w >= 7) {
+        if (k === FLOOR && T.carpet && rm && rm.w >= 5) {
           const dx = Math.abs(wx + 0.5 - (rm.x + rm.w / 2) * 32);
           if (dx < 30) c = dx > 26 ? T.accent : dx > 24 ? sh(T.accent, -0.4) : sh(T.carpet, ((wy >> 3) % 2 ? 0.05 : -0.05) + (noise(wx / 14, wy / 14, seed) - 0.5) * 0.15);
         }
@@ -319,6 +320,16 @@
             const fl = T.floor[0];
             const pal = [null, mixc(sh(T.accent, -0.4), fl, 0.3), mixc(sh(T.mural, -0.35), fl, 0.35), mixc(T.accent, fl, 0.42), theme === 'brick' || theme === 'gold' ? [70, 150, 140] : mixc(sh(T.accent, 0.4), fl, 0.3)];
             c = edge ? sh(T.grout, -0.15) : sh(pal[cl], (cl === 3 && (wx + wy) % 9 === 0 ? 0.15 : 0) + (noise(wx / 20, wy / 20, seed) - 0.5) * 0.12);
+          }
+        }
+        // 象眼の床（水晶の地下神殿）：1マスおきに、青緑のひし形と金のふち
+        if (feat === 'inlay' && rm && T.inlay) {
+          const tx = (wx >> 5) - rm.x, ty = (wy >> 5) - rm.y;
+          if (((tx + ty) & 1) === 0 && tx > 0 && ty > 0 && tx < rm.w - 1 && ty < rm.h - 1) {
+            const d = Math.abs((wx & 31) - 15.5) + Math.abs((wy & 31) - 15.5);
+            if (d < 2.5) c = sh(T.accent, 0.2);
+            else if (d < 9) c = mixc(sh(T.inlay, (wx & 31) < 16 ? 0.12 : -0.12), c, 0.25);
+            else if (d < 10.5) c = mixc(T.accent, c, 0.35);
           }
         }
         if (feat === 'goldtrim' && rm) {
@@ -415,6 +426,9 @@
       else if (feat === 'statue' && rx === center) drawStatue(T, theme, hash(x, y, seed) % 2 === 0);
       else if (feat === 'overgrown' && hash(x, y, seed + 2) % 2 === 0) drawRoots(T, hash(x, y, seed));
       else if (feat === 'crystals' && hash(x, y, seed + 2) % 3 === 0) drawCrystals(T, hash(x, y, seed), 30);
+      else if (feat === 'braziers' && rx >= 0 && rx % 3 === 1) drawBrazier(T);
+      else if (feat === 'seal' && rx === center) drawSeal(T);
+      else if (feat === 'seal' && rx >= 0 && Math.abs(rx - center) === 2) drawBanner(T);
       else if (!below || hash(x, y, seed + 7) % 6 === 0) out.torch = hash(x, y, seed + 1) % 3 === 0;
       if (feat === 'goldtrim') { for (let lx = 0; lx < 32; lx++) { put(lx, 9, sh(T.accent, 0.2)); put(lx, 10, T.accent); put(lx, 11, sh(T.accent, -0.4)); if ((x0 + lx) % 8 < 2) put(lx, 10, sh(T.accent, 0.5)); } }
     } else {
@@ -475,6 +489,34 @@
       if (gold && (ly === 4 || ly === 29)) c = sh(A, 0.1 - t * 0.4);
       put(lx, ly, c);
     }
+  }
+  // 水晶の燭台（金の台に青い結晶）
+  function drawBrazier(T) {
+    const G = T.accent;
+    rect(13, 22, 6, 8, sh(G, -0.35)); rect(14, 22, 2, 8, sh(G, 0.1));
+    disc(16, 21, 7, 2.6, (nx, ny) => sh(G, 0.2 - nx * 0.4 - ny * 0.2));
+    rect(11, 29, 10, 2, sh(G, -0.5));
+    for (let i = 0; i < 3; i++) { const cx = 12 + i * 4, h = 9 + (i === 1 ? 4 : 0); for (let ly = 0; ly < h; ly++) { const w = Math.max(0, 1.6 - ly / h * 1.6); for (let lx = Math.round(cx - w); lx <= Math.round(cx + w); lx++) put(lx, 20 - ly, mixc(T.crystal, [255, 255, 255], lx < cx ? 0.35 : 0)); } }
+  }
+  // 封印の扉（深紅と金の円い封印、中央に赤い宝石）
+  function drawSeal(T) {
+    const G = T.accent, dk = [24, 14, 30];
+    for (let ly = 6; ly < 32; ly++) for (let lx = 6; lx < 26; lx++) {
+      const arch = ly >= 12 || Math.hypot(lx + 0.5 - 16, ly + 0.5 - 12) <= 10;
+      if (!arch) continue;
+      const rim = lx === 6 || lx === 25 || (ly < 12 && Math.hypot(lx + 0.5 - 16, ly + 0.5 - 12) > 9);
+      put(lx, ly, rim ? sh(G, -0.25) : lx === 16 ? [10, 6, 14] : sh(dk, (lx < 16 ? 0.12 : 0) + ((ly >> 2) & 1 ? 0.04 : 0)));
+    }
+    disc(16, 19, 6.5, 6.5, (nx, ny) => { const r = Math.hypot(nx, ny); return r > 0.82 ? sh(G, 0.15 - nx * 0.3) : r > 0.66 ? [120, 20, 36] : sh(G, -0.2 - ny * 0.2); });
+    for (let a = 0; a < 8; a++) put(16 + Math.round(Math.cos(a * 0.785) * 4), 19 + Math.round(Math.sin(a * 0.785) * 4), sh(G, 0.4));
+    disc(16, 19, 1.8, 1.8, (nx, ny) => sh([220, 40, 60], 0.3 - nx * 0.4 - ny * 0.3));
+  }
+  // 深紅の旗（金の紋）
+  function drawBanner(T) {
+    const red = T.carpet || [150, 30, 46], G = T.accent;
+    rect(10, 5, 12, 1, sh(G, -0.3));
+    for (let ly = 6; ly < 26; ly++) { const cut = ly > 22 ? ly - 22 : 0; for (let lx = 11 + cut; lx < 21 - cut; lx++) put(lx, ly, sh(red, (lx < 13 ? 0.15 : lx > 18 ? -0.25 : 0))); }
+    disc(16, 13, 3, 3, (nx) => sh(G, 0.15 - nx * 0.35)); rect(15, 17, 2, 4, sh(G, -0.2));
   }
   function drawMural(T, kind) {
     const fr = sh(T.accent, -0.2), bg = T.mural;
