@@ -304,6 +304,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.evaluate(() => { const pl = TS.UI.S.run.player; pl.maxhp = 999; pl.hp = 500; pl.hunger = 90; });
     const b0 = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp, x: TS.UI.S.run.player.x, hunger: TS.UI.S.run.player.hunger, acc: TS.UI.S.run.player.hungerAcc }));
     const on0 = await faceOn();
+    const tHold = Date.now();
     await faceDown(); await p.waitForTimeout(300);
     assert((await run()).turn === b0.turn, 'no rest before 400ms');
     await p.waitForTimeout(700);
@@ -312,8 +313,11 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     // 休息中の方向入力で動かない
     await pdown('right'); await p.waitForTimeout(100); await pup('right');
     await faceUp();
+    const held = Date.now() - tHold;
     const a = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp, x: TS.UI.S.run.player.x }));
-    assert(a.turn - b0.turn >= 2 && a.turn - b0.turn <= 5, 'rest turns ' + (a.turn - b0.turn));
+    // 400ms後から約180msに1ターン（押していた時間から上限を出す。スクリーンショットの時間も含む）
+    const maxTurns = Math.floor((held - 400) / 170) + 1;
+    assert(a.turn - b0.turn >= 2 && a.turn - b0.turn <= maxTurns, 'rest turns ' + (a.turn - b0.turn) + ' held ' + held + 'ms');
     assert(a.hp > b0.hp && a.x === b0.x, 'regen, no move ' + JSON.stringify([b0, a]));
     await p.waitForTimeout(500);
     assert((await run()).turn === a.turn, 'stops on release, no extra turn');

@@ -27,7 +27,7 @@
 
     UI.S = SV.load() || G.newState();
     AU.setEnabled(UI.S.settings.sound);
-    bindTitle(); bindVillage(); bindDungeon();
+    bindTitleImages(); bindTitle(); bindVillage(); bindDungeon();
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup', onKeyUp);
     showTitle();
@@ -54,75 +54,169 @@
     try {
       if (UI.screen === 'dungeon' && UI.S.run) RD.drawDungeon($('dungeon-canvas'), UI.S, now);
       else if (UI.screen === 'village') UI.villageHits = RD.drawVillage($('village-canvas'), UI.S.village, now);
-      else if (UI.screen === 'title') drawTitleArt(now);
+      else if (UI.screen === 'title') drawTitleScene();
     } catch (e) { console.error(e); }
     requestAnimationFrame(loop);
   }
 
-  /* タイトルの絵。
-   * assets/title-art.jpg は見本イラスト assets/title-characters.png から tests/make-title-art.js で作った人物部分
-   * （人物名の札・題字・下段のドット絵一覧・外枠を除いたもの）。縦横比を保って全体を収める＝引き伸ばさない。
-   * crop に [x, y, 幅, 高さ] を書くと、画像のその範囲だけを使う。
-   * 画像が読めないときは、ゲーム用ドット絵の全身絵で同じ構図を描く。 */
-  const TITLE_ART = { src: 'assets/title-art.jpg', crop: null };
-  let titleBg = null, titleImg = null, titleDrawn = '';
-  (function loadTitleImage() {
-    const img = new Image();
-    img.onload = () => { titleImg = img; titleDrawn = ''; };
-    img.onerror = () => { titleImg = null; };
-    if (TITLE_ART.src) img.src = TITLE_ART.src;
-  })();
-  function drawTitleArt(now) {
-    const c = $('title-canvas');
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
-    if (!w || !h) return;
-    if (titleImg && titleDrawn === w + 'x' + h && c.width === w && c.height === h) return; // 静止画なので大きさが変わったときだけ描く
-    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  /* タイトルの冒険イラスト。
+   * 人物は見本イラストから切り抜いた assets/title-chars.webp（tests/make-title-art.js で作成）を <img> で表示し、
+   * その後ろの景色（夕暮れの空・遠くの光・アユタヤの遺跡・水辺・石のテラス）をこのキャンバスに描く。
+   * 景色は人物の表示位置に合わせて描く（地平線は人物の腰、テラスは足元）。静止画なので大きさが変わったときだけ描き直す。
+   * 透過画像を表示できないときは、紙の背景つきの assets/title-art.jpg を額に入れて表示する。 */
+  let titleKey = '';
+  function bindTitleImages() {
+    const img = $('title-chars');
+    img.addEventListener('load', () => { titleKey = ''; });
+    img.addEventListener('error', () => {
+      if (img.dataset.fallback) return;
+      img.dataset.fallback = '1'; img.classList.add('paper'); img.src = 'assets/title-art.jpg';
+    });
+  }
+  // object-fit: contain; object-position: center bottom で実際に絵が表示される範囲
+  function shownRect(img) {
+    const r = img.getBoundingClientRect(), nw = img.naturalWidth || 900, nh = img.naturalHeight || 702;
+    const sc = Math.min(r.width / nw, r.height / nh), w = nw * sc, h = nh * sc;
+    return { x: r.left + (r.width - w) / 2, y: r.top + r.height - h, w, h };
+  }
+  function drawTitleScene() {
+    const c = $('title-bg');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
+    if (!W || !H) return;
+    const cr = c.getBoundingClientRect(), img = $('title-chars'), ir = shownRect(img);
+    const key = [W, H, ir.x, ir.y, ir.w, ir.h, img.complete].map((v) => Math.round(v)).join(',');
+    if (key === titleKey) return;
+    titleKey = key;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
     const g = c.getContext('2d');
-    g.clearRect(0, 0, w, h);
-    if (titleImg) {
-      const [sx, sy, sw, sh] = TITLE_ART.crop || [0, 0, titleImg.naturalWidth, titleImg.naturalHeight];
-      const m = Math.round(4 * dpr);                      // 金の額縁の幅
-      const sc = Math.min((w - m * 2) / sw, (h - m * 2) / sh);
-      const dw = Math.round(sw * sc), dh = Math.round(sh * sc);
-      const dx = Math.round((w - dw) / 2), dy = Math.round((h - dh) / 2);
-      // 額縁：金の外枠＋細い濃色の内枠
-      g.fillStyle = '#b8862a'; g.fillRect(dx - m, dy - m, dw + m * 2, dh + m * 2);
-      g.fillStyle = '#e8c25a'; g.fillRect(dx - m + dpr, dy - m + dpr, dw + m * 2 - dpr * 2, dh + m * 2 - dpr * 2);
-      g.fillStyle = '#5a3a10'; g.fillRect(dx - dpr, dy - dpr, dw + dpr * 2, dh + dpr * 2);
-      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
-      g.drawImage(titleImg, sx, sy, sw, sh, dx, dy, dw, dh);
-      titleDrawn = w + 'x' + h;
-      return;
+    g.imageSmoothingEnabled = true;
+    // 人物の位置（キャンバス座標）
+    const ax = (ir.x - cr.left) * dpr, ay = (ir.y - cr.top) * dpr, aw = ir.w * dpr, ah = ir.h * dpr;
+    const u = Math.max(1, ah / 300);                       // 景色の大きさの単位
+    // 遠くの岸：ふつうは人物の腰の高さ。縦長の画面で人物の上が空くときは、そのぶん上げて遺跡が見えるようにする
+    const head = document.querySelector('.title-head').getBoundingClientRect();
+    const gap = Math.max(0, ay - (head.bottom - cr.top) * dpr);
+    const horizon = Math.round(ay + ah * 0.5 - Math.min(gap * 0.9, ah * 0.42));
+    const deck = Math.round(ay + ah * 0.9);                // テラスの奥の縁（足元の少し上）
+    const lightX = ax + aw * 0.52;                         // 遠くの光：二人のあいだ
+    const rnd = (i, k) => (SP.hash(i, k, 77) % 10000) / 10000;
+
+    // ---- 空 ----
+    let gr = g.createLinearGradient(0, 0, 0, horizon);
+    gr.addColorStop(0, '#081c2a'); gr.addColorStop(0.35, '#15475a'); gr.addColorStop(0.68, '#6a5a78');
+    gr.addColorStop(0.88, '#e8946a'); gr.addColorStop(1, '#ffd08a');
+    g.fillStyle = gr; g.fillRect(0, 0, W, horizon);
+    // 星
+    for (let i = 0; i < 70; i++) {
+      const x = rnd(i, 1) * W, y = rnd(i, 2) * horizon * 0.55;
+      g.globalAlpha = 0.25 + rnd(i, 3) * 0.6 * (1 - y / (horizon * 0.55));
+      g.fillStyle = '#fff6dc'; g.fillRect(Math.round(x), Math.round(y), Math.ceil(dpr * (rnd(i, 4) < 0.15 ? 1.6 : 1)), Math.ceil(dpr * (rnd(i, 4) < 0.15 ? 1.6 : 1)));
     }
-    g.imageSmoothingEnabled = false;
-    const VW = 168, VH = 104;
-    const sc = Math.min(w / VW, h / VH);
-    g.save(); g.translate(Math.round((w - VW * sc) / 2), Math.round((h - VH * sc) / 2)); g.scale(sc, sc);
-    if (!titleBg) {
-      const P = new SP.Pix(VW, VH), R = SP.ramp;
-      // 夕暮れの空・遺跡の塔（プラーン）・水辺と蓮
-      for (let y = 0; y < 86; y++) for (let x = 0; x < VW; x++) P.set(x, y, SP.mix('#1e5a5e', '#f0b070', Math.max(0, (y - 20) / 70) + ((SP.hash(x >> 1, y >> 1, 3) & 3) - 1.5) * 0.01));
-      P.ball(84, 40, 22, 22, R('#ffd890'), { dither: false });
-      const prang = (cx, top, wd, col) => P.poly([[cx - wd, 86], [cx - wd + 3, 50], [cx - 4, top + 12], [cx, top], [cx + 4, top + 12], [cx + wd - 3, 50], [cx + wd, 86]], (x, y) => R(col)[P.idx(1.4 + (x - cx + wd) / (2 * wd) + (y % 5 === 0 ? 0.5 : 0), x, y)]);
-      prang(52, 40, 10, '#9a4e40'); prang(116, 40, 10, '#9a4e40'); prang(84, 14, 16, '#b85a44');
-      P.ball(84, 74, 6, 6, R('#3a1a14')); P.rect(78, 74, 12, 12, '#3a1a14');
-      for (let y = 86; y < VH; y++) for (let x = 0; x < VW; x++) P.set(x, y, R('#2a8ab8')[P.idx(1.2 + (y - 86) / 14, x, y)]);
-      for (const [x, y] of [[24, 96], [140, 98], [84, 100]]) { P.ball(x, y + 2, 6, 2, R('#3a8a40')); P.ball(x, y, 2.4, 3, R('#ff8fb8')); }
-      P.outline(0.6);
-      titleBg = P.canvas();
+    g.globalAlpha = 1;
+    // 遠くの光（地平線の太陽の名残り）
+    gr = g.createRadialGradient(lightX, horizon, 0, lightX, horizon, Math.max(W, ah) * 0.75);
+    gr.addColorStop(0, 'rgba(255,236,170,0.95)'); gr.addColorStop(0.12, 'rgba(255,200,120,0.55)'); gr.addColorStop(0.45, 'rgba(240,140,100,0.15)'); gr.addColorStop(1, 'rgba(240,140,100,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, horizon);
+    // たなびく雲
+    for (let i = 0; i < 9; i++) {
+      const y = horizon * (0.38 + rnd(i, 5) * 0.5), x = rnd(i, 6) * W, w = (60 + rnd(i, 7) * 140) * u, h = (3 + rnd(i, 8) * 5) * u;
+      const t = y / horizon;
+      g.fillStyle = `rgba(${Math.round(120 + 135 * t)},${Math.round(110 + 60 * t)},${Math.round(150 - 40 * t)},${0.18 + 0.2 * t})`;
+      g.beginPath(); g.ellipse(x, y, w, h, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = `rgba(255,214,160,${0.22 * t})`;
+      g.beginPath(); g.ellipse(x, y + h * 0.5, w * 0.8, h * 0.35, 0, 0, Math.PI * 2); g.fill();
     }
-    g.drawImage(titleBg, 0, 0);
-    // 宝珠の光
-    const gl = 0.5 + 0.5 * Math.sin(now / 400);
-    g.globalAlpha = 0.4 * gl; g.fillStyle = '#f6e0ff'; g.beginPath(); g.arc(84, 30, 12, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
-    g.drawImage(SP.s.icon.orb, 76, 21 - Math.round(gl * 2), 16, 16);
-    // たけとサイ（全身）
-    const b = Math.floor(now / 700) % 2;
-    g.drawImage(SP.s.big.take, 4, 8 + b, 64, 96);
-    g.drawImage(SP.s.big.sai, 100, 8 + (1 - b), 64, 96);
-    g.restore();
+    // ---- 遠くの遺跡（プラーンの塔とチェディ） ----
+    const prang = (cx, base, w, h) => {
+      g.beginPath();
+      g.moveTo(cx - w, base); g.lineTo(cx - w, base - h * 0.12); g.lineTo(cx - w * 0.8, base - h * 0.12); g.lineTo(cx - w * 0.8, base - h * 0.24);
+      g.lineTo(cx - w * 0.58, base - h * 0.24);
+      g.bezierCurveTo(cx - w * 0.6, base - h * 0.55, cx - w * 0.35, base - h * 0.78, cx - w * 0.1, base - h * 0.86);
+      g.lineTo(cx, base - h); g.lineTo(cx + w * 0.1, base - h * 0.86);
+      g.bezierCurveTo(cx + w * 0.35, base - h * 0.78, cx + w * 0.6, base - h * 0.55, cx + w * 0.58, base - h * 0.24);
+      g.lineTo(cx + w * 0.8, base - h * 0.24); g.lineTo(cx + w * 0.8, base - h * 0.12); g.lineTo(cx + w, base - h * 0.12); g.lineTo(cx + w, base);
+      g.closePath(); g.fill();
+    };
+    const chedi = (cx, base, w, h) => {
+      g.beginPath();
+      g.moveTo(cx - w, base); g.lineTo(cx - w, base - h * 0.1); g.lineTo(cx - w * 0.75, base - h * 0.16);
+      g.bezierCurveTo(cx - w * 0.8, base - h * 0.5, cx - w * 0.3, base - h * 0.55, cx - w * 0.12, base - h * 0.6);
+      g.lineTo(cx, base - h); g.lineTo(cx + w * 0.12, base - h * 0.6);
+      g.bezierCurveTo(cx + w * 0.3, base - h * 0.55, cx + w * 0.8, base - h * 0.5, cx + w * 0.75, base - h * 0.16);
+      g.lineTo(cx + w, base - h * 0.1); g.lineTo(cx + w, base); g.closePath(); g.fill();
+    };
+    const ruins = (alphaMul) => {
+      g.fillStyle = `rgba(98,72,104,${0.75 * alphaMul})`;   // かすんだ遠景
+      for (let i = 0; i < 7; i++) { const x = (i + 0.3 + rnd(i, 9) * 0.4) / 7 * W; if (Math.abs(x - lightX) < 40 * u) continue;
+        (i % 2 ? chedi : prang)(x, horizon, (9 + rnd(i, 10) * 7) * u, (30 + rnd(i, 11) * 26) * u); }
+      g.fillStyle = `rgba(60,40,62,${0.92 * alphaMul})`;    // 中央の大きな塔（光を背負う）
+      prang(lightX, horizon, 26 * u, 96 * u);
+      prang(lightX - 46 * u, horizon, 15 * u, 58 * u); prang(lightX + 46 * u, horizon, 15 * u, 58 * u);
+      g.fillStyle = `rgba(36,30,48,${alphaMul})`;           // 手前の木々と城壁
+      g.fillRect(0, horizon - 6 * u, W, 6 * u);
+      for (let i = 0; i < 26; i++) { const x = rnd(i, 12) * W, r = (5 + rnd(i, 13) * 9) * u; if (Math.abs(x - lightX) < 34 * u) continue;
+        g.beginPath(); g.ellipse(x, horizon - 4 * u, r * 1.3, r, 0, Math.PI, 0); g.fill(); }
+    };
+    ruins(1);
+    // ---- 水辺 ----
+    gr = g.createLinearGradient(0, horizon, 0, deck);
+    gr.addColorStop(0, '#c8826a'); gr.addColorStop(0.18, '#5a5a74'); gr.addColorStop(0.6, '#1f4656'); gr.addColorStop(1, '#0f2c38');
+    g.fillStyle = gr; g.fillRect(0, horizon, W, deck - horizon);
+    // 遺跡の映り込み
+    g.save(); g.beginPath(); g.rect(0, horizon, W, deck - horizon); g.clip();
+    g.translate(0, horizon * 2); g.scale(1, -1); g.globalAlpha = 0.28; ruins(1); g.restore();
+    // 光の帯と、さざ波
+    for (let i = 0; i < 46; i++) {
+      const t = rnd(i, 14), y = horizon + 2 * u + t * t * (deck - horizon - 4 * u);
+      const spread = (10 + t * 60) * u, x = lightX + (rnd(i, 15) - 0.5) * spread * 2, w = (6 + rnd(i, 16) * 18) * u * (0.5 + t);
+      g.fillStyle = `rgba(255,${Math.round(220 - t * 60)},${Math.round(150 - t * 50)},${0.75 - t * 0.55})`;
+      g.fillRect(Math.round(x - w / 2), Math.round(y), Math.round(w), Math.max(1, Math.round(u * (0.8 + t))));
+    }
+    g.fillStyle = 'rgba(180,220,230,0.18)';
+    for (let i = 0; i < 40; i++) { const t = rnd(i, 17), y = horizon + t * (deck - horizon), w = (8 + rnd(i, 18) * 30) * u; g.fillRect(rnd(i, 19) * W, y, w, Math.max(1, u * 0.7)); }
+    // 蓮
+    const lotus = (x, y, s) => {
+      g.fillStyle = '#1e5a3a'; g.beginPath(); g.ellipse(x, y, 11 * s, 3.2 * s, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2f7a48'; g.beginPath(); g.ellipse(x - 2 * s, y - 0.8 * s, 8 * s, 2.2 * s, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#f49ab8'; g.beginPath(); g.moveTo(x - 4 * s, y - 1 * s); g.quadraticCurveTo(x, y - 12 * s, x + 4 * s, y - 1 * s); g.fill();
+      g.fillStyle = '#ffd0e0'; g.beginPath(); g.moveTo(x - 1.5 * s, y - 2 * s); g.quadraticCurveTo(x, y - 9 * s, x + 1.5 * s, y - 2 * s); g.fill();
+    };
+    const lotusY = horizon + (deck - horizon) * 0.62;
+    lotus(W * 0.06, lotusY, u * 1.1); lotus(W * 0.94, lotusY + 6 * u, u * 1.2); lotus(W * 0.16, lotusY + 14 * u, u * 0.8); lotus(W * 0.86, lotusY - 8 * u, u * 0.7);
+    // ---- 石のテラス（遠近の目地） ----
+    const vy = horizon - ah * 0.2;
+    gr = g.createLinearGradient(0, deck, 0, H);
+    gr.addColorStop(0, '#9a7254'); gr.addColorStop(0.25, '#6a4a3a'); gr.addColorStop(1, '#2a1c1a');
+    g.fillStyle = gr; g.fillRect(0, deck, W, H - deck);
+    g.fillStyle = '#e8bc7a'; g.fillRect(0, deck, W, Math.max(1, Math.round(1.5 * u)));      // 縁の光
+    g.fillStyle = 'rgba(30,16,12,0.55)'; g.fillRect(0, deck + Math.round(1.5 * u), W, Math.max(1, Math.round(2 * u)));
+    g.strokeStyle = 'rgba(36,20,16,0.35)'; g.lineWidth = Math.max(1, u * 0.6);
+    let y = deck + 6 * u, step = 9 * u;
+    while (y < H) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); y += step; step *= 1.45; }
+    for (let i = -8; i <= 8; i++) {   // 奥（光の方）に向かってすぼまる目地
+      const xb = lightX + i * 60 * u, xt = lightX + (xb - lightX) * (deck - vy) / (H - vy);
+      g.beginPath(); g.moveTo(xt, deck + 2 * u); g.lineTo(xb, H); g.stroke();
+    }
+    // 人物の影
+    const shadow = (cx, rx) => {
+      const sy = ay + ah * 0.985;
+      const sg = g.createRadialGradient(cx, sy, 0, cx, sy, rx);
+      sg.addColorStop(0, 'rgba(14,10,12,0.55)'); sg.addColorStop(1, 'rgba(14,10,12,0)');
+      g.save(); g.translate(cx, sy); g.scale(1, 0.2); g.translate(-cx, -sy);
+      g.fillStyle = sg; g.beginPath(); g.arc(cx, sy, rx, 0, Math.PI * 2); g.fill(); g.restore();
+    };
+    if (img.complete && !img.dataset.fallback) { shadow(ax + aw * 0.25, aw * 0.24); shadow(ax + aw * 0.75, aw * 0.2); }
+    // ボタンの下を暗くして読みやすく
+    const btn = document.querySelector('.title-buttons').getBoundingClientRect();
+    const by = (btn.top - cr.top) * dpr;
+    gr = g.createLinearGradient(0, by - 30 * dpr, 0, H);
+    gr.addColorStop(0, 'rgba(8,28,36,0)'); gr.addColorStop(0.35, 'rgba(8,28,36,0.6)'); gr.addColorStop(1, 'rgba(6,20,26,0.88)');
+    g.fillStyle = gr; g.fillRect(0, by - 30 * dpr, W, H - by + 30 * dpr);
+    // 四隅を少し暗く
+    gr = g.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.45, Math.max(W, H) * 0.75);
+    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,8,14,0.55)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
   }
 
   // ================= モーダル =================
@@ -1065,6 +1159,8 @@
     bar.style.width = (r * 100) + '%';
     bar.className = r <= 0.3 ? 'low' : r <= 0.6 ? 'mid' : '';
     $('h-food').textContent = p.hunger;
+    const fb = $('h-foodbar'); fb.style.width = Math.max(0, Math.min(100, p.hunger / D.PLAYER.maxHunger * 100)) + '%';
+    fb.className = p.hunger <= 10 ? 'low' : p.hunger <= 30 ? 'mid' : '';
     $('h-status').textContent = p.poison ? '毒' + p.poison : '';
     $('h-food').className = p.hunger <= 10 ? 'hungry' : '';
     $('h-atk').textContent = G.playerAtk(run);
@@ -1077,7 +1173,7 @@
   function pushLog() {
     const run = UI.S.run;
     if (!run) return;
-    const lines = run.log.slice(-3);
+    const lines = run.log.slice(-2);
     $('log').innerHTML = lines.map((l, i) => `<div class="${i === lines.length - 1 ? 'new' : ''}">${esc(l)}</div>`).join('');
   }
   function showLog() {

@@ -7,9 +7,20 @@
   const SP = {};
 
   // ---------------- 色 ----------------
-  const hex2rgb = (h) => { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+  // 色の変換と混色は同じ組み合わせが何度も出るので覚えておく（大きな絵を描くときに速くするため）
+  const rgbCache = new Map(), mixCache = new Map();
+  const hex2rgb = (h) => {
+    let v = rgbCache.get(h);
+    if (!v) { const s = h.replace('#', ''); v = [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)]; if (rgbCache.size < 40000) rgbCache.set(h, v); }
+    return v;
+  };
   const rgb2hex = (r, g, b) => '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-  const mix = (a, b, t) => { const A = hex2rgb(a), B = hex2rgb(b); return rgb2hex(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t); };
+  const mix = (a, b, t) => {
+    const q = Math.round(t * 256), k = a + b + q;
+    let v = mixCache.get(k);
+    if (v === undefined) { const A = hex2rgb(a), B = hex2rgb(b), u = q / 256; v = rgb2hex(A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u, A[2] + (B[2] - A[2]) * u); if (mixCache.size < 60000) mixCache.set(k, v); }
+    return v;
+  };
   // 影は青紫寄り、光は暖色寄りにする（統一した色使い）
   const SHADOW = '#1d1033', LIGHT = '#fff6dc', INK = '#160c1e';
   const shade = (c, t) => (t >= 0 ? mix(c, LIGHT, t) : mix(c, SHADOW, -t));
@@ -835,14 +846,23 @@
     P.ball(16, 8, 1.8, 2.5, ramp('#ffffff'));
     return P.canvas();
   }
+  // 下り階段：石の枠の中に、奥（暗がり）へ下っていく段
   function stairsTile() {
-    const P = new Pix(32, 32);
-    P.rect(1, 1, 30, 30, '#140a08');
-    const R = ramp('#e8d0a0');
+    const P = new Pix(32, 32), F = ramp('#c8b48c'), S = ramp('#a8987c');
+    P.rect(2, 2, 28, 28, '#0c0808');
     for (let i = 0; i < 6; i++) {
-      for (let y = Math.round(3 + i * 4.5); y < Math.round(3 + i * 4.5) + 4; y++) for (let x = 3 + i * 2; x < 29 - i * 2; x++) P.set(x, y, R[Math.min(4, Math.floor(i * 0.7 + (y - (3 + i * 4.5)) / 3))]);
+      const y = 4 + i * 4, inset = 4 + i, t = i / 6;
+      const top = shade('#d8c8a4', -t * 0.9), front = shade('#9a8a6c', -t * 0.95);
+      P.rect(inset, y, 32 - inset * 2, 2, top);
+      P.rect(inset, y + 2, 32 - inset * 2, 2, front);
+      P.set(inset, y, shade('#d8c8a4', 0.2 - t)); P.set(31 - inset, y + 1, shade('#5a4a3a', -t));
     }
-    P.rect(0, 0, 32, 1, '#ffe8a0'); P.rect(0, 31, 32, 1, '#2a1a10'); P.rect(0, 0, 1, 32, '#ffe8a0'); P.rect(31, 0, 1, 32, '#2a1a10');
+    // 左右の側壁と、手前の縁
+    P.poly([[2, 2], [4, 4], [10, 28], [2, 30]], (x, y) => S[P.idx(2.4 + y / 30, x, y, false)]);
+    P.poly([[30, 2], [28, 4], [22, 28], [30, 30]], (x, y) => S[P.idx(3.2 + y / 40, x, y, false)]);
+    P.rect(0, 0, 32, 2, F[1]); P.rect(0, 0, 2, 32, F[1]); P.rect(30, 0, 2, 32, F[3]); P.rect(0, 30, 32, 2, F[3]);
+    P.rect(1, 1, 30, 1, F[0]);
+    P.set(0, 0, F[2]); P.set(31, 31, F[4]);
     return P.canvas();
   }
   function returnStone(f) {

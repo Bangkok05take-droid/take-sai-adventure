@@ -1,0 +1,488 @@
+/* ダンジョンの地形の絵（地域ごとの景観）。
+ * 1マス32×32を、探索で見えたときに一度だけ画素バッファに描いて地形キャンバスへ転送する（毎フレームは描かない）。
+ * ・床の石は「マップ全体の座標」で敷き詰めるので、石の継ぎ目がマスの境目と一致せず、大きさの違う石・欠け・ひびが自然に並ぶ。
+ * ・壁は「上面・正面・根元の影」を描き分け、床には壁の影を落として高さの違いを出す。
+ * ・水の地域では、正面の見えない壁を水面として描く（通れないことは変わらない。地形や当たり判定は変更しない）。
+ * ・部屋ごとに見せ場（柱・壁画・仏像のくぼみ・床のモザイク・金の縁取り・結晶・根と苔）を1つ選ぶ。
+ * 光は左上から。輪郭ははっきり、点模様のノイズではなく形で見せる。 */
+(function (TS) {
+  'use strict';
+  const SP = TS.Sprites;
+  const TL = {};
+  const WALL = 0, FLOOR = 1, CORR = 2;
+  const hash = (x, y, s) => SP.hash(x | 0, y | 0, s | 0);
+
+  // ---------------- 色 ----------------
+  const rgb = (h) => { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+  const LIGHT = [255, 246, 220], SHADOW = [29, 16, 51];
+  const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  const sh = (c, t) => (t >= 0 ? mixc(c, LIGHT, Math.min(1, t)) : mixc(c, SHADOW, Math.min(1, -t)));
+
+  // ---------------- なめらかなノイズ（模様の大きなむら用） ----------------
+  const hf = (x, y, s) => (hash(x, y, s) & 1023) / 1023;
+  function noise(x, y, s) {
+    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const a = hf(xi, yi, s), b = hf(xi + 1, yi, s), c = hf(xi, yi + 1, s), d = hf(xi + 1, yi + 1, s);
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  }
+
+  // ---------------- 地域ごとの材質 ----------------
+  const M = {
+    brick: {   // 1〜3階：赤レンガの回廊（アユタヤの遺跡）
+      floor: ['#b88c62', '#ac8058', '#c29a6e', '#a47a52'], grout: '#5a3a26', slab: 'mixed',
+      corr: ['#8c6c4e', '#7e6046', '#967454'], dirt: '#3e2a1e',
+      wall: ['#ae542e', '#b8603a', '#9c4a28', '#c06a40'], mortar: '#5e3020', brickW: 14, brickH: 6,
+      top: 'rubble', topC: ['#4a2c20', '#563424', '#3e241a'], topGap: '#24140e', rim: '#8a5a40',
+      pillar: '#d8c4a0', accent: '#e8b84a', mural: '#c89a5a', moss: '#6a8a3a',
+      feats: ['plain', 'pillars', 'mural', 'statue', 'mosaic', 'plain', 'pillars'],
+    },
+    roots: {   // 4〜6階：根に覆われた神殿
+      floor: ['#948e66', '#888260', '#a09a70', '#7e785a'], grout: '#3a3622', slab: 'flag',
+      corr: ['#6e6448', '#625a40', '#7a6e50'], dirt: '#2c2416',
+      wall: ['#7e5e42', '#8a684a', '#72543a', '#94704e'], mortar: '#3a2818', brickW: 20, brickH: 8,
+      top: 'earth', topC: ['#33281a', '#3c3020', '#2a2014'], topGap: '#1a140c', rim: '#6a5236',
+      pillar: '#b8a888', accent: '#d8b860', mural: '#a8905a', moss: '#4f8a38', root: '#5a3a1e', leaf: '#6aaa48',
+      feats: ['overgrown', 'overgrown', 'statue', 'plain', 'pillars'],
+    },
+    water: {   // 7〜9階：水に沈んだ回廊
+      floor: ['#aab8b2', '#9eaea8', '#b4c2ba', '#94a49e'], grout: '#4a5e62', slab: 'tile',
+      corr: ['#8a9a96', '#7e8e8a', '#96a6a0'], dirt: '#2e3e42',
+      wall: ['#5a7e8c', '#668a98', '#4e7280', '#6e92a0'], mortar: '#2a4048', brickW: 16, brickH: 8,
+      top: 'rubble', topC: ['#1c3440', '#22404c', '#182c36'], topGap: '#0c1c24', rim: '#5a7a84',
+      water: '#2a86a6', deep: '#145a78', ledge: '#c4ccc0',
+      pillar: '#d4dcd4', accent: '#7ad8e8', mural: '#8ab0b0', moss: '#4a8a6a', lotus: true,
+      feats: ['plain', 'mosaic', 'pillars', 'statue', 'plain'],
+    },
+    orb: {     // 10階：宝珠の間（守護獅子）
+      floor: ['#c8a272', '#be986a', '#d0aa7a', '#b48e62'], grout: '#7a5a22', slab: 'temple',
+      corr: ['#a4845c', '#9a7a54', '#ae8e64'], dirt: '#4a3418',
+      wall: ['#b07c3c', '#bc8846', '#a47034', '#c4904e'], mortar: '#5a3a14', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#3a2610', '#442e14', '#30200c'], topGap: '#1e1406', rim: '#c89a4a',
+      pillar: '#e8d4a8', accent: '#ffd84a', mural: '#c8963a',
+      feats: ['goldtrim'],
+    },
+    garden: {  // 11〜15階：苔むした庭園
+      floor: ['#9aa274', '#8e966a', '#a6ae7e', '#848c62'], grout: '#465030', slab: 'flag',
+      corr: ['#7e7a54', '#72704c', '#8a865c'], dirt: '#2e3018',
+      wall: ['#7c8660', '#88926a', '#707a56', '#929c72'], mortar: '#3a4226', brickW: 18, brickH: 8,
+      top: 'hedge', topC: ['#2e5a2a', '#3a6c32', '#24481f'], topGap: '#14280f', rim: '#4f8a3a',
+      pillar: '#c8c4a8', accent: '#f0c850', mural: '#a8a46a', moss: '#5a9a3a', leaf: '#6aaa48', root: '#4a3018', flower: ['#e05a8a', '#ffd84a', '#ffffff'],
+      feats: ['overgrown', 'mosaic', 'plain', 'statue', 'overgrown'],
+    },
+    sunken: {  // 16〜20階：沈んだ都
+      floor: ['#84a0a6', '#7a969c', '#8eaab0', '#708c92'], grout: '#2c4850', slab: 'tile',
+      corr: ['#6a8288', '#60787e', '#748c92'], dirt: '#1e3036',
+      wall: ['#40687a', '#4a7486', '#385e70', '#527c8e'], mortar: '#1c3440', brickW: 18, brickH: 8,
+      top: 'rubble', topC: ['#12303c', '#163846', '#0e2832'], topGap: '#081820', rim: '#3e6a78',
+      water: '#1e6c8c', deep: '#0e3c56', ledge: '#9ab4b4',
+      pillar: '#a8c4c4', accent: '#ffd84a', mural: '#6a9aa0', moss: '#4a8a6a', lotus: true,
+      feats: ['plain', 'pillars', 'mural', 'statue'],
+    },
+    crystal: { // 21〜25階：結晶の洞窟
+      floor: ['#625e84', '#58547a', '#6c688e', '#504c70'], grout: '#2a2840', slab: 'cave',
+      corr: ['#4e4a6a', '#464262', '#585474'], dirt: '#1c1a2c',
+      wall: ['#4c4874', '#56527e', '#44406a', '#5e5a88'], mortar: '#221f38', brickW: 0, brickH: 0,
+      top: 'rock', topC: ['#1a1830', '#201e3a', '#141228'], topGap: '#0a0916', rim: '#4a467a',
+      pillar: '#9a96c8', accent: '#7af0ff', crystal: '#7af0ff', crystal2: '#c890ff', mural: '#6a68a0',
+      feats: ['crystals', 'crystals', 'plain', 'statue'],
+    },
+    gold: {    // 26〜29階：金の神殿
+      floor: ['#c2a464', '#b89a5c', '#ccae6e', '#ae9056'], grout: '#6a4a18', slab: 'temple',
+      corr: ['#9e8450', '#947a48', '#a88e58'], dirt: '#3e2e10',
+      wall: ['#a8823c', '#b48e46', '#9c7634', '#c09a50'], mortar: '#4e3610', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#32240c', '#3a2a10', '#2a1e08'], topGap: '#180f04', rim: '#d0a040',
+      pillar: '#f0dca0', accent: '#ffd84a', mural: '#c08a30',
+      feats: ['goldtrim', 'pillars', 'mural', 'mosaic', 'statue', 'goldtrim'],
+    },
+    shrine: {  // 30階：願いの宝珠の間
+      floor: ['#c8b4dc', '#bea8d2', '#d2bee6', '#b49ec8'], grout: '#6e5094', slab: 'temple',
+      corr: ['#a490bc', '#9a86b2', '#ae9ac6'], dirt: '#3a2a50',
+      wall: ['#8a6ab0', '#9676bc', '#7e60a4', '#a282c8'], mortar: '#3e2a5a', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#26183a', '#2e1e44', '#201430'], topGap: '#120a1e', rim: '#c8a0f0',
+      pillar: '#efe4ff', accent: '#ffd84a', mural: '#9a7ac0',
+      feats: ['goldtrim', 'mosaic', 'pillars'],
+    },
+  };
+  // 色を配列に変換しておく
+  for (const k of Object.keys(M)) {
+    const t = M[k];
+    for (const f of ['floor', 'corr', 'wall', 'topC', 'flower']) if (t[f]) t[f] = t[f].map(rgb);
+    for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2']) if (t[f]) t[f] = rgb(t[f]);
+    t.isWater = !!t.water;
+  }
+  TL.isWaterTheme = (theme) => !!(M[theme] && M[theme].isWater);
+
+  // ---------------- 画素バッファ ----------------
+  const img = typeof ImageData !== 'undefined' ? new ImageData(32, 32) : { data: new Uint8ClampedArray(4096) };
+  const buf = img.data;
+  const put = (x, y, c) => { if (x < 0 || y < 0 || x > 31 || y > 31) return; const i = (y * 32 + x) * 4; buf[i] = c[0]; buf[i + 1] = c[1]; buf[i + 2] = c[2]; buf[i + 3] = 255; };
+  const get = (x, y) => { const i = (y * 32 + x) * 4; return [buf[i], buf[i + 1], buf[i + 2]]; };
+  const dark = (x, y, f) => { if (x < 0 || y < 0 || x > 31 || y > 31) return; const i = (y * 32 + x) * 4; buf[i] *= f; buf[i + 1] *= f; buf[i + 2] *= f * 1.04; };
+  const rect = (x, y, w, h, c) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) put(i, j, c); };
+  const disc = (cx, cy, rx, ry, fn) => {
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry, q = nx * nx + ny * ny;
+      if (q <= 1) put(x, y, fn(nx, ny, q));
+    }
+  };
+
+  // ---------------- 床の石（マップ座標で敷く） ----------------
+  const ROWS = {
+    mixed: [[0, 16, 32, 48, 64], [0, 20, 40, 64], [0, 12, 28, 44, 64], [0, 24, 44, 64]],
+    flag: [[0, 22, 42, 64], [0, 18, 40, 64], [0, 26, 46, 64]],
+    tile: [[0, 16, 32, 48, 64]],
+    temple: [[0, 32, 64], [0, 21, 42, 64]],
+  };
+  const COLS = {
+    mixed: [[0, 18, 40, 64], [0, 26, 44, 64], [0, 14, 32, 50, 64], [0, 22, 64], [0, 30, 48, 64]],
+    flag: [[0, 24, 44, 64], [0, 30, 64], [0, 16, 38, 64], [0, 20, 46, 64]],
+    tile: [[0, 16, 32, 48, 64]],
+    temple: [[0, 32, 64], [0, 21, 42, 64]],
+  };
+  function seg(list, v) { for (let i = 0; i < list.length - 1; i++) if (v < list[i + 1]) return i; return list.length - 2; }
+  function slabAt(style, wx, wy, seed) {
+    const rows = ROWS[style], cols = COLS[style];
+    const by = Math.floor(wy / 64), ly = wy - by * 64;
+    const rp = rows[hash(by, 1, seed) % rows.length], ri = seg(rp, ly), rowId = by * 8 + ri;
+    const off = style === 'tile' ? (ri % 2) * 8 : style === 'temple' ? 0 : hash(rowId, 2, seed) % 40;
+    const sx = wx + off, bx = Math.floor(sx / 64), lx = sx - bx * 64;
+    const cp = cols[hash(bx, rowId, seed) % cols.length], ci = seg(cp, lx);
+    return { id: hash(bx * 8 + ci, rowId, seed + 5), lx: lx - cp[ci], ly: ly - rp[ri], w: cp[ci + 1] - cp[ci], h: rp[ri + 1] - rp[ri] };
+  }
+  // 石畳の床
+  function slabPixel(T, wx, wy, seed) {
+    const s = slabAt(T.slab, wx, wy, seed);
+    if (s.lx === 0 || s.ly === 0) return T.grout;
+    const tone = T.floor[s.id % T.floor.length];
+    // 欠け：角が欠けて下の土が見える
+    if (s.id % 7 === 1 && s.lx + s.ly < 6) return s.lx + s.ly >= 5 ? sh(tone, 0.22) : sh(T.grout, 0.08);
+    if (s.id % 13 === 4 && (s.w - s.lx) + (s.h - s.ly) < 7) return (s.w - s.lx) + (s.h - s.ly) >= 6 ? sh(tone, -0.3) : sh(T.grout, 0.08);
+    // ひび：石を斜めに走る細い線
+    if (s.id % 9 === 2) {
+      const t = s.lx / s.w, cy = s.h * (0.25 + 0.5 * t) + ((hash(s.lx >> 1, s.id, 3) & 3) - 1.5) * 0.6;
+      if (t > 0.15 && t < 0.85) { if (Math.abs(s.ly - cy) < 0.6) return sh(tone, -0.42); if (Math.abs(s.ly - 1 - cy) < 0.6) return sh(tone, 0.2); }
+    }
+    let k = 0;
+    if (s.lx === 1 || s.ly === 1) k = 0.15; else if (s.lx === s.w - 1 || s.ly === s.h - 1) k = -0.2;
+    k += (noise(wx / 26, wy / 26, seed) - 0.5) * 0.16;                       // すり減り・汚れの大きなむら
+    if (T.slab === 'temple' && s.lx > 2 && s.ly > 2 && s.lx - s.ly === 2) k += 0.1; // 磨いた石の映り込み
+    return sh(tone, k);
+  }
+  // 通路：小石を踏み固めた道
+  function cobblePixel(cols, gap, wx, wy, seed, cell) {
+    const cx = Math.floor(wx / cell), cy = Math.floor(wy / cell);
+    let b1 = 1e9, b2 = 1e9, id = 0, px = 0, py = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const gx = cx + dx, gy = cy + dy, h = hash(gx, gy, seed);
+      const ox = (gx + 0.2 + (h & 255) / 255 * 0.6) * cell, oy = (gy + 0.2 + ((h >>> 8) & 255) / 255 * 0.6) * cell;
+      const d = (wx + 0.5 - ox) ** 2 + (wy + 0.5 - oy) ** 2;
+      if (d < b1) { b2 = b1; b1 = d; id = h; px = ox; py = oy; } else if (d < b2) b2 = d;
+    }
+    const edge = Math.sqrt(b2) - Math.sqrt(b1);
+    if (edge < 1.3) return gap;
+    const tone = cols[id % cols.length];
+    const k = -((wx + 0.5 - px) + (wy + 0.5 - py)) / cell * 0.35 + (edge < 2.3 ? -0.12 : 0);
+    return sh(tone, k);
+  }
+
+  // ---------------- 部屋の見せ場 ----------------
+  function roomFeature(T, room, floor, seed) {
+    if (!room) return 'none';
+    if (room.feat) return room.feat;
+    const f = T.feats[hash(room.id || 0, floor, seed + 31) % T.feats.length];
+    Object.defineProperty(room, 'feat', { value: f, enumerable: false, configurable: true, writable: true });
+    return f;
+  }
+  // モザイク（部屋の中央の飾り床）：蓮の花の形
+  function mosaicClass(room, wx, wy) {
+    const cx = (room.x + room.w / 2) * 32, cy = (room.y + room.h / 2) * 32;
+    const R = Math.min(52, Math.min(room.w, room.h) * 32 * 0.4);
+    const dx = wx + 0.5 - cx, dy = wy + 0.5 - cy, r = Math.hypot(dx, dy);
+    if (r > R) return 0;
+    if (r > R - 3) return 1;                                     // 外の輪
+    const a = Math.atan2(dy, dx);
+    if (r < R * 0.2) return 4;                                   // 中央の宝石
+    if (r < (R - 4) * (0.42 + 0.5 * Math.abs(Math.cos(a * 4)))) return 3; // 花びら
+    return 2;                                                    // 地
+  }
+
+  /* 1マスを描く。戻り値 { torch, water, glow } */
+  TL.paint = function (run, L, x, y, theme) {
+    const T = M[theme] || M.brick, m = run.map, W = m.w, H = m.h, seed = (run.seed ^ (run.floor * 7919)) >>> 0;
+    const tiles = m.tiles;
+    const at = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H ? WALL : tiles[yy * W + xx]);
+    const walk = (xx, yy) => at(xx, yy) !== WALL;
+    const room = (xx, yy) => { const id = L.roomGrid[yy * W + xx]; return id >= 0 ? m.rooms[id] : null; };
+    const k = at(x, y), x0 = x * 32, y0 = y * 32;
+    const out = { torch: false, water: false };
+    // 水の地域：正面の見えない壁は水面（岸から2マスまで）
+    const isFace = (xx, yy) => at(xx, yy) === WALL && walk(xx, yy + 1);
+    const waterAt = (xx, yy) => T.isWater && at(xx, yy) === WALL && !isFace(xx, yy) && L.ring[yy * W + xx] > 0;
+
+    if (k !== WALL) {
+      // ---------- 床 ----------
+      const rm = k === FLOOR ? room(x, y) : null;
+      const feat = rm ? roomFeature(T, rm, run.floor, seed) : 'none';
+      let near = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!walk(x + dx, y + dy)) near++;
+      for (let ly = 0; ly < 32; ly++) for (let lx = 0; lx < 32; lx++) {
+        const wx = x0 + lx, wy = y0 + ly;
+        let c;
+        if (k === CORR) c = cobblePixel(T.corr, T.dirt, wx, wy, seed, 9);
+        else if (T.slab === 'cave') {
+          c = cobblePixel(T.floor, T.grout, wx, wy, seed, 15);
+          const v = Math.abs(noise(wx / 20, wy / 20, seed + 9) - 0.5);
+          const vein = noise(wx / 40, wy / 40, seed + 10) > 0.55;   // 結晶の筋は床の一部だけ
+          if (vein && v < 0.011) c = mixc(T.crystal, c, 0.35); else if (vein && v < 0.026) c = mixc(c, T.crystal, 0.2);
+        } else c = slabPixel(T, wx, wy, seed);
+        // 苔・草（庭園・根の地域、草むらの部屋）
+        if (T.moss && (feat === 'overgrown' || theme === 'garden' || theme === 'roots')) {
+          // 壁ぎわ・継ぎ目に寄せて生える（床全体を埋めない）
+          const amt = noise(wx / 11, wy / 11, seed + 3) * 0.75 + near * 0.06 + (feat === 'overgrown' ? 0.08 : 0) + (theme === 'garden' ? 0.04 : 0);
+          if (amt > 0.8) c = mixc(sh(T.moss, ((wx * 7 + wy * 3) % 5 === 0) ? 0.25 : -0.1 - (amt - 0.8)), c, 0.12);
+          else if (amt > 0.74 && (wx + wy) % 2 === 0 && (c === T.grout || (wx * 3 + wy) % 3 === 0)) c = mixc(c, T.moss, 0.55);
+        }
+        // 見せ場の床
+        if (feat === 'mosaic' && rm) {
+          const cl = mosaicClass(rm, wx, wy);
+          if (cl) {
+            const edge = mosaicClass(rm, wx + 1, wy) !== cl || mosaicClass(rm, wx, wy + 1) !== cl;
+            // 石に埋め込んだ象眼：床の色になじませた落ち着いた色
+            const fl = T.floor[0];
+            const pal = [null, mixc(sh(T.accent, -0.4), fl, 0.3), mixc(sh(T.mural, -0.35), fl, 0.35), mixc(T.accent, fl, 0.42), theme === 'brick' || theme === 'gold' ? [70, 150, 140] : mixc(sh(T.accent, 0.4), fl, 0.3)];
+            c = edge ? sh(T.grout, -0.15) : sh(pal[cl], (cl === 3 && (wx + wy) % 9 === 0 ? 0.15 : 0) + (noise(wx / 20, wy / 20, seed) - 0.5) * 0.12);
+          }
+        }
+        if (feat === 'goldtrim' && rm) {
+          const dx = Math.min(wx - rm.x * 32, (rm.x + rm.w) * 32 - 1 - wx), dy = Math.min(wy - rm.y * 32, (rm.y + rm.h) * 32 - 1 - wy), d = Math.min(dx, dy);
+          if (d === 4 || d === 10) c = T.accent; else if (d === 5 || d === 11) c = sh(T.accent, -0.45);
+          else if (d > 5 && d < 10) { const along = dx === d ? wy : wx; c = (Math.abs((along % 12) - 6) + (d - 6) < 3) ? sh(T.accent, -0.1) : sh(T.grout, 0.1); }
+        }
+        put(lx, ly, c);
+      }
+      // 壁の影（光は左上から：上と左の壁が床に影を落とす）
+      const wallN = at(x, y - 1) === WALL && !waterAt(x, y - 1), wallW = at(x - 1, y) === WALL && !waterAt(x - 1, y), wallNW = at(x - 1, y - 1) === WALL && !waterAt(x - 1, y - 1);
+      if (wallN) for (let ly = 0; ly < 7; ly++) for (let lx = 0; lx < 32; lx++) dark(lx, ly, 0.5 + ly * 0.072);
+      if (wallW) for (let lx = 0; lx < 5; lx++) for (let ly = 0; ly < 32; ly++) dark(lx, ly, 0.62 + lx * 0.076);
+      if (wallNW && !wallN && !wallW) for (let ly = 0; ly < 6; ly++) for (let lx = 0; lx < 6 - ly; lx++) dark(lx, ly, 0.6 + (lx + ly) * 0.06);
+      // 水辺の床は少し濡れて暗い
+      if (T.isWater) for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) if (waterAt(x + dx, y + dy)) {
+        for (let i = 0; i < 32; i++) for (let j = 0; j < 3; j++) { const px = dx === 1 ? 31 - j : dx === -1 ? j : i, py = dy === 1 ? 31 - j : dy === -1 ? j : i; dark(px, py, 0.82 + j * 0.05); }
+      }
+    } else if (waterAt(x, y)) {
+      // ---------- 水面 ----------
+      out.water = true;
+      const deepT = L.ring[y * W + x] >= 2;
+      const base = deepT ? T.deep : T.water;
+      for (let ly = 0; ly < 32; ly++) for (let lx = 0; lx < 32; lx++) {
+        const wx = x0 + lx, wy = y0 + ly;
+        const n = noise(wx / 22, wy / 14, seed + 4);
+        const w = Math.sin(wx * 0.32 + wy * 0.85 + n * 7);
+        let c = sh(base, (n - 0.5) * 0.18);
+        if (!deepT && ((wx * 5 + wy * 3) % 23 === 0 || noise(wx / 7, wy / 7, seed + 8) > 0.82)) c = mixc(c, T.ledge, 0.18); // 浅瀬の底の石
+        if (w > 0.94) c = sh(c, 0.28); else if (w < -0.96) c = sh(c, -0.2);
+        put(lx, ly, c);
+      }
+      // 岸の石の縁（通れる床に接する辺）
+      const ledge = (side) => {
+        for (let i = 0; i < 32; i++) for (let j = 0; j < 6; j++) {
+          const px = side === 'w' ? j : side === 'e' ? 31 - j : i, py = side === 'n' ? j : side === 's' ? 31 - j : i;
+          if (j < 3) put(px, py, sh(T.ledge, side === 's' ? (j === 2 ? 0.2 : -0.25 - j * 0.05) : j === 0 ? 0.12 : j === 2 ? -0.3 : 0));
+          else if (j === 3) put(px, py, sh(T.deep, -0.5));
+          else dark(px, py, 0.7 + (j - 4) * 0.12);
+        }
+      };
+      if (walk(x, y - 1)) ledge('n'); if (walk(x - 1, y)) ledge('w'); if (walk(x + 1, y)) ledge('e'); if (walk(x, y + 1)) ledge('s');
+      for (const [dx, dy, cx, cy] of [[-1, -1, 0, 0], [1, -1, 29, 0], [-1, 1, 0, 29], [1, 1, 29, 29]]) {
+        if (walk(x + dx, y + dy) && !walk(x + dx, y) && !walk(x, y + dy)) rect(cx, cy, 3, 3, sh(T.ledge, -0.1));
+      }
+      // 蓮の葉と花
+      if (T.lotus && hash(x, y, seed + 21) % 5 === 0) {
+        const cx = 8 + hash(x, y, 1) % 16, cy = 9 + hash(x, y, 2) % 14, pad = [52, 128, 70];
+        disc(cx, cy, 5.5, 3.2, (nx, ny) => (nx > 0.1 && Math.abs(ny) < 0.18 ? sh(base, -0.1) : sh(pad, -ny * 0.3 - nx * 0.15)));
+        if (hash(x, y, 3) % 2) { disc(cx - 1, cy - 2, 2.2, 2.4, (nx, ny) => sh([244, 150, 184], -ny * 0.4)); put(cx - 1, cy - 3, [255, 230, 240]); }
+      }
+    } else if (walk(x, y + 1)) {
+      // ---------- 壁の正面（下が床） ----------
+      const below = room(x, y + 1);
+      const feat = below ? roomFeature(T, below, run.floor, seed) : 'none';
+      const rx = below ? x - below.x : -1;
+      for (let ly = 0; ly < 32; ly++) for (let lx = 0; lx < 32; lx++) {
+        const wx = x0 + lx;
+        let c;
+        if (ly < 5) { // 壁の上面のふち
+          c = ly === 4 ? sh(T.rim, 0.25) : ly === 3 ? T.rim : sh(T.topC[0], 0.1 - (3 - ly) * 0.05);
+        } else if (ly >= 28) { // 根元：暗く湿った帯
+          c = sh(T.wall[0], -0.45 - (ly - 28) * 0.07);
+        } else if (!T.brickW) { // 岩肌（結晶の洞窟）
+          const n = noise(wx / 9, ly / 7, seed + y);
+          c = sh(T.wall[Math.min(3, (n * 4) | 0)], (n - 0.5) * 0.5 - (ly - 5) / 23 * 0.25);
+          if (Math.abs(noise(wx / 6, ly / 5, seed + 2) - 0.5) < 0.03) c = sh(c, -0.35);
+        } else {
+          const bh = T.brickH, row = Math.floor((ly - 5) / bh), ry = (ly - 5) % bh, off = (row + y) % 2 ? T.brickW >> 1 : 0;
+          const bx = Math.floor((wx + off) / T.brickW), bl = (wx + off) % T.brickW;
+          if (ry === bh - 1 || bl === 0) c = T.mortar;
+          else {
+            const id = hash(bx, row + y * 8, seed + 11);
+            c = sh(T.wall[id % T.wall.length], (ry === 0 ? 0.18 : ry === bh - 2 ? -0.16 : 0) + (bl === 1 ? 0.08 : 0) - (ly - 5) / 23 * 0.2);
+            if (id % 17 === 0 && ry > 0 && bl > 1) c = sh(T.mortar, -0.1);       // 抜け落ちたレンガ
+          }
+        }
+        put(lx, ly, c);
+      }
+      // 角の陰影
+      if (walk(x - 1, y)) for (let ly = 3; ly < 32; ly++) { put(0, ly, sh(get(0, ly), 0.18)); }
+      else if (at(x - 1, y) === WALL && !isFace(x - 1, y)) for (let ly = 5; ly < 32; ly++) for (let lx = 0; lx < 3; lx++) dark(lx, ly, 0.6 + lx * 0.13);
+      if (walk(x + 1, y)) for (let ly = 3; ly < 32; ly++) { dark(31, ly, 0.55); dark(30, ly, 0.8); }
+      // 苔・水あと
+      if (T.moss && (feat === 'overgrown' || T.isWater || theme === 'garden')) for (let lx = 0; lx < 32; lx++) {
+        const h = Math.floor(noise((x0 + lx) / 6, y, seed + 6) * 9);
+        for (let ly = 28 - h; ly < 28; ly++) if ((lx + ly) % 3) put(lx, ly, sh(T.moss, -0.2 + (ly - 20) * 0.02));
+      }
+      // 見せ場
+      const center = below ? Math.floor(below.w / 2) : -9;
+      if (feat === 'pillars' && rx >= 0 && rx % 3 === 1) drawPillar(T);
+      else if (feat === 'goldtrim' && rx >= 0 && rx % 4 === 1) drawPillar(T, true);
+      else if (feat === 'mural' && (rx === center || (below.w >= 8 && rx === center - 3))) drawMural(T, hash(x, y, seed) % 3);
+      else if (feat === 'statue' && rx === center) drawStatue(T, theme, hash(x, y, seed) % 2 === 0);
+      else if (feat === 'overgrown' && hash(x, y, seed + 2) % 2 === 0) drawRoots(T, hash(x, y, seed));
+      else if (feat === 'crystals' && hash(x, y, seed + 2) % 3 === 0) drawCrystals(T, hash(x, y, seed), 30);
+      else if (!below || hash(x, y, seed + 7) % 6 === 0) out.torch = hash(x, y, seed + 1) % 3 === 0;
+      if (feat === 'goldtrim') { for (let lx = 0; lx < 32; lx++) { put(lx, 9, sh(T.accent, 0.2)); put(lx, 10, T.accent); put(lx, 11, sh(T.accent, -0.4)); if ((x0 + lx) % 8 < 2) put(lx, 10, sh(T.accent, 0.5)); } }
+    } else {
+      // ---------- 壁の上面（通れない塊） ----------
+      drawTop(T, theme, x0, y0, seed);
+      // 床に接する辺のふち（高さが分かるように）
+      if (walk(x, y - 1)) { for (let lx = 0; lx < 32; lx++) { put(lx, 0, sh(T.rim, 0.3)); put(lx, 1, T.rim); put(lx, 2, sh(T.rim, -0.35)); } }
+      if (walk(x - 1, y)) { for (let ly = 0; ly < 32; ly++) { put(0, ly, sh(T.rim, 0.3)); put(1, ly, T.rim); put(2, ly, sh(T.rim, -0.35)); } }
+      if (walk(x + 1, y)) { for (let ly = 0; ly < 32; ly++) { put(31, ly, sh(T.rim, -0.45)); put(30, ly, sh(T.rim, -0.2)); } }
+      // 上面の飾り（床に接する塊だけ）
+      let edge = false; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (walk(x + dx, y + dy)) edge = true;
+      if (edge) {
+        const nb = room(x, Math.min(H - 1, y + 1)) || room(x, Math.max(0, y - 1)) || room(Math.max(0, x - 1), y) || room(Math.min(W - 1, x + 1), y);
+        const feat = nb ? roomFeature(T, nb, run.floor, seed) : 'none';
+        const h = hash(x, y, seed + 13);
+        if (theme === 'crystal' && (feat === 'crystals' ? h % 2 === 0 : h % 5 === 0)) { drawCrystals(T, h, 22); out.glow = true; }
+        else if ((theme === 'brick' || theme === 'roots') && h % 11 === 0) drawRubble(T, h);
+        else if (theme === 'garden' && h % 4 === 0) drawFlowers(T, h);
+      }
+    }
+    L.g.putImageData(img, x0, y0);
+    return out;
+  };
+
+  // ---------------- 部品 ----------------
+  function drawTop(T, theme, x0, y0, seed) {
+    for (let ly = 0; ly < 32; ly++) for (let lx = 0; lx < 32; lx++) {
+      const wx = x0 + lx, wy = y0 + ly;
+      let c;
+      if (T.top === 'hedge') { // 生け垣：丸い葉の茂み
+        c = cobblePixel(T.topC, T.topGap, wx, wy, seed + 40, 10);
+        if ((wx * 3 + wy * 5) % 7 === 0) c = sh(c, 0.22);
+      } else if (T.top === 'earth') { // 土と根
+        c = sh(T.topC[0], (noise(wx / 10, wy / 10, seed + 41) - 0.5) * 0.5);
+        const r = Math.abs(noise(wx / 16, wy / 16, seed + 42) - 0.5);
+        if (r < 0.025) c = sh(T.root, 0.15); else if (r < 0.045) c = T.root;
+      } else if (T.top === 'temple') { // 暗い石組み
+        const s = slabAt('temple', wx, wy, seed + 43);
+        c = s.lx === 0 || s.ly === 0 ? T.topGap : sh(T.topC[s.id % T.topC.length], s.lx === 1 || s.ly === 1 ? 0.12 : 0);
+      } else if (T.top === 'rock') {
+        c = cobblePixel(T.topC, T.topGap, wx, wy, seed + 44, 13);
+      } else c = cobblePixel(T.topC, T.topGap, wx, wy, seed + 45, 8); // がれき
+      put(lx, ly, c);
+    }
+  }
+  function drawPillar(T, gold) {
+    const P = T.pillar, A = T.accent;
+    for (let ly = 2; ly < 32; ly++) for (let lx = 8; lx < 24; lx++) {
+      const cap = ly < 7, base = ly > 26;
+      if (!cap && !base && (lx < 10 || lx > 21)) continue;
+      const x0 = cap || base ? 8 : 10, x1 = cap || base ? 23 : 21;
+      const t = (lx - x0) / (x1 - x0);
+      let c = sh(P, 0.28 - t * 0.6);
+      if (lx === x0 || lx === x1 || ly === 2 || ly === 31) c = sh(P, -0.6);
+      else if (cap && (ly === 6)) c = sh(P, -0.35);
+      else if (base && ly === 27) c = sh(P, 0.3);
+      else if (!cap && !base && (lx - 10) % 4 === 3) c = sh(c, -0.12);       // 縦の溝
+      if (gold && (ly === 4 || ly === 29)) c = sh(A, 0.1 - t * 0.4);
+      put(lx, ly, c);
+    }
+  }
+  function drawMural(T, kind) {
+    const fr = sh(T.accent, -0.2), bg = T.mural;
+    for (let ly = 7; ly < 25; ly++) for (let lx = 4; lx < 28; lx++) {
+      const edge = lx === 4 || lx === 27 || ly === 7 || ly === 24, frame = lx === 5 || lx === 26 || ly === 8 || ly === 23;
+      put(lx, ly, edge ? [40, 24, 18] : frame ? fr : sh(bg, (noise(lx / 5, ly / 5, kind) - 0.5) * 0.25 - 0.05));
+    }
+    const ink = [92, 36, 26], hi = [240, 220, 170];
+    if (kind === 0) { // 象
+      disc(17, 16.5, 6.5, 3.6, () => ink); disc(10.5, 14.5, 3, 3, () => ink);
+      for (let i = 0; i < 6; i++) put(8 - (i > 3 ? 1 : 0), 15 + i, ink);
+      rect(12, 19, 2, 3, ink); rect(16, 19, 2, 3, ink); rect(20, 19, 2, 3, ink);
+      put(10, 13, hi); rect(13, 11, 7, 2, [180, 60, 50]); put(16, 10, T.accent);
+    } else if (kind === 1) { // 蓮
+      disc(16, 17, 3, 5.5, (nx, ny) => sh([230, 120, 150], -ny * 0.3));
+      disc(11.5, 18, 2.6, 4.2, (nx, ny) => sh([210, 100, 140], -ny * 0.3)); disc(20.5, 18, 2.6, 4.2, (nx, ny) => sh([210, 100, 140], -ny * 0.3));
+      rect(9, 21, 14, 1, [60, 120, 70]); put(16, 13, hi);
+    } else { // 太陽と塔
+      disc(16, 13, 3.4, 3.4, () => T.accent); for (let a = 0; a < 8; a++) put(16 + Math.round(Math.cos(a * 0.785) * 5.4), 13 + Math.round(Math.sin(a * 0.785) * 5.4), T.accent);
+      for (let ly = 16; ly < 23; ly++) { const w = Math.max(1, (ly - 15) * 0.9); for (let lx = Math.round(16 - w); lx <= Math.round(16 + w); lx++) put(lx, ly, ink); }
+    }
+  }
+  function drawStatue(T, theme, broken) {
+    const niche = sh(T.topC[0], -0.1), stone = theme === 'gold' || theme === 'orb' ? T.accent : [200, 186, 156];
+    for (let ly = 5; ly < 31; ly++) for (let lx = 7; lx < 25; lx++) {
+      const inArch = ly >= 13 ? true : Math.hypot(lx + 0.5 - 16, ly + 0.5 - 13) <= 9;
+      if (!inArch) continue;
+      const rim = (lx === 7 || lx === 24) || (ly < 13 && Math.hypot(lx + 0.5 - 16, ly + 0.5 - 13) > 8);
+      put(lx, ly, rim ? sh(T.wall[0], 0.25) : sh(niche, -(lx - 7) / 18 * 0.4));
+    }
+    const S = (t) => sh(stone, t);
+    rect(10, 27, 12, 3, S(-0.25)); rect(10, 27, 12, 1, S(0.15));                  // 台座
+    disc(16, 25, 6.5, 2.6, (nx) => S(0.1 - nx * 0.35));                          // ひざ
+    for (let ly = 17; ly < 25; ly++) { const w = 3 + (ly - 17) * 0.45; for (let lx = Math.round(16 - w); lx <= Math.round(16 + w); lx++) put(lx, ly, S(0.12 - (lx - 16 + w) / (2 * w) * 0.45)); }
+    if (!broken) { disc(16, 14, 3, 3.2, (nx, ny) => S(0.2 - nx * 0.35 - ny * 0.1)); put(16, 10, S(0.25)); put(16, 9, S(0)); rect(14, 14, 1, 1, S(-0.4)); rect(17, 14, 1, 1, S(-0.4)); }
+    else { rect(14, 16, 5, 1, S(-0.4)); put(13, 26, S(-0.5)); put(20, 22, S(-0.45)); put(21, 23, S(-0.45)); disc(22, 29, 1.8, 1.4, (nx) => S(0.1 - nx * 0.4)); } // 頭が落ちた像
+    for (let ly = 18; ly < 26; ly++) { put(Math.round(16 - 3 - (ly - 17) * 0.45) - 1, ly, sh(niche, -0.3)); }
+  }
+  function drawRoots(T, h) {
+    const n = 2 + h % 2;
+    for (let r = 0; r < n; r++) {
+      let x = 4 + ((h >>> (r * 4)) % 24), len = 14 + ((h >>> (r * 3 + 1)) % 16);
+      for (let ly = 0; ly < len && ly < 32; ly++) {
+        x += Math.sin((ly + r * 5) / 3.2) * 0.7;
+        const xi = Math.round(x);
+        put(xi, ly, sh(T.root, 0.18)); put(xi + 1, ly, T.root); put(xi + 2, ly, sh(T.root, -0.45));
+        if (ly % 6 === 3 && T.leaf) { put(xi - 2, ly, T.leaf); put(xi - 1, ly - 1, sh(T.leaf, 0.25)); put(xi + 3, ly + 1, sh(T.leaf, -0.2)); }
+      }
+    }
+  }
+  function drawCrystals(T, h, base) {
+    const n = 2 + h % 2;
+    for (let i = 0; i < n; i++) {
+      const cx = 6 + ((h >>> (i * 5)) % 20), ht = 10 + ((h >>> (i * 3 + 2)) % 10), w = 2 + ((h >>> i) % 2);
+      const col = (h >>> (i + 7)) % 3 === 0 ? T.crystal2 : T.crystal;
+      for (let ly = 0; ly < ht; ly++) {
+        const yy = base - ly, half = ly > ht - w - 1 ? Math.max(0, ht - ly - 1) : w;
+        for (let dx = -half; dx <= half; dx++) put(cx + dx, yy, dx < 0 ? sh(col, 0.45) : dx === 0 ? sh(col, 0.15) : sh(col, -0.3));
+        put(cx - half - 1, yy, sh(col, -0.7)); put(cx + half + 1, yy, sh(col, -0.7));
+      }
+      put(cx, base - ht, [255, 255, 255]);
+    }
+  }
+  function drawRubble(T, h) {
+    const st = [180, 150, 120];
+    for (let i = 0; i < 3; i++) {
+      const cx = 6 + ((h >>> (i * 4)) % 20), cy = 8 + ((h >>> (i * 4 + 2)) % 16), r = 2.5 + (h >>> i) % 3;
+      disc(cx, cy, r, r * 0.75, (nx, ny) => sh(st, 0.2 - (nx + ny) * 0.35));
+    }
+  }
+  function drawFlowers(T, h) {
+    for (let i = 0; i < 4; i++) {
+      const cx = 4 + ((h >>> (i * 4)) % 24), cy = 4 + ((h >>> (i * 4 + 2)) % 24), col = T.flower[(h >>> i) % T.flower.length];
+      put(cx, cy, col); put(cx - 1, cy, sh(col, -0.2)); put(cx + 1, cy, sh(col, -0.2)); put(cx, cy - 1, sh(col, 0.3)); put(cx, cy + 1, sh(col, -0.35)); put(cx, cy, [255, 230, 120]);
+    }
+  }
+
+  TS.Tiles = TL;
+})(globalThis.TS = globalThis.TS || {});

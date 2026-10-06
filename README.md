@@ -15,7 +15,7 @@
 - **足元**（階段・拾う・帰還）／**道具**（使う・装備・置く・整理）／**メニュー**。倉庫と村の持ち物にも「整理」ボタン。
 - PC：矢印キー/WASD、斜めは Q・E・Z・C（テンキー 7・9・1・3）、足踏み=スペース、向き=F、ダッシュ切替=X、道具=I、メニュー=Esc。
 
-タイトルの人物イラストは見本 `assets/title-characters.png` から作った `assets/title-art.jpg`（作り方は `assets/README.md`）。アイテム名の変更前後の対応は [docs/ITEM_NAMES.md](docs/ITEM_NAMES.md) を参照。
+タイトルは、専用ロゴ `assets/logo.png` と、見本 `assets/title-characters.png` から切り抜いた人物 `assets/title-chars.webp` を、夕暮れの遺跡と水辺の景色（画面側で描画）に重ねた一枚絵です（作り方は `assets/README.md`）。アイテム名の変更前後の対応は [docs/ITEM_NAMES.md](docs/ITEM_NAMES.md) を参照。
 
 ## ファイル構成
 | ファイル | 役割 |
@@ -25,7 +25,9 @@
 | `js/dungeon.js` | ダンジョン生成 |
 | `js/game.js` | ゲーム処理（ターン・戦闘・敵AI・道具・ダッシュ・村の経済）。表示と独立 |
 | `js/save.js` | localStorage 保存（バージョン付き・旧データの移行あり） |
-| `js/sprites.js` | オリジナルのドット絵（陰影つきドット絵ペインターでコードから描画） |
+| `js/sprites.js` | オリジナルのドット絵（キャラクター・敵・道具。陰影つきドット絵ペインターでコードから描画） |
+| `js/tiles.js` | ダンジョンの地形（地域ごとの床・壁・水辺・部屋の見せ場） |
+| `js/village.js` | 村の景観（建物・広場・水路。発展で変化） |
 | `js/render.js` | ダンジョン・村の描画 |
 | `js/audio.js` | 効果音・BGM（WebAudioで合成） |
 | `js/ui.js` | 画面・入力・メニュー |
@@ -41,6 +43,7 @@ node tests/logic.test.js          # ゲーム処理の自動テスト（30階×2
 node tests/e2e.test.js [保存先]   # Playwright でスマホ画面を操作するテスト（/take-sai-adventure/ サブパスで配信）
 node tests/balance.js [回数]      # 簡易AIによる到達階・収入の参考値
 node tests/serve.js 8080          # http://localhost:8080/take-sai-adventure/ で確認
+node tests/capture.js [保存先]    # 見た目の確認用スクリーンショット（タイトル・村・メニュー・各地域）
 ```
 
 ## GitHub Pages で公開
