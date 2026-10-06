@@ -946,7 +946,7 @@
     }
     const act = (id, fn) => $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); if (UI.modals.length) return; AU.sfx('tap'); fn(); });
     bindFaceButton();
-    act('b-wait', () => { stopHold(); doAct({ type: 'wait' }); });
+    bindWaitButton();
     act('b-items', openItems);
     act('b-menu', dungeonMenu);
     act('b-foot', footAction);
@@ -966,10 +966,39 @@
     for (const b of document.querySelectorAll('#dpad .dir.pressed')) b.classList.remove('pressed');
     if (UI.hold && UI.hold.source.startsWith('ptr:')) stopHold();
     if (UI.facePress) faceRelease(true);
+    if (UI.waitPress) waitRelease(true);
   }
 
   // ---- 「向き」ボタン：短押し＝向き変更モードのオン/オフ（離したときに確定）、長押し＝休息（連続足踏み） ----
-  const REST_DELAY = 400, REST_MS = 180;
+  /* 連続足踏み（休息）の速さ：ダッシュONなら高速（1ターン60ms）、OFFなら通常（180ms）。
+   * どちらも通常の「待つ」を1ターンずつ処理する（敵の行動・満腹度・状態異常・自然回復もそのまま）。 */
+  const REST_DELAY = 400, REST_MS = 180, REST_FAST_MS = 60;
+  // ---- 「足踏み」ボタン：短く押す＝1ターン待つ（離したときに確定）、長押し＝連続足踏み（指を離すと止まる。余分な1ターンは出ない） ----
+  function bindWaitButton() {
+    const b = $('b-wait');
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (UI.modals.length || UI.waitPress) return;
+      try { b.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      AU.sfx('tap'); stopHold();
+      b.classList.add('pressed');
+      const wp = { long: false, timer: null };
+      UI.waitPress = wp;
+      wp.timer = setTimeout(() => { if (UI.waitPress === wp) { wp.long = true; startRest(); } }, REST_DELAY);
+    });
+    b.addEventListener('pointerup', () => waitRelease(false));
+    b.addEventListener('pointercancel', () => waitRelease(true));
+    b.addEventListener('lostpointercapture', () => { if (UI.waitPress) waitRelease(false); });
+  }
+  function waitRelease(cancel) {
+    const wp = UI.waitPress;
+    if (!wp) return;
+    UI.waitPress = null;
+    clearTimeout(wp.timer);
+    $('b-wait').classList.remove('pressed');
+    if (wp.long) { stopRest(); return; }               // 長押しとして処理済み：1ターン待つは発動しない
+    if (!cancel && !UI.modals.length) doAct({ type: 'wait' });
+  }
   function bindFaceButton() {
     const b = $('b-face');
     b.addEventListener('pointerdown', (e) => {
@@ -1003,17 +1032,19 @@
     if (!S.run || S.run.over || UI.modals.length) return;
     const block = G.restBlock(S);
     if (block) { showStop(block, false, '休めない：' + G.REST_STOP[block]); return; }
-    const st = { timer: null };
+    const st = { timer: null, fast: !!S.settings.dash };
     UI.rest = st;
     $('restnote').classList.add('show');
     const tick = () => {
       if (UI.rest !== st) return;
+      const t0 = performance.now();
       if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden || !UI.S.run || UI.S.run.over) { stopRest(); return; }
       const logLen = UI.S.run.log.length;
       const out = G.restStep(UI.S);
       if (out.res.consumed) afterAction(out.res, { type: 'wait' }, logLen);
       if (out.stop) { UI.lastStop = out.stop; showStop(out.stop, false, '休息終了：' + G.REST_STOP[out.stop]); stopRest(); return; }
-      st.timer = setTimeout(tick, REST_MS);
+      // 次のターンは1回だけ予約（処理時間を差し引く。遅れてもまとめて実行しない）
+      st.timer = setTimeout(tick, Math.max(8, (st.fast ? REST_FAST_MS : REST_MS) - (performance.now() - t0)));
     };
     tick();
   }
@@ -1124,7 +1155,7 @@
   }
   function releaseDir(source) { if (UI.hold && UI.hold.source === source) stopHold(); }
   function stopHold() { if (UI.hold) { clearTimeout(UI.hold.timer); UI.hold = null; } }
-  function stopAllInput() { stopHold(); stopRest(); if (UI.facePress) faceRelease(true); }
+  function stopAllInput() { stopHold(); stopRest(); if (UI.facePress) faceRelease(true); if (UI.waitPress) waitRelease(true); }
   UI.stopDash = stopHold; UI.stopHold = stopAllInput;
   function faceDir(dir) {
     const run = UI.S.run;
