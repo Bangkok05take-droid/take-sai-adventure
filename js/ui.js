@@ -1214,27 +1214,60 @@
   }
   UI.doAct = doAct;
 
+  /* たけの通常攻撃の演出：構え→踏み込み→斬撃（素手なら打撃）→元の位置へ。全体で約200ms。
+   * 命中の白い点滅・ダメージの数字は斬撃に合わせて少し遅れて出す（ATK_HIT ms）。マスの位置は変わらない */
+  const ATK_DUR = 200, ATK_HIT = 70;
   function handleEvents(events, action) {
     const run = UI.S.run, p = run.player;
+    const isAttack = action && action.type === 'move' && events.some((e) => (e.t === 'hit' && e.target === 'enemy') || e.t === 'miss') && !events.some((e) => e.t === 'move');
+    let atkDir = null;
+    if (isAttack) {
+      const [dx, dy] = G.DIRS[action.dir];
+      atkDir = { dx, dy, x: p.x + dx, y: p.y + dy };
+      const armed = !!G.equipped(run.bag, 'weapon');
+      RD.addFx({ t: 'patk', dx, dy, dur: ATK_DUR });
+      if (events.some((e) => e.t === 'hit' && e.target === 'enemy' && e.x === atkDir.x && e.y === atkDir.y)) {
+        RD.addFx({ t: armed ? 'slash' : 'punch', x: atkDir.x, y: atkDir.y, dx, dy, delay: 40, dur: armed ? 150 : 140 });
+      }
+    }
+    const atkTile = (e) => atkDir && e.x === atkDir.x && e.y === atkDir.y;
     for (const e of events) {
       switch (e.t) {
-        case 'hit':
-          RD.addFx({ t: 'num', x: e.x, y: e.y, text: String(e.n), color: e.target === 'player' ? '#ff6a6a' : '#ffffff' });
-          RD.addFx({ t: 'flash', x: e.x, y: e.y, target: e.target, dur: 200 });
+        case 'hit': {
+          const d = e.target === 'enemy' && atkTile(e) ? ATK_HIT : 0;
+          RD.addFx({ t: 'num', x: e.x, y: e.y, text: String(e.n), color: e.target === 'player' ? '#ff6a6a' : '#ffffff', delay: d, dur: 650 });
+          RD.addFx({ t: 'flash', x: e.x, y: e.y, target: e.target, dur: 160, delay: d });
           AU.sfx(e.target === 'player' ? 'hurt' : 'hit');
           break;
-        case 'miss': RD.addFx({ t: 'num', x: e.x, y: e.y, text: 'ミス', color: '#aaccff' }); AU.sfx('miss'); break;
+        }
+        // ミス：命中の演出は出さず「ミス」の文字だけ
+        case 'miss': RD.addFx({ t: 'num', x: e.x, y: e.y, text: 'ミス', color: '#aaccff', delay: atkTile(e) ? ATK_HIT : 0, dur: 600 }); AU.sfx('miss'); break;
         case 'kill':
-          RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffffff', dur: 500 }); AU.sfx('kill');
+          AU.sfx('kill');
           if (e.boss) RD.addFx({ t: 'bossdie', x: e.x, y: e.y, sprite: e.sprite, dur: 1500 }); // ボスの撃破：白く光って沈みながら消える
+          else {
+            RD.addFx({ t: 'die', x: e.x, y: e.y, sprite: e.sprite, delay: atkTile(e) ? ATK_HIT : 0, dur: 240 });   // 通常の敵：短く消える
+            if (e.exp) RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.exp + ' EXP', color: '#bfe4ff', small: true, delay: 260, dur: 700 });
+          }
           break;
-        case 'heal': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 700 }); RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); AU.sfx('heal'); break;
+        case 'loot': RD.addFx({ t: 'loot', x: e.x, y: e.y, delay: 320, dur: 450 }); break;
+        // 回復：やわらかい緑の光が足元から上へ。実際の回復量を「+数値」で
+        case 'heal':
+          RD.addFx({ t: 'healrise', x: e.x, y: e.y, dur: 650 });
+          if (e.n > 0) RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0', dur: 750 });
+          AU.sfx('heal'); break;
         case 'eat': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe08a', dur: 600 }); AU.sfx('eat'); break;
         case 'levelup': RD.addFx({ t: 'banner', x: e.x, y: e.y, text: 'LEVEL UP!', dur: 1100 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe04a', dur: 900 }); AU.sfx('levelup'); toast('レベル' + p.lvl + 'になった！', 'levelup'); break;
         case 'move': RD.noteMove(); break;
         case 'pickup': AU.sfx('pickup'); break;
         case 'gold': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n + 'G', color: '#ffe04a' }); AU.sfx('gold'); break;
-        case 'bolt': RD.addFx({ t: 'bolt', from: { x: p.x, y: p.y }, to: e.path.length ? e.path[e.path.length - 1] : { x: p.x, y: p.y }, dur: 300 }); AU.sfx('bolt'); break;
+        // 杖の雷：稲妻の杖は細い青白、雷帝の杖は太い金と青白。命中したときだけ先端に電撃。何にも当たらなければ理由を表示
+        case 'bolt':
+          RD.addFx({ t: 'bolt2', from: { x: p.x, y: p.y }, to: e.path.length ? e.path[e.path.length - 1] : { x: p.x, y: p.y }, kind: e.kind || 'staff', hit: !!e.hit, dur: e.kind === 'king' ? 340 : 280 });
+          AU.sfx('bolt');
+          if (!e.hit) toast('雷は何にも当たらなかった');
+          break;
+        case 'fizzle': toast('杖の力が残っていない（回数0）'); AU.sfx('bump'); break;
         case 'dart': RD.addFx({ t: 'dart', from: e.from, to: e.to, dur: 300 }); AU.sfx('dart'); break;
         case 'sleep': for (const t of e.targets) RD.addFx({ t: 'num', x: t.x, y: t.y, text: 'Zzz', color: '#c8b8ff' }); AU.sfx('sleep'); break;
         case 'lunge': {
@@ -1268,10 +1301,6 @@
         default: break;
       }
     }
-    if (action.type === 'move' && events.some((e) => e.t === 'hit' && e.target === 'enemy' || e.t === 'miss') && !events.some((e) => e.t === 'move')) {
-      const [dx, dy] = G.DIRS[action.dir];
-      RD.addFx({ t: 'lunge', id: 'p', dx, dy, dur: 140 });
-    }
   }
 
   function updateHud() {
@@ -1285,6 +1314,19 @@
     const bar = $('h-hpbar');
     bar.style.width = (r * 100) + '%';
     bar.className = r <= 0.3 ? 'low' : r <= 0.6 ? 'mid' : '';
+    // HPゲージの反応：減ったら少し揺れて赤く光り、減った分が遅れて縮む。増えたら緑に光る（同じ探索・同じ階の中だけ）
+    const key = run.seed + ':' + run.floor, wrap = bar.closest('.hpwrap'), ghost = $('h-hpghost');
+    if (UI.hudKey === key && UI.hudHp !== undefined && p.hp !== UI.hudHp) {
+      const cls = p.hp < UI.hudHp ? 'hurt' : 'healed';
+      wrap.classList.remove('hurt', 'healed'); void wrap.offsetWidth; wrap.classList.add(cls);
+      clearTimeout(UI.hudTimer); UI.hudTimer = setTimeout(() => wrap.classList.remove('hurt', 'healed'), 420);
+      if (cls === 'hurt') { ghost.style.transition = 'none'; ghost.style.width = (Math.max(0, UI.hudHp) / p.maxhp * 100) + '%'; void ghost.offsetWidth; ghost.style.transition = ''; }
+    }
+    ghost.style.width = (r * 100) + '%';
+    UI.hudKey = key; UI.hudHp = p.hp;
+    // 満腹度が増えたらゲージを光らせる（食事）
+    if (UI.hudFood !== undefined && UI.hudKey === key && p.hunger > UI.hudFood) { const fw = $('h-foodbar').closest('.foodwrap'); if (fw) { fw.classList.remove('healed'); void fw.offsetWidth; fw.classList.add('healed'); setTimeout(() => fw.classList.remove('healed'), 600); } }
+    UI.hudFood = p.hunger;
     $('h-food').textContent = p.hunger;
     const fb = $('h-foodbar'); fb.style.width = Math.max(0, Math.min(100, p.hunger / D.PLAYER.maxHunger * 100)) + '%';
     fb.className = p.hunger <= 10 ? 'low' : p.hunger <= 30 ? 'mid' : '';

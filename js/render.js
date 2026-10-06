@@ -7,7 +7,8 @@
   const RD = { fx: [], lastMove: 0 };
   const TILE = 32;
 
-  RD.addFx = function (f) { f.t0 = performance.now(); RD.fx.push(f); };
+  RD.addFx = function (f) { return TS.FX ? TS.FX.add(RD, f) : (f.t0 = performance.now(), RD.fx.push(f), f); };
+  RD.clearFx = function () { RD.fx = []; };
   RD.stepDur = 110; // 1マス分の移動を見せる時間（UIが歩き・ダッシュに合わせて設定）
 
   // ---- 移動の補間（描画だけ。ターン処理とは独立） ----
@@ -98,7 +99,9 @@
     const key = run.seed + ':' + run.floor;
     if (key !== animKey) { for (const k of Object.keys(anims)) delete anims[k]; animKey = key; }
     const pp = lerpPos('p', p.x, p.y, now);
-    const ox = Math.round(W / 2 - (pp.x + 0.5) * ts), oy = Math.round(H / 2 - (pp.y + 0.5) * ts);
+    // 強いボスの攻撃だけ、画面を少し揺らす（「演出：控えめ」では揺らさない）
+    const shk = TS.FX ? TS.FX.shakeOffset(RD, now, k) : [0, 0];
+    const ox = Math.round(W / 2 - (pp.x + 0.5) * ts) + shk[0], oy = Math.round(H / 2 - (pp.y + 0.5) * ts) + shk[1];
     const x0 = Math.max(0, Math.floor(-ox / ts)), x1 = Math.min(m.w - 1, Math.ceil((W - ox) / ts));
     const y0 = Math.max(0, Math.floor(-oy / ts)), y1 = Math.min(m.h - 1, Math.ceil((H - oy) / ts));
     const L = getLayer(run);
@@ -276,7 +279,7 @@
     {
       const l = lungeOffset('p', now, ts);
       const set = SP.s.take[G.faceOf(p.dir)] || SP.s.take.down;
-      const attacking = RD.fx.some((f) => f.t === 'lunge' && f.id === 'p' && now - f.t0 < 180);
+      const attacking = RD.fx.some((f) => (f.t === 'lunge' && f.id === 'p' && now - f.t0 < 180) || (f.t === 'patk' && now - f.t0 < f.dur));
       const walking = now - RD.lastMove < Math.max(260, RD.stepDur * 2.2);
       const img = attacking ? set.atk : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
       const hurt = hitFx(p.x, p.y, 'player', now);
@@ -328,10 +331,17 @@
     g.fillStyle = col; g.fillText(text, x, y); g.textAlign = 'left';
   }
   function hitFx(x, y, target, now) {
-    return RD.fx.some((f) => f.t === 'flash' && f.target === target && (target === 'player' || (f.x === x && f.y === y)) && now - f.t0 < 220);
+    return RD.fx.some((f) => { const age = now - f.t0 - (f.delay || 0); return f.t === 'flash' && f.target === target && (target === 'player' || (f.x === x && f.y === y)) && age >= 0 && age < (f.dur || 200); });
   }
   function lungeOffset(id, now, ts) {
     for (const f of RD.fx) {
+      // たけの通常攻撃：構え（少し引く）→ 踏み込み → 元の位置へ。見た目だけでマスは動かない
+      if (f.t === 'patk' && id === 'p') {
+        const a = (now - f.t0) / f.dur;
+        if (a < 0 || a >= 1) continue;
+        const s = a < 0.25 ? -0.08 * (a / 0.25) : a < 0.5 ? -0.08 + 0.43 * ((a - 0.25) / 0.25) : 0.35 * (1 - (a - 0.5) / 0.5) * (1 - (a - 0.5) / 0.5);
+        return [f.dx * s * ts, f.dy * s * ts];
+      }
       if (f.t !== 'lunge' || f.id !== id) continue;
       const a = (now - f.t0) / 140;
       if (a >= 1) continue;
@@ -342,16 +352,22 @@
   }
 
   function drawFx(g, now, ox, oy, ts, k) {
-    RD.fx = RD.fx.filter((f) => now - f.t0 < (f.dur || 800));
+    RD.fx = RD.fx.filter((f) => now - f.t0 - (f.delay || 0) < (f.dur || 800));
+    const view = { ox, oy, ts, k, now };
     for (const f of RD.fx) {
-      const a = (now - f.t0) / (f.dur || 800);
+      const age = now - f.t0 - (f.delay || 0);
+      if (age < 0) continue;                       // 遅れて始まる演出（斬撃のあとに出る数字など）
+      const a = age / (f.dur || 800);
+      if (TS.FX && TS.FX.draw[f.t]) { TS.FX.draw[f.t](g, f, a, view); continue; }
       if (f.t === 'num') {
-        g.font = `bold ${Math.round(ts * 0.42)}px sans-serif`;
+        // ダメージなどの数字：小さめで、敵の頭の上へ短く浮かぶ（敵の姿や予告を長く隠さない）
+        g.font = `bold ${Math.round(ts * (f.small ? 0.26 : 0.36))}px sans-serif`;
         g.textAlign = 'center';
-        const x = ox + (f.x + 0.5) * ts, y = oy + f.y * ts + ts * 0.2 - a * ts * 0.5;
+        const x = ox + (f.x + 0.5) * ts + (f.dx || 0) * ts, y = oy + f.y * ts - ts * 0.1 - a * ts * 0.45;
+        g.globalAlpha = a < 0.7 ? 1 : (1 - a) / 0.3;
         g.lineWidth = k * 3; g.strokeStyle = '#000'; g.strokeText(f.text, x, y);
         g.fillStyle = f.color || '#fff'; g.fillText(f.text, x, y);
-        g.textAlign = 'left';
+        g.textAlign = 'left'; g.globalAlpha = 1;
       } else if (f.t === 'bolt') {
         g.globalAlpha = 1 - a;
         g.strokeStyle = '#fff36a'; g.lineWidth = k * 4;

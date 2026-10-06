@@ -99,7 +99,14 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 .hpwrap b { font-size: 17px; }
 .bar { flex: 1; height: 12px; background: #2a0c0c; border: 1px solid rgba(0, 0, 0, 0.7); box-shadow: 0 0 0 1px var(--line-soft); border-radius: 6px; overflow: hidden; min-width: 34px; }
 .bar.food { height: 8px; background: #2a200c; }
-.bar i { display: block; height: 100%; width: 100%; background: linear-gradient(#a8f070, #5cb83a); transition: width 0.15s; }
+.bar i { position: relative; display: block; height: 100%; width: 100%; background: linear-gradient(#a8f070, #5cb83a); transition: width 0.15s; }
+/* HPゲージの反応：減った分が少し遅れて縮む影（赤）と、揺れ・光 */
+.bar { position: relative; }
+.bar s { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: #ff6a5a; text-decoration: none; transition: width 0.35s 0.18s; }
+.hpwrap.hurt .bar { animation: hpHurt 0.35s; box-shadow: 0 0 0 1px #ff5a4a, 0 0 8px rgba(255, 80, 60, 0.7); }
+.hpwrap.healed .bar, .foodwrap.healed .bar { box-shadow: 0 0 0 1px #8aff8a, 0 0 8px rgba(120, 255, 120, 0.7); }
+@keyframes hpHurt { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 50% { transform: translateX(2px); } 75% { transform: translateX(-1px); } }
+body.calm .hpwrap.hurt .bar { animation: none; }
 .bar.food i { background: linear-gradient(#ffe08a, #e0a030); }
 .bar i.low { background: linear-gradient(#ff8a7a, #d83a2a); }
 .bar i.mid { background: linear-gradient(#ffe46a, #e0b020); }

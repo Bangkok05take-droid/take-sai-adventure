@@ -497,7 +497,7 @@
     const run = S.run, E = D.ENEMIES[e.type];
     run.enemies.splice(run.enemies.indexOf(e), 1);
     G.log(run, E.name + 'をたおした！ 経験値' + e.exp);
-    ev.push({ t: 'kill', x: e.x, y: e.y, boss: !!e.boss, sprite: E.sprite });
+    ev.push({ t: 'kill', x: e.x, y: e.y, boss: !!e.boss, sprite: E.sprite, exp: e.exp });
     gainExp(S, e.exp, ev);
     if (e.stolen) {
       run.runGold += e.stolen;
@@ -513,6 +513,7 @@
       const id = R.weighted(run.rng, F.items);
       run.floorItems.push({ x: e.x, y: e.y, item: G.makeItem(S, id, D.ITEMS[id].type === 'staff' ? { charges: R.int(run.rng, 3, 5) } : null) });
       G.log(run, E.name + 'は何かを落とした。');
+      ev.push({ t: 'loot', x: e.x, y: e.y });
     }
   }
 
@@ -803,7 +804,7 @@
           hitE = G.enemyAt(run, x, y);
           if (hitE) break;
         }
-        ev.push({ t: 'bolt', path, dir: p.dir });
+        ev.push({ t: 'bolt', path, dir: p.dir, kind: d.tint === 'king' ? 'king' : 'staff', hit: !!hitE });
         if (hitE) damageEnemy(S, hitE, d.dmg, ev, '雷が' + D.ENEMIES[hitE.type].name + 'に命中！ ' + d.dmg + 'のダメージ。');
         else G.log(run, '雷は壁に当たって消えた。');
         return true;
