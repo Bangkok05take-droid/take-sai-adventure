@@ -126,7 +126,7 @@
     }
     // 見える範囲を1回で転送
     g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
-    // 動く地形：たいまつ・階段・帰還の碑・帰還口
+    // 動く地形：たいまつ・階段・帰還の祠・帰還口
     const fr = (ms, n) => Math.floor(now / ms) % n;
     const inView = (t) => t.x >= x0 && t.x <= x1 && t.y >= y0 && t.y <= y1;
     // 水面のきらめき（ゆっくり動く短い光の線）

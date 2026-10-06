@@ -19,9 +19,11 @@
   // 以前の版のボス配置（更新前から続いている探索だけが使う）
   D.LEGACY_BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
   D.BOSS_FLOORS = D.LEGACY_BOSS_FLOORS;   // 互換のため残す
-  // 3階ごとに帰還の碑（ボスの階は倒すと帰還口が開く）。最終章は30階・33階にもある
-  D.RETURN_POINT_FLOORS = [3, 6, 9, 12, 15, 18, 21, 24, 27];
-  D.returnFloors = (ch) => (ch === 6 ? D.RETURN_POINT_FLOORS.concat([30, 33]) : D.RETURN_POINT_FLOORS);
+  /* 帰還の祠：1回の探索につき地下25階に1か所だけ（2026年10月から。以前は3階ごと）。
+   * ボスの階は倒すと帰還口が開く。帰還の巻物はいつでも使える。
+   * 階の地形は作ったときに保存されるので、更新前に作られた探索中の階はそのまま（祠があればそのまま使える）。 */
+  D.RETURN_POINT_FLOORS = [25];
+  D.returnFloors = () => D.RETURN_POINT_FLOORS;
   D.BAG_SIZE = 15;
 
   // プレイヤー

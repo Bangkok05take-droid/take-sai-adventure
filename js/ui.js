@@ -384,7 +384,7 @@
     <h3>帰還と敗北</h3>
     <ul>
       <li><b>帰還の巻物</b>（出発時に1枚無料）を使うと、その場で持ち物とお金を持って村へ帰れる。</li>
-      <li>3階ごと（3・6・9…27階）に<b>帰還の碑</b>がある。10・20階の守り手を倒すと、帰還口と下への階段が開く。</li>
+      <li>地下25階に1か所だけ<b>帰還の祠</b>がある。30階（最終章は35階）のボスを倒すと帰還口が開く。それ以外は帰還の巻物で帰ろう。</li>
       <li>帰って再出発すると1階から。帰る・進むの判断が大事。探索の途中で中断しても、続きから再開できる。</li>
       <li>倒れると、持ち物と探索中のお金を失う。村の資金・倉庫・施設は残る。</li>
     </ul>
@@ -1460,8 +1460,8 @@
     const orb = run.bag.some((i) => i.id === 'wish_orb');
     const html = portal
       ? `<p>光る帰還口だ。村へ帰りますか？</p>${run.floorItems.some((f) => f.item && G.F(run).boss) ? '<div class="warnbox">まだ拾っていない品（ボスの報酬など）があります！</div>' : ''}`
-      : `<p>帰還の碑がある。ここから村へ帰れます。</p><p>持ち物 ${run.bag.length}個・探索中のお金 ${run.runGold}G を持ち帰れます。</p><p class="note">先に進めば、もっと良いお宝があるかもしれません。帰還の巻物は残ります（帰還すると消えます）。</p>`;
-    modal({ title: portal ? '帰還口' : '帰還の碑', html, buttons: [
+      : `<p>帰還の祠がある。ここから村へ帰れます。</p><p>持ち物 ${run.bag.length}個・探索中のお金 ${run.runGold}G を持ち帰れます。</p><p class="note">先に進めば、もっと良いお宝があるかもしれません。帰還の巻物は残ります（帰還すると消えます）。</p>`;
+    modal({ title: portal ? '帰還口' : '帰還の祠', html, buttons: [
       { label: portal ? 'まだ残る' : '先に進む' },
       { label: '村へ帰る', cls: 'primary', onClick: () => { setTimeout(() => { UI.lockUntil = 0; doAct({ type: 'returnHome' }); }, 0); } },
     ] });

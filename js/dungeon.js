@@ -11,7 +11,7 @@
    *  ・通路を含む2×2の床（幅2マスの道・部屋の横を沿う道・広い通路状の空間）
    *  ・斜めにだけ接する床（角どうしが触れているように見える形）
    * 本線（全域木）が掘れないときは乱数を進めて最初から作り直す。最後に全マスの到達可能性を確かめる。 */
-  // opts：{ boss: ボスの階か, returnPoint: 帰還の碑を置くか }（省略時は以前の版の配置）
+  // opts：{ boss: ボスの階か, returnPoint: 帰還の祠を置くか }（省略時は以前の版の配置）
   function generate(floor, rng, opts) {
     opts = opts || { boss: !!D.LEGACY_BOSS_FLOORS[floor], returnPoint: D.RETURN_POINT_FLOORS.includes(floor) };
     if (opts.boss) return generateBossFloor(rng);

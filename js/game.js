@@ -213,13 +213,13 @@
       if (run.final && F.boss === 'vearn') { run.final.stage = 'battle1'; run.final.healed = false; run.final.cutsceneSeen = false; S.village.story.finalStage = 'battle1'; }
     }
     G.log(run, '地下' + floor + '階　' + D.THEMES[F.theme].name);
-    if (run.returnPoint) G.log(run, 'この階には村へ帰れる「帰還の碑」がある。');
+    if (run.returnPoint) G.log(run, 'この階には村へ帰れる「帰還の祠」がある。');
     if (F.boss) G.log(run, '奥から大きな気配がする…。' + D.ENEMIES[F.boss].name + 'が待ち構えている！');
     G.updateVision(run);
   }
 
   /* モンスターハウス：敵とお宝の多い部屋。階を作るときに一度だけ置く（出入りや再読み込みで作り直さない）。
-   * 開始部屋・帰還の碑のある部屋・ボス階は対象外。敵は深さに合った通常の出現表から選び、重ならないように置く。
+   * 開始部屋・帰還の祠のある部屋・ボス階は対象外。敵は深さに合った通常の出現表から選び、重ならないように置く。
    * 部屋の敵は眠っていて、たけが初めて部屋に入ると目を覚ます（その直後のターンは動かない＝入室直後の追加攻撃なし）。 */
   function placeMonsterHouse(S, gen, occupied) {
     const run = S.run, rng = run.rng, f = run.floor, F = G.F(run), MH = D.MONSTER_HOUSE;
@@ -256,7 +256,7 @@
   }
   /* 謎の旅商人：階を作るときに一度だけ決める（出現・場所・品ぞろえ・価格・在庫は run.merchant に保存。
    * 再読み込みや話しかけ直しで作り直さない）。この階の乱数とは別の乱数を使い、ほかの出現を変えない。
-   * 場所：ふつうの部屋（3×3以上。モンスターハウス・開始部屋以外）の角のマス。入口（通路）のとなり・階段・帰還の碑・道具・敵の上には置かない。 */
+   * 場所：ふつうの部屋（3×3以上。モンスターハウス・開始部屋以外）の角のマス。入口（通路）のとなり・階段・帰還の祠・道具・敵の上には置かない。 */
   function placeMerchant(S, gen) {
     const run = S.run, f = run.floor, M = D.MERCHANT, F = G.F(run);
     run.merchant = null;
@@ -405,7 +405,7 @@
         return { consumed: false, events: ev, floorChanged: true };
       case 'returnHome':
         if (G.onReturnPoint(run) || G.onPortal(run)) {
-          endRun(S, 'return', G.onPortal(run) ? '帰還口から村へ戻った。' : '帰還の碑から村へ戻った。');
+          endRun(S, 'return', G.onPortal(run) ? '帰還口から村へ戻った。' : '帰還の祠から村へ戻った。');
           ev.push({ t: 'return' });
         }
         return { consumed: false, events: ev };
