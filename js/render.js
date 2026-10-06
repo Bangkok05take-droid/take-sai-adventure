@@ -496,6 +496,12 @@
     if (run.portal) dot(run.portal, '#ffd84a', 1.8);
     for (const f of run.floorItems) if (run.explored[f.y * m.w + f.x]) dot(f, '#7cff7c', 1);
     for (const e of run.enemies) if (G.isVisible(run, e.x, e.y)) dot(e, '#ff4a4a', 1.2);
+    // 気配察知：この階の生きている敵すべてに印（未探索の場所でも印だけ。地形は明かさない）
+    if (run.sense === run.floor) for (const e of run.enemies) if (!G.isVisible(run, e.x, e.y)) {
+      const x = x0 + e.x * c + c / 2, y = y0 + e.y * c + c / 2, r = Math.max(2, c * 0.8);
+      g.strokeStyle = '#ff8a6a'; g.lineWidth = Math.max(1, c * 0.35); g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#ff5a4a'; g.fillRect(x - c * 0.4, y - c * 0.4, c * 0.8, c * 0.8);
+    }
     dot(run.player, '#ffd84a', 1.6);
   }
 

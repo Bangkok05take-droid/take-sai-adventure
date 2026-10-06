@@ -1342,6 +1342,8 @@
         case 'finalTransform': AU.sfx('warn'); break;
         case 'stairs': AU.sfx('stairs'); flash(); break;
         case 'reveal': RD.addFx({ t: 'reveal', x: p.x, y: p.y, dur: 700 }); AU.sfx('heal'); break;
+        // 気配察知：たけから赤い輪が広がる（敵の印は地図に出る）
+        case 'sense': RD.addFx({ t: 'reveal', x: p.x, y: p.y, dur: 700, color: '#ff8a6a' }); AU.sfx('warn'); toast('敵の気配が地図に出た（この階にいる間）'); break;
         // 帰還（成立したときだけ）：足元に青緑の魔法陣と光の柱 → 村へ
         case 'return': RD.addFx({ t: 'circle', x: e.x !== undefined ? e.x : p.x, y: e.y !== undefined ? e.y : p.y, dur: 720 }); AU.sfx('return'); break;
         case 'portal': AU.sfx('levelup'); toast('帰還口が開いた！', 'levelup'); break;
@@ -1515,7 +1517,7 @@
   }
 
   // 使える消耗品の種類と、そのボタンの表示（ここにない種類は「置く」だけ）
-  const USE_LABEL = { heal: '使う（1ターン）', food: '食べる（1ターン）', sleep: 'たく（1ターン）', map: '読む（1ターン）',
+  const USE_LABEL = { heal: '使う（1ターン）', food: '食べる（1ターン）', sleep: 'たく（1ターン）', map: '読む（1ターン）', sense: '読む（1ターン）',
     slow: 'まく（1ターン）', warp: '投げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）', clear: 'たく（1ターン）' };
   UI.USE_LABEL = USE_LABEL;
   function itemDetail(it, listModal) {

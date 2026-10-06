@@ -38,7 +38,7 @@
         'shield:crystal': 'shield_crystal', 'shield:gold': 'shield_gold', 'shield:dragon': 'shield_dragon', 'shield:moon': 'shield_moon',
         'shield:hero': 'shield_hero', 'shield:': 'shield',
         'staff:': 'staff', 'staff:king': 'staff_king',
-        'scroll:return': 'scroll_return', 'scroll:thunder': 'scroll_thunder', 'scroll:sight': 'scroll_sight',
+        'scroll:return': 'scroll_return', 'scroll:thunder': 'scroll_thunder', 'scroll:sight': 'scroll_sight', 'scroll:sense': 'scroll_sense',
         'powder:': 'powder', 'sleepgrass:': 'sleepgrass', 'bento:': 'bento',
         'herb:': 'herb', 'herb:big': 'herb_big', 'herb:cure': 'herb_cure',
         'coin:': 'coin', 'orb:': 'orb', 'pendant:': 'pendant_amber',

@@ -128,6 +128,8 @@
       desc: '持っているだけで、雷の印から受けるダメージが半分になる。' },
     clear_incense: { name: 'きりばらいの香', type: 'clear', price: 160, sell: 50, icon: 'incense',
       desc: 'たくと霧が晴れ、体の拘束もとける。しばらく拘束されにくくなる。' },
+    sense_scroll:  { name: '気配察知の巻物', type: 'sense', price: 100, sell: 35, icon: 'scroll', tint: 'sense',
+      desc: '読むと、この階にいる敵の位置が地図に印で出る（地形や道具はわからない）。この階にいる間だけ有効。' },
     sight_scroll:  { name: 'みとおしの巻物', type: 'map', price: 80, sell: 30, icon: 'scroll', tint: 'sight',
       desc: 'その階の地形・階段・道具の場所がわかる。' },
     old_coin:      { name: 'アユタヤの古金貨', type: 'treasure', sell: 40, icon: 'coin',
@@ -269,6 +271,7 @@
     const items = [['herb', 4], ['banana', f <= 15 ? 3 : 2], ['sleep_incense', f <= 3 ? 1 : 2], ['thunder_staff', 1]];
     const add = (cond, list) => { if (cond) for (const x of list) items.push(x); };
     add(f >= 3, [['sight_scroll', 1]]);
+    add(f >= 5, [['sense_scroll', 0.8]]);
     add(f >= 4, [['khaoniao', f >= 11 ? 2 : 1]]);
     add(f >= 5, [['elixir', 1]]);
     add(f >= 6, [['smoke_ball', 1]]);
@@ -327,7 +330,7 @@
   // 最終章の31〜35階：大魔王の城
   function demonFloor(f, C) {
     const items = [['herb', 3], ['big_herb', 3], ['elixir', 2], ['khaoniao', 2], ['banana', 1], ['sleep_incense', 2], ['slow_powder', 1],
-      ['fire_charm', 1], ['thunder_king_staff', 0.8], ['antidote', 1], ['sight_scroll', 1], ['clear_incense', 1],
+      ['fire_charm', 1], ['thunder_king_staff', 0.8], ['antidote', 1], ['sight_scroll', 1], ['sense_scroll', 1], ['clear_incense', 1],
       ['golden_sword', 0.6], ['golden_shield', 0.6], ['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]];
     return { theme: 'demon', enemies: [['darkknight', 3], ['imp', 3], ['guard', 2], ['golem', 1], ['wisp', 1]],
       enemyCount: [6, 7], itemCount: [5, 7], goldCount: [3, 4], items };
@@ -377,8 +380,8 @@
   D.STORAGE_SIZE = { 1: 20, 2: 40, 3: 60, 4: 80 };
   D.SHOP_STOCK = {
     1: ['herb', 'banana', 'bamboo_shield', 'bronze_sword'],
-    2: ['herb', 'banana', 'sleep_incense', 'sight_scroll', 'bamboo_shield', 'bronze_sword'],
-    3: ['herb', 'banana', 'khaoniao', 'elixir', 'sleep_incense', 'sight_scroll', 'smoke_ball', 'antidote', 'bamboo_shield', 'bronze_sword'],
+    2: ['herb', 'banana', 'sleep_incense', 'sight_scroll', 'sense_scroll', 'bamboo_shield', 'bronze_sword'],
+    3: ['herb', 'banana', 'khaoniao', 'elixir', 'sleep_incense', 'sight_scroll', 'sense_scroll', 'smoke_ball', 'antidote', 'bamboo_shield', 'bronze_sword'],
   };
 
   /* 施設・村の飾り。price: 資金、mats: 素材、req: 解放条件（文字列は表示用）

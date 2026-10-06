@@ -135,7 +135,7 @@ def variants(base):
     V += [('staff', base['staff'], None), ('staff_king', base['king_staff'], None)]
     sc = base['scroll']
     V += [('scroll_return', sc, None), ('scroll_thunder', sc, (teal, metal(0.14, 0.85, 1.1))),
-          ('scroll_sight', sc, (teal, tint_to(0.33)))]
+          ('scroll_sight', sc, (teal, tint_to(0.33))), ('scroll_sense', sc, (teal, tint_to(0.0)))]
     V += [('powder', base['powder'], None), ('sleepgrass', base['sleepgrass'], None), ('bento', base['bento'], None)]
     hb = base['herb']
     V += [('herb', hb, None), ('herb_big', hb, (red, metal(0.13, 0.85, 1.15))), ('herb_cure', hb, (red, metal(0.58, 0.7, 1.1)))]

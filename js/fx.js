@@ -199,7 +199,7 @@
   // みとおしの巻物：たけから広がる青い輪
   FX.draw.reveal = function (g, f, a, v) {
     const x = cx(v, f.x), y = cy(v, f.y);
-    g.globalAlpha = 1 - a; g.strokeStyle = '#8fd8ff'; g.lineWidth = v.k * 2;
+    g.globalAlpha = 1 - a; g.strokeStyle = f.color || '#8fd8ff'; g.lineWidth = v.k * 2;
     g.beginPath(); g.arc(x, y, v.ts * 4 * ease(a), 0, Math.PI * 2); g.stroke();
     g.globalAlpha = 1;
   };

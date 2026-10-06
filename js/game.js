@@ -162,7 +162,7 @@
     const Fdef = G.F(run), ch = G.chapterOf(run);
     const rpFloors = ch === 'legacy' ? D.RETURN_POINT_FLOORS : D.returnFloors(ch);
     const gen = DG.generate(floor, rng, { boss: !!Fdef.boss, returnPoint: rpFloors.includes(floor) });
-    run.hazards = []; run.fog = 0;
+    run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.map = gen.map;
     run.stairs = gen.stairs;
     run.returnPoint = gen.returnPoint;
@@ -736,7 +736,7 @@
 
   // ---------- 持ち物の整理 ----------
   // 種類の順：武器→盾→食料→回復→状態異常回復→攻撃・補助→帰還→素材→お宝
-  const SORT_GROUP = { weapon: 0, shield: 1, food: 2, heal: 3, cure: 4, sleep: 5, staff: 5, fire: 5, slow: 5, warp: 5, map: 5, clear: 5, charm: 5, return: 6, material: 7, treasure: 8, orb: 9 };
+  const SORT_GROUP = { weapon: 0, shield: 1, food: 2, heal: 3, cure: 4, sleep: 5, staff: 5, fire: 5, slow: 5, warp: 5, map: 5, sense: 5, clear: 5, charm: 5, return: 6, material: 7, treasure: 8, orb: 9 };
   const ITEM_ORDER = Object.keys(D.ITEMS);
   G.itemSortKey = (it) => [SORT_GROUP[G.def(it).type] ?? 9, ITEM_ORDER.indexOf(it.id), -(it.plus || 0), -(it.charges || 0), it.uid];
   /* 安定した並び替え（同じ並びに対して何度押しても順序が変わらない）。
@@ -807,6 +807,13 @@
         ev.push({ t: 'bolt', path, dir: p.dir, kind: d.tint === 'king' ? 'king' : 'staff', hit: !!hitE });
         if (hitE) damageEnemy(S, hitE, d.dmg, ev, '雷が' + D.ENEMIES[hitE.type].name + 'に命中！ ' + d.dmg + 'のダメージ。');
         else G.log(run, '雷は壁に当たって消えた。');
+        return true;
+      }
+      case 'sense': { // 気配察知：この階の敵の位置を地図に出す（視界・敵の索敵は変えない。地形や道具は明かさない）
+        remove();
+        run.sense = run.floor;
+        G.log(run, d.name + 'を読んだ。この階にいる敵の気配が地図に浮かんだ！');
+        ev.push({ t: 'sense' });
         return true;
       }
       case 'map': {
