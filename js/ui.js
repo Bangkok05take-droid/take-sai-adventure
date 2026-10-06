@@ -542,9 +542,9 @@
   function updateVillageHud() {
     const V = UI.S.village;
     const ss = G.storyStatus(V);
-    $('v-chapter').innerHTML = ss.cleared
-      ? `<b>★ 全章クリア</b>　最終章の35階には、何度でも挑戦できます`
-      : `<b>${esc(ss.name)}「${esc(ss.title)}」</b>　次のボス：<b>${esc(ss.bossName)}</b>　目標：<b>地下${ss.goal}階</b>`;
+    // 章の欄は1行だけ：「第3章｜次のボス：キルバーン」。全章クリア後は次のボスがいないので「全章クリア」
+    const bossName = ss.final ? D.ENEMIES[ss.boss].name : ss.bossName;
+    $('v-chapter').innerHTML = ss.cleared ? '<b>★ 全章クリア</b>' : `<b>${esc(ss.name)}</b>｜次のボス：<b>${esc(bossName)}</b>`;
     $('v-funds').textContent = V.funds;
     $('v-stage').textContent = G.title(V) || D.VILLAGE_STAGES[Math.min(3, V.stage)].name;
     $('v-stage-lbl').textContent = G.title(V) ? '称号' : '村';
@@ -552,16 +552,8 @@
     document.querySelector('.fac[data-fac="smith"]').classList.toggle('locked', !V.smithLv);
     document.querySelector('.fac[data-fac="diner"]').classList.toggle('locked', !V.diner);
     document.querySelector('.fac[data-fac="museum"]').classList.toggle('locked', !V.museum);
-    // 次に目指せる買い物
-    const g = G.nextGoals(UI.S);
-    const mats = Object.entries(V.materials || {}).filter(([, n]) => n > 0).map(([m, n]) => D.ITEMS[m].name.replace(/の?欠?片$/, '') + n).join(' ');
-    let goal;
-    if (g.can.length) goal = `<b class="ok">✨ ${esc(g.can[0].name)}</b> が建てられます（${g.can[0].price}G）${g.can.length > 1 ? ` ほか${g.can.length - 1}件` : ''}`;
-    else if (g.next) goal = `🎯 次の目標：<b>${esc(g.next.name)}</b>（${g.next.price}G・あと${g.need}G）`;
-    else goal = '🏆 すべての施設が完成しました！';
-    if (V.meal) goal += `<br>🍛 次の探索の料理：${esc(D.MEALS[V.meal].name)}`;
-    if (mats) goal += `<br>🧱 素材：${esc(mats)}`;
-    $('v-goal').innerHTML = goal;
+    // 以前の「次の目標・素材一覧」の欄は表示しない（素材は倉庫の「素材」、発展は「村の発展」で見られる）
+    $('v-goal').innerHTML = '';
   }
   function villageChanged() { updateVillageHud(); save(); }
 
@@ -1462,11 +1454,18 @@
     const run = UI.S.run;
     if (!run) return;
     const lines = run.log.slice(-2);
-    $('log').innerHTML = lines.map((l, i) => `<div class="${i === lines.length - 1 ? 'new' : ''}">${esc(l)}</div>`).join('');
+    $('log').innerHTML = lines.map((l, i) => `<div class="${i === lines.length - 1 ? 'new' : ''}">${logHtml(l)}</div>`).join('');
+  }
+  /* メッセージの数字を色でも強調：たけが受けたダメージは赤、回復は緑、それ以外（敵へのダメージなど）は金色。
+   * 画面の下の欄では（ ）の中の補足を省いて短くする（全文は「履歴」で読める） */
+  function logHtml(l, full) {
+    let t = full ? l : l.replace(/（[^）]*）/g, '');
+    const cls = /たけは\d+のダメージ|たけは.*ダメージ|毒で/.test(t) ? 'n-hurt' : /回復/.test(t) ? 'n-heal' : 'n-dmg';
+    return esc(t).replace(/(\d+)/g, `<b class="${cls}">$1</b>`);
   }
   function showLog() {
     const run = UI.S.run;
-    modal({ title: 'メッセージ履歴', html: run.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join(''), buttons: [{ label: '閉じる' }] });
+    modal({ title: 'メッセージ履歴', html: run.log.slice().reverse().map((l) => `<div>${logHtml(l, true)}</div>`).join(''), buttons: [{ label: '閉じる' }] });
   }
 
   function promptStairs() {
@@ -1826,7 +1825,7 @@
   }
 
   // テスト用に一部を公開
-  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save, finalCutscene, openFinalPrep, showStoryPending, showRecords };
+  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save, finalCutscene, openFinalPrep, showStoryPending, showRecords, updateVillageHud };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(globalThis.TS = globalThis.TS || {});
