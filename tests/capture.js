@@ -23,7 +23,7 @@ const FIX = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-cleared.js
     return p;
   };
   const shot = (p, n) => p.screenshot({ path: path.join(OUT, n + '.png') });
-  const closeTalk = async (p) => { for (let i = 0; i < 12 && await p.$('.talk'); i++) { await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(60); } };
+  const closeTalk = async (p) => { for (let i = 0; i < 40 && await p.$('.talk'); i++) { await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(60); } };
 
   for (const [w, h, tag] of [[390, 844, ''], [360, 640, '_small']]) {
     const p = await mk(w, h);

@@ -243,8 +243,10 @@
       const hurt = hitFx(p.x, p.y, 'player', now);
       const sx = Math.round(ox + pp.x * ts + l[0] + (hurt ? Math.sin(now / 18) * k * 2 : 0)), sy = Math.round(oy + pp.y * ts + l[1]);
       shadow(sx + ts / 2, sy + ts * 0.92, ts * 0.3);
-      g.drawImage(img, sx, sy, ts, ts);
-      if (hurt) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55; g.drawImage(img, sx, sy, ts, ts); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+      // 見本から作った絵（52×64、足元そろえ）は1マスより背が高いので、足元をマスの下端に合わせて描く
+      const drawP = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, walking ? (Math.floor(now / 85) % 2) : 0) : g.drawImage(img, sx, sy, ts, ts);
+      drawP();
+      if (hurt) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55; drawP(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
       if (p.poison) { g.fillStyle = '#c070ff'; g.fillRect(sx + ts * 0.8, sy + ts * 0.1 + (fr(300, 2) ? k : 0), 3 * k, 3 * k); }
       if (p.bound > 0) { // 拘束：闇の糸
         g.strokeStyle = 'rgba(190,150,255,0.9)'; g.lineWidth = k * 1.5;
@@ -387,106 +389,120 @@
     };
   };
 
-  /* 村の絵を描き、施設のタップ範囲を返す。
-   * 横幅いっぱいに拡大し、縦は「建物の並ぶ通り」が見えるように合わせる（縦長なら空と水路まで、横長なら上下を切る）。 */
-  RD.drawVillage = function (canvas, V, now) {
+  /* 人物の絵（見本から作った 52×64 の絵）を、足元 (fx, fy) にそろえて描く。k：1ドットの大きさ */
+  RD.drawChar = function (g, img, fx, fy, k, bob) {
+    const B = (TS.ASSETS && TS.ASSETS.charBox) || { w: 52, h: 64, foot: 62 };
+    g.drawImage(img, Math.round(fx - B.w / 2 * k), Math.round(fy - (B.foot + (bob || 0)) * k), Math.round(img.width * k), Math.round(img.height * k));
+  };
+
+  /* 村（歩ける1画面）。地面の1枚の上に、建物・木・小物・人物を足元の高さ順に重ねる。
+   * W：たけの位置と向き（UI が動かす）。戻り値：タップ判定用の範囲と、画面の座標→マスの変換 */
+  RD.drawVillage = function (canvas, V, now, W8) {
     const { g, W, H } = fit(canvas);
-    const lv = RD.villageLevels(V), Vv = VL(), VW = Vv.VW, VH = Vv.VH, FR = Vv.FRONT, BK = Vv.BACK;
+    const VLm = VL(), T = VLm.T;
+    const lv = RD.villageLevels(V);
     const key = JSON.stringify(lv);
-    if (!vcache || vcache.key !== key) vcache = Object.assign({ key }, Vv.paint(lv));
-    const s = Math.min(W / VW * 1.06, Math.max(W / VW, H / VH));     // 横幅に合わせる（縦長なら左右をほんの少し切って大きく）
-    const ox = Math.round((W - VW * s) / 2);
-    // 広場が画面の中ほどに来るように。絵が画面より低いときは下にそろえ、上は空の色でつなぐ
-    const oy = VH * s >= H ? Math.round(Math.min(0, Math.max(H - VH * s, H * 0.55 - Vv.FOCUS * s))) : Math.round(H - VH * s);
-    // 絵の外（上下）は空と岸の色でつなぐ
-    g.fillStyle = vcache.night ? '#1a2350' : '#3d7cc8'; g.fillRect(0, 0, W, oy + 2);
-    g.fillStyle = vcache.night ? '#4e7a3e' : '#6a9e40'; g.fillRect(0, oy + VH * s - 2, W, H);
-    if (oy > 0) { g.fillStyle = '#ffffff'; for (let i = 0; i < 24; i++) { g.globalAlpha = 0.25 + (i % 3) * 0.2; g.fillRect((SP.hash(i, 1, 3) % W), (SP.hash(i, 2, 3) % Math.max(1, oy)), 2, 2); } g.globalAlpha = 1; }
-    g.drawImage(vcache.canvas, ox, oy, VW * s, VH * s);
-    g.save(); g.translate(ox, oy); g.scale(s, s);
-    // 窓・灯りのほのかな光（夜は強め）
+    if (!vcache || vcache.key !== key) vcache = Object.assign({ key }, VLm.build(lv));
+    const vc = vcache;
+    // 1ドットの大きさは整数倍（にじませない）。横11マス・縦9マスほどが見える大きさ
+    const k = Math.max(1, Math.floor(Math.min(W / 11, H / 9) / T));
+    const wp = W8 ? RD.walkerPos(W8, now) : { x: VLm.START.x, y: VLm.START.y };
+    const mapW = vc.W * k, mapH = vc.H * k;
+    const cxw = (wp.x + 0.5) * T * k, cyw = (wp.y + 0.5) * T * k;
+    const ox = mapW <= W ? Math.round((W - mapW) / 2) : Math.round(Math.min(0, Math.max(W - mapW, W / 2 - cxw)));
+    const oy = mapH <= H ? Math.round((H - mapH) / 2) : Math.round(Math.min(0, Math.max(H - mapH, H * 0.55 - cyw)));
+    g.fillStyle = '#4a7a34'; g.fillRect(0, 0, W, H);
+    g.drawImage(vc.ground, ox, oy, mapW, mapH);
+    // 水面のきらめき
+    g.fillStyle = 'rgba(230,250,255,0.7)';
+    for (let i = 0; i < 26; i++) {
+      const x = ((i * 97 + now / 40) % vc.W), y = 22 * T + 12 + (i * 37) % 80;
+      g.globalAlpha = 0.35 + 0.35 * Math.sin(now / 500 + i);
+      g.fillRect(ox + Math.round(x) * k, oy + y * k, 5 * k, k);
+    }
+    g.globalAlpha = 1;
+    // 重ねる物を集める
+    const list = [];
+    for (const o of vc.objs) list.push({ y: o.sortY, o });
+    const pal = SP.art && SP.art.chars ? SP.art.chars : {};
+    const bob2 = (i) => (Math.floor(now / 520 + i) % 2);
+    for (const n of vc.npcs) {
+      const a = pal[n.who];
+      let img = a && a.front;
+      // たけが近くにいれば、そちらを向く（背面の絵があるときは上を向く）
+      if (a && W8 && Math.abs(W8.x - n.x) + Math.abs(W8.y - n.y) <= 2 && W8.y < n.y && a.back) img = a.back;
+      list.push({ y: (n.y + 1) * T - 1, char: img, fx: n.x, fy: n.y, bob: bob2(n.x), who: n.who });
+    }
+    for (const kd of vc.kids) list.push({ y: (kd.y + 1) * T - 1, small: kd.cv, fx: kd.x + Math.sin(now / 1800 + kd.x) * 0.3, fy: kd.y, bob: bob2(kd.y) });
+    for (const ct of vc.cats) list.push({ y: (ct.y + 1) * T - 2, small: ct.cv, fx: ct.x, fy: ct.y, bob: 0 });
+    // たけ
+    {
+      const t = pal.take, dir = W8 ? W8.dir : 'up';
+      const img = t && (dir === 'up' ? t.back : dir === 'left' ? t.side : dir === 'right' ? t.sideR : t.front);
+      const walking = W8 && W8.moving;
+      list.push({ y: (wp.y + 1) * T - 0.5, char: img, fx: wp.x, fy: wp.y, bob: walking ? (Math.floor(now / 110) % 2) : bob2(0), take: true, dir });
+    }
+    // ヤナイの記念像（青銅の像）：台座と同じ重なり順
+    if (SP.art && SP.art.statue && vc.statue) list.push({ y: 13 * T - 0.9, statue: true });
+    list.sort((a, b) => a.y - b.y);
+    for (const it of list) {
+      if (it.statue) { const s = SP.art.statue, B = TS.ASSETS.charBox; g.drawImage(s, Math.round(ox + vc.statue[0] * k - B.w / 2 * k), Math.round(oy + vc.statue[1] * k - B.foot * k), s.width * k, s.height * k); continue; }
+      if (it.o) {
+        const o = it.o;
+        if (o.crop) g.drawImage(o.cv, o.crop[0], o.crop[1], o.crop[2], o.crop[3], ox + o.x * k, oy + o.y * k, o.crop[2] * k, o.crop[3] * k);
+        else g.drawImage(o.cv, ox + o.x * k, oy + o.y * k, o.cv.width * k, o.cv.height * k);
+        continue;
+      }
+      const fx = ox + (it.fx + 0.5) * T * k, fy = oy + (it.fy + 1) * T * k - 2 * k;
+      g.fillStyle = 'rgba(20,14,30,0.28)'; g.beginPath(); g.ellipse(fx, fy, 11 * k, 3.5 * k, 0, 0, Math.PI * 2); g.fill();
+      if (it.small) { g.drawImage(it.small, Math.round(fx - it.small.width / 2 * k), Math.round(fy - (it.small.height - 1 + it.bob) * k), it.small.width * k, it.small.height * k); continue; }
+      if (it.char) RD.drawChar(g, it.char, fx, fy + 2 * k, k, it.bob);
+      else if (it.take) g.drawImage(SP.s.take[it.dir === 'up' ? 'up' : it.dir] ? SP.s.take[it.dir].walk[0] : SP.s.take.down.walk[0], Math.round(fx - 16 * k), Math.round(fy - 30 * k), 32 * k, 32 * k);
+    }
+    // 灯り・湯気・煙
     g.globalCompositeOperation = 'lighter';
-    for (const [lx, ly, r] of vcache.lights) {
-      const fl = 0.85 + 0.15 * Math.sin(now / 300 + lx);
-      const gr = g.createRadialGradient(lx, ly, 0, lx, ly, r * 1.6);
-      gr.addColorStop(0, `rgba(255,200,110,${(vcache.night ? 0.42 : 0.16) * fl})`); gr.addColorStop(1, 'rgba(255,200,110,0)');
-      g.fillStyle = gr; g.fillRect(lx - r * 1.6, ly - r * 1.6, r * 3.2, r * 3.2);
+    for (const [lx, ly, r] of vc.lights) {
+      const fl = 0.8 + 0.2 * Math.sin(now / 300 + lx), x = ox + lx * k, y = oy + ly * k, rr = r * k * 1.4;
+      const gr = g.createRadialGradient(x, y, 0, x, y, rr);
+      gr.addColorStop(0, `rgba(255,200,110,${0.22 * fl})`); gr.addColorStop(1, 'rgba(255,200,110,0)');
+      g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
     }
     g.globalCompositeOperation = 'source-over';
-    // 水面のきらめき・小舟
-    g.fillStyle = 'rgba(220,245,255,0.75)';
-    for (let i = 0; i < 16; i++) g.fillRect((i * 53 + Math.floor(now / 90)) % VW, Vv.WATER[0] + 4 + (i * 17) % 30, 5, 1);
-    const bx = 60 + Math.sin(now / 2200) * 40, by = Vv.WATER[0] + 20;
-    g.fillStyle = '#6a4228'; g.fillRect(bx, by, 30, 4); g.fillStyle = '#4a2e18'; g.fillRect(bx + 3, by + 4, 24, 2);
-    g.fillStyle = '#e8c070'; g.beginPath(); g.moveTo(bx + 8, by); g.lineTo(bx + 15, by - 8); g.lineTo(bx + 22, by); g.fill();
-    // 湯気・煙・噴水
-    for (const [x, y, kind] of vcache.steam) {
+    for (const [x0, y0, kind] of vc.smoke.map((s) => [s[0], s[1], 'smoke']).concat(vc.steam.map((s) => [s[0], s[1], s[2] || 'steam']))) {
       for (let i = 0; i < 3; i++) {
-        const t = ((now / (kind === 'fountain' ? 500 : 1400)) + i / 3) % 1;
-        if (kind === 'fountain') { g.fillStyle = 'rgba(200,240,255,0.85)'; g.fillRect(x - 1 + (i - 1) * 3 * t, y + t * 8 - Math.sin(t * Math.PI) * 6, 2, 2); continue; }
-        g.fillStyle = kind === 'smoke' ? `rgba(200,200,210,${0.55 * (1 - t)})` : `rgba(255,255,255,${0.6 * (1 - t)})`;
-        const r = (kind === 'smoke' ? 3 : 2) + t * 4;
-        g.beginPath(); g.arc(x + Math.sin(t * 6 + i) * 2, y - t * 16, r, 0, Math.PI * 2); g.fill();
+        const t = ((now / (kind === 'fountain' ? 600 : 1500)) + i / 3) % 1;
+        if (kind === 'fountain') { g.fillStyle = 'rgba(210,245,255,0.9)'; g.fillRect(ox + (x0 + (i - 1) * 8 * t) * k, oy + (y0 - Math.sin(t * Math.PI) * 14) * k, 2 * k, 2 * k); continue; }
+        g.fillStyle = kind === 'smoke' ? `rgba(210,210,220,${0.6 * (1 - t)})` : `rgba(255,255,255,${0.6 * (1 - t)})`;
+        g.beginPath(); g.arc(ox + (x0 + Math.sin(t * 6 + i) * 3) * k, oy + (y0 - t * 24) * k, (3 + t * 5) * k, 0, Math.PI * 2); g.fill();
       }
     }
-    // 灯り（発展・灯籠で増える）
-    const lamps = [[110, FR + 14], [140, BK + 14]];
-    if (lv.stage >= 2) lamps.push([4, FR + 14], [222, BK + 14]);
-    if (lv.stage >= 3) lamps.push([196, FR + 14], [326, BK + 14]);
-    if (lv.decor.lanterns) for (let x = 20; x < VW; x += 44) lamps.push([x, FR + 26]);
-    for (const [lx, ly] of lamps) {
-      g.fillStyle = '#3a2418'; g.fillRect(lx, ly - 16, 2, 17);
-      const fl = 0.75 + 0.25 * Math.sin(now / 280 + lx);
-      g.globalAlpha = (vcache.night ? 0.4 : 0.2) * fl; g.fillStyle = '#ffd070'; g.beginPath(); g.arc(lx + 1, ly - 18, 9, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
-      g.fillStyle = '#1e1218'; g.fillRect(lx - 3, ly - 22, 8, 7); g.fillStyle = '#ff8a3a'; g.fillRect(lx - 2, ly - 21, 6, 5); g.fillStyle = '#ffe08a'; g.fillRect(lx - 1, ly - 20, 4, 3);
+    // 名札（文字は絵に焼き込まず、画面の文字として描く）
+    const dpr = W / Math.max(1, canvas.clientWidth);
+    g.font = `bold ${Math.round(11 * dpr)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const [t, x, y] of vc.labels) {
+      const tw = g.measureText(t).width + 10 * dpr, px = ox + x * k, py = oy + y * k, hh = Math.round(16 * dpr);
+      g.fillStyle = 'rgba(10,32,40,0.86)'; g.fillRect(Math.round(px - tw / 2), Math.round(py - hh / 2), Math.round(tw), hh);
+      g.fillStyle = 'rgba(226,178,60,0.95)'; g.fillRect(Math.round(px - tw / 2), Math.round(py + hh / 2) - dpr, Math.round(tw), dpr);
+      g.fillStyle = '#fff4dc'; g.fillText(t, px, py);
     }
-    if (lv.stage >= 2 || lv.decor.lanterns) { // 通りに渡した吊り提灯
-      g.strokeStyle = 'rgba(40,24,16,0.7)'; g.lineWidth = 0.6; g.beginPath();
-      const ly0 = BK + 24;
-      for (let x = 0; x <= VW; x += 8) g.lineTo(x, ly0 + Math.abs(Math.sin(x / 48 * Math.PI)) * 6);
-      g.stroke();
-      for (let i = 0; i < 12; i++) { const x = 14 + i * 31, y = ly0 + Math.abs(Math.sin(x / 48 * Math.PI)) * 6; g.fillStyle = '#1e1218'; g.fillRect(x - 1, y, 6, 7); g.fillStyle = i % 2 ? '#ff6a6a' : '#ffd070'; g.fillRect(x, y + 1, 4, 5); }
-    }
-    // 宝珠の光
-    if (lv.cleared) {
-      const gl = 0.6 + 0.4 * Math.sin(now / 400);
-      g.globalAlpha = gl * 0.5; g.fillStyle = '#e8c8ff'; g.beginPath(); g.arc(250, 162, 12, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
-      g.drawImage(SP.s.icon.orb, 242, 152, 16, 16);
-    }
-    // 村の人（章が進むと増える。名前や姿を決めた人物は js/assets.js・js/story.js で差し替え）
-    const nV = Math.min(7, lv.chapter + (lv.ending ? 2 : 0));
-    const spots = [[150, FR - 10], [228, BK + 44], [300, BK + 34], [262, FR - 18], [348, FR - 20], [190, BK + 30], [120, FR + 2]];
-    for (let i = 0; i < nV; i++) {
-      const [vx, vy] = spots[i], img = SP.s.villagers[i % SP.s.villagers.length];
-      const bob = Math.floor((now / 500 + i) % 2), sway = Math.round(Math.sin(now / 1500 + i * 2) * 3);
-      g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(vx + sway, vy + 1, 6, 1.8, 0, 0, Math.PI * 2); g.fill();
-      g.drawImage(img, vx - 12 + sway, vy - 24 - bob, 24, 24);
-    }
-    // たけとサイ（店の前）
-    g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(44, FR + 6, 9, 2.5, 0, 0, Math.PI * 2); g.ellipse(76, FR + 9, 9, 2.5, 0, 0, Math.PI * 2); g.fill();
-    g.drawImage(SP.s.sai[Math.floor(now / 1700) % 6 === 0 ? 1 : 0], 28, FR - 25, 32, 32);
-    g.drawImage(SP.s.take.down.walk[Math.floor(now / 600) % 2 ? 0 : 2], 60, FR - 22, 32, 32);
-    // 名札
-    g.font = 'bold 9px sans-serif'; g.textAlign = 'center';
-    for (const [t, x, y] of vcache.label) {
-      const w = g.measureText(t).width + 8;
-      g.fillStyle = 'rgba(8,26,34,0.82)'; g.fillRect(Math.round(x - w / 2), y - 9, Math.round(w), 12);
-      g.fillStyle = 'rgba(214,170,82,0.8)'; g.fillRect(Math.round(x - w / 2), y + 3, Math.round(w), 1);
-      g.fillStyle = '#fff4dc'; g.fillText(t, x, y);
-    }
-    g.textAlign = 'left';
-    g.restore();
-    // タップ範囲（絵の座標）
-    const hits = [
-      { id: 'depart', x: 56, y: FR - 26, w: 36, h: 40 },
-      { id: 'shop', x: 2, y: FR - 92, w: 104, h: 110 },
-      { id: lv.diner ? 'diner' : 'develop', x: 112, y: FR - 66, w: 80, h: 84 },
-      { id: 'storage', x: 130, y: BK - 80, w: 94, h: 96 },
-      { id: lv.smith ? 'smith' : 'develop', x: 228, y: BK - 76, w: 92, h: 92 },
-      { id: lv.museum ? 'museum' : 'develop', x: 322, y: BK - 62, w: 62, h: 78 },
-    ];
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    // 行き先の印
+    if (W8 && W8.goal) { const gx = ox + (W8.goal.x + 0.5) * T * k, gy = oy + (W8.goal.y + 0.7) * T * k; g.strokeStyle = `rgba(255,240,160,${0.5 + 0.4 * Math.sin(now / 150)})`; g.lineWidth = k; g.beginPath(); g.ellipse(gx, gy, 9 * k, 4 * k, 0, 0, Math.PI * 2); g.stroke(); }
+    // タップ判定（画面のCSSピクセル）
     const cw = W / canvas.clientWidth;
-    return hits.map((h) => ({ id: h.id, x: (ox + h.x * s) / cw, y: (oy + h.y * s) / cw, w: h.w * s / cw, h: h.h * s / cw }));
+    const hits = [];
+    const rect = (id, x, y, w, h, kind) => hits.push({ id, kind, x: (ox + x * k) / cw, y: (oy + y * k) / cw, w: w * k / cw, h: h * k / cw });
+    for (const n of vc.npcs) rect(n.fac, n.x * T - 4, (n.y + 1) * T - 56, T + 8, 56, 'npc');
+    for (const f of vc.fac) rect(f.id, f.fp[0] * T, f.fp[1] * T - 30, f.fp[2] * T, f.fp[3] * T + 30, 'fac');
+    rect('statue', 9 * T, 11 * T - 60, 2 * T, 2 * T + 60, 'statue');
+    rect('site', 1 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site'); rect('site', 14 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site');
+    return { hits, tile: (cx, cy) => ({ x: Math.floor((cx * cw - ox) / (T * k)), y: Math.floor((cy * cw - oy) / (T * k)) }), fac: vc.fac, solid: vc.solid };
+  };
+  // 歩いている途中の位置（マスの間をなめらかに）
+  RD.walkerPos = function (w, now) {
+    if (!w.moving || !w.from) return { x: w.x, y: w.y };
+    const t = Math.min(1, (now - w.t0) / w.dur);
+    return { x: w.from.x + (w.x - w.from.x) * t, y: w.from.y + (w.y - w.from.y) * t };
   };
 
   TS.Render = RD;

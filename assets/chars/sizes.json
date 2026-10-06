@@ -1,0 +1,77 @@
+{
+ "canvas": [
+  52,
+  64
+ ],
+ "base": 62,
+ "sprites": {
+  "take_front": [
+   39,
+   47
+  ],
+  "take_side": [
+   35,
+   48
+  ],
+  "take_back": [
+   36,
+   47
+  ],
+  "sai_front": [
+   36,
+   48
+  ],
+  "sai_side": [
+   34,
+   48
+  ],
+  "sai_back": [
+   35,
+   48
+  ],
+  "koi_front": [
+   26,
+   46
+  ],
+  "koi_back": [
+   25,
+   48
+  ],
+  "mot_front": [
+   28,
+   46
+  ],
+  "mot_back": [
+   28,
+   46
+  ],
+  "waan_front": [
+   29,
+   47
+  ],
+  "waan_back": [
+   27,
+   47
+  ],
+  "tiw_front": [
+   28,
+   47
+  ],
+  "tiw_back": [
+   28,
+   47
+  ],
+  "yanai_front": [
+   41,
+   61
+  ],
+  "yanai_side": [
+   37,
+   61
+  ],
+  "yanai_back": [
+   34,
+   61
+  ]
+ }
+}

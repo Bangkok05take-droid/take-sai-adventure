@@ -59,6 +59,45 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await shot('03_village');
   });
 
+  await test('村を歩く：地面をタップすると1マスずつ歩き、人物をタップするとその前まで歩いて施設が開く。像に話しかけるとヤナイの言葉', async () => {
+    const tapAt = async (sel) => { const pt = await p.evaluate(sel); await p.touchscreen.tap(pt.x, pt.y); };
+    const hitPt = (id, kind) => `(() => { const h = TS.UI.vview.hits.find((h) => h.id === '${id}' && h.kind === '${kind}'); const r = document.getElementById('village-canvas').getBoundingClientRect(); return { x: r.left + h.x + h.w / 2, y: r.top + h.y + h.h - 6 }; })()`;
+    const w0 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));
+    // 2マス左の地面をタップ
+    await tapAt(`(() => { const v = TS.UI.vview, r = document.getElementById('village-canvas').getBoundingClientRect(), w = TS.UI.walker;
+      // 画面を4pxごとに調べて、たけの2マス左のマスの位置をさがす
+      let best = null; for (let y = 0; y < r.height; y += 4) for (let x = 0; x < r.width; x += 4) { const t = v.tile(x, y); if (t.x === w.x - 2 && t.y === w.y) { best = { x: r.left + x + 2, y: r.top + y + 2 }; break; } if (best) break; }
+      return best; })()`);
+    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.walker.moving || TS.UI.walker.path.length); i++) await p.waitForTimeout(80);
+    const w1 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));
+    assert(w1.x === w0.x - 2 && w1.y === w0.y, 'walked ' + JSON.stringify([w0, w1]));
+    // サイをタップ → 店の前まで歩いて店が開く
+    await tapAt(hitPt('shop', 'npc'));
+    for (let i = 0; i < 60 && !(await p.$('.modal')); i++) await p.waitForTimeout(80);
+    assert(await p.isVisible('.modal h2:has-text("サイの店")'), 'shop by walking');
+    assert(await p.evaluate(() => TS.UI.walker.x === 3 && TS.UI.walker.y === 15 && TS.UI.walker.dir === 'up'), 'stands at shop');
+    await shot('03b_village_walk_shop');
+    await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(150);
+    // 記念像
+    await tapAt(hitPt('statue', 'statue'));
+    for (let i = 0; i < 80 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
+    assert(await p.isVisible('.talk'), 'statue talk');
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(80);
+    assert(await p.evaluate(() => document.querySelector('.talk .who').textContent.includes('ヤナイ')), 'yanai speaks');
+    await closeTalk();
+    // キー操作：下へ1マス
+    const k0 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));
+    await p.keyboard.press('ArrowDown'); await p.waitForTimeout(300);
+    const k1 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));
+    assert(k1.y === k0.y + 1, 'key step');
+    // 鍛冶屋（まだ空き地）：コイをタップすると、鍛冶屋の案内（解放条件のまま）
+    await tapAt(hitPt('smith', 'npc'));
+    for (let i = 0; i < 80 && !(await p.$('.modal')); i++) await p.waitForTimeout(80);
+    assert(await p.isVisible('.modal'), 'smith modal');
+    assert(await p.evaluate(() => TS.UI.S.village.smithLv === 0), 'smith still locked');
+    await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(150);
+  });
+
   await test('サイの店で貸出品を受け取り、買い物ができる', async () => {
     await p.tap('.fac[data-fac="shop"]'); await p.waitForTimeout(150);
     await p.tap('.tabs button[data-t="loan"]'); await p.waitForTimeout(100);

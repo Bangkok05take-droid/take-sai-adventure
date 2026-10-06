@@ -12,6 +12,7 @@
   // ================= 起動 =================
   function boot() {
     SP.build(); SP.buildTiles();
+    SP.loadArt();
     setAppHeight();
     window.addEventListener('resize', setAppHeight);
     window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 200));
@@ -45,7 +46,7 @@
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
     AU.playBgm(name === 'dungeon' ? (UI.S.run && G.F(UI.S.run).boss ? 'boss' : 'dungeon') : 'village');
-    if (name === 'village') updateVillageHud();
+    if (name === 'village') { updateVillageHud(); resetWalker(); }
     if (name === 'dungeon') updateHud();
   }
 
@@ -58,7 +59,7 @@
         const fin = UI.S.run.final;
         if (fin && fin.stage === 'prep' && fin.cutsceneSeen && !UI.prepHold && !UI.modals.length && !UI.S.run.over) openFinalPrep();
       }
-      else if (UI.screen === 'village') UI.villageHits = RD.drawVillage($('village-canvas'), UI.S.village, now);
+      else if (UI.screen === 'village') { tickWalker(now); UI.vview = RD.drawVillage($('village-canvas'), UI.S.village, now, UI.walker); }
       else if (UI.screen === 'title') drawTitleScene();
     } catch (e) { console.error(e); }
     requestAnimationFrame(loop);
@@ -459,11 +460,71 @@
     }
     $('v-menu').addEventListener('click', () => { AU.sfx('tap'); villageMenu(); });
     $('village-canvas').addEventListener('click', (e) => {
+      if (UI.modals.length || !UI.vview) return;
       const r = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - r.left, y = e.clientY - r.top;
-      const h = UI.villageHits.find((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
-      if (h) { AU.sfx('tap'); openFacility(h.id); }
+      const inside = (h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h;
+      // 人 → 施設の建物 → 像・建設予定地 → 地面 の順に調べる
+      const h = UI.vview.hits.find((h) => h.kind === 'npc' && inside(h)) || UI.vview.hits.find((h) => h.kind !== 'npc' && inside(h));
+      AU.sfx('tap');
+      if (h && h.kind === 'site') { toast('学校・図書館は建設予定地です（まだ使えません）'); return; }
+      if (h && h.kind === 'statue') { walkTo(Math.abs(UI.walker.x - 9) <= Math.abs(UI.walker.x - 10) ? 9 : 10, 13, 'up', statueTalk); return; }
+      if (h) { const f = UI.vview.fac.find((f) => f.id === h.id); if (f) { walkTo(f.at[0], f.at[1], f.face, () => openFacility(f.id)); return; } }
+      const t = UI.vview.tile(x, y);
+      walkTo(t.x, t.y);
     });
+  }
+
+  /* 村を歩く：たけの位置は村の画面の中だけのもの（保存しない）。タップした場所・施設まで道をさがして1マスずつ歩く */
+  function resetWalker() {
+    if (!UI.walker) UI.walker = { x: TS.Village.START.x, y: TS.Village.START.y, dir: TS.Village.START.dir, moving: false, path: [] };
+    UI.walker.path = []; UI.walker.goal = null; UI.walker.onArrive = null;
+  }
+  const VSTEP = 140;
+  function walkTo(tx, ty, face, onArrive) {
+    const w = UI.walker;
+    if (!w || !UI.vview) return false;
+    const sx = w.x, sy = w.y;
+    const p = TS.Village.path(UI.vview.solid, sx, sy, tx, ty);
+    if (!p) { if (!onArrive) toast('そこへは行けない'); return false; }
+    w.path = p; w.goal = p.length ? { x: tx, y: ty } : null; w.face = face || null; w.onArrive = onArrive || null;
+    if (!w.moving) tickWalker(performance.now());
+    return true;
+  }
+  function tickWalker(now) {
+    const w = UI.walker;
+    if (!w) return;
+    if (w.moving && now - w.t0 < w.dur) return;
+    w.moving = false;
+    if (UI.modals.length) { w.path = []; w.goal = null; return; }
+    if (w.path && w.path.length) {
+      const n = w.path.shift(), dx = n.x - w.x, dy = n.y - w.y;
+      w.from = { x: w.x, y: w.y }; w.x = n.x; w.y = n.y;
+      w.dir = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      w.t0 = now; w.dur = dx && dy ? VSTEP * 1.4 : VSTEP; w.moving = true;
+      return;
+    }
+    w.goal = null;
+    if (w.face) { w.dir = w.face; w.face = null; }
+    if (w.onArrive) { const f = w.onArrive; w.onArrive = null; f(); }
+  }
+  // キー操作：1マス歩く。行き止まりが施設の入口なら入る
+  function villageStep(dir) {
+    const w = UI.walker, v = UI.vview;
+    if (!w || !v || w.moving || UI.modals.length) return;
+    const [dx, dy] = G.DIRS[dir];
+    if (dx && dy) return;
+    w.dir = dir;
+    const nx = w.x + dx, ny = w.y + dy;
+    const f = v.fac.find((f) => f.at[0] === w.x && f.at[1] === w.y && (f.face === dir));
+    if (f) { openFacility(f.id); return; }
+    if (nx < 0 || ny < 0 || nx >= TS.Village.MW || ny >= TS.Village.MH || v.solid[ny * TS.Village.MW + nx]) return;
+    w.path = [{ x: nx, y: ny }]; tickWalker(performance.now());
+  }
+  function statueTalk() {
+    const L = D.STORY.yanaiMemories || [];
+    UI.statueN = ((UI.statueN || 0) + 1) % Math.max(1, L.length);
+    talk([['narration', 'マスターヤナイの像。村を守った師匠をしのんで、みんなで建てた。'], L[UI.statueN] || ['yanai', '……']], null, { skip: false });
   }
   function updateVillageHud() {
     const V = UI.S.village;
@@ -1079,6 +1140,7 @@
       else if (e.key === 'Enter') { const b = top.el.querySelector('.modal-buttons button.primary:not(:disabled)'); if (b) { b.click(); e.preventDefault(); } }
       return;
     }
+    if (UI.screen === 'village') { const d = keyDir(e); if (d) { e.preventDefault(); villageStep(d); } return; }
     if (UI.screen !== 'dungeon' || !UI.S.run) return;
     const dir = keyDir(e);
     if (dir) {

@@ -1151,8 +1151,11 @@
     SP.s = s;
     return s;
   };
+  const artIcon = (def, kind) => { const e = SP.art.items[def.icon + ':' + (def.tint || '')]; return e && e[kind] ? e[kind] : null; };
   SP.iconFor = function (def) {
     const key = def.icon + ':' + (def.tint || '');
+    const a = artIcon(def, 'floor');
+    if (a) return a;
     const s = SP.s;
     if (!s.iconT[key]) s.iconT[key] = I[def.icon] ? I[def.icon](def.tint).canvas() : s.icon.coin;
     return s.iconT[key];
@@ -1161,13 +1164,15 @@
 
   const urlCache = {};
   SP.iconURL = function (def) {
-    const key = def.icon + (def.tint || '');
+    const a = artIcon(def, 'list');
+    const key = def.icon + (def.tint || '') + (a ? '@art' : '');
     if (!urlCache[key]) {
+      // 一覧用は96×96（見本の絵48×48は2倍、コードで描いた32×32は3倍。どちらも整数倍で拡大）
       const c = document.createElement('canvas');
-      c.width = c.height = 32;
+      c.width = c.height = 96;
       const g = c.getContext('2d');
       g.imageSmoothingEnabled = false;
-      g.drawImage(SP.iconFor(def), 0, 0, 32, 32);
+      g.drawImage(a || SP.iconFor(def), 0, 0, 96, 96);
       urlCache[key] = c.toDataURL();
     }
     return urlCache[key];
@@ -1203,6 +1208,69 @@
     }
     if (!left && onDone) onDone();
   };
+
+  /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
+   * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
+   * SP.art.items[キー] = { list(48×48), floor(32×32) } */
+  SP.art = { chars: {}, items: {}, ready: false };
+  SP.loadArt = function (onDone) {
+    const A = TS.ASSETS || {};
+    let left = 0, finished = false;
+    const end = () => { if (finished) return; finished = true; SP.art.ready = true; buildFromArt(); if (onDone) onDone(); };
+    const load = (src, cb) => { left++; const img = new Image(); img.onload = () => { cb(img); if (--left === 0) end(); }; img.onerror = () => { if (--left === 0) end(); }; img.src = src; };
+    for (const [who, v] of Object.entries(A.chars || {})) {
+      const c = SP.art.chars[who] = {};
+      for (const view of ['front', 'back', 'side']) if (v[view]) load(v[view], (img) => { c[view] = toCanvas(img); if (view === 'side') c.sideR = flipCanvas(c.side); });
+    }
+    const IT = A.items || {};
+    for (const [key, name] of Object.entries(IT.map || {})) {
+      const e = SP.art.items[key] = {};
+      load(IT.dir + 'list/' + name + '.png', (img) => { e.list = toCanvas(img); });
+      load(IT.dir + 'floor/' + name + '.png', (img) => { e.floor = toCanvas(img); });
+    }
+    if (!left) end();
+  };
+  function toCanvas(img) { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0); return c; }
+  // 人物のいちばん上の不透明な行（頭のてっぺん）
+  function topRow(cv) {
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3]) return y;
+    return 0;
+  }
+  // 顔絵：正面の絵の頭から肩までを切り出す（36×36 → 会話では2倍で表示）
+  function headCrop(cv) {
+    const t = topRow(cv), c = document.createElement('canvas'); c.width = c.height = 36;
+    const g = c.getContext('2d'); g.fillStyle = '#e9dcc0'; g.fillRect(0, 0, 36, 36);
+    g.drawImage(cv, 26 - 18, Math.max(0, t - 2), 36, 36, 0, 0, 36, 36);
+    return c;
+  }
+  // 記念像：ヤナイの正面の絵を青銅の色に置きかえる（明るさで5段階の青銅色）
+  function bronze(cv) {
+    const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height;
+    const g = c.getContext('2d'); g.drawImage(cv, 0, 0);
+    const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+    const R = [[58, 40, 30], [98, 68, 44], [140, 100, 60], [184, 140, 84], [226, 190, 120]];
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      const l = (d[i] * 0.3 + d[i + 1] * 0.55 + d[i + 2] * 0.15) / 255;
+      const k = Math.max(0, Math.min(4, Math.round(l * 5.2 - 0.6))), q = R[k];
+      d[i] = q[0]; d[i + 1] = q[1]; d[i + 2] = q[2];
+    }
+    g.putImageData(im, 0, 0);
+    return c;
+  }
+  function buildFromArt() {
+    const ch = SP.art.chars, s = SP.s;
+    // ダンジョンのたけ：正面・背面・横（右は反転）。歩きは上下動で表す
+    const t = ch.take;
+    if (t && t.front && t.back && t.side) {
+      const set = (img) => ({ walk: [img, img, img, img], atk: img, art: true });
+      s.take = { down: set(t.front), up: set(t.back), left: set(t.side), right: set(t.sideR) };
+    }
+    for (const who of Object.keys(ch)) if (ch[who].front) s.portrait[who] = headCrop(ch[who].front);
+    if (ch.yanai && ch.yanai.front) SP.art.statue = bronze(ch.yanai.front);
+  }
+  SP.charArt = (who) => SP.art.chars[who] && SP.art.chars[who].front ? SP.art.chars[who] : null;
 
   SP.buildTiles = function () {
     const out = {};

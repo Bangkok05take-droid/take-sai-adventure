@@ -1,11 +1,41 @@
-/* 画像素材の差し替え設定（ゲーム処理とは別）。
- * 完成画像ができたら assets/ に置き、ここにパスを書く。null のものは、コードで描いた暫定のドット絵を使う。
- *  portraits：会話の顔絵（正方形。64×64 など）。friend1 / friend2 はサイの友達（名前は js/story.js の D.CAST）
- *  bosses   ：ボスの絵（1コマ正方形を横に2コマ並べた画像。例 128×64）。キーは js/data.js の敵の sprite 名 */
+/* 画像素材の設定（ゲーム処理とは別）。画像を差し替えるときは、ここのパスを書きかえるか同じ名前で上書きする。
+ * null や読み込めなかった画像は、コードで描いたドット絵を使う（ゲームは止まらない）。
+ *
+ * 人物（assets/chars/）：デザイン見本 assets/reference/ から tools/extract-art.py で作った透過PNG。
+ *   キャンバスは全員 横52×縦64（1ドット＝1ピクセル）。足の裏は下から2ドット目（y=62）、左右は足元の中央が x=26。
+ *   front=正面 back=背面 side=横向き（見本は左向き。右向きは左右反転して使う）。
+ *   歩行の別コマは見本に無いので、1ドットの上下動で歩きを表している（不足素材：README 参照）。
+ * 道具（assets/items/）：tools/extract-items.py で作った透過PNG。list=一覧用48×48、floor=床に置いた状態32×32。
+ *   キーは「アイコン名:色分け」（js/data.js の icon と tint）。ここに無い道具はコードで描いたアイコン。
+ * portraits / bosses：会話の顔絵・ボスの絵の差し替え先（正方形。ボスは1コマ正方形を横に2コマ）。 */
 (function (TS) {
   'use strict';
+  const C = 'assets/chars/', I = 'assets/items/';
+  const views = (n, side) => ({ front: C + n + '_front.png', back: C + n + '_back.png', side: side ? C + n + '_side.png' : null });
   TS.ASSETS = {
-    portraits: { take: null, sai: null, yanai: null, villager: null, friend1: null, friend2: null },
+    chars: {
+      take: views('take', true), sai: views('sai', true), yanai: views('yanai', true),
+      koi: views('koi'), mot: views('mot'), waan: views('waan'), tiw: views('tiw'),
+    },
+    charBox: { w: 52, h: 64, foot: 62 },
+    items: {
+      dir: I,
+      map: {
+        'sword:wood': 'sword_wood', 'sword:copper': 'sword_copper', 'sword:iron': 'sword_iron', 'sword:steel': 'sword_steel',
+        'sword:jade': 'sword_jade', 'sword:crystal': 'sword_crystal', 'sword:gold': 'sword_gold', 'sword:frost': 'sword_frost',
+        'sword:dragon': 'sword_dragon', 'sword:hero': 'sword_hero', 'sword:': 'sword',
+        'shield:wood': 'shield_wood', 'shield:iron': 'shield_iron', 'shield:steel': 'shield_steel', 'shield:jade': 'shield_jade',
+        'shield:crystal': 'shield_crystal', 'shield:gold': 'shield_gold', 'shield:dragon': 'shield_dragon', 'shield:moon': 'shield_moon',
+        'shield:hero': 'shield_hero', 'shield:': 'shield',
+        'staff:': 'staff', 'staff:king': 'staff_king',
+        'scroll:return': 'scroll_return', 'scroll:thunder': 'scroll_thunder', 'scroll:sight': 'scroll_sight',
+        'powder:': 'powder', 'sleepgrass:': 'sleepgrass', 'bento:': 'bento',
+        'herb:': 'herb', 'herb:big': 'herb_big', 'herb:cure': 'herb_cure',
+        'coin:': 'coin', 'orb:': 'orb', 'pendant:': 'pendant_amber',
+        'shard:crystal': 'shard_crystal', 'shard:amber': 'shard_amber', 'shard:bronze': 'shard_bronze', 'shard:gold': 'shard_gold',
+      },
+    },
+    portraits: { take: null, sai: null, yanai: null, villager: null },
     bosses: { croc: null, flame: null, kill: null, baran: null, mist: null, vearn: null, truevearn: null },
   };
 })(globalThis.TS = globalThis.TS || {});

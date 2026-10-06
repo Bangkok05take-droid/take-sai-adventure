@@ -1,409 +1,629 @@
-/* 村の景観（動かない部分）。村の状態が変わったときだけ1枚に描く。
- * 縦長のスマホでも画面が埋まるよう、奥から「空と遠くの遺跡 → 奥の通りの建物（倉庫・鍛冶屋・展示室・民家）
- * → 石畳の広場（噴水・屋台などの飾り）→ 手前の建物（サイの店・食堂）→ 水路と向こう岸」の縦長の1枚（384×400）。
- * 建物は屋根・壁・窓・入口・看板を描き分け、施設ごとに外見で区別できるようにする。光は左上から。 */
+/* 村（歩ける1画面）。デザイン見本 assets/reference/village.png の「発展後の村の広場」をもとにした、見下ろし型のマス目の村。
+ * 1マス32ドット、横20×縦26マス。上から「丘の上の寺院と建設予定地 → 鍛冶屋・展示室 → ヤナイの記念像のある石畳の広場
+ * → サイの店・倉庫 → 復興本部（モッ）・食堂 → 水路ぞいの道と船着き場（ティウ）」。
+ * 施設の建物は解放されるまで空き地のまま（解放条件は js/data.js のとおり。学校・図書館は外観だけの建設予定地）。
+ * 描画は「地面（動かない1枚）」と「建物・木・人物（足元の高さ順に重ねる）」に分ける。
+ * 足元より上に出る屋根や木の葉は、その奥（上の行）にいる人物の手前に描かれる。 */
 (function (TS) {
   'use strict';
   const SP = TS.Sprites;
-  const VL = { VW: 384, VH: 560 };
-  const HZ = 96;             // 地平線
-  const BACK = 290;          // 奥の列の建物の足元
-  const FRONT = 400;         // 手前の列の建物の足元
-  const BANK = 424, WATER = [430, 474];
-  VL.BACK = BACK; VL.FRONT = FRONT; VL.WATER = WATER; VL.HZ = HZ;
-  VL.FOCUS = 340;            // 画面の中心に置きたい高さ（広場）
+  const T = 32, MW = 20, MH = 26;
+  const VL = { T, MW, MH };
 
-  VL.paint = function (lv) {
-    const P = new SP.Pix(VL.VW, VL.VH), R = SP.ramp, sh = SP.shade, mix = SP.mix, hash = SP.hash;
-    const night = lv.stage >= 3 || !!lv.decor.lanterns;
-    const label = [], lights = [], steam = [];
-    const ol = '#1e1218';                                   // 輪郭の色
-    const outlineRect = (x, y, w, h) => { P.rect(x, y, w, 1, ol); P.rect(x, y + h - 1, w, 1, ol); P.rect(x, y, 1, h, ol); P.rect(x + w - 1, y, 1, h, ol); };
-
-    // ---------------- 空 ----------------
-    const skyA = night ? '#1a2350' : '#3d7cc8', skyB = night ? '#6a4a80' : '#86b6e6', skyC = night ? '#ffa060' : '#ffe2b4';
-    for (let y = 0; y < HZ + 6; y++) {
-      const t = y / HZ;
-      for (let x = 0; x < VL.VW; x++) {
-        const d = ((SP.hash(x & 3, y & 3, 0) & 15) / 16 - 0.5) * 0.04;
-        const u = Math.max(0, Math.min(1, t + d));
-        P.set(x, y, u < 0.6 ? mix(skyA, skyB, u / 0.6) : mix(skyB, skyC, (u - 0.6) / 0.4));
-      }
-    }
-    if (night) for (let i = 0; i < 40; i++) { const x = hash(i, 5, 2) % VL.VW, y = hash(i, 6, 2) % 54; P.set(x, y, i % 7 ? '#c8d0ff' : '#ffffff'); }
-    if (night) { P.ball(312, 82, 17, 17, R('#ffb060'), { dither: false }); P.ball(312, 82, 11, 11, R('#ffd890'), { dither: false }); }
-    else P.ball(320, 30, 11, 11, R('#fff4c8'), { dither: false });
-    const cloud = (cx, cy, s) => {
-      const C = night ? R('#c88aa0') : R('#ffffff');
-      for (const [dx, dy, r] of [[-12, 2, 7], [-4, -2, 9], [6, -1, 8], [14, 3, 6], [0, 4, 9]]) P.ball(cx + dx * s, cy + dy * s, r * s, r * s * 0.7, C, { bias: 0.4 });
-    };
-    cloud(70, 26, 0.85); cloud(200, 16, 0.65); cloud(140, 56, 0.55); cloud(356, 60, 0.6);
-    // ---------------- 遠くの丘と遺跡 ----------------
-    const haze = night ? '#6a5080' : '#7a9cc4', haze2 = night ? '#58466e' : '#6688b0';
-    const prang = (cx, base, w, h, col) => {
-      const lit = sh(col, 0.18);
-      P.poly([[cx - w, base], [cx - w, base - h * 0.14], [cx - w * 0.75, base - h * 0.14], [cx - w * 0.75, base - h * 0.28], [cx - w * 0.55, base - h * 0.28],
-        [cx - w * 0.5, base - h * 0.6], [cx - w * 0.25, base - h * 0.85], [cx, base - h], [cx + w * 0.25, base - h * 0.85], [cx + w * 0.5, base - h * 0.6],
-        [cx + w * 0.55, base - h * 0.28], [cx + w * 0.75, base - h * 0.28], [cx + w * 0.75, base - h * 0.14], [cx + w, base - h * 0.14], [cx + w, base]], (x) => (x < cx ? lit : col));
-      for (let yy = Math.round(base - h * 0.62); yy < base - h * 0.28; yy += 3) P.rect(Math.round(cx - w * 0.48), yy, Math.round(w * 0.96), 1, sh(col, -0.12));
-    };
-    prang(40, HZ + 2, 8, 30, haze2); prang(66, HZ, 12, 46, haze2); prang(92, HZ + 2, 7, 26, haze2);
-    prang(232, HZ + 2, 7, 24, haze2); prang(262, HZ, 11, 40, haze2);
-    for (let x = 0; x < VL.VW; x++) {
-      const h = HZ - 4 + Math.round(Math.sin(x / 37) * 4 + Math.sin(x / 13 + 1) * 2);
-      for (let y = h; y < HZ + 12; y++) P.set(x, y, mix(haze, skyC, Math.max(0, 0.3 - (y - h) / 40)));
-    }
-    // 遠くの木々（村の裏）
-    for (let i = 0; i < 44; i++) { const x = hash(i, 1, 7) % VL.VW, r = 4 + hash(i, 2, 7) % 5; P.ball(x, HZ + 10 - r * 0.3, r * 1.25, r, R(night ? '#2e4a40' : '#3f7048'), { dither: false, bias: 0.25 }); }
-    // ---------------- 地面 ----------------
-    const grass = night ? '#5e8a48' : '#78b048';
-    for (let y = HZ + 8; y < VL.VH; y++) for (let x = 0; x < VL.VW; x++) {
-      let c = sh(grass, -0.04 + (y - HZ) / 1400);
-      if ((hash(x >> 1, y >> 1, 11) & 31) === 0) c = sh(grass, 0.22);
-      else if ((hash(x, y, 13) & 63) === 0) c = sh(grass, -0.18);
-      P.set(x, y, c);
-    }
-    // ---------------- 丘の上の遺跡と田んぼ（村の裏手） ----------------
-    const hill = night ? '#5a8a4a' : '#82b852';
-    for (let x = 0; x < VL.VW; x++) {                          // なだらかな丘
-      const top = 150 - Math.round(Math.max(0, 40 - Math.abs(x - 196) * 0.42)) + Math.round(Math.sin(x / 23) * 2);
-      for (let y = top; y < 236; y++) P.set(x, y, sh(hill, 0.08 - (y - top) / 300 + ((hash(x >> 2, y >> 2, 15) & 7) === 0 ? 0.12 : 0)));
-    }
-    // 棚田（空を映す水面と、稲の列）
-    const paddy = (x0, y0, w, h) => {
-      for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
-        const ly = y - y0, edge = ly === 0 || ly === h - 1 || x === x0 || x === x0 + w - 1;
-        P.set(x, y, edge ? '#8a6a3a' : (x + ly * 2) % 6 < 2 ? sh(hill, 0.2) : mix(skyB, '#5a8ab0', 0.4 + ly / h * 0.3));
-      }
-      P.rect(x0, y0 + h, w, 1, '#5a4224');
-    };
-    for (let i = 0; i < 3; i++) { paddy(6 + i * 6, 172 + i * 16, 104 - i * 12, 12); paddy(278 - i * 2, 168 + i * 16, 100 - i * 6, 12); }
-    // 丘の上の寺院跡（基壇・中央の塔・左右の仏塔・石段）
-    {
-      const cx = 196, base = 206;
-      for (let i = 0; i < 4; i++) { const w = 70 - i * 10, y = base - i * 5; P.rect(cx - w, y - 5, w * 2, 5, i % 2 ? '#a85a38' : '#b8643e'); P.rect(cx - w, y - 5, w * 2, 1, '#d8885a'); P.rect(cx - w, y - 1, w * 2, 1, '#6a3020'); }
-      const brick = (x, y) => (((y >> 2) + ((x + ((y >> 2) % 2) * 3) / 6 | 0)) % 2 ? '#b0603a' : '#a45634');
-      const pr = (px, pbase, w, h) => {
-        P.poly([[px - w, pbase], [px - w, pbase - h * 0.18], [px - w * 0.8, pbase - h * 0.18], [px - w * 0.7, pbase - h * 0.32], [px - w * 0.55, pbase - h * 0.32],
-          [px - w * 0.5, pbase - h * 0.62], [px - w * 0.26, pbase - h * 0.86], [px, pbase - h], [px + w * 0.26, pbase - h * 0.86], [px + w * 0.5, pbase - h * 0.62],
-          [px + w * 0.55, pbase - h * 0.32], [px + w * 0.7, pbase - h * 0.32], [px + w * 0.8, pbase - h * 0.18], [px + w, pbase - h * 0.18], [px + w, pbase]],
-          (x, y) => (x < px - w * 0.15 ? sh(brick(x, y), 0.12) : x > px + w * 0.3 ? sh(brick(x, y), -0.18) : brick(x, y)));
-        for (let yy = Math.round(pbase - h * 0.62); yy < pbase - h * 0.32; yy += 4) P.rect(Math.round(px - w * 0.5), yy, Math.round(w), 1, '#6a3020');
-        P.rect(px - 3, Math.round(pbase - h * 0.3), 6, Math.round(h * 0.12), '#3a1a10');      // 入口のくぼみ
-      };
-      pr(cx - 44, base - 18, 9, 30); pr(cx + 44, base - 18, 9, 30);
-      // 章が進むと寺院が直っていく：第1章は崩れた塔、第2〜3章は足場をかけて修理中、第4章以降は金の尖塔
-      const ch = lv.chapter || 1;
-      if (ch <= 1) {
-        pr(cx, base - 20, 16, 44);
-        P.poly([[cx - 9, base - 46], [cx - 4, base - 54], [cx, base - 49], [cx + 5, base - 56], [cx + 9, base - 46]], '#a45634');   // 崩れた頂
-        for (const [x, y] of [[cx - 22, base - 22], [cx + 20, base - 21], [cx - 12, base - 21]]) P.ball(x, y, 2.5, 1.6, R('#b0603a'));
-      } else {
-        pr(cx, base - 20, 16, 66);
-        if (ch <= 3) { // 竹の足場
-          for (let x = cx - 14; x <= cx + 14; x += 7) P.line(x, base - 20, x, base - 62 + Math.abs(x - cx), '#c8a060');
-          for (let y = base - 26; y > base - 62; y -= 9) P.line(cx - 14, y, cx + 14, y, '#a88040');
-        } else { P.rect(cx - 1, base - 92, 2, 8, '#ffd84a'); P.set(cx, base - 93, '#ffffff'); }
-      }
-      // 石段
-      for (let i = 0; i < 6; i++) P.rect(cx - 10 + i, base + i * 3, 20 - i * 2 + i * 2, 3, i % 2 ? '#c8b088' : '#d8c098');
-      for (let y = base + 18; y < BACK - 34; y++) P.rect(cx - 4, y, 8, 1, (y % 4) ? '#c4a274' : '#a88660');  // 寺への小道
-    }
-    // 丘の木々
-    for (const [x, y, r] of [[120, 200, 9], [270, 196, 8], [96, 226, 10], [300, 228, 9], [12, 236, 8], [374, 232, 9]]) { P.box(x - 1, y, 3, 8, R('#6a4228')); P.ball(x, y - 2, r, r * 0.8, R('#3f8a3a'), { bias: 0.2 }); }
-    // 奥の通り（土の道）
-    for (let y = BACK + 1; y < BACK + 14; y++) for (let x = 0; x < VL.VW; x++) {
-      const e = y === BACK + 1 || y === BACK + 13;
-      P.set(x, y, e ? '#8a6a46' : ((hash(x >> 1, y, 21) & 15) === 0 ? '#a88660' : sh('#c4a274', (y - BACK) / 60)));
-    }
-    // 広場（大きな敷石）
-    for (let y = BACK + 14; y < FRONT + 18; y++) for (let x = 0; x < VL.VW; x++) {
-      const row = Math.floor((y - BACK - 14) / 9), off = row % 2 ? 9 : 0, lx = (x + off) % 18, ly = (y - BACK - 14) % 9;
-      const tone = ['#d8c0a0', '#ccb494', '#e0caa8', '#c4ac8c'][hash((x + off) / 18 | 0, row, 31) % 4];
-      P.set(x, y, lx === 0 || ly === 8 ? '#9a8064' : sh(tone, ly === 0 ? 0.12 : lx === 17 ? -0.1 : 0));
-    }
-    P.rect(0, BACK + 14, VL.VW, 1, '#f0dcb8');
-    // 手前の縁と草・花
-    for (let y = FRONT + 18; y < BANK; y++) for (let x = 0; x < VL.VW; x++) {
-      let c = sh(grass, 0.04 - (y - FRONT) / 160);
-      if ((hash(x, y, 12) & 31) === 0) c = sh(grass, 0.25);
-      P.set(x, y, c);
-    }
-    P.rect(0, FRONT + 18, VL.VW, 1, '#7a5e44');
-    // 岸のレンガと水路
-    for (let y = BANK; y < WATER[0]; y++) for (let x = 0; x < VL.VW; x++) {
-      const row = y - BANK, off = row % 2 ? 4 : 0;
-      P.set(x, y, (x + off) % 8 === 0 || row === 2 || row === 5 ? '#5a3020' : sh('#b0603a', row === 0 ? 0.2 : -row * 0.05));
-    }
-    for (let y = WATER[0]; y < WATER[1]; y++) for (let x = 0; x < VL.VW; x++) {
-      const t = (y - WATER[0]) / (WATER[1] - WATER[0]);
-      let c = mix(night ? '#3a5a8a' : '#4aa0c8', night ? '#1e3a62' : '#2a78a8', t);
-      if (Math.sin(x * 0.35 + y * 1.3 + Math.sin(x / 9) * 2) > 0.93) c = sh(c, 0.25);
-      if (y < WATER[0] + 2) c = sh(c, -0.28);
-      P.set(x, y, c);
-    }
-    // 向こう岸：草と小道、ヤシ
-    for (let y = WATER[1]; y < VL.VH; y++) for (let x = 0; x < VL.VW; x++) P.set(x, y, y === WATER[1] ? sh(grass, 0.2) : sh(grass, -0.1 + ((hash(x, y, 14) & 31) === 0 ? 0.2 : 0)));
-    for (let x = 0; x < VL.VW; x++) P.rect(x, 496 + Math.round(Math.sin(x / 40) * 2), 1, 5, x % 7 === 0 ? '#a07e56' : '#c4a274');
-    // 向こう岸の畑と小屋
-    for (let i = 0; i < 2; i++) { const x0 = 30 + i * 200, y0 = 510; for (let y = y0; y < y0 + 36; y++) for (let x = x0; x < x0 + 120; x++) P.set(x, y, (y - y0) % 6 < 2 ? '#7a5634' : ((x + y) % 5 === 0 ? '#5aa040' : '#4a8a36')); outlineRect(x0 - 1, y0 - 1, 122, 38); }
-    { const x = 172, y = 532; wall(x, y - 18, 28, 18, '#c8a070', 'plank'); roof(x, y - 30, 28, 12, '#9a7a40', { overhang: 3 }); door(x + 10, y - 12, 8, 12, '#6a3a1e'); }
-    const palm = (x, y) => {
-      for (let i = 0; i < 20; i++) P.rect(x + Math.round(Math.sin(i / 7) * 2), y - i, 3, 1, R('#8a5a30')[i % 3 === 0 ? 3 : 2]);
-      for (let a = 0; a < 7; a++) { const ang = a / 7 * Math.PI * 2; for (let r = 0; r < 10; r++) P.set(x + 1 + Math.cos(ang) * r, y - 20 + Math.sin(ang) * r * 0.55 + r * r * 0.05, R('#3fa040')[r < 4 ? 1 : 2]); }
-    };
-    palm(14, 506); palm(160, 492); palm(212, 500); palm(372, 504); palm(300, 556); palm(70, 558);
-    const lotus = (x, y) => { P.ball(x, y + 2, 6, 2.2, R('#3a8a40'), { dither: false }); P.set(x + 3, y + 2, '#2a6a30'); P.ball(x, y, 2.4, 2.8, R('#ff8fb8'), { dither: false }); P.set(x, y - 2, '#ffe0ec'); };
-    lotus(30, 444); lotus(110, 458); lotus(286, 442); lotus(350, 456);
-
-    // ---------------- 建物の部品 ----------------
-    function wall(x, y, w, h, base, style) {
-      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
-        const lx = xx - x, ly = yy - y;
-        const k = (lx < 2 ? 0.14 : lx >= w - 2 ? -0.22 : 0) - ly / h * 0.08;
-        let c;
-        if (style === 'plank') c = lx % 6 === 0 ? sh(base, -0.35) : sh(base, k + ((hash(Math.floor(lx / 6), x, 3) & 3) - 1.5) * 0.04);
-        else if (style === 'brick') { const row = Math.floor(ly / 4), off = row % 2 ? 4 : 0; c = (ly % 4 === 3 || (lx + off) % 8 === 0) ? sh(base, -0.3) : sh(base, k + ((hash((lx + off) >> 3, row, x) & 3) - 1.5) * 0.05); }
-        else if (style === 'stone') { const row = Math.floor(ly / 6), off = row % 2 ? 6 : 0; c = (ly % 6 === 5 || (lx + off) % 12 === 0) ? sh(base, -0.35) : sh(base, k + (ly % 6 === 0 ? 0.12 : 0) + ((hash((lx + off) / 12 | 0, row, x) & 3) - 1.5) * 0.06); }
-        else c = sh(base, k + (ly > h - 4 ? -0.12 : 0));
-        P.set(xx, yy, c);
-      }
-      outlineRect(x, y, w, h);
-    }
-    // 屋根（瓦の段・軒の影・縁取り・タイ風の破風飾り）
-    function roof(x, y, w, h, col, o) {
-      o = o || {};
-      const ov = o.overhang == null ? 4 : o.overhang;
-      const pts = o.flat ? [[x - ov, y + h], [x - ov + 4, y], [x + w + ov - 4, y], [x + w + ov, y + h]] : [[x - ov, y + h], [x + w / 2, y], [x + w + ov, y + h]];
-      const Rc = R(col);
-      P.poly(pts, (xx, yy) => ((yy - y) % 3 === 2 ? Rc[3] : Rc[P.idx(1.3 + (xx - x) / (w + ov * 2) * 1.2 + (Math.floor((yy - y) / 3) % 2 ? 0.25 : 0), xx, yy, false)]));
-      for (let i = 0; i < pts.length - 1; i++) P.line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], o.trim || ol);
-      P.rect(Math.round(x - ov), y + h, Math.round(w + ov * 2), 1, ol);
-      for (let xx = x; xx < x + w; xx++) for (let yy = y + h + 1; yy < y + h + 4; yy++) { const c = P.get(xx, yy); if (c) P.set(xx, yy, sh(c, -0.35 + (yy - y - h - 1) * 0.08)); }
-      if (o.finial) {
-        const G = '#f2c84b';
-        if (!o.flat) { P.set(x + w / 2, y - 1, G); P.set(x + w / 2, y - 2, G); P.set(x + w / 2 + 1, y - 3, G); }
-        for (const [ex, d] of [[x - ov, -1], [x + w + ov, 1]]) { P.set(ex, y + h - 1, G); P.set(ex + d, y + h - 2, G); P.set(ex + d, y + h - 3, G); }
-      }
-    }
-    function win(x, y, w, h, lit) {
-      P.rect(x - 1, y - 1, w + 2, h + 2, '#4a2a18');
-      P.rect(x, y, w, h, lit ? '#ffd880' : '#5a7a9a');
-      if (lit) { P.rect(x, y + h - 2, w, 2, '#ffb850'); lights.push([x + w / 2, y + h / 2, Math.max(w, h)]); } else P.rect(x, y, w, 1, '#8ab0d0');
-      P.rect(x + (w >> 1), y, 1, h, '#4a2a18'); P.rect(x, y + (h >> 1), w, 1, '#4a2a18');
-      P.rect(x - 1, y + h + 1, w + 2, 1, '#c8a070');
-    }
-    function door(x, y, w, h, col) {
-      P.rect(x - 1, y - 1, w + 2, h + 1, ol);
-      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) P.set(xx, yy, (xx - x) % 4 === 0 ? sh(col, -0.3) : sh(col, xx - x < 2 ? 0.1 : 0));
-      P.set(x + w - 3, y + (h >> 1), '#f2c84b');
-    }
-    function sign(cx, y, icon) {
-      P.line(cx - 6, y - 4, cx - 6, y, '#5a3a22'); P.line(cx + 6, y - 4, cx + 6, y, '#5a3a22');
-      P.rect(cx - 9, y, 19, 11, ol); P.rect(cx - 8, y + 1, 17, 9, '#d8aa6a'); P.rect(cx - 8, y + 1, 17, 1, '#f0cc90'); P.rect(cx - 8, y + 9, 17, 1, '#a07040');
-      if (icon === 'shop') { P.ball(cx, y + 6, 3.4, 3, R('#c8402a'), { dither: false }); P.set(cx - 1, y + 2, '#5a2010'); P.set(cx + 1, y + 2, '#5a2010'); P.set(cx, y + 1, '#5a2010'); P.set(cx - 1, y + 5, '#ffd84a'); }
-      else if (icon === 'food') { P.ball(cx, y + 6, 4, 2.4, R('#f4f0e8'), { dither: false, clip: (xx, yy) => yy >= y + 5 }); P.set(cx - 2, y + 3, '#c0c0c0'); P.set(cx + 1, y + 2, '#e0e0e0'); P.set(cx + 2, y + 3, '#c0c0c0'); P.rect(cx - 4, y + 5, 9, 1, '#c8402a'); }
-      else if (icon === 'box') { P.rect(cx - 4, y + 3, 8, 6, '#8a5a30'); P.rect(cx - 4, y + 3, 8, 1, '#c08a50'); P.rect(cx - 1, y + 3, 2, 6, '#5a3a20'); }
-      else if (icon === 'smith') { P.rect(cx - 4, y + 3, 6, 3, '#6a6a7a'); P.rect(cx - 4, y + 3, 6, 1, '#b8b8c8'); P.line(cx + 1, y + 5, cx + 4, y + 8, '#7a4a24'); }
-      else if (icon === 'museum') { P.poly([[cx - 4, y + 4], [cx, y + 2], [cx + 4, y + 4]], '#ffd84a'); for (let i = -3; i <= 3; i += 3) P.rect(cx + i, y + 5, 1, 4, '#ffffff'); P.rect(cx - 4, y + 9, 9, 1, '#ffffff'); }
-    }
-    const shadowUnder = (x, w, gy) => { for (let xx = x - 2; xx < x + w + 3; xx++) for (let yy = gy + 1; yy < gy + 4; yy++) { const c = P.get(xx, yy); if (c) P.set(xx, yy, sh(c, -0.3 + (yy - gy) * 0.07)); } };
-    const crate = (x, y) => { P.rect(x, y, 8, 7, '#8a5a30'); P.rect(x, y, 8, 1, '#c08a50'); P.line(x, y, x + 7, y + 6, '#5a3a20'); outlineRect(x, y, 8, 7); };
-    const barrel = (x, y) => { P.box(x, y, 7, 9, R('#9a6a3a'), { round: true }); P.rect(x, y + 2, 7, 1, '#4a4a52'); P.rect(x, y + 6, 7, 1, '#4a4a52'); };
-    const tree = (x, y, s) => { P.box(x - 2, y - 14 * s, 5, 14 * s, R('#6a4228')); P.ball(x, y - 18 * s, 12 * s, 10 * s, R('#3f8a3a')); P.ball(x - 5 * s, y - 22 * s, 6 * s, 5 * s, R('#56a446')); P.ball(x + 6 * s, y - 15 * s, 5 * s, 4 * s, R('#357a32')); };
-    function lot(cx, gy) {
-      for (let i = -14; i <= 14; i += 7) { P.rect(cx + i, gy - 8, 2, 8, '#7a5a34'); P.set(cx + i, gy - 8, '#a88050'); }
-      P.line(cx - 14, gy - 6, cx + 15, gy - 6, '#d8c090');
-      P.rect(cx - 1, gy - 22, 3, 16, '#6a4228'); P.rect(cx - 9, gy - 28, 19, 9, ol); P.rect(cx - 8, gy - 27, 17, 7, '#d8b080'); P.rect(cx - 6, gy - 25, 13, 1, '#7a5a34'); P.rect(cx - 6, gy - 23, 9, 1, '#7a5a34');
-      label.push(['空き地', cx, gy + 12]);
-    }
-    // 村人の家（奥の列の左。押せない背景）
-    function house(x, w, h, wallC, roofC) {
-      const y = BACK - h;
-      wall(x, y, w, h, wallC, 'plaster'); roof(x, y - 14, w, 14, roofC, { finial: true });
-      win(x + 5, y + 6, 7, 7, night); door(x + w - 13, BACK - 14, 8, 14, '#7a4a28');
-      shadowUnder(x, w, BACK);
-    }
-
-    // ---------------- 奥の列 ----------------
-    house(8, 40, 26, '#e8d2a8', '#b8582e'); house(56, 34, 22, '#d8c0a0', '#8a5a3a');
-    tree(104, BACK, 0.9);
-    // 倉庫：板張り・大きな両開きの扉・石の土台（段階で大きく）
-    {
-      const sizes = [null, [44, 30], [52, 38], [60, 46], [70, 54]];
-      const [w, h] = sizes[lv.storage];
-      const x = Math.round(176 - w / 2), y = BACK - h;
-      P.rect(x - 1, BACK - 4, w + 2, 4, '#8a8a90'); P.rect(x - 1, BACK - 4, w + 2, 1, '#c0c0c8'); outlineRect(x - 1, BACK - 4, w + 2, 4);
-      wall(x, y, w, h - 4, '#9a6638', 'plank');
-      const rh = 15 + (lv.storage >= 3 ? 4 : 0);
-      roof(x, y - rh, w, rh, '#4a5a6a', { trim: lv.storage >= 4 ? '#ffd84a' : ol });
-      const dw = Math.min(22, w - 16), dx = Math.round(x + w / 2 - dw / 2), dh = Math.min(h - 8, 24);
-      door(dx, BACK - 4 - dh, dw, dh, '#6a3a1e'); P.line(dx, BACK - 4 - dh, dx + dw - 1, BACK - 5, '#4a2410'); P.line(dx + dw - 1, BACK - 4 - dh, dx, BACK - 5, '#4a2410');
-      if (lv.storage >= 3) { win(x + 5, y + 6, 7, 7, night); win(x + w - 12, y + 6, 7, 7, night); }
-      crate(x - 10, BACK - 7); barrel(x + w + 2, BACK - 9); if (lv.storage >= 2) crate(x - 10, BACK - 14);
-      sign(x + w / 2, y - rh + 6, 'box');
-      shadowUnder(x, w, BACK);
-      label.push(['倉庫', x + w / 2, BACK + 11]);
-    }
-    // 鍛冶屋：石造り・煙突・赤く光る炉・金床
-    if (lv.smith > 0) {
-      const x = 236, w = 50 + lv.smith * 4, h = 34 + lv.smith * 3, y = BACK - h;
-      wall(x, y, w, h, '#8a8a92', 'stone');
-      roof(x, y - 11, w, 11, '#3a3a48', { flat: true, trim: lv.smith >= 3 ? '#ffd84a' : ol });
-      P.rect(x + w - 15, y - 28, 9, 20, '#6a4a3a'); for (let yy = y - 28; yy < y - 8; yy += 3) P.rect(x + w - 15, yy, 9, 1, '#4a2a20'); outlineRect(x + w - 15, y - 28, 9, 20);
-      steam.push([x + w - 11, y - 32, 'smoke']);
-      P.rect(x + 5, BACK - 24, 19, 24, ol);
-      for (let yy = BACK - 23; yy < BACK; yy++) for (let xx = x + 6; xx < x + 23; xx++) P.set(xx, yy, mix('#2a1410', '#ff7a20', Math.max(0, 1 - Math.hypot(xx - x - 14, yy - BACK + 7) / 11)));
-      lights.push([x + 14, BACK - 7, 13]);
-      win(x + 30, y + 8, 10, 8, night);
-      P.rect(x + w + 2, BACK - 6, 10, 3, '#3a3a44'); P.rect(x + w + 4, BACK - 3, 6, 3, '#2a2a34'); P.rect(x + w + 2, BACK - 6, 10, 1, '#9a9aa8');
-      if (lv.smith >= 2) barrel(x - 9, BACK - 9);
-      sign(x + 35, y - 2, 'smith');
-      shadowUnder(x, w, BACK);
-      label.push(['鍛冶屋', x + w / 2, BACK + 11]);
-    } else lot(266, BACK);
-    // 展示室：白い柱の神殿風・二段の屋根・金の飾り
-    if (lv.museum) {
-      const x = 330, w = 46, h = 34, y = BACK - h;
-      for (let i = 0; i < 3; i++) P.rect(x - 4 + i * 2, BACK - 3 + i - 2, w + 8 - i * 4, 1, '#f0ece0');
-      wall(x, y, w, h - 4, '#f2ece0', 'plaster');
-      for (let i = 0; i < 4; i++) P.box(x + 3 + i * 12, y, 5, h - 4, R('#ffffff'));
-      P.rect(x + 10, y + 10, 26, 12, '#2a2040'); outlineRect(x + 10, y + 10, 26, 12);
-      const n = Math.min(5, lv.donated);
-      for (let i = 0; i < n; i++) P.ball(x + 15 + i * 4, y + 16, 1.6, 1.6, R(['#ffd84a', '#4fc08a', '#e8902a', '#9ae8ff', '#c8a0ff'][i]), { dither: false });
-      roof(x, y - 10, w, 10, '#2f8a6a', { finial: true, trim: '#ffd84a' });
-      roof(x + 8, y - 20, w - 16, 10, '#c0452e', { finial: true, trim: '#ffd84a', overhang: 3 });
-      sign(x + w / 2, BACK - 12, 'museum');
-      shadowUnder(x, w, BACK);
-      label.push(['展示室', x + w / 2, BACK + 11]);
-    } else lot(354, BACK);
-
-    // ---------------- 広場の飾り ----------------
-    const PZ = BACK + 16;      // 広場の奥の縁
-    tree(366, FRONT + 6, 1.05);
-    // 広場のベンチと鉢植え
-    for (const bxp of [212, 346]) { P.rect(bxp, BACK + 30, 16, 3, '#8a5a30'); P.rect(bxp, BACK + 30, 16, 1, '#c08a50'); P.rect(bxp + 1, BACK + 33, 2, 4, '#4a2a18'); P.rect(bxp + 13, BACK + 33, 2, 4, '#4a2a18'); }
-    for (const pxp of [204, 232, 340, 368]) { P.rect(pxp - 3, BACK + 32, 7, 5, '#b0603a'); outlineRect(pxp - 3, BACK + 32, 7, 5); P.ball(pxp, BACK + 29, 4, 3.5, R('#4f9a3a'), { bias: 0.1 }); P.set(pxp - 1, BACK + 27, '#ff8fb8'); }
-    { // 広場の小さな仏塔（いつもある目印）
-      const x = 330, y = FRONT - 6;
-      P.rect(x - 12, y - 6, 24, 6, '#c8b090'); P.rect(x - 12, y - 6, 24, 1, '#e8d8b8'); outlineRect(x - 12, y - 6, 24, 6);
-      P.ball(x, y - 16, 9, 10, R('#f0e8d8'), { clip: (xx, yy) => yy <= y - 8 });
-      P.poly([[x - 3, y - 24], [x, y - 40], [x + 3, y - 24]], (xx) => (xx < x ? '#ffe68a' : '#d8a830'));
-      P.rect(x - 4, y - 26, 8, 2, '#d8a830');
-    }
-    if (lv.decor.stalls) {
-      for (let i = 0; i < 3; i++) {
-        const x = 214 + i * 36, y = PZ + 4;
-        P.rect(x + 1, y + 5, 2, 14, '#5a3a22'); P.rect(x + 25, y + 5, 2, 14, '#5a3a22');
-        for (let j = 0; j < 4; j++) P.rect(x - 2 + j * 8, y, 8, 6, (i + j) % 2 ? '#ffffff' : ['#2e8b88', '#e24a4a', '#f2c230'][i]);
-        P.rect(x - 2, y, 32, 1, ol);
-        P.rect(x, y + 13, 28, 6, '#b07a45'); P.rect(x, y + 13, 28, 1, '#e0aa70'); outlineRect(x, y + 13, 28, 6);
-        P.ball(x + 8, y + 11, 2.5, 2, R('#ffffff'), { dither: false }); P.ball(x + 18, y + 11, 2.5, 2, R('#e8902a'), { dither: false });
-      }
-    }
-    if (lv.decor.fountain) {
-      const x = 268, y = FRONT - 18;
-      P.ball(x, y + 6, 18, 6.5, R('#c8c0b0'), { dither: false }); P.ball(x, y + 5, 14, 4.5, R('#5ab0e0'), { dither: false });
-      P.box(x - 2, y - 8, 5, 13, R('#e8e0d0')); P.ball(x, y - 9, 4, 2, R('#e8e0d0'), { dither: false });
-      steam.push([x, y - 12, 'fountain']);
-    }
-    if (lv.decor.statue) { // 白い象の像
-      const x = 206, y = FRONT - 30;
-      P.rect(x - 1, y + 14, 24, 6, '#a8a090'); P.rect(x - 1, y + 14, 24, 1, '#d8d0c0'); outlineRect(x - 1, y + 14, 24, 6);
-      P.ball(x + 13, y + 7, 9, 6, R('#f0ece0')); P.ball(x + 4, y + 5, 4.5, 5, R('#f0ece0'));
-      P.line(x + 1, y + 7, x + 1, y + 13, '#d0c8b8'); P.box(x + 7, y + 10, 3, 5, R('#e8e4d8')); P.box(x + 17, y + 10, 3, 5, R('#e8e4d8'));
-      P.set(x + 3, y + 4, '#2a1a10'); P.rect(x + 10, y + 1, 8, 2, '#c0402a'); P.set(x + 14, y, '#ffd84a');
-    }
-    if (lv.legacy) { // 旧記録：10階踏破の記念の獅子像
-      const x = 284, y = FRONT - 24;
-      P.rect(x, y + 16, 16, 6, '#a8a090'); outlineRect(x, y + 16, 16, 6);
-      P.ball(x + 8, y + 9, 6, 7, R('#f2c84b')); P.ball(x + 8, y + 6, 4.5, 4.5, R('#d0602a')); P.ball(x + 8, y + 7, 3, 3, R('#f2c84b'));
-    }
-    if (lv.decor.garden) { // 花壇
-      for (let i = 0; i < 18; i++) { const x = 200 + i * 10, y = FRONT + 24 + (i % 2) * 2; P.ball(x, y, 4, 2.4, R('#3a8a40'), { dither: false }); P.ball(x, y - 2, 1.8, 1.8, R(['#ff8fb8', '#ffe04a', '#ffffff'][i % 3]), { dither: false }); }
-      lotus(160, 446); lotus(230, 460); lotus(320, 464);
-    }
-    // ---- 章による復興の様子（購入した施設は変えない。背景の飾りで表す） ----
-    const ch = lv.chapter || 1;
-    if (ch <= 2) { // 魔王軍に壊された跡（がれき）。章が進むと片づく
-      for (const [x, y, r] of (ch === 1 ? [[224, BACK + 40, 6], [300, BACK + 58, 5], [352, BACK + 44, 4], [250, FRONT - 6, 5]] : [[300, BACK + 58, 4], [250, FRONT - 6, 3]])) {
-        P.ball(x, y, r * 1.4, r * 0.8, R('#8a7a6a')); P.ball(x - r * 0.6, y - r * 0.5, r * 0.6, r * 0.5, R('#a8987a')); P.set(x + r, y - 1, '#5a4a3a');
-      }
-    }
-    if (ch >= 3) { // 広場に渡した旗（市場が戻ってきた）
-      const fy = BACK + 22;
-      for (let x = 196; x < 384; x += 2) P.set(x, fy + Math.round(Math.abs(Math.sin((x - 196) / 30 * Math.PI)) * 3), '#5a3a22');
-      const cols = ['#e24a4a', '#ffd84a', '#2e8b88', '#ffffff', '#8a4ac0'];
-      for (let i = 0; i < 12; i++) { const x = 200 + i * 15, y = fy + Math.round(Math.abs(Math.sin((x - 196) / 30 * Math.PI)) * 3) + 1; P.poly([[x, y], [x + 6, y], [x + 3, y + 6]], cols[i % cols.length]); }
-    }
-    if (ch >= 5 || lv.ending) { // 祭りの花飾り
-      for (let i = 0; i < 8; i++) { const x = 206 + i * 22, y = FRONT + 12; P.ball(x, y, 2.5, 2.5, R(['#ff8fb8', '#ffe04a', '#ffffff'][i % 3]), { dither: false }); P.set(x, y, '#ffb040'); }
-    }
-    if (lv.decor.gate) { // 遺跡へ続く黄金の門（丘の上）
-      const x = 182, y = BACK - 62, G2 = R('#ffd84a');
-      P.box(x, y + 8, 4, 20, G2); P.box(x + 24, y + 8, 4, 20, G2);
-      P.poly([[x - 3, y + 9], [x + 14, y - 6], [x + 31, y + 9]], (xx, yy) => G2[P.idx(0.8 + (yy - y + 6) / 16, xx, yy)]);
-      P.rect(x + 4, y + 10, 20, 2, G2[3]);
-    }
-    if (lv.cleared) { // 宝珠の祠（丘の上）
-      const x = 250, y = 168;
-      P.rect(x - 10, y + 12, 20, 14, '#e8e0d0'); outlineRect(x - 10, y + 12, 20, 14);
-      P.poly([[x - 14, y + 13], [x, y + 2], [x + 14, y + 13]], '#c0402a'); P.set(x, y + 1, '#ffd84a');
-    }
-
-    // ---------------- 手前の列 ----------------
-    // サイの店：段階で大きくなる（屋台 → 瓦屋根の店 → 2階建て）
-    {
-      const x = 8, w = lv.stage >= 3 ? 90 : lv.stage >= 2 ? 82 : 72, h = 40, y = FRONT - h;
-      wall(x, y, w, h, lv.stage >= 2 ? '#e8cfa2' : '#c89a64', lv.stage >= 2 ? 'plaster' : 'plank');
-      if (lv.stage >= 3) {
-        wall(x + 8, y - 26, w - 16, 26, '#e8cfa2', 'plaster');
-        win(x + 14, y - 19, 9, 9, night); win(x + w - 23, y - 19, 9, 9, night); win(Math.round(x + w / 2 - 4), y - 19, 8, 9, night);
-        roof(x + 8, y - 44, w - 16, 18, '#c0452e', { finial: true, trim: '#7a2a18' });
-        roof(x, y - 6, w, 6, '#c8582e', { flat: true, trim: '#7a2a18' });
-      } else if (lv.stage >= 2) roof(x, y - 18, w, 18, '#c8582e', { finial: true, trim: '#7a2a18' });
-      else { P.rect(x, y - 6, w, 6, '#8a5a30'); outlineRect(x, y - 6, w, 6); }
-      // しまのひさし
-      for (let i = 0; i < Math.ceil((w + 6) / 8); i++) { const xx = x - 3 + i * 8; P.rect(xx, y + 2, 8, 9, i % 2 ? '#f6f0e6' : '#d8402e'); P.rect(xx + 1, y + 11, 6, 1, i % 2 ? '#f6f0e6' : '#d8402e'); }
-      P.rect(x - 3, y + 2, w + 6, 1, ol);
-      for (let xx = x - 3; xx < x + w + 3; xx++) { const c = P.get(xx, y + 13); if (c) P.set(xx, y + 13, sh(c, -0.4)); }
-      // 店先：棚と品物、カウンター
-      P.rect(x + 4, y + 15, w - 8, 14, '#5a3a24'); P.rect(x + 5, y + 16, w - 10, 12, '#7a5236');
-      const goods = ['#ffd84a', '#4caf50', '#c8943c', '#e24a4a', '#9ae8ff', '#c890ff'];
-      for (let i = 0; i < Math.min(goods.length, lv.stage + 3); i++) { P.ball(x + 11 + i * 11, y + 21, 3, 3, R(goods[i]), { dither: false }); P.rect(x + 8 + i * 11, y + 24, 7, 1, '#4a2a18'); }
-      P.rect(x + 2, y + 29, w - 4, 6, '#a06a3a'); P.rect(x + 2, y + 29, w - 4, 1, '#d09a60'); outlineRect(x + 2, y + 29, w - 4, 6);
-      sign(Math.round(x + w / 2), lv.stage >= 3 ? y - 4 : lv.stage >= 2 ? y - 30 : y - 16, 'shop');
-      lights.push([x + w / 2, y + 22, 16]);
-      shadowUnder(x, w, FRONT);
-      label.push(['サイの店', x + w / 2, FRONT + 13]);
-    }
-    // 食堂：赤い急な屋根のタイ風の家、湯気の立つ鍋
-    if (lv.diner) {
-      const x = 122, w = 62, h = 36, y = FRONT - h;
-      wall(x, y, w, h, '#f0dcb0', 'plaster');
-      roof(x, y - 24, w, 24, '#b8302a', { finial: true, trim: '#ffd84a' });
-      P.rect(x + 6, y + 6, 26, 24, '#3a2014'); P.rect(x + 7, y + 7, 24, 22, '#6a3a20');
-      P.rect(x + 9, y + 20, 20, 3, '#a87040'); P.box(x + 13, y + 13, 9, 7, R('#5a5a64'), { round: true }); steam.push([x + 17, y + 10]);
-      win(x + 40, y + 9, 14, 10, true);
-      P.rect(x + 2, y - 4, 2, 6, '#5a3a22'); P.ball(x + 3, y + 3, 2.4, 3, R('#e8402a'), { dither: false }); lights.push([x + 3, y + 3, 6]);
-      sign(x + 47, y + 22, 'food');
-      shadowUnder(x, w, FRONT);
-      P.rect(x + 66, FRONT + 4, 14, 2, '#8a5a30'); P.rect(x + 72, FRONT + 6, 2, 6, '#5a3a22');
-      label.push(['サイの食堂', x + w / 2, FRONT + 13]);
-    } else lot(152, FRONT);
-    // 船着き場と橋
-    P.rect(186, BANK - 1, 28, 3, '#8a6040'); for (let x = 188; x < 214; x += 6) P.rect(x, BANK + 2, 2, 10, '#5a3a22');
-    if (lv.decor.bridge) {
-      const x = 236, w = 70;
-      for (let xx = x; xx < x + w; xx++) {
-        const a = Math.sin((xx - x) / w * Math.PI) * 10;
-        for (let yy = 0; yy < 6; yy++) P.set(xx, Math.round(WATER[0] + 8 - a + yy), yy === 0 ? '#ff7a5a' : yy === 5 ? '#6a1a10' : '#c0402a');
-        if ((xx - x) % 8 === 4) P.rect(xx, Math.round(WATER[0] + 1 - a), 2, 8, '#8a2a1a');
-      }
-      for (let xx = x; xx < x + w; xx++) { const a = Math.sin((xx - x) / w * Math.PI) * 10; P.set(xx, Math.round(WATER[0] + 1 - a), '#ffd84a'); }
-    }
-    return { canvas: P.canvas(), label, lights, steam, night };
+  // ---------------- 色 ----------------
+  const C = {
+    ol: '#2a1610',
+    roof: '#c4532e', roofTeal: '#2f7f78',
+    wood: '#8b5a32', woodD: '#5e3a1e', woodL: '#b8834e',
+    stucco: '#efe0c0', stone: '#d9ccae', stoneD: '#a89a7c',
+    gold: '#e2b23c', goldD: '#a2741c', goldL: '#ffe28c',
+    teal: '#1f8f8a', brick: '#b8583a', grass: '#6aa83e', leaf: '#3f8f3a', water: '#2aa2c0',
+    pink: '#f08cb0', cream: '#f4ead2', red: '#c8402c',
   };
+  const R = (c) => SP.ramp(c);
+  const sh = (c, t) => SP.shade(c, t);
+  const mix = (a, b, t) => SP.mix(a, b, t);
+  const hash = (x, y, s) => SP.hash(x, y, s);
+
+  // ---------------- 配置 ----------------
+  /* 施設：fp=建物の足元（マス）、npc=担当の人、at=話しかける/入るときに立つマス、face=そのときの向き */
+  function layout(lv) {
+    const L = { objs: [], npcs: [], fac: [], deco: [] };
+    L.fac.push({ id: 'smith', name: lv.smith ? '鍛冶屋' : '鍛冶屋（空き地）', fp: [1, 6, 5, 3], at: [3, 9], face: 'up', npc: 'koi', npcAt: [5, 9], built: lv.smith > 0 });
+    L.fac.push({ id: 'museum', name: lv.museum ? '展示室' : '展示室（空き地）', fp: [14, 6, 5, 3], at: [16, 9], face: 'up', built: lv.museum });
+    L.fac.push({ id: 'shop', name: 'サイの店', fp: [1, 11, 4, 3], at: [3, 15], face: 'up', npc: 'sai', npcAt: [3, 14], built: true });
+    L.fac.push({ id: 'storage', name: '倉庫', fp: [15, 11, 4, 3], at: [16, 14], face: 'up', built: true });
+    L.fac.push({ id: 'develop', name: '村の発展', fp: [1, 17, 4, 3], at: [6, 18], face: 'left', npc: 'mot', npcAt: [5, 18], built: true });
+    L.fac.push({ id: 'diner', name: lv.diner ? '食堂' : '食堂（空き地）', fp: [15, 17, 4, 3], at: [13, 18], face: 'right', npc: 'waan', npcAt: [14, 18], built: lv.diner });
+    L.fac.push({ id: 'depart', name: '出発（船着き場）', fp: [9, 22, 2, 2], at: [11, 21], face: 'right', npc: 'tiw', npcAt: [12, 21], built: true, dock: true });
+    return L;
+  }
+
+  // 地面の種類：g 草 / p 石畳 / b レンガの道 / w 水 / d 桟橋 / s 石段 / t 寺院の基壇 / r 赤い橋 / f 向こう岸
+  function groundMap(lv) {
+    const G = [];
+    for (let y = 0; y < MH; y++) {
+      const row = [];
+      for (let x = 0; x < MW; x++) {
+        let c = 'g';
+        if (y <= 3 && x >= 7 && x <= 12) c = 't';
+        if (y === 4 && (x === 9 || x === 10)) c = 's';
+        if (y === 5 && x >= 1 && x <= 18) c = 'b';
+        if (y >= 6 && y <= 20 && x >= 5 && x <= 14) c = 'p';
+        if ((y === 9 || y === 10) && x >= 1 && x <= 18) c = 'p';
+        if (y >= 14 && y <= 16 && x >= 1 && x <= 18) c = 'p';
+        if (y >= 20 && y <= 21) c = 'b';
+        if (y >= 22 && y <= 24) c = 'w';
+        if (y >= 22 && y <= 23 && (x === 9 || x === 10)) c = 'd';
+        if (y === 25) c = 'f';
+        if (lv.decor.bridge && y >= 22 && y <= 24 && (x === 3 || x === 4)) c = 'r';
+        row.push(c);
+      }
+      G.push(row);
+    }
+    return G;
+  }
+  const WALK = { g: 0, p: 1, b: 1, w: 0, d: 1, s: 1, t: 0, r: 1, f: 1 };
+
+  // ---------------- 地面を描く ----------------
+  function paintGround(lv, G) {
+    const P = new SP.Pix(MW * T, MH * T);
+    const night = lv.night;
+    const gb = night ? '#5a8a44' : C.grass;
+    const at = (x, y) => (y >= 0 && y < MH && x >= 0 && x < MW ? G[y][x] : 'g');
+    for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
+      const k = G[ty][tx], X = tx * T, Y = ty * T;
+      if (k === 'g' || k === 'f') {
+        for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+          const h = hash(X + x, Y + y, 3);
+          let c = sh(gb, ((hash((X + x) >> 2, (Y + y) >> 2, 5) & 7) - 3.5) * 0.018);
+          if ((h & 31) === 0) c = sh(gb, 0.2); else if ((h & 63) === 1) c = sh(gb, -0.2);
+          P.set(X + x, Y + y, c);
+        }
+        // 草の葉の束
+        for (let i = 0; i < 3; i++) {
+          const h = hash(tx, ty, 20 + i), x = X + 3 + (h % 25), y = Y + 5 + ((h >> 6) % 22);
+          P.set(x, y, sh(gb, -0.3)); P.set(x + 1, y - 1, sh(gb, 0.25)); P.set(x - 1, y - 1, sh(gb, 0.1)); P.set(x, y - 2, sh(gb, 0.3));
+        }
+        // ときどき小さな花
+        const fh = hash(tx, ty, 31);
+        if ((fh & 7) === 0) { const x = X + 6 + (fh >> 4) % 20, y = Y + 6 + (fh >> 9) % 20, col = ['#ffe070', '#ffffff', '#ff9ac0'][fh % 3]; P.set(x, y, col); P.set(x + 1, y, col); P.set(x, y + 1, sh(col, -0.3)); }
+      } else if (k === 'p') {
+        // 石畳：16ドット角の石を半分ずらして敷く。石ごとに色を少し変え、左上を明るく、右下に目地の影
+        for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+          const gx = X + x, gy = Y + y, row = gy >> 4, off = (row & 1) * 8, sx = (gx + off) >> 4, lx = (gx + off) & 15, ly = gy & 15;
+          const v = ((hash(sx, row, 7) & 15) - 7) * 0.012;
+          let c = sh(night ? '#c8bca2' : C.stone, v);
+          if (lx === 0 || ly === 0) c = sh(c, 0.12);
+          if (lx === 15 || ly === 15) c = night ? '#8a7e66' : C.stoneD;
+          else if (lx === 14 || ly === 14) c = sh(c, -0.1);
+          if ((hash(gx, gy, 9) & 63) === 0) c = sh(c, -0.12);
+          P.set(gx, gy, c);
+        }
+      } else if (k === 'b' || k === 's') {
+        // レンガの道（赤茶）：8×4のレンガを互い違いに
+        for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+          const gx = X + x, gy = Y + y, row = gy >> 2, off = (row & 1) * 4, bx = (gx + off) >> 3;
+          let c = sh('#c08460', ((hash(bx, row, 11) & 7) - 3.5) * 0.03);
+          if (((gx + off) & 7) === 7 || (gy & 3) === 3) c = '#8a5a3e';
+          P.set(gx, gy, c);
+        }
+        if (k === 's') for (let y = 0; y < T; y += 8) { P.rect(X, Y + y, T, 2, sh(C.stone, 0.15)); P.rect(X, Y + y + 6, T, 2, C.stoneD); }
+      } else if (k === 't') {
+        for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) P.set(X + x, Y + y, sh('#9a5a3a', ((hash(X + x >> 3, Y + y >> 2, 4) & 7) - 3.5) * 0.03));
+      } else if (k === 'w' || k === 'd' || k === 'r') {
+        for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+          const gx = X + x, gy = Y + y, depth = (gy - 22 * T) / (3 * T);
+          let c = mix(night ? '#2a7090' : '#3cc0d8', night ? '#163a5a' : '#1a78a8', Math.min(1, depth * 1.2));
+          if ((hash(gx >> 1, gy, 6) & 31) === 0) c = sh(c, 0.25);
+          P.set(gx, gy, c);
+        }
+        if (k === 'd') { // 桟橋
+          for (let y = 0; y < T; y++) for (let x = 2; x < T - 2; x++) {
+            const py = (Y + y) % 8;
+            P.set(X + x, Y + y, py === 7 ? C.woodD : py === 0 ? C.woodL : sh(C.wood, ((hash(X + x >> 4, Y + y >> 3, 2) & 3) - 1.5) * 0.05));
+          }
+          P.rect(X + 2, Y, 1, T, C.woodD); P.rect(X + T - 3, Y, 1, T, C.woodD);
+          if (ty === 23) { P.rect(X + 3, Y + T - 3, 4, 3, C.woodD); P.rect(X + T - 7, Y + T - 3, 4, 3, C.woodD); }
+        }
+        if (k === 'r') { // 赤い橋（板と欄干）
+          for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const py = (Y + y) % 6; P.set(X + x, Y + y, py === 5 ? '#7a2a1c' : py === 0 ? '#e0744a' : '#c4482e'); }
+          const edge = tx === 3 ? 0 : T - 3;
+          P.rect(X + edge, Y, 3, T, '#8a2a1a'); P.rect(X + edge + 1, Y, 1, T, '#e86a3a');
+        }
+      }
+      // 地面のさかい目：石畳・道のふちに縁石、水路の岸に石の護岸
+      if (k === 'p' || k === 'b') {
+        if (at(tx, ty - 1) === 'g') P.rect(X, Y, T, 2, sh(C.stone, -0.25));
+        if (at(tx - 1, ty) === 'g') P.rect(X, Y, 2, T, sh(C.stone, -0.18));
+        if (at(tx + 1, ty) === 'g') P.rect(X + T - 2, Y, 2, T, sh(C.stone, -0.3));
+      }
+      if (k === 'g' && (at(tx, ty - 1) === 'p' || at(tx, ty - 1) === 'b')) for (let x = 0; x < T; x++) P.set(X + x, Y, sh(gb, -0.35));
+    }
+    // 水路の護岸（上の岸：石積みの壁、下の岸：石のふち）
+    for (let x = 0; x < MW * T; x++) {
+      const tx = x >> 5;
+      if (G[22][tx] === 'w') for (let y = 0; y < 10; y++) {
+        const yy = 22 * T + y, bw = ((Math.floor(y / 5) & 1) * 5 + x) % 10;
+        P.set(x, yy, y < 2 ? sh(C.stone, 0.12) : bw === 0 || y % 5 === 4 ? C.stoneD : sh(C.stone, -0.05 - y * 0.02));
+      }
+      if (G[24][tx] === 'w') for (let y = 0; y < 4; y++) P.set(x, 25 * T - 4 + y, y === 0 ? '#1a5a78' : sh(C.stone, -0.1 + y * 0.05));
+    }
+    // 水面の蓮の葉と花
+    for (let i = 0; i < 26; i++) {
+      const h = hash(i, 7, 41), x = (h % (MW * T)), y = 22 * T + 14 + ((h >> 10) % 70), tx = x >> 5, ty = y >> 5;
+      if (G[ty] && G[ty][tx] !== 'w') continue;
+      const r = 4 + (h >> 20) % 3;
+      P.ball(x, y, r + 1, r * 0.6, R(night ? '#3a7a40' : '#4aa048'), { dither: false });
+      P.set(x, y - 1, sh('#4aa048', -0.4)); P.set(x + 1, y - 1, sh('#4aa048', -0.4));
+      if (i % 3 === 0) { P.ball(x - 1, y - 2, 2.5, 2, R(C.pink), { dither: false }); P.set(x - 1, y - 4, '#ffd8e8'); }
+    }
+    // 寺院の基壇のまわりの石段の影
+    P.rect(7 * T, 4 * T - 2, 6 * T, 2, '#5a2a1a');
+    // 広場の床の飾り：コンパスの紋（噴水がないとき）
+    // 船着き場から像へまっすぐ続く参道（明るい石と金茶のふち）
+    for (let y = 13 * T; y < 20 * T; y++) for (let x = 9 * T - 4; x < 11 * T + 4; x++) {
+      if (x < 9 * T - 2 || x >= 11 * T + 2) P.set(x, y, '#b89a62');
+      else if (x < 9 * T || x >= 11 * T) P.set(x, y, '#d8b874');
+      else { const c = P.get(x, y); if (c) P.set(x, y, sh(c, 0.1)); }
+    }
+    if (!lv.decor.fountain) {
+      const cx = 10 * T, cy = 17 * T + 16;
+      for (let y = -22; y <= 22; y++) for (let x = -22; x <= 22; x++) {
+        const d = Math.hypot(x, y * 1.15), a = Math.atan2(y, x);
+        if (d > 22) continue;
+        if (d > 19) P.set(cx + x, cy + y, sh(C.stoneD, -0.1));
+        else if (Math.abs(Math.cos(a * 4)) * (20 - d) > 15 - d * 0.1 && d < 18) P.set(cx + x, cy + y, d < 6 ? C.goldL : (Math.abs(Math.cos(a * 2)) > 0.9 ? C.gold : '#b8a0d0'));
+        else if (d > 16) P.set(cx + x, cy + y, sh(C.stone, 0.18));
+      }
+    }
+    return P;
+  }
+
+  // ---------------- 部品を描く小さな道具 ----------------
+  const outlineBox = (P, x, y, w, h, col) => { P.rect(x, y, w, 1, col); P.rect(x, y + h - 1, w, 1, col); P.rect(x, y, 1, h, col); P.rect(x + w - 1, y, 1, h, col); };
+
+  /* タイの屋根（正面から少し見下ろした形）。瓦を段ごとに塗り、上の段ほど明るい。両端は金の破風、棟の端に反り返った飾り（チョーファー）。
+   * x,y：屋根の左上、w,h：大きさ、col：瓦の色。tiers：重ね屋根の段数 */
+  function roofThai(P, x, y, w, h, col, o) {
+    o = o || {};
+    const Rr = R(col), inset = o.inset !== undefined ? o.inset : Math.round(w * 0.16);
+    const top = y, bot = y + h;
+    for (let yy = top; yy < bot; yy++) {
+      const t = (yy - top) / Math.max(1, h - 1);
+      const xl = Math.round(x + inset * (1 - t)), xr = Math.round(x + w - inset * (1 - t));
+      const row = Math.floor((yy - top) / 4), ly = (yy - top) % 4;
+      for (let xx = xl; xx < xr; xx++) {
+        const seam = ((xx - x) + (row & 1) * 3) % 6 === 0;
+        let k = t < 0.25 ? 1 : t < 0.7 ? 2 : 3;
+        if (ly === 3) k = Math.min(4, k + 1);
+        if (ly === 0) k = Math.max(0, k - 1);
+        if (seam && ly !== 0) k = Math.min(4, k + 1);
+        if (xx - xl < 3) k = Math.max(0, k - 1);           // 左（光）側
+        if (xr - xx <= 3) k = Math.min(4, k + 1);          // 右（影）側
+        P.set(xx, yy, Rr[k]);
+      }
+      // 破風（金のふち）
+      P.set(xl, yy, C.goldD); P.set(xl + 1, yy, C.gold); P.set(xr - 1, yy, C.goldD); P.set(xr - 2, yy, C.gold);
+    }
+    // 棟
+    P.rect(x + inset, top - 2, w - inset * 2, 2, C.goldD); P.rect(x + inset, top - 3, w - inset * 2, 1, C.goldL);
+    // 軒先の飾りと影
+    P.rect(x - 1, bot, w + 2, 2, o.trim || C.teal); P.rect(x - 1, bot + 2, w + 2, 1, C.ol);
+    for (let xx = x + 2; xx < x + w - 1; xx += 5) P.set(xx, bot + 1, C.goldL);
+    // チョーファー（棟の両端の反り飾り）
+    const cho = (cx, dir) => { P.set(cx, top - 3, C.gold); P.set(cx + dir, top - 4, C.gold); P.set(cx + dir * 2, top - 6, C.goldL); P.set(cx + dir * 2, top - 5, C.gold); P.set(cx + dir, top - 7, C.goldL); };
+    cho(x + inset, -1); cho(x + w - inset - 1, 1);
+    // 軒の端の小さな反り
+    P.set(x - 2, bot - 1, C.gold); P.set(x - 3, bot - 3, C.goldL); P.set(x + w + 1, bot - 1, C.gold); P.set(x + w + 2, bot - 3, C.goldL);
+    if (o.tiers > 1) roofThai(P, x + Math.round(w * 0.22), top - Math.round(h * 0.55), Math.round(w * 0.56), Math.round(h * 0.6), o.col2 || col, { trim: o.trim, inset: Math.round(w * 0.1) });
+  }
+  // 壁（しっくい＋木の柱、または板張り）。x,y：左上
+  function wallFront(P, x, y, w, h, kind, col) {
+    const base = col || (kind === 'plank' ? C.wood : C.stucco), Rw = R(base);
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
+      let k = 2;
+      if (kind === 'plank') { const px = (xx - x) % 7; k = px === 6 ? 3 : px === 0 ? 1 : 2; if ((hash(xx, yy >> 3, 3) & 15) === 0) k = 3; }
+      else if ((hash(xx, yy, 8) & 15) === 0) k = 3;
+      if (yy < y + 3) k = Math.min(4, k + 1);              // 軒下の影
+      if (xx > x + w - 4) k = Math.min(4, k + 1);
+      P.set(xx, yy, Rw[k]);
+    }
+    if (kind !== 'plank') for (let xx = x; xx < x + w; xx += 24) { P.rect(xx, y, 3, h, C.woodD); P.rect(xx + 1, y, 1, h, C.wood); }
+    P.rect(x, y + h - 4, w, 4, C.stoneD); P.rect(x, y + h - 4, w, 1, sh(C.stone, 0.1));   // 石の土台
+    P.rect(x - 1, y, 1, h, C.ol); P.rect(x + w, y, 1, h, C.ol);
+  }
+  function door(P, x, y, w, h, col) {
+    P.rect(x - 2, y - 2, w + 4, h + 2, C.goldD); P.rect(x - 1, y - 1, w + 2, h + 1, C.gold);
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) P.set(xx, yy, (xx - x) % 5 === 4 ? sh(col || C.woodD, -0.3) : sh(col || C.woodD, (yy - y) < 2 ? -0.35 : 0));
+    P.rect(x + (w >> 1), y, 1, h, C.ol);
+    P.set(x + (w >> 1) - 2, y + (h >> 1), C.goldL); P.set(x + (w >> 1) + 2, y + (h >> 1), C.goldL);
+  }
+  function windowLit(P, x, y, w, h, night) {
+    outlineBox(P, x - 1, y - 1, w + 2, h + 2, C.woodD);
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) P.set(xx, yy, night ? (yy < y + 2 ? '#ffb850' : '#ffd890') : (yy - y + xx - x) % 7 === 0 ? '#bfe8ff' : '#4a6a8a');
+    P.rect(x + (w >> 1), y, 1, h, C.woodD);
+    P.rect(x - 2, y + h + 1, w + 4, 2, C.woodL);
+  }
+  function awning(P, x, y, w, h, c1, c2) {
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
+      const stripe = Math.floor((xx - x) / 6) & 1;
+      P.set(xx, yy, sh(stripe ? c1 : c2, (yy - y) / h * -0.2 + (yy === y ? 0.2 : 0)));
+    }
+    for (let xx = x; xx < x + w; xx += 6) { P.set(xx + 2, y + h, sh(c1, -0.2)); P.set(xx + 3, y + h, sh(c1, -0.2)); P.set(xx + 2, y + h + 1, sh(c1, -0.35)); }
+    P.rect(x, y + h - 1, w, 1, C.goldD);
+  }
+  function pot(P, x, y, flowers) {
+    P.box(x - 4, y - 7, 9, 7, R('#b0603a'), { round: true });
+    P.rect(x - 5, y - 8, 11, 2, '#d8804a');
+    P.ball(x, y - 12, 6, 5, R(C.leaf), { bias: 0.1 });
+    if (flowers) for (let i = 0; i < 4; i++) { const h = hash(x, y, i); P.set(x - 4 + (h % 9), y - 15 + ((h >> 4) % 6), flowers[i % flowers.length]); }
+  }
+  function barrel(P, x, y) { P.box(x - 5, y - 13, 11, 13, R('#9a6438'), { round: true }); P.rect(x - 5, y - 10, 11, 1, '#4a3020'); P.rect(x - 5, y - 4, 11, 1, '#4a3020'); }
+  function crate(P, x, y, s) { s = s || 12; P.rect(x, y - s, s, s, '#b88850'); outlineBox(P, x, y - s, s, s, '#6a4424'); P.line(x, y - s, x + s - 1, y - 1, '#7a5430'); P.rect(x, y - s, s, 2, '#d8a868'); }
+  function lantern(P, x, y) { P.rect(x - 1, y - 22, 2, 22, '#3a2418'); P.rect(x - 3, y - 28, 7, 7, C.ol); P.rect(x - 2, y - 27, 5, 5, '#ff9a3a'); P.rect(x - 1, y - 26, 3, 3, '#ffe08a'); P.rect(x - 4, y - 29, 9, 1, C.goldD); P.rect(x - 3, y - 1, 7, 2, '#5a4030'); }
+  function banner(P, x, y, col) {
+    P.rect(x, y - 44, 2, 44, '#5a3a20'); P.set(x, y - 45, C.goldL); P.set(x + 1, y - 45, C.goldL);
+    for (let yy = 0; yy < 22; yy++) for (let xx = 0; xx < 10; xx++) { if (yy > 18 && Math.abs(xx - 4.5) < yy - 18) continue; P.set(x + 2 + xx, y - 42 + yy, sh(col, xx < 2 ? 0.15 : xx > 7 ? -0.2 : 0)); }
+    P.ball(x + 7, y - 33, 2.5, 2.5, R(C.gold), { dither: false });
+  }
+
+  // ---------------- 建物 ----------------
+  /* 1つの建物の絵を作る。戻り値 { cv, x, y }：x,y は地図上の左上（ドット） */
+  function building(kind, fp, lv) {
+    const [fx, fy, fw, fd] = fp, W = fw * T + 16, H = fd * T + 40, P = new SP.Pix(W, H);
+    const ox = 8, base = H - 2;            // 足元（地図の fp の下端）が base
+    const night = lv.night;
+    if (kind === 'lot') {
+      // 空き地：杭と縄で囲った土の区画と立て札（まだ建っていない施設）
+      for (let y = base - fd * T + 8; y < base - 2; y++) for (let x = ox + 4; x < ox + fw * T - 4; x++) P.set(x, y, sh('#b48e60', ((hash(x >> 1, y >> 1, 4) & 7) - 3.5) * 0.03));
+      for (let i = 0; i < 9; i++) { const h = hash(fx, fy, i); P.ball(ox + 10 + (h % (fw * T - 24)), base - 12 - ((h >> 8) % (fd * T - 26)), 2, 1.5, R('#9a8a70'), { dither: false }); }
+      for (let x = ox + 4; x <= ox + fw * T - 6; x += 16) { P.rect(x, base - fd * T + 4, 2, 8, '#7a5030'); P.rect(x, base - 10, 2, 8, '#7a5030'); }
+      for (let x = ox + 4; x < ox + fw * T - 4; x++) { P.set(x, base - fd * T + 6 + ((x >> 3) & 1), '#d8c090'); P.set(x, base - 8 + ((x >> 3) & 1), '#d8c090'); }
+      const sx = ox + (fw * T >> 1) - 10; P.rect(sx + 9, base - 34, 2, 24, '#6a4424'); P.rect(sx, base - 44, 20, 13, '#d8b070'); outlineBox(P, sx, base - 44, 20, 13, '#6a4424');
+      for (let i = 0; i < 3; i++) P.rect(sx + 3, base - 41 + i * 3, 14 - i * 3, 1, '#7a5030');
+      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
+    }
+    if (kind === 'shop') {
+      // サイの店：板張りの店と青緑の日よけ、品物の並ぶ台、吊り灯籠
+      const stage = lv.stage, wy = base - 44;
+      wallFront(P, ox + 2, wy, fw * T - 4, 44, stage >= 2 ? 'plaster' : 'plank');
+      roofThai(P, ox, base - fd * T - 18, fw * T, fd * T - 22 + 18 - 10, C.roof, { tiers: stage >= 3 ? 2 : 1, trim: C.teal });
+      awning(P, ox - 2, wy + 2, fw * T + 4, 9, C.teal, '#e8f0e0');
+      // 商品台
+      const cy = base - 14;
+      P.rect(ox + 6, cy, fw * T - 12, 9, C.woodL); P.rect(ox + 6, cy + 9, fw * T - 12, 3, C.woodD); P.rect(ox + 6, cy, fw * T - 12, 1, '#f0c890');
+      const goods = ['#3ab0d0', '#e04a5a', '#f0c040', '#7ac050', '#c070e0', '#f08a40'];
+      for (let i = 0; i < 2 + stage * 2 && i < 8; i++) { const gx = ox + 12 + i * 14; P.ball(gx, cy - 3, 4, 4, R(goods[i % goods.length]), { dither: false }); P.set(gx - 1, cy - 5, '#ffffff'); }
+      // 棚の壺と布
+      for (let i = 0; i < 4; i++) P.box(ox + 14 + i * 26, wy + 16, 8, 10, R(['#4a8ad0', '#d0a040', '#40a090', '#c05a8a'][i]), { round: true });
+      for (let i = 0; i < 3; i++) { const lx = ox + 22 + i * 40; P.rect(lx, wy + 11, 1, 3, C.ol); P.rect(lx - 2, wy + 14, 5, 6, C.ol); P.rect(lx - 1, wy + 15, 3, 4, night ? '#ffd070' : '#ff9a4a'); }
+      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2, lights: [[fx * T + 22, (fy + fd) * T - 26, 14], [fx * T + 62, (fy + fd) * T - 26, 14], [fx * T + 102, (fy + fd) * T - 26, 14]] };
+    }
+    if (kind === 'storage') {
+      // 倉庫：板張りの大きな戸と木箱。段階で大きく（2階・金の飾り）
+      const sl = lv.storage, wh = 40 + (sl >= 3 ? 8 : 0), wy = base - wh;
+      wallFront(P, ox + 4, wy, fw * T - 8, wh, 'plank', '#9a6a40');
+      roofThai(P, ox + 2, base - fd * T - 16 - (sl >= 3 ? 8 : 0), fw * T - 4, fd * T + 16 - wh + (sl >= 3 ? 8 : 0) - 2, sl >= 4 ? '#3a6a8a' : '#5a6a7a', { trim: sl >= 4 ? C.gold : C.woodD });
+      door(P, ox + (fw * T >> 1) - 13, base - 30, 26, 26, '#6a4024');
+      if (sl >= 3) { windowLit(P, ox + 14, wy + 6, 10, 8, night); windowLit(P, ox + fw * T - 24, wy + 6, 10, 8, night); }
+      crate(P, ox + 6, base, 12); barrel(P, ox + fw * T - 10, base);
+      if (sl >= 2) crate(P, ox + 8, base - 12, 10);
+      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
+    }
+    if (kind === 'smith') {
+      // 鍛冶屋：石造りの炉と煙突、開いた作業場（炉の火）、金床と武器の棚。炉の段階で煙突・飾りが立派に
+      const sm = lv.smith, wy = base - 46;
+      for (let y = wy; y < base; y++) for (let x = ox + 2; x < ox + fw * T - 2; x++) {
+        const row = (y - wy) >> 3, bx = (x + (row & 1) * 6) % 12;
+        P.set(x, y, bx === 0 || (y - wy) % 8 === 7 ? '#5a4a40' : sh('#8a7a6a', ((hash(x / 12 | 0, row, 3) & 7) - 3.5) * 0.04 - (x > ox + fw * T - 10 ? 0.15 : 0)));
+      }
+      P.rect(ox + 1, wy, 1, 46, C.ol); P.rect(ox + fw * T - 2, wy, 1, 46, C.ol);
+      roofThai(P, ox, base - fd * T - 14, fw * T, fd * T + 14 - 46 - 2, sm >= 3 ? '#8a3a2a' : '#5a4a4a', { trim: sm >= 3 ? C.gold : '#3a2a2a' });
+      // 煙突
+      const chx = ox + fw * T - 34, chh = 30 + sm * 6;
+      P.box(chx, base - fd * T - 14 - chh + 20, 14, chh, R('#7a6a5a'));
+      P.rect(chx - 1, base - fd * T - 14 - chh + 18, 16, 3, '#4a3a30');
+      // 作業場の口と炉の火
+      const mx = ox + 20, mw = 54;
+      P.rect(mx, base - 34, mw, 30, '#2a1a14');
+      P.ball(mx + 27, base - 14, 12, 8, R('#ff8a2a'), { dither: true }); P.ball(mx + 27, base - 15, 7, 5, R('#ffe070'), { dither: false });
+      P.rect(mx - 2, base - 36, mw + 4, 3, C.woodD);
+      // 金床
+      const ax = ox + fw * T - 44; P.rect(ax, base - 12, 18, 4, '#3a3a44'); P.rect(ax + 4, base - 8, 10, 6, '#2a2a30'); P.rect(ax - 2, base - 13, 6, 2, '#4a4a54'); P.rect(ax, base - 13, 18, 1, '#8a8a9a');
+      // 武器の立てかけ
+      for (let i = 0; i < 3; i++) { const sx = ox + fw * T - 16 + i * 4; P.rect(sx, base - 30, 1, 22, '#c8d0e0'); P.rect(sx - 1, base - 10, 3, 2, C.goldD); }
+      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2, smoke: [[fx * T - ox + chx + 7, (fy + fd) * T - H + 2 + base - fd * T - 14 - chh + 16]], lights: [[fx * T - ox + mx + 27, (fy + fd) * T - 14, 22]] };
+    }
+    if (kind === 'museum') {
+      // 展示室：白いしっくいの殿堂、金の柱と二重のタイ屋根、石段
+      const wy = base - 48;
+      wallFront(P, ox + 4, wy, fw * T - 8, 44, 'plaster', '#f4ead6');
+      roofThai(P, ox, base - fd * T - 24, fw * T, fd * T + 24 - 48 - 2, C.roof, { tiers: 2, trim: C.teal });
+      for (let i = 0; i < 4; i++) { const cx = ox + 14 + i * ((fw * T - 28) / 3); P.box(Math.round(cx) - 3, wy + 4, 7, 38, R('#f8f0e0')); P.rect(Math.round(cx) - 4, wy + 3, 9, 2, C.gold); P.rect(Math.round(cx) - 4, wy + 40, 9, 2, C.gold); }
+      door(P, ox + (fw * T >> 1) - 10, base - 30, 20, 24, '#7a2a20');
+      P.rect(ox + (fw * T >> 1) - 18, base - 5, 36, 3, sh(C.stone, 0.1)); P.rect(ox + (fw * T >> 1) - 22, base - 2, 44, 2, C.stoneD);
+      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
+    }
+    if (kind === 'diner') {
+      // 食堂：布の屋根の屋台風の台所、湯気の立つ鍋、外の卓と腰かけ
+      const wy = base - 40;
+      wallFront(P, ox + 4, wy, fw * T - 8, 40, 'plank', '#a8743e');
+      roofThai(P, ox + 2, base - fd * T - 10, fw * T - 4, fd * T + 10 - 40 - 2, '#d07a3a', { trim: C.red });
+      awning(P, ox, wy + 1, fw * T, 10, '#f4ead2', '#d84a3a');
+      // かまどと鍋
+      const kx = ox + 24; P.rect(kx - 10, base - 16, 22, 14, '#6a5a50'); P.rect(kx - 8, base - 6, 18, 3, '#ff8a2a');
+      P.box(kx - 8, base - 24, 18, 9, R('#4a4a52'), { round: true }); P.rect(kx - 9, base - 25, 20, 2, '#8a8a92');
+      // 卓と腰かけ
+      for (let i = 0; i < 2; i++) { const tx = ox + 60 + i * 34; P.rect(tx, base - 14, 22, 3, '#c8904a'); P.rect(tx + 2, base - 11, 2, 9, C.woodD); P.rect(tx + 18, base - 11, 2, 9, C.woodD); P.ball(tx + 6, base - 16, 3, 2, R('#f4f0e0'), { dither: false }); P.ball(tx + 15, base - 16, 3, 2, R('#f4f0e0'), { dither: false }); }
+      // 吊るした野菜
+      for (let i = 0; i < 5; i++) P.ball(ox + 50 + i * 12, wy + 16, 2.5, 3.5, R(['#e85a3a', '#f0c040', '#7ac050'][i % 3]), { dither: false });
+      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2, steam: [[fx * T + 24, (fy + fd) * T - 28]], lights: [[fx * T + 24, (fy + fd) * T - 8, 16]] };
+    }
+    if (kind === 'develop') {
+      // 復興本部：帆布の天幕、掲示板（図面と張り紙）、資材
+      const wy = base - 36;
+      for (let y = base - fd * T + 2; y < base - 4; y++) {
+        const t = (y - (base - fd * T + 2)) / (fd * T - 6), half = 10 + t * (fw * T / 2 - 14);
+        for (let x = Math.round(ox + fw * T / 2 - half); x < ox + fw * T / 2 + half; x++) { const st = Math.floor((x - (ox + fw * T / 2)) / (6 + t * 8)) & 1; P.set(x, y, sh(st ? '#f2e6c8' : '#2f9a90', (x < ox + fw * T / 2 ? 0.08 : -0.14) - t * 0.08)); }
+      }
+      P.rect(ox + (fw * T >> 1) - 1, base - fd * T, 2, 6, C.woodD); banner(P, ox + (fw * T >> 1) - 1, base - fd * T + 6, C.teal);
+      P.rect(ox + (fw * T >> 1) - 8, wy + 8, 16, 28, '#5a4030');
+      // 掲示板
+      const bx = ox + 6; P.rect(bx, base - 34, 34, 22, '#8a5a32'); outlineBox(P, bx, base - 34, 34, 22, C.woodD); P.rect(bx + 3, base - 12, 2, 10, C.woodD); P.rect(bx + 29, base - 12, 2, 10, C.woodD);
+      P.rect(bx + 3, base - 31, 13, 10, '#e8f0ff'); for (let i = 0; i < 3; i++) P.rect(bx + 4, base - 29 + i * 3, 10, 1, '#3a5a9a');
+      P.rect(bx + 18, base - 31, 12, 14, '#f4e8c8'); P.rect(bx + 20, base - 28, 8, 1, '#7a5030'); P.rect(bx + 20, base - 25, 6, 1, '#7a5030');
+      // 資材
+      for (let i = 0; i < 4; i++) P.rect(ox + fw * T - 40, base - 6 - i * 3, 30, 3, i & 1 ? '#c8945a' : '#a87440');
+      crate(P, ox + fw * T - 20, base - 12, 10);
+      return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
+    }
+    return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
+  }
+
+  // 丘の上の寺院（アユタヤの仏塔）。章が進むと修復される：1章は崩れたまま、2〜3章は足場、4章から金の先端
+  function temple(lv) {
+    const W = 6 * T + 24, H = 4 * T + 2, P = new SP.Pix(W, H), base = H - 2, ox = 12;
+    const ch = lv.chapter;
+    // 基壇
+    for (let y = base - 34; y < base; y++) for (let x = ox; x < ox + 6 * T; x++) {
+      const row = (y - base) >> 2, bx = (x + (row & 1) * 4) % 8;
+      P.set(x, y, bx === 0 || (y & 3) === 3 ? '#6a3424' : sh(C.brick, ((hash(x >> 3, row, 2) & 7) - 3.5) * 0.04 - (y > base - 6 ? 0.15 : 0)));
+    }
+    P.rect(ox, base - 35, 6 * T, 2, '#e09a6a');
+    // 中央の仏塔（プラーン）
+    const cx = ox + 3 * T, pb = base - 34;
+    const prang = (cx, pb, w, h, broken) => {
+      for (let y = 0; y < h; y++) {
+        const t = y / h, half = Math.max(2, w * (1 - Math.pow(t, 1.6) * 0.92));
+        if (broken && t > 0.62) break;
+        for (let x = Math.round(cx - half); x < cx + half; x++) {
+          const ring = (y % 10) < 2;
+          P.set(x, pb - y, ring ? '#7a3a28' : sh(C.brick, (x < cx ? 0.12 : -0.18) + (((x >> 2) + (y >> 2)) & 1 ? 0 : -0.04)));
+        }
+      }
+      // 入口のくぼみ
+      P.rect(cx - 6, pb - 26, 12, 22, '#3a1a14'); P.rect(cx - 7, pb - 28, 14, 2, C.gold);
+      if (!broken && ch >= 4) { P.rect(cx - 1, pb - h - 8, 2, 10, C.goldL); P.ball(cx, pb - h + 2, 4, 4, R(C.gold), { dither: false }); }
+    };
+    prang(cx, pb, 30, 90, ch <= 1);
+    prang(ox + 34, pb, 15, 56, ch <= 2); prang(ox + 6 * T - 34, pb, 15, 56, ch <= 2);
+    if (ch <= 1) for (let i = 0; i < 10; i++) { const h = hash(i, 3, 9); P.ball(ox + 20 + (h % (6 * T - 40)), base - 36 - ((h >> 8) % 6), 4, 3, R('#a8583a'), {}); }
+    if (ch === 2 || ch === 3) { // 足場
+      for (let x = cx - 30; x <= cx + 30; x += 15) P.rect(x, pb - 80, 2, 80, '#a87a48');
+      for (let y = pb - 78; y < pb; y += 20) P.rect(cx - 31, y, 63, 2, '#c89a60');
+    }
+    if (ch >= 3) { banner(P, ox + 8, base - 34, C.teal); banner(P, ox + 6 * T - 18, base - 34, C.red); }
+    if (lv.cleared) { P.ball(cx, pb - 100, 5, 5, R('#c8f0ff'), { dither: false }); }
+    return { cv: P.canvas(), x: 7 * T - ox, y: 4 * T - H + 2 };
+  }
+
+  // 建設予定地（学校・図書館）：基礎と足場と材木。外観だけ（施設としてはまだ使えない）
+  function site(kind, fp) {
+    const [fx, fy, fw, fd] = fp, W = fw * T + 8, H = fd * T + 30, P = new SP.Pix(W, H), base = H - 2, ox = 4;
+    for (let y = base - 16; y < base; y++) for (let x = ox + 4; x < ox + fw * T - 4; x++) P.set(x, y, (x % 12 === 0 || y === base - 16) ? '#8a7a6a' : sh('#c8b898', (y - base) / 60));
+    for (let x = ox + 8; x < ox + fw * T - 8; x += 22) P.rect(x, base - fd * T - 10, 3, fd * T - 6, '#a87a48');
+    for (let y = base - fd * T - 6; y < base - 16; y += 18) P.rect(ox + 6, y, fw * T - 12, 3, '#c89a60');
+    // 骨組みの屋根の線
+    P.line(ox + 8, base - fd * T - 8, ox + (fw * T >> 1), base - fd * T - 26, '#a87a48'); P.line(ox + (fw * T >> 1), base - fd * T - 26, ox + fw * T - 8, base - fd * T - 8, '#a87a48');
+    for (let i = 0; i < 4; i++) P.rect(ox + fw * T - 46, base - 3 - i * 3, 34, 3, i & 1 ? '#c8945a' : '#a87440');
+    if (kind === 'school') { P.rect(ox + 12, base - 28, 18, 12, '#2a4a3a'); outlineBox(P, ox + 12, base - 28, 18, 12, '#8a5a32'); }
+    else for (let i = 0; i < 3; i++) P.rect(ox + 12 + i * 5, base - 26, 4, 10, ['#c84a3a', '#3a7ab0', '#e0b040'][i]);
+    return { cv: P.canvas(), x: fx * T - ox, y: (fy + fd) * T - H + 2 };
+  }
+
+  // 木（ヤシ・丸い木）。足元のマスに立つ
+  function tree(kind, tx, ty, night) {
+    const W = 56, H = 80, P = new SP.Pix(W, H), cx = 28, base = H - 4;
+    if (kind === 'palm') {
+      for (let y = 0; y < 46; y++) { const x = cx + Math.round(Math.sin(y / 14) * 3); P.rect(x - 2, base - y, 5, 1, (y % 5 === 0) ? '#6a4a2a' : '#9a7044'); P.set(x - 2, base - y, '#b88a5a'); }
+      const fr = [[-22, -4], [-16, -14], [0, -18], [16, -14], [22, -4], [-10, 6], [10, 6]];
+      for (const [dx, dy] of fr) {
+        const n = 14;
+        for (let i = 0; i < n; i++) {
+          const t = i / n, x = cx + dx * t, y = base - 48 + dy * t + t * t * 10;
+          P.set(Math.round(x), Math.round(y), sh(night ? '#2e6a3a' : '#3f9a44', 0.15 - t * 0.3));
+          P.set(Math.round(x), Math.round(y) + 1, sh(night ? '#2e6a3a' : '#3f9a44', -0.15 - t * 0.2));
+          if (i % 2) { P.set(Math.round(x), Math.round(y) + 2, sh('#3f9a44', -0.35)); P.set(Math.round(x - Math.sign(dx)), Math.round(y) + 2, sh('#3f9a44', -0.2)); }
+        }
+      }
+      P.ball(cx - 2, base - 46, 3, 3, R('#7a5a2a'), { dither: false }); P.ball(cx + 3, base - 45, 3, 3, R('#7a5a2a'), { dither: false });
+    } else {
+      P.box(cx - 3, base - 20, 7, 20, R('#7a5230'));
+      const lc = night ? '#2e6a3a' : C.leaf;
+      P.ball(cx, base - 36, 20, 16, R(lc), { bias: 0.15 });
+      P.ball(cx - 10, base - 30, 11, 9, R(lc), { bias: 0.3 }); P.ball(cx + 11, base - 31, 10, 9, R(lc), { bias: 0.4 });
+      P.ball(cx - 4, base - 44, 10, 7, R(sh(lc, 0.1)), { bias: -0.1 });
+      if (kind === 'flower') for (let i = 0; i < 14; i++) { const h = hash(tx, ty, i); P.set(cx - 16 + (h % 32), base - 48 + ((h >> 6) % 26), i % 2 ? '#ff9ac8' : '#ffe0ee'); }
+    }
+    P.outline(0.7);
+    return { cv: P.canvas(), x: tx * T + 16 - cx, y: (ty + 1) * T - H + 2, sortY: (ty + 1) * T - 1 };
+  }
+
+  // ヤナイの記念像：青銅の像（見本のヤナイのドット絵を青銅色にしたもの）と台座・花・ろうそく
+  function statue(lv) {
+    const W = 2 * T + 16, H = 2 * T + 30, P = new SP.Pix(W, H), base = H - 2, ox = 8;
+    // 台座（3段の石。上の段に像が立つ）
+    const step = (y0, h, inset, col) => { for (let y = y0; y < y0 + h; y++) for (let x = ox + inset; x < ox + 2 * T - inset; x++) P.set(x, y, sh(col, (x < ox + inset + 5 ? 0.16 : x > ox + 2 * T - inset - 6 ? -0.22 : 0) + (y === y0 ? 0.22 : y === y0 + h - 1 ? -0.25 : 0))); };
+    step(base - 14, 14, 0, C.stone); step(base - 26, 12, 6, '#e6dcc4'); step(base - 36, 10, 12, '#efe6d2');
+    P.rect(ox + 22, base - 22, 20, 8, C.goldD); P.rect(ox + 23, base - 21, 18, 6, C.gold); P.rect(ox + 26, base - 19, 12, 1, C.goldD); P.rect(ox + 26, base - 17, 9, 1, C.goldD);
+    // 金の燭台と花
+    for (const x of [ox + 3, ox + 2 * T - 6]) { P.rect(x, base - 20, 3, 8, C.gold); P.rect(x - 1, base - 13, 5, 2, C.goldD); P.rect(x, base - 24, 3, 4, '#f4ead2'); P.set(x + 1, base - 25, '#ffd060'); P.set(x + 1, base - 26, '#fff4b0'); }
+    for (let i = 0; i < 14; i++) { const h = hash(i, 2, 77); P.ball(ox + 4 + (h % (2 * T - 8)), base - 2 - (h >> 5) % 4, 2.2, 2, R([C.pink, '#ffe070', '#ffffff', '#ff7a6a'][i % 4]), { dither: false }); }
+    P.outline(0.6);
+    return { cv: P.canvas(), x: 9 * T - ox, y: 13 * T - H + 2, statueAt: [9 * T - ox + (W >> 1), 13 * T - H + 2 + base - 36] };
+  }
+
+  // 子ども（章が進むと遊びに来る）。見本の人物と同じ密度で、背丈は小さめ
+  function kid(v) {
+    const P = new SP.Pix(20, 30), hair = ['#2a1a14', '#3a2418', '#1a1418'][v % 3], shirt = ['#f4f4f0', '#e8c060', '#7ac0e0'][v % 3], pants = ['#2a3a7a', '#3a5a3a', '#7a3a3a'][v % 3];
+    P.ball(10, 9, 6, 6, R('#e0a878'));
+    P.ball(10, 6, 6, 4, R(hair), { bias: 0.4 });
+    P.set(8, 10, '#2a1a14'); P.set(12, 10, '#2a1a14');
+    P.box(5, 15, 10, 7, R(shirt)); P.box(6, 22, 8, 5, R(pants));
+    P.rect(6, 27, 3, 2, '#3a2a20'); P.rect(11, 27, 3, 2, '#3a2a20');
+    P.outline(0.8);
+    return P.canvas();
+  }
+  function cat(v) {
+    const P = new SP.Pix(18, 12), c = v ? '#e89a4a' : '#f0f0ec';
+    P.ball(8, 7, 6, 4, R(c)); P.ball(14, 5, 3.5, 3.5, R(c)); P.set(12, 1, c); P.set(16, 1, c); P.set(13, 5, '#2a2a2a'); P.set(15, 5, '#2a2a2a');
+    P.rect(1, 4, 2, 4, sh(c, -0.2));
+    P.outline(0.75);
+    return P.canvas();
+  }
+
+  // ---------------- まとめ ----------------
+  /* 村の絵と当たり判定を作る（村の状態が変わったときだけ） */
+  VL.build = function (lv) {
+    const G = groundMap(lv), Lo = layout(lv);
+    const solid = new Uint8Array(MW * MH);
+    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) solid[y * MW + x] = WALK[G[y][x]] ? 0 : 1;
+    const block = (x, y, w, h) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (i >= 0 && j >= 0 && i < MW && j < MH) solid[j * MW + i] = 1; };
+    const objs = [], lights = [], smoke = [], steam = [], labels = [];
+    const add = (o, sortY) => { objs.push(Object.assign(o, { sortY: sortY !== undefined ? sortY : o.y + o.cv.height - 3 })); if (o.lights) lights.push(...o.lights); if (o.smoke) smoke.push(...o.smoke); if (o.steam) steam.push(...o.steam); };
+    // 寺院と建設予定地
+    add(temple(lv)); block(7, 0, 6, 4);
+    add(site('school', [1, 1, 5, 3])); block(1, 1, 5, 3); labels.push(['学校（建設予定地）', 3.5 * T, 1 * T - 12]);
+    add(site('library', [14, 1, 5, 3])); block(14, 1, 5, 3); labels.push(['図書館（建設予定地）', 16.5 * T, 1 * T - 12]);
+    // 施設
+    const kindOf = { smith: 'smith', museum: 'museum', shop: 'shop', storage: 'storage', develop: 'develop', diner: 'diner' };
+    for (const f of Lo.fac) {
+      if (f.dock) { labels.push([f.name, 10 * T, 21 * T + 4]); continue; }
+      const [x, y, w, h] = f.fp;
+      add(building(f.built ? kindOf[f.id] : 'lot', f.fp, lv));
+      block(x, y, w, h);
+      labels.push([f.name, (x + w / 2) * T, y * T - (f.id === 'shop' || f.id === 'museum' ? 22 : 12)]);
+    }
+    // ヤナイの記念像
+    const st = statue(lv); add(st); block(9, 11, 2, 2); labels.push(['マスターヤナイの像', 10 * T, 11 * T - 70]);
+    // 木・ヤシ（道や入口をふさがない場所だけ）
+    const trees = [['palm', 0, 4], ['round', 6, 4], ['round', 13, 4], ['palm', 19, 4], ['palm', 0, 8], ['palm', 19, 8], ['round', 0, 12], ['flower', 19, 12],
+      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['round', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 13, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]];
+    for (const [k, x, y] of trees) { if (!WALK[G[y][x]] || G[y][x] === 'f') { add(tree(k, x, y, lv.night)); if (G[y][x] !== 'f') solid[y * MW + x] = 1; else solid[y * MW + x] = 1; } }
+    // 小物：植木鉢・樽・灯り（道のわき）
+    const props = new SP.Pix(MW * T, MH * T);
+    const propAt = [];
+    const putPot = (x, y, fl) => { pot(props, x * T + 16, y * T + 30, fl); propAt.push([x, y]); };
+    putPot(5, 6, [C.pink, '#ffffff']); putPot(14, 6, ['#ffe070', C.pink]); putPot(8, 12, [C.pink, '#ffe070']); putPot(11, 12, ['#ffffff', C.pink]);
+    putPot(1, 16, [C.pink]); putPot(18, 16, ['#ffe070']); putPot(5, 20, [C.pink, '#ffffff']); putPot(14, 20, ['#ffe070', C.pink]);
+    if (lv.decor.garden) { putPot(5, 13, [C.pink]); putPot(14, 13, ['#ffe070']); putPot(5, 19, [C.pink, '#ffffff']); putPot(14, 19, [C.pink]); }
+    // 長いす・木箱・花壇（入口と通り道はあける）
+    const bench = (x, y) => { const X = x * T + 3, Y = y * T + 26; props.rect(X, Y - 10, 26, 4, '#b8834e'); props.rect(X, Y - 10, 26, 1, '#e0b07a'); props.rect(X, Y - 15, 26, 3, '#9a6a3a'); props.rect(X + 2, Y - 6, 2, 6, C.woodD); props.rect(X + 22, Y - 6, 2, 6, C.woodD); propAt.push([x, y]); };
+    bench(7, 6); bench(12, 6);
+    // 花壇：石のふちの中に丸い茂みと花
+    const bed = (x, y, cols) => {
+      const X = x * T, Y = y * T;
+      props.rect(X + 2, Y + 14, 28, 16, C.stoneD); props.rect(X + 3, Y + 14, 26, 2, sh(C.stone, 0.2)); props.rect(X + 4, Y + 17, 24, 10, '#6a4a30');
+      for (const [dx, dy, r] of [[9, 15, 6], [22, 15, 6], [15, 11, 7]]) props.ball(X + dx, Y + dy, r, r * 0.8, R(C.leaf), { bias: 0.1 });
+      for (let i = 0; i < 12; i++) { const h = hash(x, y, i + 30), fx = X + 5 + (h % 22), fy = Y + 7 + ((h >> 6) % 12); props.set(fx, fy, cols[i % cols.length]); props.set(fx + 1, fy, cols[i % cols.length]); props.set(fx, fy + 1, sh(cols[i % cols.length], -0.3)); }
+      propAt.push([x, y]);
+    };
+    bed(6, 10, [C.pink, '#ffffff']); bed(13, 10, ['#ffe070', C.pink]);
+    crate(props, 15 * T + 2, 10 * T + 30, 12); barrel(props, 18 * T + 18, 10 * T + 30); propAt.push([15, 10], [18, 10]);
+    crate(props, 1 * T + 4, 10 * T + 30, 12); propAt.push([1, 10]);
+    const lamps = [[5, 8], [14, 8]];
+    if (lv.stage >= 2 || lv.decor.lanterns) lamps.push([5, 16], [14, 16]);
+    if (lv.decor.lanterns) lamps.push([2, 21], [7, 21], [12, 21], [17, 21]);
+    for (const [x, y] of lamps) { lantern(props, x * T + 16, y * T + 30); propAt.push([x, y]); lights.push([x * T + 16, y * T + 6, 18]); }
+    if (lv.chapter >= 3 || lv.ending) for (const [x, y, c] of [[6, 7, C.teal], [13, 7, C.red]]) { banner(props, x * T + 14, y * T + 30, c); propAt.push([x, y]); }
+    if (lv.decor.stalls) for (const [x, c] of [[6, '#e05a4a'], [13, '#3a9ad0']]) { awning(props, x * T + 2, 19 * T + 2, 28, 8, c, '#f4ead2'); props.rect(x * T + 4, 19 * T + 18, 24, 8, C.woodL); props.ball(x * T + 10, 19 * T + 16, 3, 3, R('#f0c040'), { dither: false }); props.ball(x * T + 20, 19 * T + 16, 3, 3, R('#7ac050'), { dither: false }); propAt.push([x, 19]); }
+    if (lv.chapter <= 2 && !lv.ending) for (const [x, y] of [[6, 11], [13, 18]]) { for (let i = 0; i < 6; i++) { const h = hash(x, y, i); props.ball(x * T + 8 + h % 16, y * T + 24 - (h >> 6) % 10, 4, 3, R('#a89070'), {}); } propAt.push([x, y]); }
+    if (lv.decor.statue) { // 白い象の像
+      const x = 6 * T + 16, y = 12 * T + 28;
+      props.rect(x - 12, y - 6, 26, 6, C.stoneD); props.ball(x, y - 16, 12, 9, R('#f4f0e8')); props.ball(x + 10, y - 20, 6, 6, R('#f4f0e8')); props.rect(x + 14, y - 18, 2, 12, '#e8e0d0');
+      props.rect(x - 8, y - 10, 3, 6, '#e0d8c8'); props.rect(x + 4, y - 10, 3, 6, '#e0d8c8'); propAt.push([6, 12]);
+    }
+    if (lv.legacy || lv.legacy30) { // 旧版の記録の記念碑
+      const x = 13 * T + 16, y = 12 * T + 30; props.rect(x - 8, y - 22, 16, 22, sh(C.stone, -0.05)); props.rect(x - 9, y - 23, 18, 2, C.gold); props.ball(x, y - 28, 5, 5, R(lv.legacy30 ? C.gold : '#c0c8d0'), { dither: false }); propAt.push([13, 12]);
+    }
+    if (lv.decor.gate) { // 黄金の門（寺院の石段）
+      for (const x of [8 * T + 20, 11 * T + 10]) { props.box(x, 4 * T - 30, 6, 34, R(C.gold)); }
+      props.rect(8 * T + 16, 4 * T - 34, 3 * T + 4, 5, C.gold); props.rect(8 * T + 16, 4 * T - 35, 3 * T + 4, 1, C.goldL);
+    }
+    if (lv.decor.gate) propAt.push([8, 3, 4]);
+    props.outline(0.75);
+    // 小物は1マスずつの切り抜きにして、人物と足元の高さ順に重ねる（灯りの柱の奥を通ると、柱が手前に見える）
+    const pcv = props.canvas();
+    for (const [x, y, w] of propAt) {
+      const ww = (w || 1) * T + 16;
+      objs.push({ cv: pcv, crop: [x * T - 8, y * T - 48, ww, T + 48], x: x * T - 8, y: y * T - 48, sortY: (y + 1) * T - 2 });
+      if (!w) solid[y * MW + x] = 1;
+    }
+    // 噴水
+    if (lv.decor.fountain) {
+      const P = new SP.Pix(2 * T, 2 * T), cx = T, cy = T + 8;
+      P.ball(cx, cy, 28, 14, R(C.stone)); P.ball(cx, cy - 1, 23, 10, R('#3ab0d0'), { dither: false }); P.box(cx - 4, cy - 26, 8, 24, R(C.stone)); P.ball(cx, cy - 26, 10, 4, R(C.stone));
+      P.outline(0.7);
+      add({ cv: P.canvas(), x: 9 * T, y: 16 * T + 8 }); block(9, 17, 2, 1);
+      steam.push([10 * T, 16 * T + 12, 'fountain']);
+    }
+    // 小舟（水の上）
+    const boat = new SP.Pix(64, 26);
+    boat.poly([[2, 10], [62, 10], [54, 22], [10, 22]], (x, y) => (y < 13 ? '#b07a48' : '#7a4a28'));
+    boat.rect(6, 9, 52, 2, '#d8a868'); boat.rect(14, 2, 34, 8, '#e8dcc0'); boat.rect(14, 2, 34, 1, '#c84a3a'); boat.rect(16, 4, 30, 1, '#c84a3a');
+    boat.outline(0.7);
+    add({ cv: boat.canvas(), x: 8 * T + 32, y: 24 * T - 2, boat: true });
+    // 人
+    const npcs = [];
+    for (const f of Lo.fac) if (f.npc) { npcs.push({ who: f.npc, x: f.npcAt[0], y: f.npcAt[1], fac: f.id }); solid[f.npcAt[1] * MW + f.npcAt[0]] = 1; }
+    const kids = [], cats = [];
+    const nk = Math.min(4, Math.max(0, lv.chapter - 1) + (lv.ending ? 1 : 0));
+    const kidSpots = [[7, 15], [12, 16], [8, 19], [11, 7]];
+    for (let i = 0; i < nk; i++) { kids.push({ cv: kid(i), x: kidSpots[i][0], y: kidSpots[i][1] }); }
+    const catSpots = [[2, 10], [17, 15], [12, 20]];
+    for (let i = 0; i < Math.min(3, 1 + (lv.chapter >= 3 ? 1 : 0) + (lv.ending ? 1 : 0)); i++) cats.push({ cv: cat(i % 2), x: catSpots[i][0], y: catSpots[i][1] });
+    const ground = paintGround(lv, G);
+    // 建物の足元の影（地面に描く）
+    const gcv = ground.canvas(), gg = gcv.getContext('2d');
+    gg.fillStyle = 'rgba(30,20,40,0.22)';
+    for (const f of Lo.fac) if (!f.dock) { const [x, y, w, h] = f.fp; gg.fillRect(x * T + 6, (y + h) * T - 2, w * T, 6); gg.fillRect((x + w) * T, y * T + 10, 6, h * T - 8); }
+    return { ground: gcv, objs, solid, fac: Lo.fac, npcs, kids, cats, lights, smoke, steam, labels, statue: st.statueAt, W: MW * T, H: MH * T };
+  };
+
+  /* 歩ける道をさがす（8方向。壁の角をななめに抜けない）。戻り値はマスの並び（出発点は含まない）。行けなければ null */
+  VL.path = function (solid, sx, sy, gx, gy) {
+    if (sx === gx && sy === gy) return [];
+    const free = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && !solid[y * MW + x];
+    const prev = new Int32Array(MW * MH).fill(-1), q = [sy * MW + sx];
+    prev[sy * MW + sx] = sy * MW + sx;
+    const D8 = [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1, 1], [-1, 1], [-1, -1]];
+    for (let qi = 0; qi < q.length; qi++) {
+      const c = q[qi], cx = c % MW, cy = (c / MW) | 0;
+      if (cx === gx && cy === gy) break;
+      for (const [dx, dy] of D8) {
+        const nx = cx + dx, ny = cy + dy;
+        if (!free(nx, ny) || prev[ny * MW + nx] >= 0) continue;
+        if (dx && dy && (!free(cx + dx, cy) || !free(cx, cy + dy))) continue;
+        prev[ny * MW + nx] = c; q.push(ny * MW + nx);
+      }
+    }
+    if (prev[gy * MW + gx] < 0) return null;
+    const out = [];
+    for (let c = gy * MW + gx; c !== sy * MW + sx; c = prev[c]) out.push({ x: c % MW, y: (c / MW) | 0 });
+    return out.reverse();
+  };
+  VL.START = { x: 9, y: 20, dir: 'up' };
 
   TS.Village = VL;
 })(globalThis.TS = globalThis.TS || {});
