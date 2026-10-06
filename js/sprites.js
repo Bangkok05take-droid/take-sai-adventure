@@ -1218,7 +1218,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, bosses: {}, ready: false };
+  SP.art = { chars: {}, items: {}, bosses: {}, enemies: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1235,6 +1235,12 @@
       load(IT.dir + 'floor/' + name + '.png', (img) => { e.floor = toCanvas(img); });
     }
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
+    // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
+    for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {
+      const n = Math.max(1, Math.round(img.width / img.height)), w = img.width / n;
+      const fr = [0, 1].map((i) => { const c = document.createElement('canvas'); c.width = w; c.height = img.height; c.getContext('2d').drawImage(img, Math.min(i, n - 1) * w, 0, w, img.height, 0, 0, w, img.height); c.art = true; return c; });
+      SP.art.enemies[k] = fr;
+    });
     if (!left) end();
   };
   function toCanvas(img) { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0); return c; }
@@ -1278,6 +1284,7 @@
     if (ch.yanai && ch.yanai.front) SP.art.statue = bronze(ch.yanai.front);
     // ボス：見本の絵（1枚）。待機・予告・被弾などの違いは描画側の動き・点滅で出す
     for (const [k, cv] of Object.entries(SP.art.bosses)) s.enemy[k] = [cv, cv];
+    for (const [k, fr] of Object.entries(SP.art.enemies)) s.enemy[k] = fr;
   }
   // 絵の形のまま1色に塗った影絵（攻撃予告の赤い点滅・撃破の白い光に使う）。一度作って使い回す
   const tintCache = new Map();

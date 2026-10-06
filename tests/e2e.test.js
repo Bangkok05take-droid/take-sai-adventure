@@ -974,6 +974,21 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     eq2(hid, 0, 'cleared when hidden');
   });
 
+  await test('通常の敵の画像の差し替え：TS.ASSETS.enemies に書いた敵だけ画像に替わる（2コマを分ける）。書かない敵は今の絵のまま', async () => {
+    const r = await p.evaluate(() => new Promise((done) => {
+      const SP = TS.Sprites, keep = SP.s.enemy.frog, keepT = SP.s.enemy.turtle;
+      const c = document.createElement('canvas'); c.width = 128; c.height = 64;
+      const g = c.getContext('2d'); g.fillStyle = '#3a8a3a'; g.fillRect(20, 30, 24, 30); g.fillStyle = '#8ad04a'; g.fillRect(84, 28, 24, 32);
+      TS.ASSETS.enemies = { frog: c.toDataURL() };
+      SP.loadArt(() => {
+        const f = SP.s.enemy.frog, out = { art: !!f[0].art, w: f[0].width, two: f[0] !== f[1], turtleSame: SP.s.enemy.turtle === keepT };
+        TS.ASSETS.enemies = {}; SP.art.enemies = {}; SP.s.enemy.frog = keep;
+        done(out);
+      });
+    }));
+    assert(r.art && r.w === 64 && r.two && r.turtleSame, JSON.stringify(r));
+  });
+
   await test('すべての地域の地形と部屋の見せ場（レンガの遺跡・水晶の地下神殿・封印の最深部ほか）がエラーなく描ける', async () => {
     const bad = await p.evaluate(() => {
       const out = [], G = TS.Game, RD = TS.Render, UI = TS.UI, keep = UI.S, keepScreen = UI.screen;

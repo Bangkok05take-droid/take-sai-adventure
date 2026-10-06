@@ -43,5 +43,10 @@
     bosses: { croc: 'assets/bosses/croc.png', flame: 'assets/bosses/flame.png', kill: 'assets/bosses/kill.png', baran: 'assets/bosses/baran.png',
       mist: 'assets/bosses/mist.png', vearn: 'assets/bosses/vearn.png', truevearn: 'assets/bosses/truevearn.png' },
     bossBox: { w: 96, h: 96, foot: 92 },
+    /* 通常の敵（assets/enemies/）：見本の一覧画像から tools/extract-enemies.py で作る透過PNG。まだ素材が無いので空。
+     * 1コマは 64×64（足の裏 y=60、足元の中央 x=32）、待機2コマなら横に並べた 128×64。キーは js/data.js の敵の sprite 名。
+     * 書いた敵だけ画像に替わり、書かない敵は今までのコードで描いた絵のまま。必要な素材の一覧は docs/ENEMY_ART.md */
+    enemies: {},
+    enemyBox: { w: 64, h: 64, foot: 60 },
   };
 })(globalThis.TS = globalThis.TS || {});
