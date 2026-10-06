@@ -233,6 +233,14 @@
       let sx = Math.round(ox + ep.x * ts), sy = Math.round(oy + ep.y * ts);
       const l = lungeOffset(e.id, now, ts);
       sx += l[0]; sy += l[1];
+      // 生き物ごとの動き（実際にマスを移動している間だけ。待機中は動かない＝ターンも進まない）
+      const ea = anims['e' + e.id], emov = ea && now - ea.t0 < ea.dur, et = emov ? (now - ea.t0) / ea.dur : 0;
+      const kind = D.ENEMIES[e.type].sprite;
+      if (emov && kind === 'frog') sy -= Math.round(Math.sin(et * Math.PI) * ts * 0.28);              // 蛙：短い跳躍
+      else if (emov && kind === 'turtle') { sx += Math.round(Math.sin(et * Math.PI * 4) * k); sy -= (Math.floor(et * 4) % 2) * Math.round(k); }   // 亀：のそのそ足運び
+      else if (emov && (kind === 'monkey' || kind === 'thief')) sy -= (Math.floor(et * 4) % 2) * Math.round(k * 2);  // 猿：軽い足運び
+      const aim = RD.fx.find((f) => f.t === 'aim' && f.id === e.id && now - f.t0 < f.dur);
+      if (aim) { const a = (now - aim.t0) / aim.dur, s = a < 0.6 ? -a / 0.6 : -(1 - a) / 0.4; sx += Math.round(aim.dx * s * ts * 0.12); sy += Math.round(aim.dy * s * ts * 0.12) - Math.round(k * 2 * (a < 0.6 ? 1 : 0)); }   // 吹き矢の構え：のけぞって狙う
       const frames = SP.enemyFrames(D.ENEMIES[e.type].sprite);
       const img = frames[e.sleep ? 0 : (Math.floor(now / (D.ENEMIES[e.type].ai === 'fast' ? 160 : 420) + e.id) % frames.length)];
       const hit = hitFx(e.x, e.y, 'enemy', now);

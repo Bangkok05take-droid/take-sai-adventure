@@ -1291,7 +1291,12 @@
           if (!e.hit) toast('雷は何にも当たらなかった');
           break;
         case 'fizzle': toast('杖の力が残っていない（回数0）'); AU.sfx('bump'); break;
-        case 'dart': RD.addFx({ t: 'dart', from: e.from, to: e.to, dur: 300 }); AU.sfx('dart'); break;
+        case 'dart': {
+          // 吹き矢・光の矢：まず構え（のけぞって狙う）、続けて矢が飛ぶ
+          const sh = run.enemies.find((q) => q.x === e.from.x && q.y === e.from.y);
+          if (sh) RD.addFx({ t: 'aim', id: sh.id, dx: Math.sign(e.to.x - e.from.x), dy: Math.sign(e.to.y - e.from.y), dur: 220 });
+          RD.addFx({ t: 'dart', from: e.from, to: e.to, dur: 300, delay: sh ? 120 : 0 }); AU.sfx('dart'); break;
+        }
         // 眠り：淡い紫の粒と Zzz（眠っている間は敵の頭に月のしるし）。だれもいなければ理由だけ
         case 'sleep':
           if (e.targets.length) { RD.addFx({ t: 'zzz', targets: e.targets, dur: 900 }); AU.sfx('sleep'); }
