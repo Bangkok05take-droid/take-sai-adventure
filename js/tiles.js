@@ -34,7 +34,7 @@
       corr: ['#8c6c4e', '#7e6046', '#967454'], dirt: '#3e2a1e',
       wall: ['#ae542e', '#b8603a', '#9c4a28', '#c06a40'], mortar: '#5e3020', brickW: 14, brickH: 6,
       top: 'rubble', topC: ['#4a2c20', '#563424', '#3e241a'], topGap: '#24140e', rim: '#8a5a40',
-      pillar: '#d8c4a0', accent: '#e8b84a', mural: '#c89a5a', moss: '#6a8a3a',
+      pillar: '#d8c4a0', accent: '#e8b84a', mural: '#c89a5a', moss: '#6a8a3a', root: '#5a3a1e', leaf: '#6aaa48',
       feats: ['plain', 'pillars', 'mural', 'statue', 'mosaic', 'overgrown', 'pillars'],
     },
     roots: {   // 4〜6階：根に覆われた神殿
@@ -166,12 +166,15 @@
     },
   };
   // 色を配列に変換しておく
+  // 見せ場の絵で使う色の既定値（地域に無い色でも描けるように。水の色は水の地域だけ）
+  const DEF = { moss: '#5a8a3a', root: '#5a3a1e', leaf: '#6aaa48', crystal: '#7af0ff', crystal2: '#4ad0e8', mural: '#8a7a6a', flower: ['#e05a8a', '#ffd84a', '#ffffff'] };
   for (const k of Object.keys(M)) {
     const t = M[k];
+    t.isWater = !!t.water;
+    for (const [f, v] of Object.entries(DEF)) if (!t[f]) Object.defineProperty(t, f, { value: v, writable: true, enumerable: false, configurable: true });
     for (const f of ['floor', 'corr', 'wall', 'topC', 'flower']) if (t[f]) t[f] = t[f].map(rgb);
     for (const f of ['grout', 'dirt', 'mortar', 'topGap', 'rim', 'pillar', 'accent', 'mural', 'moss', 'root', 'leaf', 'water', 'deep', 'ledge', 'crystal', 'crystal2', 'warm', 'cold', 'carpet', 'inlay']) if (t[f]) t[f] = rgb(t[f]);
     if (t.checker) t.checker = t.checker.map(rgb);
-    t.isWater = !!t.water;
   }
   TL.isWaterTheme = (theme) => !!(M[theme] && M[theme].isWater);
 

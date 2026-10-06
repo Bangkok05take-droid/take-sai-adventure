@@ -850,6 +850,28 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     }
   });
 
+  await test('すべての地域の地形と部屋の見せ場（レンガの遺跡・水晶の地下神殿・封印の最深部ほか）がエラーなく描ける', async () => {
+    const bad = await p.evaluate(() => {
+      const out = [], G = TS.Game, RD = TS.Render, UI = TS.UI, keep = UI.S, keepScreen = UI.screen;
+      const themes = ['brick', 'roots', 'water', 'orb', 'garden', 'sunken', 'crystal', 'gold', 'shrine', 'demon', 'throne', 'arena_croc', 'arena_flame', 'arena_kill', 'arena_baran', 'arena_mist'];
+      const feats = ['plain', 'pillars', 'mural', 'statue', 'mosaic', 'overgrown', 'crystals', 'goldtrim', 'inlay', 'braziers', 'seal'];
+      const S = G.newState(); G.depart(S, 4242);
+      const run = S.run, c = document.createElement('canvas'); c.style.cssText = 'position:fixed;left:0;top:0;width:200px;height:200px;opacity:0';
+      document.body.appendChild(c); UI.screen = 'none';
+      for (let i = 0; i < run.explored.length; i++) run.explored[i] = 1;
+      const F = G.F;
+      for (const th of themes) for (const f of feats) {
+        for (const rm of run.map.rooms) Object.defineProperty(rm, 'feat', { value: f, configurable: true, writable: true });
+        run.seed = (run.seed + 1) >>> 0;
+        G.F = () => ({ theme: th });
+        try { for (let k = 0; k < 20; k++) RD.drawDungeon(c, S, performance.now() + k); } catch (e) { out.push(th + '/' + f + ': ' + e.message); }
+      }
+      G.F = F; c.remove(); UI.S = keep; UI.screen = keepScreen;
+      return out;
+    });
+    assert(!bad.length, bad.slice(0, 5).join(' / '));
+  });
+
   await test('ブラウザのエラー・読み込み失敗がない', async () => {
     assert(errors.length === 0, errors.join('\n'));
   });
