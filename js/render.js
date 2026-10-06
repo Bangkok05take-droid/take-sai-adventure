@@ -195,8 +195,8 @@
       g.textAlign = 'left';
     }
     const shadow = (cx, cy, rw) => { g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.ellipse(cx, cy, rw, rw * 0.32, 0, 0, Math.PI * 2); g.fill(); };
-    // 敵
-    for (const e of run.enemies) {
+    // 敵（奥の行から順に描く。大きなボスの絵が手前の敵を隠さない）
+    for (const e of run.enemies.slice().sort((a, b) => a.y - b.y)) {
       if (!G.isVisible(run, e.x, e.y)) continue;
       const ep = lerpPos('e' + e.id, e.x, e.y, now);
       let sx = Math.round(ox + ep.x * ts), sy = Math.round(oy + ep.y * ts);
@@ -215,12 +215,19 @@
       }
       // 分身には影がない（観察すると本体が分かる手がかり）。ゆらゆらと透ける
       if (!isClone) shadow(sx + ts / 2, sy + ts * 0.9, ts * 0.32 * Math.min(big, 1.4));
-      const shake = hit ? Math.round(Math.sin(now / 20) * k * 2) : 0;
+      let shake = hit ? Math.round(Math.sin(now / 20) * k * 2) : 0;
+      // 見本のボスの絵：待機は1ドットの上下動、攻撃予告は小刻みに震えて赤く点滅
+      let lift = 0;
+      if (img.art) {
+        if (e.charge) shake += Math.round(Math.sin(now / 35) * k);
+        else if (!hit && !e.sleep) lift = (Math.floor(now / 520 + e.id) % 2) * Math.round(k);
+      }
       if (isClone) g.globalAlpha = 0.78 + 0.18 * Math.sin(now / 160 + e.id);
-      g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw);
+      g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw - lift, dw, dw);
       g.globalAlpha = 1;
+      if (img.art && e.charge) { g.globalAlpha = 0.25 + 0.25 * Math.sin(now / 120); g.drawImage(SP.tinted(img, '#ff2a2a'), sx + (ts - dw) / 2 + shake, sy + ts - dw - lift, dw, dw); g.globalAlpha = 1; }
       if (isClone && G.hasCharm(run, 'truesight')) badge(g, '幻', sx + ts / 2, sy + ts - dw * 0.55, ts, k, '#c8f0ff', '#102040');
-      if (hit) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.6; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+      if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       if (e.charge) badge(g, '！', sx + ts / 2, sy + ts - dw - ts * 0.05, ts, k, '#ff5050', '#400');
       else if (e.rest > 0) { g.font = `bold ${Math.round(ts * 0.3)}px sans-serif`; g.fillStyle = '#bde0ff'; g.fillText('…', sx + ts * 0.65, sy + ts * 0.2); }
       if (e.slow > 0) { g.fillStyle = '#c8b8ff'; g.font = `bold ${Math.round(ts * 0.26)}px sans-serif`; g.fillText('鈍', sx + k, sy + ts * 0.3); }
@@ -231,6 +238,24 @@
       if (e.hp < e.maxhp && !e.boss) {
         g.fillStyle = '#000'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, ts - 4 * k, 3 * k);
         g.fillStyle = '#ff5050'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, Math.max(1, (ts - 4 * k) * e.hp / e.maxhp), 2 * k);
+      }
+    }
+    // 大きなボスの絵に隠れた床の予告・危険の印は、枠と数字をもう一度上から描く（絵の上でも分かるように）
+    if (run.enemies.some((e) => e.boss)) {
+      g.lineWidth = k * 1.5;
+      for (const e of run.enemies) {
+        if (!e.charge || !e.boss) continue;
+        g.strokeStyle = `rgba(255,90,90,${0.55 + 0.3 * Math.sin(now / 120)})`;
+        for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 2 * k, oy + t.y * ts + 2 * k, ts - 4 * k, ts - 4 * k);
+      }
+      if (run.hazards && run.hazards.length) {
+        g.textAlign = 'center'; g.font = `bold ${Math.round(ts * 0.32)}px sans-serif`;
+        for (const h of run.hazards) {
+          const x = ox + h.x * ts, y = oy + h.y * ts, n = Math.max(0, h.t - 1);
+          g.strokeStyle = 'rgba(255,240,200,0.7)'; g.strokeRect(x + 2 * k, y + 2 * k, ts - 4 * k, ts - 4 * k);
+          g.lineWidth = k * 2; g.strokeStyle = '#1a0a10'; g.strokeText(String(n), x + ts * 0.82, y + ts * 0.36); g.fillStyle = '#ffffff'; g.fillText(String(n), x + ts * 0.82, y + ts * 0.36); g.lineWidth = k * 1.5;
+        }
+        g.textAlign = 'left';
       }
     }
     // たけ（歩くと足踏み、攻撃でポーズ、ダメージで揺れる）
@@ -328,6 +353,22 @@
       } else if (f.t === 'dart') {
         const x = f.from.x + (f.to.x - f.from.x) * Math.min(1, a * 2), y = f.from.y + (f.to.y - f.from.y) * Math.min(1, a * 2);
         if (a < 0.5) { g.fillStyle = f.color || '#f0e0b0'; g.fillRect(ox + (x + 0.5) * ts - 3 * k, oy + (y + 0.5) * ts - k, 6 * k, 3 * k); }
+      } else if (f.t === 'burst') { // 攻撃が発動したマス
+        const col = f.kind === 'ice' ? '170,230,255' : f.kind === 'bolt' ? '255,240,120' : f.kind === 'trap' ? '220,150,255' : '255,200,120';
+        g.fillStyle = `rgba(${col},${0.75 * (1 - a)})`;
+        const pad = ts * 0.15 * a;
+        for (const t of f.tiles) g.fillRect(ox + t.x * ts + pad, oy + t.y * ts + pad, ts - pad * 2, ts - pad * 2);
+      } else if (f.t === 'bossdie') { // ボスの撃破：白く光りながら床へ沈んで消え、光の粒が立ちのぼる
+        const fr = SP.s.enemy[f.sprite]; if (!fr) continue;
+        const img = fr[0], dw = ts * img.width / TILE, x = ox + (f.x + 0.5) * ts - dw / 2, foot = oy + (f.y + 1) * ts, top = foot - dw;
+        g.save(); g.beginPath(); g.rect(x - ts, top - ts, dw + 2 * ts, foot - top + ts); g.clip();
+        const sink = a * a * dw * 0.55;
+        g.globalAlpha = Math.max(0, 1 - a * 1.1); g.drawImage(img, x, top + sink, dw, dw);
+        g.globalAlpha = Math.max(0, 1 - a) * (0.5 + 0.5 * Math.abs(Math.sin(a * 18))); g.drawImage(SP.tinted(img, '#ffffff'), x, top + sink, dw, dw);
+        g.restore(); g.globalAlpha = 1;
+        g.fillStyle = '#ffe8a0';
+        for (let i = 0; i < 14; i++) { const h = (i * 97) % 100 / 100, px = x + dw * (0.2 + 0.6 * h), py = foot - ts * 0.3 - a * ts * (1 + h * 1.5); g.globalAlpha = Math.max(0, 1 - a); g.fillRect(px, py, 3 * k, 3 * k); }
+        g.globalAlpha = 1;
       } else if (f.t === 'sparkle') {
         g.fillStyle = f.color || '#9effa0';
         for (let i = 0; i < 8; i++) {

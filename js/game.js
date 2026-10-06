@@ -441,7 +441,7 @@
     const run = S.run, E = D.ENEMIES[e.type];
     run.enemies.splice(run.enemies.indexOf(e), 1);
     G.log(run, E.name + 'をたおした！ 経験値' + e.exp);
-    ev.push({ t: 'kill', x: e.x, y: e.y });
+    ev.push({ t: 'kill', x: e.x, y: e.y, boss: !!e.boss, sprite: E.sprite });
     gainExp(S, e.exp, ev);
     if (e.stolen) {
       run.runGold += e.stolen;

@@ -1216,7 +1216,10 @@
           AU.sfx(e.target === 'player' ? 'hurt' : 'hit');
           break;
         case 'miss': RD.addFx({ t: 'num', x: e.x, y: e.y, text: 'ミス', color: '#aaccff' }); AU.sfx('miss'); break;
-        case 'kill': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffffff', dur: 500 }); AU.sfx('kill'); break;
+        case 'kill':
+          RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffffff', dur: 500 }); AU.sfx('kill');
+          if (e.boss) RD.addFx({ t: 'bossdie', x: e.x, y: e.y, sprite: e.sprite, dur: 1500 }); // ボスの撃破：白く光って沈みながら消える
+          break;
         case 'heal': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 700 }); RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); AU.sfx('heal'); break;
         case 'eat': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe08a', dur: 600 }); AU.sfx('eat'); break;
         case 'levelup': RD.addFx({ t: 'banner', x: e.x, y: e.y, text: 'LEVEL UP!', dur: 1100 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ffe04a', dur: 900 }); AU.sfx('levelup'); toast('レベル' + p.lvl + 'になった！', 'levelup'); break;
@@ -1233,7 +1236,13 @@
         }
         case 'warn': toast(e.msg); AU.sfx('warn'); break;
         case 'telegraph': toast('！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;
-        case 'blast': AU.sfx('bolt'); break;
+        case 'blast': { // 予告していた攻撃の発動：ボスがたけの方へ踏み込み、予告のマスが光って弾ける
+          AU.sfx('bolt');
+          const b = e.id !== undefined && run.enemies.find((q) => q.id === e.id);
+          if (b) RD.addFx({ t: 'lunge', id: b.id, dx: Math.sign(p.x - b.x), dy: Math.sign(p.y - b.y), dur: 160 });
+          if (e.tiles && e.tiles.length) RD.addFx({ t: 'burst', tiles: e.tiles, kind: e.kind || 'boss', dur: 420 });
+          break;
+        }
         case 'steal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
         case 'summon': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 }); AU.sfx('warn'); break;
         case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600 }); break;

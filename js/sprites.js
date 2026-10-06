@@ -1181,8 +1181,14 @@
   // who：顔絵の種類（take / sai / yanai / villager / friend1 …）か、'boss:敵ID'（ボスの絵をそのまま使う）
   SP.portraitURL = function (who, size) {
     let src;
-    if (String(who).startsWith('boss:')) { const E = TS.Data.ENEMIES[who.slice(5)]; src = E && SP.s.enemy[E.sprite] ? SP.s.enemy[E.sprite][0] : SP.s.portrait.villager; }
-    else src = SP.s.portrait[who] || SP.s.portrait.villager;
+    if (String(who).startsWith('boss:')) {
+      const E = TS.Data.ENEMIES[who.slice(5)]; src = E && SP.s.enemy[E.sprite] ? SP.s.enemy[E.sprite][0] : SP.s.portrait.villager;
+      if (src && src.art) { // 見本のボスの絵は、頭から胸までを切り出す
+        const t = topRow(src), c0 = document.createElement('canvas'); c0.width = c0.height = 56;
+        const g0 = c0.getContext('2d'); g0.fillStyle = '#2a2236'; g0.fillRect(0, 0, 56, 56); g0.drawImage(src, 20, Math.max(0, t - 2), 56, 56, 0, 0, 56, 56);
+        src = c0;
+      }
+    } else src = SP.s.portrait[who] || SP.s.portrait.villager;
     const c = document.createElement('canvas');
     c.width = c.height = size || 64;
     const g = c.getContext('2d');
@@ -1212,7 +1218,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, ready: false };
+  SP.art = { chars: {}, items: {}, bosses: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1228,6 +1234,7 @@
       load(IT.dir + 'list/' + name + '.png', (img) => { e.list = toCanvas(img); });
       load(IT.dir + 'floor/' + name + '.png', (img) => { e.floor = toCanvas(img); });
     }
+    for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
     if (!left) end();
   };
   function toCanvas(img) { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0); return c; }
@@ -1269,7 +1276,21 @@
     }
     for (const who of Object.keys(ch)) if (ch[who].front) s.portrait[who] = headCrop(ch[who].front);
     if (ch.yanai && ch.yanai.front) SP.art.statue = bronze(ch.yanai.front);
+    // ボス：見本の絵（1枚）。待機・予告・被弾などの違いは描画側の動き・点滅で出す
+    for (const [k, cv] of Object.entries(SP.art.bosses)) s.enemy[k] = [cv, cv];
   }
+  // 絵の形のまま1色に塗った影絵（攻撃予告の赤い点滅・撃破の白い光に使う）。一度作って使い回す
+  const tintCache = new Map();
+  SP.tinted = function (img, col) {
+    const key = col; let m = tintCache.get(img);
+    if (!m) { m = {}; tintCache.set(img, m); }
+    if (!m[key]) {
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
+      m[key] = c;
+    }
+    return m[key];
+  };
   SP.charArt = (who) => SP.art.chars[who] && SP.art.chars[who].front ? SP.art.chars[who] : null;
 
   SP.buildTiles = function () {

@@ -726,8 +726,11 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 5; b.cds = { rush: 9, axe: 9 }; r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 900; G.updateVision(r); });
     await p.waitForTimeout(200);
     await shot('17_boss');
+    assert(await p.evaluate(() => TS.Sprites.s.enemy.croc[0].art === true && TS.Sprites.s.enemy.croc[0].width === 96), 'boss drawn from the reference art');
     for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
-    await p.waitForTimeout(700); await closeTalk();
+    assert(await p.evaluate(() => TS.Render.fx.some((f) => f.t === 'bossdie' && f.sprite === 'croc')), 'boss defeat effect');
+    await p.waitForTimeout(300); await shot('17b_boss_defeat');
+    await p.waitForTimeout(400); await closeTalk();
     assert(await p.evaluate(() => !!TS.UI.S.run.portal && TS.UI.S.village.story.defeated.croc), 'portal opened');
     assert(await p.evaluate(() => TS.UI.S.run.floorItems.some((f) => f.item && f.item.id === 'dragon_shield')), 'reward on floor');
     const dir = await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game;

@@ -36,6 +36,11 @@
       },
     },
     portraits: { take: null, sai: null, yanai: null, villager: null },
-    bosses: { croc: null, flame: null, kill: null, baran: null, mist: null, vearn: null, truevearn: null },
+    /* ボス（assets/bosses/）：見本 assets/reference/bosses.png から tools/extract-bosses.py で作った透過PNG。
+     * キャンバス 96×96（1ドット＝1ピクセル。たけと同じ細かさ）、足の裏は y=92、足元の中央は x=48。正面の1枚だけ（横向き・背面・歩行コマは無い）。
+     * キーは js/data.js の敵の sprite 名。分身（kill_clone・mist_clone）も同じ絵を使う。 */
+    bosses: { croc: 'assets/bosses/croc.png', flame: 'assets/bosses/flame.png', kill: 'assets/bosses/kill.png', baran: 'assets/bosses/baran.png',
+      mist: 'assets/bosses/mist.png', vearn: 'assets/bosses/vearn.png', truevearn: 'assets/bosses/truevearn.png' },
+    bossBox: { w: 96, h: 96, foot: 92 },
   };
 })(globalThis.TS = globalThis.TS || {});

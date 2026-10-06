@@ -43,6 +43,15 @@ fs.mkdirSync(OUT, { recursive: true });
     await p.waitForTimeout(450);
     await p.screenshot({ path: path.join(OUT, name + '.png') });
   }
+  // 被弾（白く光って揺れる）と撃破（白く光りながら沈んで消える）：ふつうの操作（UI.doAct）で攻撃して撮る
+  for (const [kind, hp] of [['hit', 900], ['die', 1]]) {
+    await setup(1, 30, 0, null);
+    const dir = await p.evaluate((hp) => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = hp; b.charge = null; b.cds = { rush: 9, axe: 9 };
+      r.player.x = b.x - 1; r.player.y = b.y; G.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'right' }); return 'right'; }, hp);
+    await p.waitForTimeout(kind === 'hit' ? 60 : 450);
+    await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); });
+    await p.screenshot({ path: path.join(OUT, 'boss_' + kind + '.png') });
+  }
   // 最終決戦の準備画面
   await setup(6, 35, 0, 'prep');
   await p.evaluate(() => TS.UI.debug.finalCutscene && TS.UI.debug.finalCutscene());
