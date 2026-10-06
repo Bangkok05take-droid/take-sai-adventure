@@ -385,7 +385,7 @@
     </ul>
     <h3>村</h3>
     <ul>
-      <li><b>サイの店</b>：お宝を売る・食料や薬を買う。無料の貸出品（かしだしの木刀・旅人のおにぎり）もある。</li>
+      <li><b>サイの店</b>：お宝を売る・食料や薬・武器を買う。旅人のおにぎりは無料で借りられる。</li>
       <li><b>倉庫</b>：大事な物を預けておけば、倒れても失わない（20→40→60→80枠）。</li>
       <li><b>村の発展</b>：施設と飾りの価格・効果・解放条件を見て建てる。画面上に「次の目標」が出る。</li>
       <li><b>鍛冶屋</b>：武器・盾を強化（設備しだいで+3→+5→+8。+4以降は深い階の素材が必要）。</li>
@@ -432,9 +432,9 @@
     UI.started = true;
     save();
     showScreen('village');
-    talk(D.STORY.intro.concat([['sai', '装備がなくても大丈夫。お店で木刀とおにぎりを無料で貸すからね。危なくなったら帰還の巻物で帰ってきて！']]), () => {
+    talk(D.STORY.intro.concat([['sai', 'おにぎりは無料で持たせるね。武器は遺跡で拾えるし、お金がたまったらお店でも買えるよ。危なくなったら帰還の巻物で帰ってきて！']]), () => {
       UI.S.village.seenIntro = true; UI.S.village.story.introDone = true; save();
-      showHelp(() => info('はじめの一歩', '<p>下の<b>「遺跡へ出発」</b>から探索に出かけよう。</p><p class="note">装備がなくても、出発前にサイの店で<b>かしだしの木刀と旅人のおにぎりを無料で借りられます</b>。</p>'));
+      showHelp(() => info('はじめの一歩', '<p>下の<b>「遺跡へ出発」</b>から探索に出かけよう。</p><p class="note">はじめは素手です。出発前にサイの店で<b>旅人のおにぎりを無料で借りられます</b>。武器や盾は遺跡で拾えます。</p>'));
     });
   }
   function continueGame() {
@@ -606,10 +606,9 @@
         html += '</div>';
       } else {
         const ls = G.loanStatus(UI.S);
-        html += '<p>装備やお金がなくても大丈夫。サイが無料で貸してくれます。</p><div class="list">';
-        html += defRow('wood_sword', ls.weapon ? '無料' : '借りている', ls.weapon ? '' : 'disabled');
+        html += '<p>お金がなくても大丈夫。おにぎりはサイが無料で持たせてくれます。</p><div class="list">';
         html += defRow('loan_rice', ls.food ? '無料' : '持っている', ls.food ? '' : 'disabled');
-        html += '</div><p class="note">貸出品は売ったり預けたりできません。持っていないときに1つずつ借りられます。</p>';
+        html += '</div><p class="note">貸出品は売ったり預けたりできません。持っていないときに1つ借りられます。</p>';
       }
       h.body.innerHTML = html;
       h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
@@ -633,8 +632,7 @@
             villageChanged(); render(tab);
           });
         } else {
-          const kind = r.dataset.id === 'wood_sword' ? 'weapon' : 'food';
-          const res = G.takeLoan(UI.S, kind);
+          const res = G.takeLoan(UI.S, 'food');
           if (res.ok) AU.sfx('pickup');
           villageChanged(); render(tab);
           if (!res.ok) info('貸出', res.msg);
@@ -881,12 +879,11 @@
     html += `<div class="okbox">帰還の巻物を1枚無料で持っていきます。使えばいつでも持ち物を持って帰れます。</div>`;
     if (V.meal) html += `<div class="okbox">🍛 ${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）</div>`;
     else if (V.diner) html += '<p class="note">サイの食堂で料理を注文すると、この探索が少し楽になります。</p>';
-    if (!w && ls.weapon) html += '<p class="note">武器がありません。サイの店の「貸出」でかしだしの木刀を無料で借りられます。</p>';
+    if (!w) html += '<p class="note">武器がありません（素手で戦います）。武器は遺跡で拾えるほか、サイの店でも買えます。</p>';
     if (!chk.ok) html += `<p class="warnbox">${esc(chk.msg)}</p>`;
     const buttons = [{ label: 'やめる' }];
-    if (ls.weapon || ls.food) buttons.push({ label: '無料で借りる', onClick: () => {
-      if (ls.weapon) G.takeLoan(UI.S, 'weapon');
-      if (ls.food) G.takeLoan(UI.S, 'food');
+    if (ls.food) buttons.push({ label: 'おにぎりを借りる', onClick: () => {
+      G.takeLoan(UI.S, 'food');
       AU.sfx('pickup'); villageChanged();
       setTimeout(openDepart, 0);
     } });
@@ -1528,7 +1525,7 @@
       talk([
         ['sai', 'たけ！気がついた？遺跡の入口で倒れてたんだよ…。'],
         ['take', 'ごめん、地下' + res.floor + '階で無理しちゃった。'],
-        ['sai', '無事でよかった。お店のお金と倉庫はそのままだよ。木刀とおにぎりも無料で貸せるからね。'],
+        ['sai', '無事でよかった。お店のお金と倉庫はそのままだよ。おにぎりは無料で持たせるからね。'],
       ], () => { if (showStoryPending()) return; if (retry) openDepart(); }, { skip: UI.S.village.defeats > 1 });
       return;
     }

@@ -1534,17 +1534,19 @@
     return t;
   };
 
-  // 貸出品：持っていないときだけ1つ借りられる（売却・預入不可なので増やせない）
+  /* 貸出品：旅人のおにぎりだけ、持っていないときに1つ借りられる（売却・預入不可なので増やせない）。
+   * かしだしの木刀の貸し出しは廃止（2026年10月）。木刀という道具は残すので、すでに持っている木刀はそのまま使える。 */
   G.loanStatus = function (S) {
     const V = S.village;
     return {
-      weapon: !V.bag.some((i) => i.id === 'wood_sword'),
+      weapon: false,
       food: !V.bag.some((i) => i.id === 'loan_rice'),
     };
   };
   G.takeLoan = function (S, kind) {
     const V = S.village;
-    const id = kind === 'weapon' ? 'wood_sword' : 'loan_rice';
+    if (kind !== 'food') return { ok: false, msg: '木刀の貸し出しは終わりました。' };
+    const id = 'loan_rice';
     if (!G.loanStatus(S)[kind]) return { ok: false, msg: 'もう借りています。' };
     if (V.bag.length >= D.BAG_SIZE) return { ok: false, msg: 'バッグがいっぱいです。' };
     const it = G.makeItem(S, id);

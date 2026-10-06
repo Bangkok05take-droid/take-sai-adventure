@@ -51,7 +51,7 @@
    * loan: 貸出品（売却・預入不可） noSell / noStore: 売却不可・預入不可 */
   D.ITEMS = {
     wood_sword:    { name: 'かしだしの木刀', type: 'weapon', atk: 1, sell: 0, loan: true, noSell: true, noStore: true, icon: 'sword', tint: 'wood',
-      desc: 'サイの店で無料で借りられる木刀。売却・預入はできない。' },
+      desc: '以前サイの店で貸し出していた木刀。売却・預入はできない。' },
     bronze_sword:  { name: 'どうのつるぎ', type: 'weapon', atk: 3, price: 150, sell: 60, icon: 'sword', tint: 'copper',
       desc: '銅でできた、旅立ちにちょうどいい剣。' },
     iron_katana:   { name: 'てつのつるぎ', type: 'weapon', atk: 6, sell: 130, icon: 'sword', tint: 'iron',

@@ -87,7 +87,7 @@ function sim(opt, n) {
   for (let s = 0; s < n; s++) {
     const S = G.newState();
     if (opt.gear) for (const [id, plus] of opt.gear) { const it = G.makeItem(S, id, { plus, eq: true }); S.village.bag.push(it); }
-    else { G.takeLoan(S, 'weapon'); }
+    // 木刀の貸し出しは廃止：装備の指定がなければ素手で出発
     G.takeLoan(S, 'food');
     for (const id of opt.extra || []) S.village.bag.push(G.makeItem(S, id));
     G.depart(S, 5000 + s);
@@ -114,10 +114,10 @@ function sim(opt, n) {
 
 const N = +process.argv[2] || 12;
 const plans = [
-  ['貸出装備・3階で帰還', { returnAt: 3, explore: true, cautious: true }],
-  ['貸出装備・6階で帰還', { returnAt: 6, explore: true, cautious: true }],
-  ['貸出装備・9階で帰還', { returnAt: 9, explore: true, cautious: true }],
-  ['貸出装備・最深を目指す', { returnAt: 99, explore: true }],
+  ['素手・3階で帰還', { returnAt: 3, explore: true, cautious: true }],
+  ['素手・6階で帰還', { returnAt: 6, explore: true, cautious: true }],
+  ['素手・9階で帰還', { returnAt: 9, explore: true, cautious: true }],
+  ['素手・最深を目指す', { returnAt: 99, explore: true }],
   ['中装備(鉄+3/亀甲+3)・12階で帰還', { returnAt: 12, explore: true, cautious: true, gear: [['iron_katana', 3], ['turtle_shield', 3]], extra: ['herb', 'herb', 'khaoniao'] }],
   ['中装備・最深を目指す', { returnAt: 99, explore: true, gear: [['iron_katana', 3], ['turtle_shield', 3]], extra: ['herb', 'herb', 'khaoniao'] }],
   ['上装備(翠玉+5/苔石+5)・21階で帰還', { returnAt: 21, explore: true, cautious: true, gear: [['jade_sword', 5], ['moss_shield', 5]], extra: ['big_herb', 'big_herb', 'khaoniao', 'sleep_incense'] }],

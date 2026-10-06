@@ -657,10 +657,44 @@ test('鍛冶屋：お金を払って+3まで強化。売値の上昇は強化費
   const loan = G.makeItem(S, 'wood_sword'); S.village.bag.push(loan);
   assert(!G.smith(S, loan.uid).ok, 'loan cannot be upgraded');
 });
+test('木刀なしの新規開始と再出発：木刀は渡されず自動装備もされない。素手で1階の敵を倒せ、2階から武器が拾える。持っている木刀は消えない', () => {
+  const S = G.newState(), V = S.village;
+  assert(!V.bag.some((i) => i.id === 'wood_sword'), 'no sword at start');
+  assert(!G.loanStatus(S).weapon && !G.takeLoan(S, 'weapon').ok, 'no sword loan');
+  G.takeLoan(S, 'food');
+  for (let k = 0; k < 3; k++) {
+    G.depart(S, 600 + k);
+    assert(!S.run.bag.some((i) => i.id === 'wood_sword'), 'no sword in run');
+    eq(G.equipped(S.run.bag, 'weapon'), null);
+    assert(S.run.bag.some((i) => i.id === 'return_scroll'), 'return scroll kept');
+    G.useReturnScroll(S); G.finishRun(S);
+  }
+  assert(!V.bag.some((i) => i.id === 'wood_sword'), 'still no sword after returns');
+  // 素手でも1階の敵を倒せる（攻撃して倒れるまでの往復）
+  let wins = 0;
+  for (let s = 0; s < 20; s++) {
+    const T = G.newState(); G.depart(T, 900 + s);
+    const r = T.run, e = r.enemies.find((q) => !q.boss);
+    if (!e) continue;
+    let guard = 0;
+    while (r.enemies.includes(e) && r.player.hp > 0 && guard++ < 60) {
+      const p = r.player; let placed = false;
+      for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) { const x = e.x - dx, y = e.y - dy; if (!dx || !dy) if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y)) { p.x = x; p.y = y; G.updateVision(r); G.act(T, { type: 'move', dir }); placed = true; break; } }
+      if (!placed) break;
+    }
+    if (!r.enemies.includes(e) && r.player.hp > 0) wins++;
+  }
+  assert(wins >= 18, 'bare hands beat floor-1 enemies: ' + wins + '/20');
+  for (const f of [2, 3, 4]) assert(D.floorFor(1, f).items.some(([id]) => D.ITEMS[id].type === 'weapon'), 'weapon drops on ' + f);
+  // 以前のセーブで持っていた木刀は、そのまま残る（装備もできる）
+  const old = G.newState(); const ws = G.makeItem(old, 'wood_sword', { eq: true }); old.village.bag.push(ws);
+  const back = TS.Save.deserialize(TS.Save.serialize(old));
+  assert(back.village.bag.some((i) => i.id === 'wood_sword' && i.eq), 'old sword kept');
+});
 test('無料の貸出品・帰還の巻物では資金を増やせない', () => {
   const S = G.newState();
-  assert(G.takeLoan(S, 'weapon').ok); assert(G.takeLoan(S, 'food').ok);
-  assert(!G.takeLoan(S, 'weapon').ok, 'no double weapon'); assert(!G.takeLoan(S, 'food').ok, 'no double food');
+  assert(!G.takeLoan(S, 'weapon').ok, 'wood sword loan ended'); assert(G.takeLoan(S, 'food').ok);
+  assert(!G.takeLoan(S, 'food').ok, 'no double food');
   const funds = S.village.funds;
   for (const it of S.village.bag.slice()) { assert(!G.sell(S, it.uid).ok); assert(!G.deposit(S, it.uid).ok); }
   eq(S.village.funds, funds);
@@ -676,7 +710,7 @@ test('無料の貸出品・帰還の巻物では資金を増やせない', () =>
   }
   eq(S.village.funds, funds);
   eq(S.village.bag.filter((x) => x.id === 'loan_rice').length, 1);
-  eq(S.village.bag.filter((x) => x.id === 'wood_sword').length, 1);
+  eq(S.village.bag.filter((x) => x.id === 'wood_sword').length, 0);
   eq(S.village.bag.filter((x) => x.id === 'return_scroll').length, 0);
 });
 test('バッグが満杯だと出発できない（巻物が消えない）', () => {
@@ -731,7 +765,7 @@ test('食堂：料理は次の探索だけ有効、重ねがけ不可、帰還�
   assert(G.buyMeal(S, 'gapao').ok); eq(V.meal, 'gapao');
   assert(G.buyMeal(S, 'tomyum').ok); eq(V.meal, 'tomyum', 'replaced, not stacked');
   const funds = V.funds;
-  G.takeLoan(S, 'weapon'); G.depart(S, 3);
+  G.depart(S, 3);
   eq(S.run.meal, 'tomyum'); eq(V.meal, null);
   const atk = G.playerAtk(S.run);
   G.useReturnScroll(S); G.finishRun(S);
@@ -1386,7 +1420,7 @@ test('簡易AIで初回装備のまま遊んだ結果（参考値）', () => {
   const N = 40; let best = [], clears = 0, turns = [];
   for (let s = 0; s < N; s++) {
     const S = G.newState();
-    G.takeLoan(S, 'weapon'); G.takeLoan(S, 'food');
+    G.takeLoan(S, 'food');
     G.depart(S, 1000 + s);
     const out = bot(S, 4000);
     best.push(S.run.floor); turns.push(S.run.turn);

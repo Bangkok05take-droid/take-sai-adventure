@@ -98,18 +98,20 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(150);
   });
 
-  await test('サイの店で貸出品を受け取り、買い物ができる', async () => {
+  await test('サイの店でおにぎりを借りて買い物ができる。木刀の貸し出しは無く、はじめは武器なし', async () => {
+    assert(await p.evaluate(() => !TS.UI.S.village.bag.some((i) => i.id === 'wood_sword')), 'no sword at start');
     await p.tap('.fac[data-fac="shop"]'); await p.waitForTimeout(150);
     await p.tap('.tabs button[data-t="loan"]'); await p.waitForTimeout(100);
-    await p.tap('.row[data-id="wood_sword"]'); await p.waitForTimeout(100);
+    assert(!(await p.$('.row[data-id="wood_sword"]')), 'no sword loan row');
+    assert(!(await p.evaluate(() => document.querySelector('.modal').textContent.includes('木刀'))), 'no sword text');
     await p.tap('.row[data-id="loan_rice"]'); await p.waitForTimeout(100);
-    assert(await p.$eval('.row[data-id="wood_sword"]', (e) => e.classList.contains('disabled')), 'loan once');
+    assert(await p.$eval('.row[data-id="loan_rice"]', (e) => e.classList.contains('disabled')), 'loan once');
     await p.tap('.tabs button[data-t="buy"]'); await p.waitForTimeout(100);
     await p.tap('.row[data-id="herb"]'); await p.waitForTimeout(100);
     await shot('04_shop_confirm');
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
     const v = await p.evaluate(() => ({ funds: TS.UI.S.village.funds, bag: TS.UI.S.village.bag.map((i) => i.id) }));
-    assert(v.funds === 20 && v.bag.includes('herb') && v.bag.includes('wood_sword') && v.bag.includes('loan_rice'), JSON.stringify(v));
+    assert(v.funds === 20 && v.bag.includes('herb') && !v.bag.includes('wood_sword') && v.bag.includes('loan_rice'), JSON.stringify(v));
     await p.tap('.modal-buttons button'); await p.waitForTimeout(100);
   });
 
@@ -701,10 +703,12 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
     assert(await p.isVisible('text=遺跡へ出発'), 'depart screen for retry');
     const v = await p.evaluate(() => ({ funds: TS.UI.S.village.funds, bag: TS.UI.S.village.bag.length, run: TS.UI.S.run }));
     assert(v.funds === funds && v.bag === 0 && v.run === null, JSON.stringify(v));
-    await p.tap('.modal-buttons button >> text=無料で借りる'); await p.waitForTimeout(150);
+    assert(!(await p.evaluate(() => document.querySelector('.modal').textContent.includes('木刀'))), 'no sword hint on retry');
+    await p.tap('.modal-buttons button >> text=おにぎりを借りる'); await p.waitForTimeout(150);
     await p.click('text=出発する'); await p.waitForTimeout(150);
     await closeTalk();
     assert(await p.isVisible('#screen-dungeon'), 'retried');
+    assert(await p.evaluate(() => !TS.UI.S.run.bag.some((i) => i.id === 'wood_sword') && !TS.UI.S.run.bag.some((i) => i.eq && TS.Game.def(i).type === 'weapon')), 'retry without sword');
   });
 
   await test('第1章：30階のクロコダインに登場の表示と会話。倒すと報酬と帰還口。帰ると章クリアの会話と第2章の表示', async () => {
@@ -832,7 +836,7 @@ function assert(c, m) { if (!c) throw new Error(m || 'assertion failed'); }
       for (let i = 0; i < 24 && await p2.$('.modal'); i++) { await p2.click('.modal-buttons button >> nth=-1'); await p2.waitForTimeout(60); }
       await p2.screenshot({ path: path.join(OUT, `22_${name}_village.png`) });
       await p2.click('.fac.depart'); await p2.waitForTimeout(100);
-      await p2.click('text=無料で借りる'); await p2.waitForTimeout(100);
+      await p2.click('text=おにぎりを借りる'); await p2.waitForTimeout(100);
       await p2.click('text=出発する'); await p2.waitForTimeout(100);
       for (let i = 0; i < 4 && await p2.$('.modal'); i++) { await p2.click('.modal-buttons button.primary'); await p2.waitForTimeout(60); }
       await p2.keyboard.press('ArrowRight'); await p2.waitForTimeout(150);
