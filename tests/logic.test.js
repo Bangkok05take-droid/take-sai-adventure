@@ -81,7 +81,7 @@ test('多数のシードで30階すべて：入口から階段・帰還の碑・
       if (!boss) { assert(run.stairs && reach(run.stairs), `stairs unreachable seed${seed} f${f}`); assert(!DG.same(run.stairs, p), 'stairs on start'); }
       else { assert(!run.stairs, 'no stairs before boss'); assert(run.enemies.some((e) => e.boss && e.type === boss), 'boss exists'); }
       if (D.RETURN_POINT_FLOORS.includes(f)) { assert(run.returnPoint && reach(run.returnPoint), 'return point'); assert(!DG.same(run.returnPoint, run.stairs)); }
-      eq(D.RETURN_POINT_FLOORS.includes(f), f % 3 === 0 && f < 30, 'return every 3 floors');
+      eq(D.RETURN_POINT_FLOORS.includes(f), f === 25, 'return point only on 25F');
       for (let i = 0; i < m.tiles.length; i++) if (m.tiles[i] !== DG.WALL) assert(dist[i] >= 0, `isolated tile seed${seed} f${f}`);
       const pos = new Set();
       for (const it of run.floorItems) {
@@ -613,14 +613,25 @@ test('帰還の巻物：持ち物と探索中のお金を持ち帰り、巻物�
   assert(S.village.bag.some((i) => i.id === 'jade_elephant'));
   assert(!S.village.bag.some((i) => i.id === 'return_scroll'), 'scroll removed');
 });
-test('帰還の碑（3階）から帰れる', () => {
+test('帰還の祠は地下25階に1か所だけ（ほかの階には作られない）。到達でき、階段と重ならない。祠から帰れる', () => {
+  for (let s = 0; s < 30; s++) {
+    const T = newRun(300 + s); T.village.story.chapter = (s % 6) + 1;
+    let count = 0;
+    while (T.run.floor < 30) {
+      const r = T.run;
+      if (r.returnPoint) { count++; eq(r.floor, 25); assert(!DG.same(r.returnPoint, r.stairs)); }
+      if (r.floor === 25) { assert(r.returnPoint, 'shrine on 25F'); }
+      r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(T, { type: 'descend' });
+    }
+    eq(count, 1, 'exactly one shrine');
+  }
   const S = newRun(22);
-  for (let f = 1; f < 3; f++) { const p = S.run.player; p.x = S.run.stairs.x; p.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
-  eq(S.run.floor, 3);
+  while (S.run.floor < 25) { const p = S.run.player; p.x = S.run.stairs.x; p.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
+  eq(S.run.floor, 25);
   S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
   G.act(S, { type: 'returnHome' });
   assert(S.run.over); eq(S.run.result.type, 'return');
-  G.finishRun(S); eq(S.village.returns, 1); eq(S.village.bestFloor, 3);
+  G.finishRun(S); eq(S.village.returns, 1); eq(S.village.bestFloor, 25);
 });
 
 console.log('村');
@@ -907,7 +918,7 @@ test('次の章も1階から。第2章の30階はフレイザード。章の報�
   eq(S.village.funds, funds + r.gold);
 });
 test('帰還して再出発すると1階から', () => {
-  const S = newRun(43); goToFloor(S, 12);
+  const S = newRun(43); goToFloor(S, 25);
   S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
   G.act(S, { type: 'returnHome' }); G.finishRun(S);
   G.depart(S, 44); eq(S.run.floor, 1);
@@ -1131,6 +1142,57 @@ test('初めて入ると「モンスターハウスだ！」、ダッシュは�
   }
   assert(tested >= 3, 'tested ' + tested);
 });
+// ---- 気配察知の巻物・足元の道具を使う・村の発展の一覧 ----
+test('気配察知の巻物：1個消費して1ターン。この階の敵を覚え、階を移ると切れる。保存・再読み込みで残る。視界・地形・道具は変えない', () => {
+  const S = newRun(71); const r = S.run;
+  const it = G.makeItem(S, 'sense_scroll'); r.bag.push(it);
+  const turn = r.turn, explored = r.explored.join(''), vis = G.visibleEnemies(r).length, n = r.bag.length;
+  const res = G.act(S, { type: 'use', uid: it.uid });
+  assert(res.consumed); eq(r.turn, turn + 1); eq(r.bag.length, n - 1); eq(r.sense, r.floor);
+  eq(r.explored.join(''), explored, 'no terrain revealed'); eq(G.visibleEnemies(r).length, vis, 'vision unchanged');
+  const L = SV.deserialize(SV.serialize(S)); eq(L.run.sense, L.run.floor, 'kept after reload');
+  r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' });
+  eq(r.sense, 0, 'cleared on new floor');
+  // 遠くの敵が察知されていても、視界に入っていなければダッシュ・休息は止まらない
+  r.sense = r.floor;
+  const block = G.restBlock(S); assert(block !== 'enemy' || G.visibleEnemies(r).length > 0, 'rest not blocked by sensed enemies only');
+  assert(D.SHOP_STOCK[2].includes('sense_scroll') && D.floorFor(1, 5).items.some(([id]) => id === 'sense_scroll') && !D.floorFor(1, 4).items.some(([id]) => id === 'sense_scroll'));
+});
+test('足元の道具をその場で使う：バッグ満杯でも使え、バッグは変わらず床の1個だけ減る。ターンは1。使えない種類・別の道具のuidでは何も起きない', () => {
+  const S = newRun(72); const r = S.run, p = r.player;
+  r.enemies = []; r.floorItems = [];
+  while (r.bag.length < D.BAG_SIZE) r.bag.push(G.makeItem(S, 'banana'));
+  const bagIds = r.bag.map((i) => i.uid).join(',');
+  p.hp = 5;
+  const herb = G.makeItem(S, 'herb'); r.floorItems.push({ x: p.x, y: p.y, item: herb });
+  const t0 = r.turn;
+  const res = G.act(S, { type: 'useFloor', uid: herb.uid });
+  assert(res.consumed); eq(r.turn, t0 + 1); assert(p.hp > 5, 'healed');
+  eq(r.floorItems.length, 0, 'floor item consumed'); eq(r.bag.map((i) => i.uid).join(','), bagIds, 'bag unchanged');
+  // 二重に使えない（もう床にない）
+  const again = G.act(S, { type: 'useFloor', uid: herb.uid }); assert(!again.consumed); eq(r.turn, t0 + 1);
+  // 装備は使えない
+  const sw = G.makeItem(S, 'bronze_sword'); r.floorItems.push({ x: p.x, y: p.y, item: sw });
+  assert(!G.canUseFromFloor(r)); assert(!G.act(S, { type: 'useFloor', uid: sw.uid }).consumed); eq(r.floorItems.length, 1);
+  r.floorItems = [];
+  // 杖：床に残ったまま回数が減る（バッグから使うときと同じ）
+  const st = G.makeItem(S, 'thunder_staff', { charges: 3 }); r.floorItems.push({ x: p.x, y: p.y, item: st });
+  assert(G.act(S, { type: 'useFloor', uid: st.uid, dir: 'up' }).consumed); eq(st.charges, 2); eq(r.floorItems.length, 1);
+});
+test('村の発展の一覧：完成した項目は出さず、段階式の拡張は次の1段階だけ。完成しても効果と記録は残る', () => {
+  const S = G.newState(), V = S.village; V.funds = 1e6; V.materials = { amber_shard: 9, bronze_shard: 9, crystal_shard: 9, gold_leaf: 9 }; V.bestFloor = 30;
+  let ids = G.unbuiltFacilities(V).map((f) => f.id);
+  assert(ids.includes('storage2') && !ids.includes('storage3') && !ids.includes('storage4'), ids.join());
+  assert(G.buildFacility(S, 'storage2').ok);
+  ids = G.unbuiltFacilities(V).map((f) => f.id);
+  assert(!ids.includes('storage2') && ids.includes('storage3'), ids.join());
+  eq(G.storageSize(V), 40, 'effect kept'); assert(G.hasFacility(V, 'storage2'), 'record kept');
+  for (let k = 0; k < 40; k++) { const f = G.unbuiltFacilities(V).find((f) => G.facilityStatus(S, f.id).unlocked); if (!f) break; G.buildFacility(S, f.id); V.funds = 1e6; }
+  V.donated = {}; for (const id of D.MUSEUM_ITEMS) V.donated[id] = true;
+  for (let k = 0; k < 40; k++) { const f = G.unbuiltFacilities(V).find((f) => G.facilityStatus(S, f.id).unlocked); if (!f) break; G.buildFacility(S, f.id); V.funds = 1e6; }
+  eq(G.unbuiltFacilities(V).length, 0, 'all built'); eq(G.storageSize(V), 80); eq(G.smithMax(V), 8);
+});
+
 // ---- 謎の旅商人 ----
 function findMerchant(seed0, ch, minF) {
   for (let s = seed0; s < seed0 + 400; s++) {

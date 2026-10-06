@@ -145,7 +145,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const before = await run();
     await p.evaluate(() => {
       const b = document.querySelector('#b-wait');
-      for (let i = 0; i < 10; i++) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      for (let i = 0; i < 10; i++) { b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })); b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true })); }
     });
     await p.waitForTimeout(400);
     const after = await run();
@@ -621,13 +621,14 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.isVisible('text=売りますか'));
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
     await p.tap('.modal-buttons button'); await p.waitForTimeout(100);
-    const goal0 = await p.textContent('#v-goal');
     await p.evaluate(() => { TS.UI.S.village.funds += 5000; TS.UI.S.village.bestFloor = 12; });
     await p.tap('.fac[data-fac="develop"]'); await p.waitForTimeout(150);
     assert(await p.isVisible('.stage[data-id="storage2"]:has-text("200G")'), 'price shown');
-    assert(await p.isVisible('.stage[data-id="smith2"]:has-text("🔒")'), 'condition shown');
+    assert(await p.isVisible('.stage[data-id="museum"]:has-text("🔒")'), 'condition shown');
+    assert(!(await p.$('.stage[data-id="smith2"]')) && !(await p.$('.stage[data-id="storage3"]')), 'only the next stage of an upgrade chain');
     await shot('14a_develop');
     const build = async (id) => {
+      await p.waitForTimeout(400);
       await p.tap(`.stage[data-id="${id}"]`); await p.waitForTimeout(120);
       await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(120);
       await closeTalk();
@@ -638,7 +639,12 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(150);
     const v = await p.evaluate(() => ({ stage: TS.UI.S.village.stage, smith: TS.UI.S.village.smithLv, diner: TS.UI.S.village.diner, museum: TS.UI.S.village.museum, lan: TS.UI.S.village.decor.lanterns, funds: TS.UI.S.village.funds }));
     assert(v.stage === 3 && v.smith === 1 && v.diner && v.museum && v.lan, JSON.stringify(v));
-    assert((await p.textContent('#v-goal')) !== goal0, 'goal panel updates');
+    // 完成した施設は一覧から消え、次の段階が出る（効果は残る）
+    await p.tap('.fac[data-fac="develop"]'); await p.waitForTimeout(150);
+    assert(!(await p.$('.stage[data-id="storage2"]')) && !(await p.$('.stage[data-id="smith1"]')) && await p.$('.stage[data-id="storage3"]') && await p.$('.stage[data-id="smith2"]'), 'built hidden, next stage shown');
+    await shot('14b_develop_after');
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(150);
+    assert(await p.evaluate(() => TS.UI.S.village.smithLv === 1 && TS.Game.hasFacility(TS.UI.S.village, 'storage2')), 'effects kept');
     await p.waitForTimeout(200);
     await shot('14_village_built');
     // 鍛冶屋
@@ -763,7 +769,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
       b.hp = 5; b.cds = { circle: 9, bird: 9, summon: 9 };
-      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 100; r.player.maxhp = 900;
+      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 600; r.player.maxhp = 900;
       G.updateVision(r);
       document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-dungeon')); TS.UI.screen = 'dungeon';
     });
@@ -1015,6 +1021,105 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(mid - x0 >= 2 && r.avg > 45 && r.avg < 75, 'dash speed ' + JSON.stringify(r));
     assert(r.fr.includes('w1') && r.fr.includes('w2') && r.fr.includes('idle'), 'walk frames ' + JSON.stringify(r.fr));
     await p.evaluate(() => { TS.UI.S.settings.dash = false; });
+  });
+
+  await test('高速足踏み・気配察知・足元の道具・倉庫の素材', async () => {
+    const setup = (o) => p.evaluate((o) => {
+      const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; S.settings.dash = !!o.dash;
+      while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
+      G.depart(S, 6161); const r = S.run;
+      while (r.floor < 4) { r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+      const room = r.map.rooms.find((q) => q.w >= 5 && q.h >= 4);
+      r.enemies = r.enemies.filter((e) => !TS.Dungeon.roomAt(r.map, e.x, e.y) || TS.Dungeon.roomAt(r.map, e.x, e.y).id !== room.id);
+      r.floorItems = []; r.player.x = room.x + 1; r.player.y = room.y + 1; r.player.hp = 20; r.player.maxhp = 60; r.player.lowWarned = true;
+      G.updateVision(r); r.enemies = r.enemies.filter((e) => !G.isVisible(r, e.x, e.y));
+      document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; UI.lockUntil = 0;
+      return { far: r.enemies.length };
+    }, o);
+    // ---- 高速足踏み（ダッシュON）：長押しで1ターン約60ms。HP全回復で止まり、満腹度は毎ターン通常どおり減る ----
+    const info = await setup({ dash: true });
+    await p.evaluate(() => { const r = TS.UI.S.run; r.sense = r.floor; window.__t0 = r.turn; window.__h0 = r.player.hunger; window.__ts = performance.now(); });
+    await p.dispatchEvent('#b-wait', 'pointerdown', { pointerId: 21 });
+    await p.waitForTimeout(1500);
+    const mid = await p.evaluate(() => ({ stop: TS.UI.lastStop, note: document.getElementById('stopnote').textContent, turn: TS.UI.S.run.turn - window.__t0, hp: TS.UI.S.run.player.hp, max: TS.UI.S.run.player.maxhp, rest: !!TS.UI.rest, hunger: window.__h0 - TS.UI.S.run.player.hunger, ms: performance.now() - window.__ts }));
+    await p.dispatchEvent('#b-wait', 'pointerup', { pointerId: 21 });
+    await p.waitForTimeout(250);
+    const after = await p.evaluate(() => TS.UI.S.run.turn - window.__t0);
+    assert(info.far >= 0 && mid.turn >= 12, 'fast rest ran even with sensed far enemies ' + JSON.stringify(mid));
+    assert(after === mid.turn || !mid.rest, 'no extra turn on release ' + JSON.stringify([mid, after]));
+    // ダッシュOFFは通常の速さ（約180ms）
+    await setup({ dash: false });
+    await p.evaluate(() => { window.__t0 = TS.UI.S.run.turn; });
+    await p.dispatchEvent('#b-wait', 'pointerdown', { pointerId: 22 }); await p.waitForTimeout(1500); await p.dispatchEvent('#b-wait', 'pointerup', { pointerId: 22 });
+    const slow = await p.evaluate(() => TS.UI.S.run.turn - window.__t0);
+    assert(slow >= 4 && slow < mid.turn, 'normal speed ' + slow + ' vs ' + mid.turn);
+    // 短く押すと1ターンだけ
+    await p.waitForTimeout(200);
+    const t1 = await p.evaluate(() => TS.UI.S.run.turn);
+    await p.tap('#b-wait'); await p.waitForTimeout(250);
+    eq2(await p.evaluate(() => TS.UI.S.run.turn), t1 + 1, 'tap = one turn');
+    // ---- 気配察知：地図に印（地形は明かさない） ----
+    await setup({});
+    await p.evaluate(() => { const S = TS.UI.S; S.run.bag.push(TS.Game.makeItem(S, 'sense_scroll')); });
+    const ex0 = await p.evaluate(() => TS.UI.S.run.explored.filter(Boolean).length);
+    await p.evaluate(() => { const S = TS.UI.S, it = S.run.bag.find((i) => i.id === 'sense_scroll'); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'use', uid: it.uid }); });
+    await p.waitForTimeout(300);
+    assert(await p.evaluate((ex0) => TS.UI.S.run.sense === TS.UI.S.run.floor && TS.UI.S.run.explored.filter(Boolean).length === ex0, ex0), 'sense on, no reveal');
+    await shot('34_sense_minimap');
+    // ---- 足元：バッグ満杯でも回復を使える。杖の向き選びをやめると何も減らない ----
+    await setup({});
+    await p.evaluate(() => { const S = TS.UI.S, r = S.run, p = r.player; while (r.bag.length < 15) r.bag.push(TS.Game.makeItem(S, 'banana')); r.floorItems.push({ x: p.x, y: p.y, item: TS.Game.makeItem(S, 'herb') }); });
+    const b0 = await p.evaluate(() => ({ bag: TS.UI.S.run.bag.map((i) => i.uid).join(), turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp }));
+    await p.tap('#b-foot'); await p.waitForTimeout(200);
+    assert(await p.isVisible('.modal h2:has-text("足元")') && await p.isVisible('text=やくそう'), 'foot menu');
+    assert(!(await p.$('.modal-buttons button >> text=拾う')), 'no pickup when full');
+    await shot('35_foot_use');
+    await p.tap('.modal-buttons button >> text=その場で'); await p.waitForTimeout(250);
+    const b1 = await p.evaluate(() => ({ bag: TS.UI.S.run.bag.map((i) => i.uid).join(), turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp, floor: TS.UI.S.run.floorItems.length }));
+    assert(b1.bag === b0.bag && b1.turn === b0.turn + 1 && b1.hp > b0.hp && b1.floor === 0, JSON.stringify([b0, b1]));
+    await p.evaluate(() => { const S = TS.UI.S, r = S.run, p = r.player; r.floorItems.push({ x: p.x, y: p.y, item: TS.Game.makeItem(S, 'thunder_staff', { charges: 3 }) }); });
+    const c0 = await p.evaluate(() => TS.UI.S.run.turn);
+    await p.tap('#b-foot'); await p.waitForTimeout(200);
+    await p.tap('.modal-buttons button >> text=その場でふる'); await p.waitForTimeout(200);
+    await p.tap('.modal-buttons button >> text=やめる'); await p.waitForTimeout(200);
+    assert(await p.evaluate((c0) => TS.UI.S.run.turn === c0 && TS.UI.S.run.floorItems[0].item.charges === 3, c0), 'cancel consumes nothing');
+    // ---- 倉庫の素材：素材箱の数と一致 ----
+    await p.evaluate(() => { const S = TS.UI.S; S.run = null; S.village.materials = { amber_shard: 3, gold_leaf: 1 }; document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-village')); TS.UI.screen = 'village'; });
+    await p.tap('.fac[data-fac="storage"]'); await p.waitForTimeout(150);
+    await p.tap('.tabs button[data-t="mat"]'); await p.waitForTimeout(150);
+    const rows = await p.$$eval('.row.mat', (rs) => rs.map((r) => r.textContent));
+    assert(rows.length === 2 && rows[0].includes('琥珀のかけら') && rows[0].includes('3個') && rows[1].includes('神殿の金ぱく') && rows[1].includes('1個'), JSON.stringify(rows));
+    await shot('36_storage_materials');
+    await p.evaluate(() => { TS.UI.S.village.materials = {}; });
+    await p.tap('.tabs button[data-t="in"]'); await p.waitForTimeout(100); await p.tap('.tabs button[data-t="mat"]'); await p.waitForTimeout(100);
+    assert(await p.isVisible('text=素材はまだありません'), 'empty message');
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
+  });
+
+  await test('操作画面の寸法（幅360〜430）：方向キー・向き・右のコマンドは44px以上、メッセージは16px以上で操作キーの上、村の章の欄は1行', async () => {
+    for (const w of [360, 390, 430]) {
+      await p.setViewportSize({ width: w, height: w === 360 ? 740 : 860 });
+      await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.depart(S, 77); document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; TS.UI.debug.save(); });
+      await p.waitForTimeout(200);
+      const m = await p.evaluate(() => {
+        const r = (sel) => document.querySelector(sel).getBoundingClientRect();
+        const sizes = [...document.querySelectorAll('#dpad button, #actions button')].map((b) => { const q = b.getBoundingClientRect(); return [q.width, q.height]; });
+        return { min: Math.min(...sizes.flat()), log: r('#log'), view: r('#view'), ctrl: r('#controls'), dpad: r('#dpad'), acts: r('#actions'), font: parseFloat(getComputedStyle(document.getElementById('log')).fontSize), H: innerHeight };
+      });
+      assert(m.min >= 44, w + ': touch ' + m.min);
+      assert(m.font >= 16, 'log font ' + m.font);
+      assert(m.log.top >= m.view.bottom - 1 && m.log.bottom <= m.ctrl.top + 1, 'log between view and controls');
+      assert(Math.abs(m.acts.top - m.dpad.top) <= 2 && Math.abs(m.acts.bottom - m.dpad.bottom) <= 2, w + ': actions aligned ' + JSON.stringify([m.acts, m.dpad]));
+      assert(m.ctrl.bottom <= m.H + 1, 'controls on screen');
+      if (w === 360 || w === 430) await shot('37_dungeon_ui_' + w);
+      await p.evaluate(() => { const S = TS.UI.S; S.run = null; S.village.story.chapter = 3; document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-village')); TS.UI.screen = 'village'; });
+      await p.evaluate(() => TS.UI.debug.updateVillageHud()); await p.waitForTimeout(150);
+      const v = await p.evaluate(() => { const e = document.getElementById('v-chapter'); return { text: e.textContent, h: e.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(e).lineHeight) || 20 }; });
+      assert(v.text === '第3章｜次のボス：キルバーン', v.text);
+      assert(v.h < 40, 'one line ' + v.h);
+      if (w === 390) await shot('38_village_header');
+    }
+    await p.setViewportSize({ width: 390, height: 844 });
   });
 
   await test('すべての地域の地形と部屋の見せ場（レンガの遺跡・水晶の地下神殿・封印の最深部ほか）がエラーなく描ける', async () => {
