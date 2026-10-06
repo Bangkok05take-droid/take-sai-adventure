@@ -15,7 +15,7 @@
 - **足元**（階段・拾う・帰還）／**道具**（使う・装備・置く・整理）／**メニュー**。倉庫と村の持ち物にも「整理」ボタン。
 - PC：矢印キー/WASD、斜めは Q・E・Z・C（テンキー 7・9・1・3）、足踏み=スペース、向き=F、ダッシュ切替=X、道具=I、メニュー=Esc。
 
-タイトル画像は `assets/README.md` の手順で差し替えられます。アイテム名の変更前後の対応は [docs/ITEM_NAMES.md](docs/ITEM_NAMES.md) を参照。
+タイトルの人物イラストは見本 `assets/title-characters.png` から作った `assets/title-art.jpg`（作り方は `assets/README.md`）。アイテム名の変更前後の対応は [docs/ITEM_NAMES.md](docs/ITEM_NAMES.md) を参照。
 
 ## ファイル構成
 | ファイル | 役割 |

@@ -60,15 +60,15 @@
   }
 
   /* タイトルの絵。
-   * assets/title-characters.png があればその人物イラストを使う（縦横比を保って全体を収める＝引き伸ばさない）。
-   * crop に [x, y, 幅, 高さ] を書くと、元画像のその範囲だけを使う（名前やドット絵一覧を除くため）。
-   * 画像がないときは、ゲーム用ドット絵の全身絵で同じ構図を描く。 */
-  // 画像を置いたら src に 'assets/title-characters.png' を設定する（未設定なら読み込まない＝404を出さない）
-  const TITLE_ART = { src: null, crop: null };
-  let titleBg = null, titleImg = null;
+   * assets/title-art.jpg は見本イラスト assets/title-characters.png から tests/make-title-art.js で作った人物部分
+   * （人物名の札・題字・下段のドット絵一覧・外枠を除いたもの）。縦横比を保って全体を収める＝引き伸ばさない。
+   * crop に [x, y, 幅, 高さ] を書くと、画像のその範囲だけを使う。
+   * 画像が読めないときは、ゲーム用ドット絵の全身絵で同じ構図を描く。 */
+  const TITLE_ART = { src: 'assets/title-art.jpg', crop: null };
+  let titleBg = null, titleImg = null, titleDrawn = '';
   (function loadTitleImage() {
     const img = new Image();
-    img.onload = () => { titleImg = img; };
+    img.onload = () => { titleImg = img; titleDrawn = ''; };
     img.onerror = () => { titleImg = null; };
     if (TITLE_ART.src) img.src = TITLE_ART.src;
   })();
@@ -77,14 +77,23 @@
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
     if (!w || !h) return;
+    if (titleImg && titleDrawn === w + 'x' + h && c.width === w && c.height === h) return; // 静止画なので大きさが変わったときだけ描く
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     const g = c.getContext('2d');
     g.clearRect(0, 0, w, h);
     if (titleImg) {
       const [sx, sy, sw, sh] = TITLE_ART.crop || [0, 0, titleImg.naturalWidth, titleImg.naturalHeight];
-      const sc = Math.min(w / sw, h / sh);
-      g.imageSmoothingEnabled = true;
-      g.drawImage(titleImg, sx, sy, sw, sh, (w - sw * sc) / 2, (h - sh * sc) / 2, sw * sc, sh * sc);
+      const m = Math.round(4 * dpr);                      // 金の額縁の幅
+      const sc = Math.min((w - m * 2) / sw, (h - m * 2) / sh);
+      const dw = Math.round(sw * sc), dh = Math.round(sh * sc);
+      const dx = Math.round((w - dw) / 2), dy = Math.round((h - dh) / 2);
+      // 額縁：金の外枠＋細い濃色の内枠
+      g.fillStyle = '#b8862a'; g.fillRect(dx - m, dy - m, dw + m * 2, dh + m * 2);
+      g.fillStyle = '#e8c25a'; g.fillRect(dx - m + dpr, dy - m + dpr, dw + m * 2 - dpr * 2, dh + m * 2 - dpr * 2);
+      g.fillStyle = '#5a3a10'; g.fillRect(dx - dpr, dy - dpr, dw + dpr * 2, dh + dpr * 2);
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.drawImage(titleImg, sx, sy, sw, sh, dx, dy, dw, dh);
+      titleDrawn = w + 'x' + h;
       return;
     }
     g.imageSmoothingEnabled = false;
