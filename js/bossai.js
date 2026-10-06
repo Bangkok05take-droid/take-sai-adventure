@@ -44,7 +44,7 @@
     if (!cd.rush && a && d >= 2 && d <= 7) {
       const tiles = H.lineTiles(run, e, a[0], a[1], 12);
       if (tiles.some((t) => t.x === p.x && t.y === p.y)) {
-        H.startCharge(S, e, ev, tiles, 1.7, 2, 'が身を低くかまえた！一直線に突進してくる！');
+        H.startCharge(S, e, ev, tiles, 1.7, 2, 'が身を低くかまえた！一直線に突進してくる！'); e.charge.fx = 'rush'; // 演出の種類（見た目だけ）
         e.charge.kind = 'rush'; cd.rush = 5;
         return true;
       }
@@ -52,7 +52,7 @@
     if (H.adjacent(run, e, p) && !cd.axe && e.cycle % 3 === 0) {
       const dx = sgn(p.x - e.x), dy = sgn(p.y - e.y);
       const tiles = [{ x: p.x, y: p.y }].concat(H.lineTiles(run, { x: p.x, y: p.y }, dx, dy, 2));
-      H.startCharge(S, e, ev, tiles, 2.0, 2, 'が大斧を振りかぶった！縦一列に振り下ろす！');
+      H.startCharge(S, e, ev, tiles, 2.0, 2, 'が大斧を振りかぶった！縦一列に振り下ろす！'); e.charge.fx = 'axe'; // 演出の種類（見た目だけ）
       cd.axe = 4;
       return true;
     }
@@ -67,7 +67,7 @@
       if (G.enemyAt(run, t.x, t.y)) break;
       e.x = t.x; e.y = t.y;
     }
-    ev.push({ t: 'blast', id: e.id, tiles: c.tiles });
+    ev.push({ t: 'blast', id: e.id, tiles: c.tiles, fx: c.fx });
     if (hit) H.damagePlayer(S, e, H.calcDamage(run.rng, e.atk * c.mult, G.playerDef(run)), ev, E.name + 'の突進', { big: true });
     else { G.log(run, E.name + 'の突進をかわした！ 今がチャンスだ。'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
@@ -160,7 +160,7 @@
     }
     if (H.adjacent(run, e, p) && !cd.sword && e.cycle % 2 === 0) {
       const tiles = H.lineTiles(run, e, sgn(p.x - e.x), sgn(p.y - e.y), 4);
-      H.startCharge(S, e, ev, tiles, 2.0, 2, 'が剣を低く構えた！ 一直線の剣技が来る！');
+      H.startCharge(S, e, ev, tiles, 2.0, 2, 'が剣を低く構えた！ 一直線の剣技が来る！'); e.charge.fx = 'sword'; // 演出の種類（見た目だけ）
       cd.sword = 3;
       return true;
     }
@@ -196,7 +196,7 @@
     if (!cd.bind && a && d >= 1 && d <= 4 && !p.bound && !p.bindGuard) {
       const tiles = H.lineTiles(run, e, a[0], a[1], 5);
       if (tiles.some((t) => t.x === p.x && t.y === p.y)) {
-        H.startCharge(S, e, ev, tiles, 0.6, 1, 'が闇の糸をのばしてきた！ 一直線にからめとる！');
+        H.startCharge(S, e, ev, tiles, 0.6, 1, 'が闇の糸をのばしてきた！ 一直線にからめとる！'); e.charge.fx = 'bind'; // 演出の種類（見た目だけ）
         e.charge.kind = 'bind'; cd.bind = 6;
         return true;
       }
@@ -205,7 +205,7 @@
   };
   RES.bind = function (S, e, ev, c, H) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type];
-    ev.push({ t: 'blast', id: e.id, tiles: c.tiles });
+    ev.push({ t: 'blast', id: e.id, tiles: c.tiles, fx: c.fx });
     if (c.tiles.some((t) => t.x === p.x && t.y === p.y) && !p.bindGuard) {
       p.bound = 2;
       H.damagePlayer(S, e, H.calcDamage(run.rng, e.atk * c.mult, G.playerDef(run)), ev, E.name + 'の闇の糸', {});
@@ -232,7 +232,7 @@
     if (!cd.bird && a && d >= 2) {
       const tiles = H.lineTiles(run, e, a[0], a[1], 12);
       if (tiles.some((t) => t.x === p.x && t.y === p.y)) {
-        H.startCharge(S, e, ev, tiles, 1.9, 1, 'の手に巨大な炎の鳥が生まれた！ 一直線に飛んでくる！');
+        H.startCharge(S, e, ev, tiles, 1.9, 1, 'の手に巨大な炎の鳥が生まれた！ 一直線に飛んでくる！'); e.charge.fx = 'firebird'; // 演出の種類（見た目だけ）
         cd.bird = 4;
         return true;
       }
@@ -264,7 +264,7 @@
       return true;
     }
     if (H.adjacent(run, e, p) && !cd.palm) {
-      H.startCharge(S, e, ev, H.areaTiles(run, e, 1), 2.0, 2, 'が両手に力をためた！ 周りすべてを打つ！（2マス離れよう）');
+      H.startCharge(S, e, ev, H.areaTiles(run, e, 1), 2.0, 2, 'が両手に力をためた！ 周りすべてを打つ！（2マス離れよう）'); e.charge.fx = 'palm'; // 演出の種類（見た目だけ）
       cd.palm = enraged ? 3 : 4;
       return true;
     }
@@ -275,7 +275,7 @@
         // 進む向きに対して両どなりの列も
         const px = -a[1], py = a[0], tiles = center.slice();
         for (const s of [1, -1]) for (const t of center) { const x = t.x + px * s, y = t.y + py * s; if (DG.passable(run.map, x, y) && !tiles.some((o) => o.x === x && o.y === y)) tiles.push({ x, y }); }
-        H.startCharge(S, e, ev, tiles, 1.8, 1, 'が滅びの炎を放とうとしている！ 3列まとめて焼きはらう！');
+        H.startCharge(S, e, ev, tiles, 1.8, 1, 'が滅びの炎を放とうとしている！ 3列まとめて焼きはらう！'); e.charge.fx = 'doomflame'; // 演出の種類（見た目だけ）
         cd.flame = enraged ? 3 : 4;
         return true;
       }

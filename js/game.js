@@ -975,7 +975,7 @@
       const fire = run.hazards.filter((h) => h.t <= 0);
       run.hazards = run.hazards.filter((h) => h.t > 0);
       if (fire.length) {
-        ev.push({ t: 'blast', tiles: fire.map((h) => ({ x: h.x, y: h.y })), kind: fire[0].kind });
+        ev.push({ t: 'blast', tiles: fire.map((h) => ({ x: h.x, y: h.y, kind: h.kind, circle: h.name === '魔法陣の炎' })), kind: fire[0].kind });
         const h = fire.find((o) => o.x === p.x && o.y === p.y);
         if (h) {
           let dmg = calcDamage(run.rng, h.dmg, G.playerDef(run));
@@ -1147,7 +1147,7 @@
     e.charge = null;
     e.rest = c.rest || 0;
     if (c.kind && G.BOSS_RESOLVE && G.BOSS_RESOLVE[c.kind]) { G.BOSS_RESOLVE[c.kind](S, e, ev, c, H); return; }
-    ev.push({ t: 'blast', id: e.id, tiles: c.tiles });
+    ev.push({ t: 'blast', id: e.id, tiles: c.tiles, fx: c.fx });
     if (c.tiles.some((t) => t.x === p.x && t.y === p.y)) {
       const dmg = calcDamage(run.rng, e.atk * c.mult, G.playerDef(run));
       p.hp -= dmg;

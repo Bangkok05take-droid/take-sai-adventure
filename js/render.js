@@ -191,6 +191,11 @@
         g.fillRect(x + k, y + k, ts - 2 * k, ts - 2 * k);
         g.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},0.95)`; g.lineWidth = k;
         g.strokeRect(x + 1.5 * k, y + 1.5 * k, ts - 3 * k, ts - 3 * k);
+        if (h.name === '魔法陣の炎') { // 大魔王バーンの魔法陣（マスの中だけに描く）
+          g.strokeStyle = `rgba(255,200,120,${0.75 + 0.2 * Math.sin(now / 160)})`; g.lineWidth = k;
+          g.beginPath(); g.arc(x + ts / 2, y + ts / 2, ts * 0.36, 0, Math.PI * 2); g.stroke();
+          g.beginPath(); for (let i = 0; i <= 5; i++) { const t = i * 4 * Math.PI / 5 - Math.PI / 2 + now / 2000; const px = x + ts / 2 + Math.cos(t) * ts * 0.32, py = y + ts / 2 + Math.sin(t) * ts * 0.32; if (i) g.lineTo(px, py); else g.moveTo(px, py); } g.stroke();
+        }
         if (h.kind === 'trap') { g.strokeStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.moveTo(x + ts * 0.3, y + ts * 0.3); g.lineTo(x + ts * 0.7, y + ts * 0.7); g.moveTo(x + ts * 0.7, y + ts * 0.3); g.lineTo(x + ts * 0.3, y + ts * 0.7); g.stroke(); }
         // 発動までの数字は、人物やボスの絵の上に描く（あとで1回だけ）
       }

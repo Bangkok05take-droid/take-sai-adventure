@@ -1296,19 +1296,24 @@
         case 'lunge': {
           const dx = Math.sign(p.x - e.x), dy = Math.sign(p.y - e.y);
           RD.addFx({ t: 'lunge', id: e.id, dx, dy, dur: 140 });
+          const en = run.enemies.find((q) => q.id === e.id);
+          if (en && (en.type === 'kill' || en.type === 'kill_clone')) RD.addFx({ t: 'scythe', x: en.x, y: en.y, dx, dy, dur: 300 });   // キルバーンの鎌の弧
           break;
         }
-        case 'warn': toast(e.msg); AU.sfx('warn'); break;
+        case 'warn':
+          toast(e.msg); AU.sfx('warn');
+          if (/霧/.test(e.msg)) RD.addFx({ t: 'darkfog', x: p.x, y: p.y, dur: 800 });   // ミストバーンの暗い霧
+          break;
         case 'telegraph': toast('！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;
-        case 'blast': { // 予告していた攻撃の発動：ボスがたけの方へ踏み込み、予告のマスが光って弾ける
-          AU.sfx('bolt');
-          const b = e.id !== undefined && run.enemies.find((q) => q.id === e.id);
-          if (b) RD.addFx({ t: 'lunge', id: b.id, dx: Math.sign(p.x - b.x), dy: Math.sign(p.y - b.y), dur: 160 });
-          if (e.tiles && e.tiles.length) RD.addFx({ t: 'burst', tiles: e.tiles, kind: e.kind || 'boss', dur: 420 });
-          break;
-        }
+        case 'blast': blastFx(e, run, p); break;
         case 'steal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
-        case 'summon': RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 }); AU.sfx('warn'); break;
+        case 'summon': {
+          const m = run.enemies.find((q) => q.x === e.x && q.y === e.y);
+          // キルバーン・ミストバーンの分身：残像が現れる。ほかは赤い光
+          if (m && D.ENEMIES[m.type].clone) RD.addFx({ t: 'afterimage', x: e.x, y: e.y, sprite: D.ENEMIES[m.type].sprite, dur: 500 });
+          else RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 });
+          AU.sfx('warn'); break;
+        }
         case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600 }); break;
         // 雷鳴の巻物：見えている敵それぞれに空から雷
         case 'fire':
@@ -1334,6 +1339,45 @@
         default: break;
       }
     }
+  }
+
+  /* 予告していた攻撃の発動。演出は予告と同じマス（e.tiles）の上だけに出し、安全なマスを隠さない。
+   * 画面の揺れは強い技（クロコダインの斧・真大魔王バーンの天地の掌）だけ、控えめに。 */
+  function blastFx(e, run, p) {
+    const FXm = TS.FX, tiles = e.tiles || [];
+    const b = e.id !== undefined && run.enemies.find((q) => q.id === e.id);
+    if (b) RD.addFx({ t: 'lunge', id: b.id, dx: Math.sign(p.x - b.x), dy: Math.sign(p.y - b.y), dur: 160 });
+    switch (e.fx) {
+      case 'axe': // クロコダイン：重い斧の振り下ろし、衝撃、土煙
+        RD.addFx({ t: 'impact', tiles, center: tiles[tiles.length - 1] || null, dur: 420 }); RD.addFx({ t: 'dust', tiles, dur: 650 });
+        FXm.shake(RD, 3, 280); AU.sfx('hit'); return;
+      case 'rush': RD.addFx({ t: 'dust', tiles, dur: 600 }); AU.sfx('hit'); return;
+      case 'sword': // バラン：鋭い剣閃
+        RD.addFx({ t: 'swordflash', tiles, dur: 360 }); AU.sfx('bolt'); return;
+      case 'bind': // ミストバーン：闇の糸
+        RD.addFx({ t: 'darkfog', x: b ? b.x : p.x, y: b ? b.y : p.y, dur: 600 });
+        if (tiles.some((t) => t.x === p.x && t.y === p.y) && p.bound > 0) RD.addFx({ t: 'chains', x: p.x, y: p.y, dur: 700 });
+        AU.sfx('sleep'); return;
+      case 'firebird': RD.addFx({ t: 'flamewave', tiles, dur: 520 }); AU.sfx('bolt'); return;       // 大魔王バーン：炎の鳥
+      case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
+      case 'palm': // 真大魔王バーン：速く重い打撃と強い衝撃
+        RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffb0f0', dur: 380 });
+        FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
+      default: break;
+    }
+    if (e.id === undefined && tiles.length && tiles[0].kind !== undefined) {
+      // 床の危険の発動：種類ごとに分けて出す（炎は上へ舞う火の粉、氷はひし形のかけら、罠は×の破裂、雷は落雷）
+      const by = {};
+      for (const t of tiles) (by[t.kind] = by[t.kind] || []).push(t);
+      if (by.fire) RD.addFx({ t: 'embers', tiles: by.fire, dur: 560 });
+      if (by.ice) RD.addFx({ t: 'shards', tiles: by.ice, dur: 560 });
+      if (by.trap) RD.addFx({ t: 'trapburst', tiles: by.trap, dur: 480 });
+      if (by.bolt) RD.addFx({ t: 'boltstrike', tiles: by.bolt, dur: 420 });
+      AU.sfx('bolt');
+      return;
+    }
+    if (tiles.length) RD.addFx({ t: 'burst', tiles, kind: e.kind || 'boss', dur: 420 });
+    AU.sfx('bolt');
   }
 
   function updateHud() {
