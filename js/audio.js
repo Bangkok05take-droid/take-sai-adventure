@@ -5,11 +5,16 @@
   const A = { enabled: true, ctx: null, master: null, sfxBus: null, musicBus: null, bgmVol: 1, sfxVol: 1, bgmHold: false,
     bgmTimer: null, bgmName: null, step: 0, nextTime: 0 };
 
+  /* 音を使えるようにする。ブラウザは「利用者の操作の中」でないと音を出させない（自動再生の制限）。
+   * スマホでは指を置いた瞬間（pointerdown）は操作に数えられず、指を離したとき（pointerup・touchend・click）に数えられるので、
+   * どの操作からも呼ばれる（何度呼ばれてもよい）。止まっていれば再開し、タイトルのファンファーレが未再生なら鳴らす */
   A.unlock = function () {
-    if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
+    if (A.ctx) { if (A.ctx.state === 'suspended' || A.ctx.state === 'interrupted') { const r = A.ctx.resume(); if (r && r.catch) r.catch(() => {}); } else kickTitle(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     A.ctx = new AC();
+    // 止まっていた音が動き出したとき（操作の後・裏から戻った後）に、待っていたファンファーレを鳴らす
+    A.ctx.onstatechange = () => { kickTitle(); if (A.onChange) A.onChange(); };
     A.master = A.ctx.createGain();
     A.master.gain.value = A.enabled ? 0.6 : 0;
     A.master.connect(A.ctx.destination);
@@ -53,7 +58,17 @@
   A.eventBgm = null;
   A.startEventBgm = function (name) { A.eventBgm = name; A.playBgm(A.bgmName, true); };
   A.endEventBgm = function () { if (!A.eventBgm) return; A.eventBgm = null; A.playBgm(A.bgmName, true); };
+  /* タイトルのファンファーレ（1回だけ）。fanfareDone は「実際に鳴り始めた」ときだけ立てる。
+   * 音が止まっている（自動再生の制限）・音オフ・ボタンを押した操作の中（titleQuiet）では鳴らさず、次の機会まで待つ */
   A.fanfareDone = false;
+  A.titleQuiet = false;
+  A.onChange = null;   // ファンファーレの状態が変わったとき（タイトルの「タップで音楽を再生」の表示を更新する）
+  A.running = () => !!(A.ctx && A.ctx.state === 'running');
+  function kickTitle() {
+    if (A.bgmName === 'title' && !A.fanfareDone && A.enabled && !A.bgmHold && !A.titleQuiet && A.running()) A.playBgm('title', true);
+  }
+  /* 読み込み直後に、操作なしで音を出せるか試す（許されないブラウザでは止まったまま作られ、最初の操作で再開する） */
+  A.tryAutoplay = function () { if (A.enabled && !A.ctx) A.unlock(); };
   function stopSceneMusic(fade) { const M = TS.Music; if (M && M.current && M.current.bgm) M.stop(fade); }
 
   function tone(freq, start, dur, type, vol, slideTo, dest) {
@@ -128,7 +143,10 @@
       if (cur && cur.bgm && cur.id === scene.song && !cur.done) return;   // 同じ曲は最初から流し直さない
       if (scene.once) {
         if (A.fanfareDone) { stopSceneMusic(0.6); return; }
+        // 音がまだ止まっている（自動再生の制限）、またはボタンを押した操作の中：まだ「鳴らした」にしない
+        if (!A.running() || A.titleQuiet) { stopSceneMusic(0.3); return; }
         A.fanfareDone = true;
+        if (A.onChange) setTimeout(A.onChange, 0);
       }
       M.play(scene.song, { bgm: true, fadeOut: 0.6, fadeIn: cur && cur.bgm ? 0.4 : 0 });
       return;

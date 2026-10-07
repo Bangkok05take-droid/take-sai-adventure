@@ -190,6 +190,46 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     eq2(JSON.stringify(c1), JSON.stringify(c0), 'no duplicates after rebuild');
   });
 
+  await test('タイトルのファンファーレ（自動再生できないスマホ）：案内を表示→背景のタップで1回だけ再生。はじめから・つづきからは1タップで進み、曲が重ならない。音オフは勝手にオンにしない', async () => {
+    const strict = await chromium.launch({ args: ['--autoplay-policy=document-user-activation-required'] });
+    try {
+      const open = async (save) => {
+        const c = await strict.newContext(phone), q = await c.newPage();
+        q.on('pageerror', (e) => errors.push(e.message));
+        await q.addInitScript(() => { window.__plays = []; const iv = setInterval(() => { if (window.TS && TS.Music && !TS.Music.__w) { const o = TS.Music.play; TS.Music.play = function (id) { window.__plays.push(id); return o.apply(this, arguments); }; TS.Music.__w = 1; clearInterval(iv); } }, 2); });
+        await q.goto(URL);
+        if (save) { await q.evaluate((sv) => { const S = TS.Game.newState(); S.village.story.introDone = true; S.village.seenIntro = true; Object.assign(S.settings, sv); TS.Save.save(S); }, save); await q.reload(); }
+        await q.waitForTimeout(700);
+        return { c, q };
+      };
+      const st = (q) => q.evaluate(() => ({ ctx: TS.Audio.ctx && TS.Audio.ctx.state, cur: TS.Music.current && TS.Music.current.id, screen: TS.UI.screen, hint: !document.getElementById('title-sound-hint').hidden, plays: window.__plays.slice(), sound: TS.UI.S.settings.sound }));
+      const tapBg = async (q) => { const r = await q.evaluate(() => { const b = document.getElementById('title-scene').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height * 0.3 }; }); await q.touchscreen.tap(r.x, r.y); await q.waitForTimeout(600); };
+      // 初回表示：自動再生は止められる → 案内 → 背景（ロゴの下）をタップで1回だけ
+      let { c, q } = await open();
+      let s = await st(q);
+      assert(s.ctx === 'suspended' && s.hint && !s.plays.length, 'blocked + hint ' + JSON.stringify(s));
+      await tapBg(q); s = await st(q);
+      assert(s.cur === 'fanfare' && !s.hint && s.plays.filter((x) => x === 'fanfare').length === 1, 'fanfare after tap ' + JSON.stringify(s));
+      await tapBg(q); s = await st(q); eq2(s.plays.filter((x) => x === 'fanfare').length, 1, 'only once');
+      await q.tap('#btn-newgame'); await q.waitForTimeout(500); s = await st(q);
+      assert(s.screen === 'village' && s.cur === 'yanai', 'newgame goes on, one song ' + JSON.stringify(s));
+      await c.close();
+      // 最初のタップが「つづきから」：待たせずに村へ、ファンファーレは始めない。保存したBGM音量
+      ({ c, q } = await open({ sound: true, bgmVol: 0.4 }));
+      await q.tap('#btn-continue'); await q.waitForTimeout(700); s = await st(q);
+      assert(s.screen === 'village' && !s.plays.includes('fanfare') && s.cur === 'village' && s.plays.length === 1, 'continue first ' + JSON.stringify(s));
+      assert(await q.evaluate(() => Math.abs(TS.Audio.musicBus.gain.value - 0.4) < 0.02), 'saved bgm volume');
+      await c.close();
+      // 音オフで保存：案内なし・鳴らない・オンにならない。オンに切り替えるとファンファーレ1回
+      ({ c, q } = await open({ sound: false }));
+      s = await st(q); assert(!s.hint && !s.sound, 'sound off: no hint');
+      await tapBg(q); s = await st(q); assert(!s.sound && !s.plays.length, 'sound stays off ' + JSON.stringify(s));
+      await q.tap('#btn-sound-title'); await q.waitForTimeout(600); s = await st(q);
+      assert(s.sound && s.cur === 'fanfare' && !s.hint, 'sound on plays fanfare ' + JSON.stringify(s));
+      await c.close();
+    } finally { await strict.close(); }
+  });
+
   await test('サイの店でおにぎりを借りて買い物ができる。木刀の貸し出しは無く、はじめは武器なし', async () => {
     assert(await p.evaluate(() => !TS.UI.S.village.bag.some((i) => i.id === 'wood_sword')), 'no sword at start');
     await p.tap('.fac[data-fac="shop"]'); await p.waitForTimeout(150);
@@ -1435,7 +1475,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       const keep = (tag) => q.evaluate((tag) => { window[tag] = TS.Music.current; }, tag);
       const talkThrough = async () => { for (let i = 0; i < 40 && await q.$('.talk'); i++) { await q.tap('.modal-buttons button.primary'); await q.waitForTimeout(60); } };
       // タイトル：操作の前は鳴らない。最初の操作のあとファンファーレ（1回だけ）
-      let c = await cur(); assert(!c.id && !c.ctx, 'silent before gesture ' + JSON.stringify(c));
+      // （読み込み時に自動再生を試すので、音の処理は作られるが止まったまま。曲は始めない）
+      let c = await cur(); assert(!c.id && c.ctx !== 'running', 'silent before gesture ' + JSON.stringify(c));
       await q.touchscreen.tap(20, 20); await q.waitForTimeout(400);
       c = await cur(); assert(c.id === 'fanfare' && c.bgm, 'fanfare after gesture ' + JSON.stringify(c));
       await keep('__f'); await q.touchscreen.tap(30, 30); await q.waitForTimeout(200);

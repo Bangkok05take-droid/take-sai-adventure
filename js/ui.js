@@ -21,10 +21,16 @@
     document.addEventListener('gesturestart', (e) => e.preventDefault());
     document.addEventListener('dblclick', (e) => e.preventDefault());
     document.addEventListener('contextmenu', (e) => e.preventDefault());
-    // 最初のユーザー操作で音を開始
-    const unlock = () => { AU.unlock(); };
-    document.addEventListener('pointerdown', unlock);
-    document.addEventListener('keydown', unlock);
+    /* 最初のユーザー操作で音を開始（自動再生の制限）。スマホは指を離したときが「操作」なので、離す・クリックでも呼ぶ。
+     * タイトルでボタン（つづきから・はじめから・音・確認の画面のボタン）を押した操作ではファンファーレを始めない
+     * （始めてすぐ次の画面の曲に切りかわるのを防ぐ）。背景・ロゴ・遊び方を押したときは、まだならここで1回だけ鳴らす */
+    const unlock = (e) => {
+      const t = e && e.target, btn = t && t.closest ? t.closest('button') : null;
+      AU.titleQuiet = UI.screen === 'title' && !!btn && btn.id !== 'btn-help-title';
+      AU.unlock();
+    };
+    for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(ev, unlock, true);
+    AU.onChange = updateTitleHint;
 
     const loaded = SV.load();
     UI.S = loaded || G.newState();
@@ -43,6 +49,8 @@
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup', onKeyUp);
     showTitle();
+    AU.tryAutoplay();   // 操作なしで鳴らせるブラウザなら、タイトルのファンファーレをすぐ鳴らす
+    updateTitleHint();
     requestAnimationFrame(loop);
   }
 
@@ -274,6 +282,13 @@
     $('btn-newgame').classList.toggle('primary', !has); // 「つづきから」がないときは「はじめから」を目立たせる
     updateSoundButton();
     showScreen('title');
+    updateTitleHint();
+  }
+  /* 「タップで音楽を再生」：音がオンで、タイトルのファンファーレがまだ鳴っていないときだけ控えめに出す */
+  function updateTitleHint() {
+    const h = $('title-sound-hint');
+    if (!h || !UI.S) return;
+    h.hidden = !(UI.screen === 'title' && UI.S.settings.sound && !AU.fanfareDone);
   }
   function applyVolumes() {
     const st = UI.S.settings;
@@ -286,10 +301,12 @@
   }
   function toggleSound() {
     UI.S.settings.sound = !UI.S.settings.sound;
+    AU.titleQuiet = false;   // 音をオンにしたら、タイトルではまだ鳴っていないファンファーレをここで鳴らす（オフにしたときは鳴らない）
     AU.setEnabled(UI.S.settings.sound);
     if (!UI.S.settings.sound && TS.Music) TS.Music.stop(0.08);
     if (UI.S.settings.sound) { AU.unlock(); AU.sfx('tap'); }
     updateSoundButton();
+    updateTitleHint();
     if (UI.started) save();
     else if (UI.loadedSave && SV.exists()) SV.save(UI.S); // タイトル画面：読み込んだセーブがあれば設定を残す（無ければ作らない）
   }
