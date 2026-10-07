@@ -421,6 +421,13 @@
         g.lineWidth = k * 3; g.strokeStyle = '#000'; g.strokeText(f.text, x, y);
         g.fillStyle = f.color || '#fff'; g.fillText(f.text, x, y);
         g.textAlign = 'left'; g.globalAlpha = 1;
+      } else if (f.t === 'thrown') {
+        // 投げた道具：絵が直線に飛び、少し回りながら弧を描く
+        const d = D.ITEMS[f.id]; if (!d) continue;
+        const img = SP.iconFor(d), sz = Math.round(ts * 0.6);
+        const x = ox + (f.from.x + (f.to.x - f.from.x) * a + 0.5) * ts, y = oy + (f.from.y + (f.to.y - f.from.y) * a + 0.5) * ts - Math.sin(a * Math.PI) * ts * 0.35;
+        g.save(); g.imageSmoothingEnabled = false; g.translate(Math.round(x), Math.round(y)); g.rotate(a * Math.PI * 2);
+        g.drawImage(img, -sz / 2, -sz / 2, sz, sz); g.restore();
       } else if (f.t === 'bolt') {
         g.globalAlpha = 1 - a;
         g.strokeStyle = '#fff36a'; g.lineWidth = k * 4;

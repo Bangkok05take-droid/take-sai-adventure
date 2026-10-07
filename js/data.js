@@ -164,9 +164,39 @@
       desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る。' },
     gold_leaf:     { name: '神殿の金ぱく', type: 'material', sell: 0, noSell: true, icon: 'shard', tint: 'gold', depth: 26,
       desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る。' },
+    // ---- アクセサリー（装備枠は1つ。持っているだけでは効かず、装備している間だけ効く） ----
+    poison_ring:   { name: '毒よけの指輪', type: 'accessory', acc: 'poison', sell: 250, icon: 'ring',
+      desc: '装備している間、新しく毒にかからない。すでにかかっている毒は治らない。' },
+    purse_charm:   { name: 'がまぐちの守り', type: 'accessory', acc: 'theft', sell: 250, icon: 'purse',
+      desc: '装備している間、金ぴかザルなどにお金を盗まれない。盗まれたお金は戻らない。' },
+    full_bangle:   { name: '満腹の腕輪', type: 'accessory', acc: 'hunger', sell: 600, icon: 'bangle',
+      desc: '装備している間、歩いても休んでも満腹度が減らない。今の満腹度は回復しない。' },
+    life_necklace: { name: '命つなぎの首飾り', type: 'accessory', acc: 'revive', sell: 800, icon: 'lifeneck',
+      desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（首飾りはなくなる）。' },
     wish_orb:      { name: '願いの宝珠', type: 'orb', sell: 0, noSell: true, noStore: true, icon: 'orb',
       desc: '遺跡の奥に眠っていた宝珠。村へ持ち帰ろう！' },
   };
+
+  /* 道具を投げる（数値はここで調整する）。
+   * range：飛ぶ距離。direct：すべての種類で「直線上の最初の敵に当たる」（外れない）。
+   * small：小さな物理ダメージ＝ base + perFloor×階（防御は無視）。盾・お宝・素材・食料・アクセサリー・杖・巻物など。
+   * weapon：武器のダメージ＝ (base + (攻撃力+強化値)×mul) を敵の防御で減らす（通常の攻撃と同じ計算式）。
+   * sleep / slow：当たった敵だけに効く。ターン数は道具の値（ボスは道具を使ったときと同じ短いターン）。
+   * 回復の道具：当たった敵のHPを回復する（たけには効かない）。けむり玉：当たった敵を離れた部屋へ飛ばす（ボスには効かず小さなダメージ）。 */
+  D.THROW = {
+    range: 10,
+    small: { base: 2, perFloor: 0.2 },
+    weapon: { base: 4, mul: 2 },
+    sleepBoss: 3, slowBoss: 6,
+    cureHeal: 20,
+  };
+  // アクセサリーの入手：ふつうの階の道具の表に低い重みで入る（初期配布・お店・謎の旅商人には無い）
+  D.ACCESSORY_DROPS = [
+    { id: 'poison_ring', from: 11, w: 0.3 },
+    { id: 'purse_charm', from: 11, w: 0.3 },
+    { id: 'full_bangle', from: 21, w: 0.12 },
+    { id: 'life_necklace', from: 21, w: 0.12 },
+  ];
 
   /* 鍛冶屋の強化：設備の段階で上限が上がる（なし/+3/+5/+8）。
    * +4以降は深い階の素材も必要。売値の上がり方は強化費用よりずっと小さい（換金の抜け道にならない）。 */
@@ -302,6 +332,8 @@
     add(f >= 21 && f <= 29, [['giant_crystal', 2]]);
     add(f >= 21 && f <= 25, [['prism_flower', 1], ['crystal_shard', 2]]);
     add(f >= 26, [['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]]);
+    // アクセサリー（まれ）
+    for (const a of D.ACCESSORY_DROPS) add(f >= a.from, [[a.id, a.w]]);
     // 章ごとの「ボスに備える道具」（深い階ほど拾いやすい）
     if (C) add(f >= 6, C.prep.map(([id, w]) => [id, w * (f >= 16 ? 1 : 0.5)]));
     let enemies = D.enemyTable(f);
@@ -331,7 +363,7 @@
   function demonFloor(f, C) {
     const items = [['herb', 3], ['big_herb', 3], ['elixir', 2], ['khaoniao', 2], ['banana', 1], ['sleep_incense', 2], ['slow_powder', 1],
       ['fire_charm', 1], ['thunder_king_staff', 0.8], ['antidote', 1], ['sight_scroll', 1], ['sense_scroll', 1], ['clear_incense', 1],
-      ['golden_sword', 0.6], ['golden_shield', 0.6], ['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]];
+      ['golden_sword', 0.6], ['golden_shield', 0.6], ['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]].concat(D.ACCESSORY_DROPS.map((a) => [a.id, a.w]));
     return { theme: 'demon', enemies: [['darkknight', 3], ['imp', 3], ['guard', 2], ['golem', 1], ['wisp', 1]],
       enemyCount: [6, 7], itemCount: [5, 7], goldCount: [3, 4], items };
   }

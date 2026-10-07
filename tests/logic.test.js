@@ -1656,5 +1656,245 @@ function walk(S, t) {
   return true;
 }
 
+
+// ================= 投げる =================
+function giveItem(S, id, extra) { const it = G.makeItem(S, id, extra); S.run.bag.push(it); return it; }
+test('投げる：ねむり草は当たった敵だけを眠らせ、道具1個と1ターンを使う（ボスは短い）', () => {
+  const S = newRun(301); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 9, 5), other = addEnemy(S, 'frog', 7, 9);
+  const it = giveItem(S, 'sleep_incense'); const n = S.run.bag.length, t = S.run.turn;
+  const r = G.act(S, { type: 'throw', uid: it.uid, dir: 'right' });
+  assert(r.consumed); eq(S.run.turn, t + 1); eq(S.run.bag.length, n - 1);
+  assert(e.sleep >= D.ITEMS.sleep_incense.turns - 1, 'slept ' + e.sleep); eq(other.sleep, 0, 'other not slept');
+  assert(r.events.some((x) => x.t === 'throw' && x.hit));
+  const b = addEnemy(S, 'frog', 5, 9); b.boss = true;
+  const it2 = giveItem(S, 'sleep_incense'); G.act(S, { type: 'throw', uid: it2.uid, dir: 'down' });
+  assert(b.sleep <= D.THROW.sleepBoss && b.sleep >= D.THROW.sleepBoss - 1, 'boss sleep ' + b.sleep);
+  const it3 = giveItem(S, 'slow_powder'); b.sleep = 0; G.act(S, { type: 'throw', uid: it3.uid, dir: 'down' });
+  assert(b.slow <= D.THROW.slowBoss && b.slow >= D.THROW.slowBoss - 1, 'boss slow ' + b.slow);
+  const it4 = giveItem(S, 'slow_powder'); G.act(S, { type: 'throw', uid: it4.uid, dir: 'down', fromFloor: false });
+  const e2 = addEnemy(S, 'frog', 5, 2); const it5 = giveItem(S, 'slow_powder'); G.act(S, { type: 'throw', uid: it5.uid, dir: 'up' });
+  assert(e2.slow >= D.ITEMS.slow_powder.turns - 1, 'slow ' + e2.slow);
+});
+test('投げる：回復の道具は敵を回復し、たけには効かない', () => {
+  const S = newRun(302); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 8, 5); e.hp = 100; e.sleep = 50;
+  const p = S.run.player; p.hp = 5;
+  for (const [id, n] of [['herb', 35], ['big_herb', 90], ['antidote', D.THROW.cureHeal]]) {
+    const before = e.hp; const it = giveItem(S, id);
+    G.act(S, { type: 'throw', uid: it.uid, dir: 'right' });
+    eq(e.hp, Math.min(e.maxhp, before + n), id);
+  }
+  e.hp = 10; const el = giveItem(S, 'elixir'); G.act(S, { type: 'throw', uid: el.uid, dir: 'right' }); eq(e.hp, e.maxhp, 'elixir');
+  assert(p.hp <= 6, 'player not healed ' + p.hp);
+});
+test('投げる：武器は強さと強化値でダメージ、ほかは小さな物理ダメージ（杖・巻物の効果は出ない）', () => {
+  const S = newRun(303); bigRoomFloor(S);
+  const e = addEnemy(S, 'frog', 7, 5); e.sleep = 999;
+  const dmgOf = (it) => { const h = e.hp; G.act(S, { type: 'throw', uid: it.uid, dir: 'right' }); return h - e.hp; };
+  const w0 = [], w5 = [];
+  for (let i = 0; i < 20; i++) { w0.push(dmgOf(giveItem(S, 'bronze_sword'))); w5.push(dmgOf(giveItem(S, 'bronze_sword', { plus: 5 }))); }
+  const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const base0 = D.THROW.weapon.base + 3 * D.THROW.weapon.mul, base5 = D.THROW.weapon.base + 8 * D.THROW.weapon.mul;
+  assert(Math.min(...w0) >= Math.floor(base0 * 0.85) && Math.max(...w0) <= Math.ceil(base0 * 1.15), 'w0 ' + w0);
+  assert(avg(w5) > avg(w0) + 5, 'plus counts');
+  const small = G.throwSmallDamage(S.run);
+  eq(small, Math.round(D.THROW.small.base + D.THROW.small.perFloor * S.run.floor));
+  for (const id of ['bamboo_shield', 'old_coin', 'amber_shard', 'banana', 'water_charm', 'poison_ring']) eq(dmgOf(giveItem(S, id)), small, id);
+  const st = giveItem(S, 'thunder_staff', { charges: 3 });
+  eq(dmgOf(st), small, 'staff physical');
+  const sc = giveItem(S, 'sight_scroll'); eq(dmgOf(sc), small, 'scroll physical'); assert(!S.run.revealed, 'scroll not read');
+  const fc = giveItem(S, 'fire_charm'); const other = addEnemy(S, 'frog', 5, 9); eq(dmgOf(fc), small, 'thunder scroll physical'); eq(other.hp, 999, 'no area effect');
+});
+test('投げる：けむり玉は当たった敵を離れた部屋へ（ボスには効かない）', () => {
+  const S = newRun(304);
+  const run = S.run; run.enemies = [];
+  const room = run.map.rooms.find((r) => r.w >= 5) ; run.player.x = room.x + 1; run.player.y = room.y + 1;
+  const e = addEnemy(S, 'frog', room.x + 3, room.y + 1); G.updateVision(run);
+  G.act(S, { type: 'throw', uid: giveItem(S, 'smoke_ball').uid, dir: 'right' });
+  assert(!(e.x === room.x + 3 && e.y === room.y + 1), 'warped'); eq(run.player.x, room.x + 1, 'player stays');
+  const b = addEnemy(S, 'frog', room.x + 2, room.y + 1); b.boss = true;
+  G.act(S, { type: 'throw', uid: giveItem(S, 'smoke_ball').uid, dir: 'right' });
+  eq(b.x, room.x + 2, 'boss not warped'); assert(b.hp < 999, 'boss small damage');
+});
+test('投げる：外れたら射程の終わり・壁の手前に落ち、ふさがっていれば近くへ、無ければ消える', () => {
+  const S = newRun(305); bigRoomFloor(S);
+  const it = giveItem(S, 'banana');
+  G.act(S, { type: 'throw', uid: it.uid, dir: 'right' });   // 5→15（10マス）
+  assert(S.run.floorItems.some((f) => f.item === it && f.x === 15 && f.y === 5), 'range end');
+  const it2 = giveItem(S, 'banana');
+  G.act(S, { type: 'throw', uid: it2.uid, dir: 'up' });       // 壁の手前 y=2
+  assert(S.run.floorItems.some((f) => f.item === it2 && f.x === 5 && f.y === 2), 'before wall');
+  const it3 = giveItem(S, 'herb');
+  G.act(S, { type: 'throw', uid: it3.uid, dir: 'right' });    // 15,5 はふさがっている → 近くへ
+  const f3 = S.run.floorItems.find((f) => f.item === it3);
+  assert(f3 && Math.max(Math.abs(f3.x - 15), Math.abs(f3.y - 5)) <= 2 && !(f3.x === 15 && f3.y === 5), 'nearby ' + JSON.stringify(f3 && [f3.x, f3.y]));
+  // 2マス以内に空きが無い → 消える（1マスの小部屋）
+  const m = S.run.map; m.tiles.fill(DG.WALL); for (let x = 5; x <= 6; x++) m.tiles[5 * m.w + x] = DG.FLOOR;
+  S.run.floorItems = [{ x: 6, y: 5, item: G.makeItem(S, 'herb') }, { x: 5, y: 5, item: G.makeItem(S, 'herb') }];
+  const it4 = giveItem(S, 'banana'); const n = S.run.floorItems.length;
+  const r = G.act(S, { type: 'throw', uid: it4.uid, dir: 'right' });
+  assert(r.consumed); eq(S.run.floorItems.length, n, 'vanished'); assert(!S.run.bag.includes(it4));
+  assert(S.run.log.some((l) => /消えてしまった/.test(l)));
+});
+test('投げる：斜めでも壁の角を抜けず、壁で止まる', () => {
+  const S = newRun(306); cornerMap(S);
+  const e = addEnemy(S, 'frog', 7, 7); e.sleep = 999;
+  const it = giveItem(S, 'herb');
+  const r = G.act(S, { type: 'throw', uid: it.uid, dir: 'downright' });
+  assert(r.consumed); eq(e.hp, 999, 'not hit through corner');
+  assert(S.run.floorItems.some((f) => f.item === it && f.x === 5 && f.y === 5), 'fell at feet');
+  const m = S.run.map; m.tiles[5 * m.w + 6] = DG.FLOOR; e.hp = 100;
+  const it2 = giveItem(S, 'herb'); G.act(S, { type: 'throw', uid: it2.uid, dir: 'downright' });
+  eq(e.hp, 135, 'diagonal hit');
+});
+test('投げる：装備中・大切な物は投げられず、同じ品を二重に投げられない', () => {
+  const S = newRun(307); bigRoomFloor(S);
+  const w = giveItem(S, 'bronze_sword'); w.eq = true;
+  const t = S.run.turn, n = S.run.bag.length;
+  let r = G.act(S, { type: 'throw', uid: w.uid, dir: 'right' });
+  assert(!r.consumed); eq(S.run.turn, t); eq(S.run.bag.length, n);
+  const orb = giveItem(S, 'wish_orb');
+  r = G.act(S, { type: 'throw', uid: orb.uid, dir: 'right' }); assert(!r.consumed && S.run.bag.includes(orb), 'orb');
+  r = G.act(S, { type: 'throw', uid: 0, dir: 'nowhere' }); assert(!r.consumed, 'bad dir');
+  const e = addEnemy(S, 'frog', 7, 5); e.sleep = 999;
+  const it = giveItem(S, 'old_coin');
+  r = G.act(S, { type: 'throw', uid: it.uid, dir: 'right' }); assert(r.consumed);
+  const hp = e.hp, turn = S.run.turn;
+  r = G.act(S, { type: 'throw', uid: it.uid, dir: 'right' }); assert(!r.consumed, 'second throw rejected'); eq(e.hp, hp); eq(S.run.turn, turn);
+});
+test('投げる：バッグがいっぱいでも足元の道具を投げられる（拾わない）', () => {
+  const S = newRun(308); bigRoomFloor(S);
+  while (S.run.bag.length < D.BAG_SIZE) giveItem(S, 'banana');
+  const e = addEnemy(S, 'frog', 8, 5); e.hp = 50;
+  const fi = G.makeItem(S, 'herb'); S.run.floorItems.push({ x: 5, y: 5, item: fi });
+  const r = G.act(S, { type: 'throw', uid: fi.uid, dir: 'right', fromFloor: true });
+  assert(r.consumed); eq(e.hp, 85); eq(S.run.bag.length, D.BAG_SIZE); assert(!G.itemAt(S.run, 5, 5), 'floor item used');
+  // 敵を倒したときの報酬は1回だけ
+  const k = addEnemy(S, 'frog', 5, 8); k.hp = 1; k.exp = 7; const exp = S.run.player.exp;
+  const w = G.makeItem(S, 'bronze_sword'); S.run.floorItems.push({ x: 5, y: 5, item: w });
+  const r2 = G.act(S, { type: 'throw', uid: w.uid, dir: 'down', fromFloor: true });
+  eq(r2.events.filter((x) => x.t === 'kill').length, 1); assert(!S.run.enemies.includes(k)); assert(S.run.player.exp >= exp + 7);
+});
+
+// ================= アクセサリー =================
+test('アクセサリー：装備は1つだけ、1ターン、バッグの1枠。持っているだけでは効かない', () => {
+  const S = newRun(311); bigRoomFloor(S);
+  const a = giveItem(S, 'full_bangle'), b = giveItem(S, 'poison_ring');
+  assert(!G.hasAcc(S.run, 'hunger'), 'not equipped yet');
+  const t = S.run.turn;
+  let r = G.act(S, { type: 'equip', uid: a.uid }); assert(r.consumed); eq(S.run.turn, t + 1); assert(G.hasAcc(S.run, 'hunger'));
+  r = G.act(S, { type: 'equip', uid: b.uid }); assert(a.eq === false && b.eq === true, 'only one');
+  assert(G.hasAcc(S.run, 'poison') && !G.hasAcc(S.run, 'hunger'));
+  r = G.act(S, { type: 'equip', uid: b.uid }); assert(!b.eq && !G.hasAcc(S.run, 'poison'), 'unequip');
+  // 武器・盾の装備はそのまま
+  const w = giveItem(S, 'bronze_sword'); G.act(S, { type: 'equip', uid: w.uid }); G.act(S, { type: 'equip', uid: a.uid });
+  assert(w.eq && a.eq, 'weapon and accessory together');
+  // 置くと装備が外れる
+  G.act(S, { type: 'drop', uid: a.uid }); assert(!a.eq && !G.hasAcc(S.run, 'hunger'), 'drop clears');
+});
+test('毒よけの指輪：新しい毒を防ぐ（今の毒は治らない）', () => {
+  const S = newRun(312); bigRoomFloor(S);
+  const p = S.run.player; p.hp = p.maxhp = 99999;
+  const ring = giveItem(S, 'poison_ring'); G.act(S, { type: 'equip', uid: ring.uid });
+  const e = addEnemy(S, 'lizard', 6, 5); e.atk = 2;
+  for (let i = 0; i < 60; i++) { G.act(S, { type: 'wait' }); assert(!p.poison, 'no poison at ' + i); }
+  assert(S.run.log.some((l) => /毒よけの指輪が毒を防いだ/.test(l)), 'blocked log');
+  p.poison = 5; G.act(S, { type: 'equip', uid: ring.uid }); G.act(S, { type: 'equip', uid: ring.uid });
+  assert(p.poison > 0, 'existing poison stays');
+  G.act(S, { type: 'equip', uid: ring.uid });   // 外す
+  p.poison = 0; p.poisonGuard = 0; let got = false;
+  for (let i = 0; i < 60 && !got; i++) { G.act(S, { type: 'wait' }); got = p.poison > 0; if (!got) p.poisonGuard = 0; }
+  assert(got, 'poison without ring');
+});
+test('がまぐちの守り：お金を盗まれない（外すと盗まれる）', () => {
+  const S = newRun(313); bigRoomFloor(S);
+  const p = S.run.player; p.hp = p.maxhp = 99999; S.run.runGold = 500;
+  const pc = giveItem(S, 'purse_charm'); G.act(S, { type: 'equip', uid: pc.uid });
+  const e = addEnemy(S, 'thief', 6, 5); e.atk = 1;
+  for (let i = 0; i < 20; i++) G.act(S, { type: 'wait' });
+  eq(S.run.runGold, 500, 'not stolen'); assert(!e.stolen);
+  G.act(S, { type: 'equip', uid: pc.uid });
+  for (let i = 0; i < 5 && S.run.runGold === 500; i++) G.act(S, { type: 'wait' });
+  assert(S.run.runGold < 500, 'stolen without charm');
+});
+test('満腹の腕輪：歩き・足踏み・ダッシュで満腹度が減らない（回復もしない）', () => {
+  const S = newRun(314); bigRoomFloor(S);
+  const p = S.run.player; p.hunger = 40;
+  const bg = giveItem(S, 'full_bangle'); G.act(S, { type: 'equip', uid: bg.uid });
+  for (let i = 0; i < 200; i++) G.act(S, { type: i % 2 ? 'wait' : 'move', dir: i % 4 === 0 ? 'right' : 'left' });
+  const ctx = G.dashContext(S); for (let i = 0; i < 5; i++) G.dashStep(S, 'right', ctx);
+  eq(p.hunger, 40, 'hunger kept');
+  G.act(S, { type: 'equip', uid: bg.uid });
+  for (let i = 0; i < 200; i++) G.act(S, { type: 'wait' });
+  assert(p.hunger < 40, 'decreases without');
+});
+function reviveSetup(seed) {
+  const S = newRun(seed); bigRoomFloor(S);
+  const nk = giveItem(S, 'life_necklace'); G.act(S, { type: 'equip', uid: nk.uid });
+  return { S, nk, p: S.run.player };
+}
+test('命つなぎの首飾り：敵の攻撃で倒れると一度だけ立ち上がり、首飾りはなくなる', () => {
+  const { S, nk, p } = reviveSetup(315);
+  p.hp = 1; p.hunger = 10; p.poison = 5; p.bound = 2;
+  const e = addEnemy(S, 'frog', 6, 5); e.atk = 9999;
+  const e2 = addEnemy(S, 'frog', 4, 5); e2.atk = 9999;
+  let r; for (let i = 0; i < 30 && !r?.events.some((x) => x.t === 'revive'); i++) { p.hp = Math.min(p.hp, 1); r = G.act(S, { type: 'wait' }); }
+  assert(r.events.some((x) => x.t === 'revive'), 'revive event');
+  assert(!S.run.over, 'not dead'); assert(p.hp >= 1, 'alive hp ' + p.hp);
+  assert(!S.run.bag.includes(nk), 'necklace consumed'); assert(!G.equipped(S.run.bag, 'accessory'), 'slot empty');
+  assert(p.hunger >= 30, 'hunger 30+'); eq(p.poison, 0); eq(p.bound, 0);
+  // 次のターンからは普通に倒れる（無敵は残らない）
+  for (let i = 0; i < 20 && !S.run.over; i++) G.act(S, { type: 'wait' });
+  assert(S.run.over && S.run.result.type === 'dead', 'dies next time');
+});
+test('命つなぎの首飾り：毒・空腹で倒れるときも立ち上がる（全回復）', () => {
+  let { S, p } = reviveSetup(316);
+  p.hp = 1; p.poison = 5; p.poisonGuard = 0;
+  let r = G.act(S, { type: 'wait' });
+  assert(r.events.some((x) => x.t === 'revive') && !S.run.over, 'poison revive'); eq(p.hp, p.maxhp, 'full hp'); eq(p.poison, 0);
+  ({ S, p } = reviveSetup(317));
+  p.hp = 1; p.hunger = 0; p.starveAcc = D.PLAYER.starveTurns - 1;
+  r = G.act(S, { type: 'wait' });
+  assert(r.events.some((x) => x.t === 'revive') && !S.run.over, 'starve revive');
+  assert(p.hunger >= 30 && p.hp === p.maxhp, 'restored ' + p.hp + '/' + p.hunger);
+});
+test('命つなぎの首飾り：装備していない・持っているだけでは発動しない', () => {
+  const S = newRun(318); bigRoomFloor(S);
+  giveItem(S, 'life_necklace');
+  const p = S.run.player; p.hp = 1; p.poison = 5; p.poisonGuard = 0;
+  G.act(S, { type: 'wait' });
+  assert(S.run.over, 'dead');
+});
+test('アクセサリー：保存・読み込み後も装備と効果が残る。預ける・売ると装備が外れる', () => {
+  const S = newRun(319); bigRoomFloor(S);
+  const bg = giveItem(S, 'full_bangle'); G.act(S, { type: 'equip', uid: bg.uid });
+  const S2 = SV.deserialize(SV.serialize(S));
+  assert(G.hasAcc(S2.run, 'hunger'), 'kept after load');
+  const h = S2.run.player.hunger; for (let i = 0; i < 50; i++) G.act(S2, { type: 'wait' }); eq(S2.run.player.hunger, h);
+  // 村：預けると外れる・取り出しても装備していない
+  const V = S2.village; S2.run = null;
+  const a = G.makeItem(S2, 'poison_ring'); a.eq = true; V.bag.push(a);
+  V.storageLv = 2; const r = G.deposit(S2, a.uid); assert(r.ok && !a.eq, 'deposit clears');
+  G.withdraw(S2, a.uid); assert(!a.eq);
+  G.toggleEquipInBag(V.bag, a.uid); assert(a.eq);
+  const funds = V.funds; const sr = G.sell(S2, a.uid); assert(sr.ok && V.funds === funds + 250 && !V.bag.includes(a), 'sold');
+});
+test('アクセサリーの入手：中盤以降の道具の表にまれに入り、お店・商人・初期配布には無い', () => {
+  const has = (ch, f, id) => D.floorFor(ch, f).items.some(([x]) => x === id);
+  for (const ch of [1, 3, 6]) {
+    assert(!has(ch, 10, 'poison_ring') && has(ch, 11, 'poison_ring') && has(ch, 11, 'purse_charm'), 'mid ' + ch);
+    assert(!has(ch, 20, 'life_necklace') && has(ch, 21, 'life_necklace') && has(ch, 21, 'full_bangle'), 'deep ' + ch);
+    assert(!has(ch, D.BOSS_FLOOR, 'life_necklace') || ch === 6, 'not on boss floor');
+  }
+  assert(has(6, 33, 'life_necklace'), 'demon floors');
+  const acc = Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === 'accessory');
+  eq(acc.length, 4);
+  for (const st of Object.values(D.SHOP_STOCK)) assert(!st.some((id) => acc.includes(id)), 'shop');
+  for (const c of Object.values(D.CHAPTERS)) assert(!(c.shop || []).some((id) => acc.includes(id)), 'chapter shop');
+  assert(!D.MERCHANT.goods.some((g) => acc.includes(g.id)), 'merchant');
+  const S = newRun(320); assert(!S.run.bag.some((i) => acc.includes(i.id)), 'no start item');
+});
+
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

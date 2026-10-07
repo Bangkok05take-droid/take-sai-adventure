@@ -972,6 +972,22 @@
     else if (t === 'amber') { P.ball(8, 10, 4.5, 4.5, R); P.poly([[8, 1], [12, 8], [4, 8]], R[2]); P.set(7, 9, '#fff2c0'); P.set(9, 11, '#7a4a10'); }
     else { P.poly([[8, 1], [13, 8], [8, 15], [3, 8]], (x, y) => R[P.idx(0.4 + (x - 3) / 6, x, y)]); P.line(8, 1, 8, 15, R[0]); }
     return P.outline(); };
+  /* アクセサリー（仮のアイコン。見本の絵ができたら js/assets.js の items.byId で差し替える）。形と色で4種類を見分ける */
+  // 毒よけの指輪：銀の輪に緑の石
+  I.ring = () => { const P = new Pix(16, 16); const M = ramp('#c8ccd8');
+    for (let a = 0; a < 40; a++) { const t = a / 40 * Math.PI * 2; P.set(Math.round(8 + Math.cos(t) * 5), Math.round(10 + Math.sin(t) * 4), M[a % 3 === 0 ? 1 : 2]); }
+    for (let a = 0; a < 40; a++) { const t = a / 40 * Math.PI * 2; P.set(Math.round(8 + Math.cos(t) * 4), Math.round(10 + Math.sin(t) * 3), M[3]); }
+    P.ball(8, 5, 3, 3, ramp('#5ad06a')); P.set(7, 4, '#e8ffe0'); return P.outline(); };
+  // がまぐちの守り：赤い布の口金つき小袋（金の口金と玉）
+  I.purse = () => { const P = new Pix(16, 16); P.ball(8, 10, 6, 5, ramp('#c8403a')); P.rect(3, 6, 10, 2, ramp('#e8c040')[2]); P.rect(3, 6, 10, 1, '#fff0a0');
+    P.ball(6, 4.5, 1.5, 1.5, ramp('#e8c040')); P.ball(10, 4.5, 1.5, 1.5, ramp('#e8c040')); P.rect(6, 10, 4, 1, '#ffd0a0'); return P.outline(); };
+  // 満腹の腕輪：太い金の輪に、おにぎり形の白い飾り
+  I.bangle = () => { const P = new Pix(16, 16); const G = ramp('#e8b030');
+    for (let a = 0; a < 60; a++) { const t = a / 60 * Math.PI * 2; for (let r = 4; r <= 6; r++) P.set(Math.round(8 + Math.cos(t) * r), Math.round(8 + Math.sin(t) * (r - 1)), G[r === 6 ? 3 : r === 4 ? 1 : 2]); }
+    P.poly([[8, 1], [12, 7], [4, 7]], '#ffffff'); P.rect(6, 5, 4, 2, '#2a3a2a'); return P.outline(); };
+  // 命つなぎの首飾り：金の鎖に赤いハートの石
+  I.lifeneck = () => { const P = new Pix(16, 16); P.line(2, 1, 8, 7, '#e8c040'); P.line(14, 1, 8, 7, '#e8c040');
+    const H = ramp('#ff3a5a'); P.ball(6, 9, 2.5, 2.5, H); P.ball(10, 9, 2.5, 2.5, H); P.poly([[3, 10], [13, 10], [8, 15]], H[2]); P.set(5, 8, '#ffe0e8'); return P.outline(); };
   I.smoke = () => { const P = new Pix(16, 16); P.ball(8, 10, 5, 5, ramp('#5a5a6a')); P.ball(7, 4, 3, 2.5, ramp('#d8d8e0')); P.ball(11, 3, 2, 2, ramp('#e8e8f0')); P.line(10, 6, 12, 4, '#c0392b'); return P.outline(); };
   I.powder = () => { const P = new Pix(16, 16); P.ball(8, 10, 5.5, 4.5, ramp('#d8c8f0')); P.rect(6, 3, 4, 3, '#8a6aa8'); P.set(4, 6, '#c8b8ff'); P.set(12, 7, '#c8b8ff'); P.rect(6, 10, 4, 1, '#6a4a8a'); return P.outline(); };
 

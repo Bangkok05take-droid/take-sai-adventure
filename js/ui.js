@@ -369,7 +369,10 @@
       <li>PC：矢印キー/WASDで上下左右、Q・E・Z・C（またはテンキー7・9・1・3）で斜め。</li>
       <li><b>ダッシュ</b>（PCはX）：オンにして方向ボタンを押し続けると、その方向へ速く進む（1マスごとに1ターン）。指を離すとすぐ止まる。新しい敵・ダメージ・敵が隣・壁・分かれ道・道具・階段・帰還地点・HPや満腹度の危険で自動で止まり、止まった理由が表示される。押し直すと再び進む。</li>
       <li><b>足元</b>（Enter）：階段を降りる・道具を拾う・帰還する。</li>
-      <li><b>道具</b>（I）：使う・装備する・置く・整理。<b>メニュー</b>（Esc）：地図・説明・音。</li>
+      <li><b>道具</b>（I）：使う・装備する・投げる・置く・整理。<b>メニュー</b>（Esc）：地図・説明・音。</li>
+      <li><b>投げる</b>：8方向を選び、直線上の最初の敵に当てる（10マスまで。壁や角は通らない）。ねむり草は眠り、どんそくの粉は鈍足、回復の道具は敵が回復、武器は強さに応じたダメージ、ほかは小さなダメージ。外れると床に落ちる。足元の道具はバッグがいっぱいでも投げられる。</li>
+      <li><b>アクセサリー</b>：1つだけ装備でき、装備している間だけ効く（毒よけ・盗まれない・満腹度が減らない・一度だけ復活）。</li>
+      <li>メッセージ欄の右の<b>「履歴」</b>で過去のメッセージを読める（欄のほかの所を触っても開かない）。</li>
     </ul>
     <h3>ターン</h3>
     <ul>
@@ -870,7 +873,7 @@
       h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
         const it = V.bag.find((i) => i.uid === +r.dataset.uid);
         const d = G.def(it);
-        const eqable = d.type === 'weapon' || d.type === 'shield';
+        const eqable = d.type === 'weapon' || d.type === 'shield' || d.type === 'accessory';
         const buttons = [{ label: '戻る' }];
         if (eqable) buttons.push({ label: it.eq ? '外す' : '装備する', cls: 'primary', onClick: () => { G.toggleEquipInBag(V.bag, it.uid); AU.sfx('pickup'); villageChanged(); render(); } });
         if (d.loan) buttons.push({ label: '返す', onClick: () => { G.discard(UI.S, it.uid); villageChanged(); render(); } });
@@ -882,7 +885,8 @@
 
   function detailHtml(it) {
     const d = G.def(it);
-    const typeName = { weapon: '武器', shield: '盾', heal: '回復', food: '食料', sleep: '道具', staff: '杖', return: '巻物', map: '巻物', treasure: 'お宝', orb: '大切な物' }[d.type];
+    const typeName = { weapon: '武器', shield: '盾', accessory: 'アクセサリー（装備している間だけ効く）', heal: '回復', food: '食料', sleep: '道具', staff: '杖', return: '巻物', map: '巻物', sense: '巻物', fire: '巻物',
+      treasure: 'お宝', orb: '大切な物', material: '素材', charm: '護符（持っているだけで効く）', cure: '回復', slow: '道具', warp: '道具', clear: '道具' }[d.type] || '道具';
     let kv = `<span>種類</span><span>${typeName}</span>`;
     if (d.type === 'weapon') kv += `<span>攻撃力</span><span>+${d.atk + (it.plus || 0)}${it.plus ? `（強化+${it.plus}）` : ''}</span>`;
     if (d.type === 'shield') kv += `<span>防御力</span><span>+${d.def + (it.plus || 0)}${it.plus ? `（強化+${it.plus}）` : ''}</span>`;
@@ -897,10 +901,10 @@
   function openDepart() {
     const V = UI.S.village;
     const chk = G.canDepart(UI.S);
-    const w = G.equipped(V.bag, 'weapon'), s = G.equipped(V.bag, 'shield');
+    const w = G.equipped(V.bag, 'weapon'), s = G.equipped(V.bag, 'shield'), ac = G.equipped(V.bag, 'accessory');
     const ls = G.loanStatus(UI.S);
     const food = V.bag.filter((i) => G.def(i).type === 'food').length;
-    let html = `<p><b>持ち物 ${V.bag.length}/${D.BAG_SIZE}</b>　武器：${w ? esc(G.itemName(w)) : 'なし'}　盾：${s ? esc(G.itemName(s)) : 'なし'}　食料：${food}個</p>`;
+    let html = `<p><b>持ち物 ${V.bag.length}/${D.BAG_SIZE}</b>　武器：${w ? esc(G.itemName(w)) : 'なし'}　盾：${s ? esc(G.itemName(s)) : 'なし'}${ac ? '　アクセサリー：' + esc(G.itemName(ac)) : ''}　食料：${food}個</p>`;
     html += `<div class="warnbox">⚠ 倒れると、<b>持ち物すべて</b>と<b>探索中に拾ったお金</b>を失います。<br>村の資金・倉庫・施設は失いません。</div>`;
     html += `<div class="okbox">帰還の巻物を1枚無料で持っていきます。使えばいつでも持ち物を持って帰れます。</div>`;
     if (V.meal) html += `<div class="okbox">🍛 ${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）</div>`;
@@ -965,7 +969,7 @@
     act('b-foot', footAction);
     act('b-dash', toggleDash);
     $('h-map').addEventListener('click', () => { cycleMap(); });
-    $('log').addEventListener('click', () => { if (!UI.modals.length) showLog(); });
+    bindLogButton();
     // どこで指を離しても・画面が隠れても入力を確実に解除する
     window.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse' || !e.buttons) releaseAllPointers(); });
     window.addEventListener('pointercancel', releaseAllPointers);
@@ -974,6 +978,21 @@
     window.addEventListener('blur', stopAllInput);
     window.addEventListener('pagehide', stopAllInput);
     updateModeButtons();
+  }
+  /* メッセージ履歴は右端の「履歴」ボタンだけで開く。指をボタンの上で押して、ボタンの上で離したときだけ（操作キーから指がはみ出して
+   * ボタンの上で離れても開かない）。開くだけでターンは進まない */
+  function bindLogButton() {
+    const b = $('b-log');
+    let armed = null;
+    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); armed = e.pointerId; });
+    b.addEventListener('pointercancel', () => { armed = null; });
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ok = armed !== null || e.pointerType === '' || e.detail === 0;   // キーボード操作（detail 0）は許す
+      armed = null;
+      if (!ok || UI.modals.length || !UI.S.run) return;
+      AU.sfx('tap'); stopHold(); showLog();
+    });
   }
   function releaseAllPointers() {
     for (const b of document.querySelectorAll('#dpad .dir.pressed')) b.classList.remove('pressed');
@@ -1296,10 +1315,26 @@
       }
     }
     const atkTile = (e) => atkDir && e.x === atkDir.x && e.y === atkDir.y;
+    let throwD = 0;   // 投げた道具が届くまで、命中の演出を遅らせる
     for (const e of events) {
       switch (e.t) {
+        // 投げる：道具の絵が直線に飛ぶ。命中・効果の演出は届いてから
+        case 'throw': {
+          const n = Math.max(1, Math.max(Math.abs(e.to.x - e.from.x), Math.abs(e.to.y - e.from.y)));
+          throwD = Math.min(360, 60 + n * 40);
+          RD.addFx({ t: 'thrown', from: e.from, to: e.to, id: e.id, dur: throwD });
+          AU.sfx('dart');
+          break;
+        }
+        case 'land': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '落ちた', color: '#d8d0c0', small: true, delay: throwD, dur: 600 }); break;
+        // 命つなぎの首飾り：光って立ち上がる。ダッシュ・連続足踏み・長押しの入力を止め、直後の連打も少しのあいだ受け付けない
+        case 'revive':
+          stopAllInput(); UI.lockUntil = performance.now() + 700;
+          RD.addFx({ t: 'healrise', x: e.x, y: e.y, dur: 900 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8aa0', dur: 1100 });
+          flash(); toast('命つなぎの首飾りが光った！ 立ち上がった！', 'levelup'); AU.sfx('levelup');
+          break;
         case 'hit': {
-          const d = e.target === 'enemy' && atkTile(e) ? ATK_HIT : 0;
+          const d = e.target === 'enemy' && atkTile(e) ? ATK_HIT : (e.target === 'enemy' ? throwD : 0);
           RD.addFx({ t: 'num', x: e.x, y: e.y, text: String(e.n), color: e.target === 'player' ? '#ff6a6a' : '#ffffff', delay: d, dur: 650 });
           RD.addFx({ t: 'flash', x: e.x, y: e.y, target: e.target, dur: 160, delay: d });
           AU.sfx(e.target === 'player' ? 'hurt' : 'hit');
@@ -1311,7 +1346,7 @@
           AU.sfx('kill');
           if (e.boss) RD.addFx({ t: 'bossdie', x: e.x, y: e.y, sprite: e.sprite, dur: 1500 }); // ボスの撃破：白く光って沈みながら消える
           else {
-            RD.addFx({ t: 'die', x: e.x, y: e.y, sprite: e.sprite, delay: atkTile(e) ? ATK_HIT : 0, dur: 240 });   // 通常の敵：短く消える
+            RD.addFx({ t: 'die', x: e.x, y: e.y, sprite: e.sprite, delay: atkTile(e) ? ATK_HIT : throwD, dur: 240 });   // 通常の敵：短く消える
             if (e.exp) RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.exp + ' EXP', color: '#bfe4ff', small: true, delay: 260, dur: 700 });
           }
           break;
@@ -1343,7 +1378,7 @@
         }
         // 眠り：淡い紫の粒と Zzz（眠っている間は敵の頭に月のしるし）。だれもいなければ理由だけ
         case 'sleep':
-          if (e.targets.length) { RD.addFx({ t: 'zzz', targets: e.targets, dur: 900 }); AU.sfx('sleep'); }
+          if (e.targets.length) { RD.addFx({ t: 'zzz', targets: e.targets, dur: 900, delay: throwD }); AU.sfx('sleep'); }
           else { toast('見えている敵がいない（効果なし）'); AU.sfx('bump'); }
           break;
         case 'lunge': {
@@ -1367,7 +1402,7 @@
           else RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 });
           AU.sfx('warn'); break;
         }
-        case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0' }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600 }); break;
+        case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0', delay: throwD }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600, delay: throwD }); break;
         // 雷鳴の巻物：見えている敵それぞれに空から雷
         case 'fire':
           if (e.targets.length) { RD.addFx({ t: 'thunder', targets: e.targets, dur: 520 }); flash(true); AU.sfx('bolt'); }
@@ -1375,11 +1410,13 @@
           break;
         // 鈍足の粉：粉が対象へ飛び、紫の粉が広がる（鈍足の間は砂時計のしるし）
         case 'slow':
-          RD.addFx({ t: 'powder', from: { x: p.x, y: p.y }, targets: e.targets, dur: 700 }); AU.sfx('sleep');
+          if (e.thrown) e.targets.forEach((q) => RD.addFx({ t: 'sparkle', x: q.x, y: q.y, color: '#c8a0ff', dur: 700, delay: throwD }));
+          else RD.addFx({ t: 'powder', from: { x: p.x, y: p.y }, targets: e.targets, dur: 700 });
+          AU.sfx('sleep');
           if (!e.targets.length) toast('見えている敵がいない（粉は風に消えた）');
           break;
         // けむり玉：元の場所と着いた場所に煙
-        case 'warp': if (e.from) RD.addFx({ t: 'smoke', x: e.from.x, y: e.from.y, dur: 520 }); if (e.to) RD.addFx({ t: 'smoke', x: e.to.x, y: e.to.y, dur: 520, delay: 120 }); AU.sfx('stairs'); break;
+        case 'warp': if (e.from) RD.addFx({ t: 'smoke', x: e.from.x, y: e.from.y, dur: 520, delay: throwD }); if (e.to) RD.addFx({ t: 'smoke', x: e.to.x, y: e.to.y, dur: 520, delay: 120 }); AU.sfx('stairs'); break;
         case 'bagFull': toast('バッグがいっぱい！'); break;
         case 'monsterHouse': toast('モンスターハウスだ！', 'danger'); AU.sfx('warn'); break;
         case 'bossDown': case 'finalWin': for (let i = 0; i < 4; i++) RD.addFx({ t: 'sparkle', x: p.x + (i % 2 ? 2 : -2), y: p.y + (i < 2 ? 1 : -1), color: '#ffe080', dur: 1200 }); AU.sfx('levelup'); break;
@@ -1475,7 +1512,7 @@
     const run = UI.S.run;
     if (!run) return;
     const lines = run.log.slice(-2);
-    $('log').innerHTML = lines.map((l, i) => `<div class="${i === lines.length - 1 ? 'new' : ''}">${logHtml(l)}</div>`).join('');
+    $('log-lines').innerHTML = lines.map((l, i) => `<div class="${i === lines.length - 1 ? 'new' : ''}">${logHtml(l)}</div>`).join('');
   }
   /* メッセージの数字を色でも強調：たけが受けたダメージは赤、回復は緑、それ以外（敵へのダメージなど）は金色。
    * 画面の下の欄では（ ）の中の補足を省いて短くする（全文は「履歴」で読める） */
@@ -1546,8 +1583,9 @@
       else if (d.type === 'return') buttons.push({ label: 'その場で使う', cls: 'primary', onClick: () => { setTimeout(() => confirmBox('帰還の巻物', '<p>足元の帰還の巻物を使って村へ帰りますか？</p>', '帰る', () => useFloor(), 'やめる'), 0); } });
       else buttons.push({ label: 'その場で' + USE_LABEL[d.type], cls: 'primary', onClick: () => useFloor() });
     }
+    if (G.canThrow(it).ok) buttons.push({ label: '投げる', onClick: () => { setTimeout(() => pickDir((dir) => { closeAllModals(); UI.lockUntil = 0; doAct({ type: 'throw', uid: it.uid, dir, fromFloor: true }); }, throwOpts(it)), 0); } });
     const html = `<div class="detail-head"><img src="${SP.iconURL(d)}" alt=""><div><b>${esc(G.itemName(it))}</b></div></div><p>${esc(d.desc)}</p>` +
-      (full ? `<p class="warnbox">バッグがいっぱい（${D.BAG_SIZE}個）で拾えません。${G.canUseFromFloor(run) ? 'その場で使うことはできます。' : ''}</p>` : '') +
+      (full ? `<p class="warnbox">バッグがいっぱい（${D.BAG_SIZE}個）で拾えません。${G.canUseFromFloor(run) ? 'その場で使う・' : ''}投げることはできます。</p>` : '') +
       (G.canUseFromFloor(run) ? '<p class="note">「その場で使う」はバッグに入れずに足元の1個を使います。</p>' : '');
     modal({ title: '足元', html, buttons });
   }
@@ -1584,16 +1622,20 @@
 
   // 使える消耗品の種類と、そのボタンの表示（ここにない種類は「置く」だけ）
   const USE_LABEL = { heal: '使う（1ターン）', food: '食べる（1ターン）', sleep: 'たく（1ターン）', map: '読む（1ターン）', sense: '読む（1ターン）',
-    slow: 'まく（1ターン）', warp: '投げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）', clear: 'たく（1ターン）' };
+    slow: 'まく（1ターン）', warp: '使って逃げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）', clear: 'たく（1ターン）' };
   UI.USE_LABEL = USE_LABEL;
   function itemDetail(it, listModal) {
     const d = G.def(it);
     const buttons = [{ label: '戻る' }];
     const finish = (action) => { closeAllModals(); UI.lockUntil = 0; doAct(action); };
-    if (d.type === 'weapon' || d.type === 'shield') buttons.push({ label: it.eq ? '外す（1ターン）' : '装備する（1ターン）', cls: 'primary', onClick: () => finish({ type: 'equip', uid: it.uid }) });
+    if (d.type === 'weapon' || d.type === 'shield' || d.type === 'accessory') buttons.push({ label: it.eq ? '外す（1ターン）' : '装備する（1ターン）', cls: 'primary', onClick: () => finish({ type: 'equip', uid: it.uid }) });
     else if (d.type === 'staff') buttons.push({ label: 'ふる（向きを選ぶ）', cls: 'primary', onClick: () => { setTimeout(() => pickDir((dir) => finish({ type: 'use', uid: it.uid, dir })), 0); } });
     else if (d.type === 'return') buttons.push({ label: '使う', cls: 'primary', onClick: () => { setTimeout(() => confirmReturnScroll(it), 0); } });
     else if (USE_LABEL[d.type]) buttons.push({ label: USE_LABEL[d.type], cls: 'primary', onClick: () => finish({ type: 'use', uid: it.uid }) });
+    if (G.def(it).type !== 'orb') buttons.push({ label: it.eq ? '投げる（装備中）' : '投げる', onClick: () => {
+      if (it.eq) { setTimeout(() => info('投げられません', '<p>' + esc(G.itemName(it)) + 'は装備中です。外してから投げてください。</p>'), 0); return; }
+      setTimeout(() => pickDir((dir) => finish({ type: 'throw', uid: it.uid, dir }), throwOpts(it)), 0);
+    } });
     buttons.push({ label: '置く（1ターン）', onClick: () => {
       const run = UI.S.run;
       if (G.itemAt(run, run.player.x, run.player.y) || G.onStairs(run) || G.onReturnPoint(run) || G.onPortal(run)) { setTimeout(() => info('置けません', 'ここには置けません。'), 0); return; }
@@ -1602,13 +1644,26 @@
     modal({ title: esc(G.itemName(it)), html: detailHtml(it), buttons });
   }
 
-  function pickDir(cb) {
+  // 投げる道具の説明（向きを選ぶ画面に出す）
+  const THROW_NOTE = { sleep: '当たった敵を眠らせる', slow: '当たった敵の動きを鈍くする', heal: '当たった敵のHPを回復してしまう', warp: '当たった敵を離れた部屋へ飛ばす（ボスには効かない）',
+    weapon: '武器の強さに応じたダメージ', small: '小さなダメージ' };
+  function throwOpts(it) {
+    const d = G.def(it), k = G.throwKind(d);
+    let note = '投げると：' + THROW_NOTE[k] + '。直線上の最初の敵に当たる（' + D.THROW.range + 'マスまで）。当たると道具はなくなる。';
+    if (d.type === 'staff') note += '<br>杖は投げても雷は出ない（「ふる」と別）。';
+    if (['map', 'sense', 'fire', 'return'].includes(d.type)) note += '<br>巻物は投げても読んだ効果は出ない。';
+    if (d.type === 'accessory') note += '<br>アクセサリーの効果は出ない。';
+    return { title: '投げる向き', note };
+  }
+  function pickDir(cb, opts) {
     const run = UI.S.run;
-    const h = modal({ title: '雷を飛ばす向き', html: `<p class="note">今の向き：${G.DIR_NAMES[run.player.dir]}（斜めにも撃てます）</p><div class="dir-pick">
+    opts = opts || { title: '雷を飛ばす向き' };
+    const h = modal({ title: opts.title, html: `${opts.note ? '<p>' + opts.note + '</p>' : ''}<p class="note">今の向き：${G.DIR_NAMES[run.player.dir]}（斜めにも${opts.note ? '投げられます' : '撃てます'}）。「やめる」なら道具もターンも減りません。</p><div class="dir-pick">
       <button data-d="upleft">◤</button><button data-d="up">▲</button><button data-d="upright">◥</button>
       <button data-d="left">◀</button><button data-d="${run.player.dir}" class="primary">今の向き</button><button data-d="right">▶</button>
       <button data-d="downleft">◣</button><button data-d="down">▼</button><button data-d="downright">◢</button></div>`, buttons: [{ label: 'やめる' }] });
-    h.body.querySelectorAll('button[data-d]').forEach((b) => b.addEventListener('click', () => { const dir = b.dataset.d; h.close(); cb(dir); }));
+    let done = false;   // 1回だけ受け付ける（連打で二重に投げない）
+    h.body.querySelectorAll('button[data-d]').forEach((b) => b.addEventListener('click', () => { if (done) return; done = true; const dir = b.dataset.d; h.close(); cb(dir); }));
     h.body.querySelector('.primary').style.fontSize = '14px';
   }
 

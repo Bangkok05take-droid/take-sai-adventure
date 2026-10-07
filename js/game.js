@@ -402,6 +402,7 @@
       case 'useFloor': consumed = G.canUseFromFloor(run) ? useItem(S, a.uid, a.dir, ev, true) : false; break;
       case 'equip': consumed = toggleEquip(S, a.uid, ev); break;
       case 'drop': consumed = dropItem(S, a.uid, ev); break;
+      case 'throw': consumed = throwItem(S, a.uid, a.dir, ev, !!a.fromFloor); break;
       case 'face': if (DIRS[a.dir]) run.player.dir = a.dir; break;
       case 'descend':
         if (G.onStairs(run)) {
@@ -419,6 +420,7 @@
       default: break;
     }
     if (consumed && !run.over) endTurn(S, ev);
+    if (run.revived) { run.revived = false; ev.push({ t: 'revive', x: run.player.x, y: run.player.y }); }
     return { consumed, events: ev };
   };
 
@@ -743,7 +745,7 @@
 
   // ---------- 持ち物の整理 ----------
   // 種類の順：武器→盾→食料→回復→状態異常回復→攻撃・補助→帰還→素材→お宝
-  const SORT_GROUP = { weapon: 0, shield: 1, food: 2, heal: 3, cure: 4, sleep: 5, staff: 5, fire: 5, slow: 5, warp: 5, map: 5, sense: 5, clear: 5, charm: 5, return: 6, material: 7, treasure: 8, orb: 9 };
+  const SORT_GROUP = { weapon: 0, shield: 1, accessory: 1.5, food: 2, heal: 3, cure: 4, sleep: 5, staff: 5, fire: 5, slow: 5, warp: 5, map: 5, sense: 5, clear: 5, charm: 5, return: 6, material: 7, treasure: 8, orb: 9 };
   const ITEM_ORDER = Object.keys(D.ITEMS);
   G.itemSortKey = (it) => [SORT_GROUP[G.def(it).type] ?? 9, ITEM_ORDER.indexOf(it.id), -(it.plus || 0), -(it.charges || 0), it.uid];
   /* 安定した並び替え（同じ並びに対して何度押しても順序が変わらない）。
@@ -759,6 +761,8 @@
   G.findBag = (run, uid) => run.bag.find((it) => it.uid === uid) || null;
   // 持っているだけで効く護符
   G.hasCharm = (run, effect) => !!effect && run.bag.some((it) => G.def(it).type === 'charm' && G.def(it).effect === effect);
+  // 装備しているアクセサリーの効果（持っているだけでは効かない。装備枠は1つ）
+  G.hasAcc = (run, key) => { const a = G.equipped(run.bag, 'accessory'); return !!(a && G.def(a).acc === key); };
 
   /* 道具を使う。fromFloor が true なら、バッグではなく足元に落ちている道具を使う（バッグの中身は変わらない。
    * 消費する道具は床から1個なくなる。効果・ターン・対象の選び方はバッグから使うときと同じ処理） */
@@ -891,8 +895,8 @@
         ev.push({ t: 'return', scroll: true, x: p.x, y: p.y });
         return false; // 探索終了（敵の行動なし）
       }
-      case 'weapon': case 'shield':
-        return toggleEquip(S, uid, ev);
+      case 'weapon': case 'shield': case 'accessory':
+        return fromFloor ? false : toggleEquip(S, uid, ev);
       default:
         G.log(run, d.name + 'は使う道具ではない。');
         return false;
@@ -904,7 +908,7 @@
     const it = bag.find((x) => x.uid === uid);
     if (!it) return null;
     const type = G.def(it).type;
-    if (type !== 'weapon' && type !== 'shield') return null;
+    if (type !== 'weapon' && type !== 'shield' && type !== 'accessory') return null;
     if (it.eq) { it.eq = false; return 'off'; }
     for (const o of bag) if (o !== it && G.def(o).type === type) o.eq = false;
     it.eq = true;
@@ -937,12 +941,145 @@
     return true;
   }
 
+  /* ---------- 投げる ----------
+   * 8方向のどれかへ1個投げる。直線上の最初の敵に当たる（壁は通らず、斜めでも壁の角は抜けない）。射程は D.THROW.range。
+   * 当たった道具はなくなり、種類ごとの効果（G.throwEffect）が敵だけにかかる。外れたら、止まった所かその近くの床に落ちる。
+   * fromFloor：足元の道具を直接投げる（バッグがいっぱいでも投げられる）。装備中の品・大切な物は投げられない（ターンも消費しない）。 */
+  G.canThrow = function (it) {
+    const d = G.def(it);
+    if (!d || d.type === 'orb') return { ok: false, msg: d ? d.name + 'は大切な物なので投げられない。' : '' };
+    if (it.eq) return { ok: false, msg: G.itemName(it) + 'は装備中。外してから投げよう。' };
+    return { ok: true };
+  };
+  // 投げた道具が敵に当たったときの効果の種類（一覧表示・テスト用）
+  G.throwKind = function (d) {
+    if (d.type === 'sleep') return 'sleep';
+    if (d.type === 'slow') return 'slow';
+    if (d.type === 'heal' || d.type === 'cure') return 'heal';
+    if (d.type === 'warp') return 'warp';
+    if (d.type === 'weapon') return 'weapon';
+    return 'small';
+  };
+  G.throwSmallDamage = (run) => Math.max(1, Math.round(D.THROW.small.base + D.THROW.small.perFloor * run.floor));
+  function throwItem(S, uid, dir, ev, fromFloor) {
+    const run = S.run, p = run.player, T = D.THROW;
+    if (!DIRS[dir]) return false;
+    const fl = fromFloor ? G.itemAt(run, p.x, p.y) : null;
+    const it = fromFloor ? (fl && fl.item && fl.item.uid === uid ? fl.item : null) : G.findBag(run, uid);
+    if (!it) return false;
+    const chk = G.canThrow(it);
+    if (!chk.ok) { G.log(run, chk.msg); return false; }
+    const d = G.def(it);
+    // 手から離す（ここで1個だけ。二重に投げられない）
+    if (fromFloor) run.floorItems.splice(run.floorItems.indexOf(fl), 1); else run.bag.splice(run.bag.indexOf(it), 1);
+    p.dir = dir;
+    const [dx, dy] = DIRS[dir];
+    let x = p.x, y = p.y, hitE = null;
+    const path = [];
+    for (let i = 0; i < T.range; i++) {
+      if (!G.canStep(run.map, x, y, dx, dy)) break;
+      if (G.merchantAt(run, x + dx, y + dy)) break;   // 商人の手前で落ちる（商人には当てない）
+      x += dx; y += dy;
+      path.push({ x, y });
+      hitE = G.enemyAt(run, x, y);
+      if (hitE) break;
+    }
+    const to = path.length ? path[path.length - 1] : { x: p.x, y: p.y };
+    ev.push({ t: 'throw', from: { x: p.x, y: p.y }, to, id: it.id, hit: !!hitE });
+    G.log(run, G.itemName(it) + 'を投げた。');
+    if (hitE) { throwHit(S, hitE, it, d, ev); return true; }
+    // 外れた：止まった所に落ちる。ふさがっていれば近くの空いた床へ（なければ消える）
+    const spot = G.landingSpot(run, to.x, to.y);
+    if (spot) {
+      run.floorItems.push({ x: spot.x, y: spot.y, item: it });
+      G.log(run, G.itemName(it) + 'は床に落ちた。');
+      ev.push({ t: 'land', x: spot.x, y: spot.y });
+    } else G.log(run, G.itemName(it) + 'は落ちる場所がなく、どこかへ消えてしまった。');
+    return true;
+  }
+  /* 落ちる場所：そのマスが空いていればそこ。だめなら、壁を通らずに歩いて行ける近くの空いた床（2マス以内）から一番近い所。
+   * 空いた床＝通れる床で、道具・階段・帰還の祠・帰還口・商人がないマス（敵やたけの足元は可。既存の「置く」と同じく1マスに道具1つ）。 */
+  G.landingSpot = function (run, x0, y0) {
+    const free = (x, y) => DG.passable(run.map, x, y) && !G.itemAt(run, x, y) && !DG.same(run.stairs, { x, y }) && !DG.same(run.returnPoint, { x, y }) &&
+      !DG.same(run.portal, { x, y }) && !G.merchantAt(run, x, y);
+    if (free(x0, y0)) return { x: x0, y: y0 };
+    const seen = new Set([x0 + ',' + y0]), q = [{ x: x0, y: y0, d: 0 }];
+    for (let i = 0; i < q.length; i++) {
+      const c = q[i];
+      if (c.d >= 2) continue;
+      for (const [dx, dy] of STEP8) {
+        const nx = c.x + dx, ny = c.y + dy, k = nx + ',' + ny;
+        if (seen.has(k) || !G.canStep(run.map, c.x, c.y, dx, dy)) continue;
+        seen.add(k);
+        if (free(nx, ny)) return { x: nx, y: ny };
+        q.push({ x: nx, y: ny, d: c.d + 1 });
+      }
+    }
+    return null;
+  };
+  // 当たった敵にだけ効果をかける（たけ・階全体にはかけない）。当たった道具はなくなる
+  function throwHit(S, e, it, d, ev) {
+    const run = S.run, T = D.THROW, name = D.ENEMIES[e.type].name, kind = G.throwKind(d);
+    const at = { x: e.x, y: e.y };
+    G.log(run, G.itemName(it) + 'は' + name + 'に当たった！');
+    switch (kind) {
+      case 'sleep': {
+        const n = e.boss ? T.sleepBoss : d.turns;
+        e.sleep = Math.max(e.sleep, n);
+        if (e.charge) { e.charge = null; G.log(run, name + 'の構えがとけた。'); }
+        G.log(run, name + 'は眠ってしまった！（' + n + 'ターン）');
+        ev.push({ t: 'sleep', targets: [at], thrown: true });
+        return;
+      }
+      case 'slow': {
+        const n = e.boss ? T.slowBoss : d.turns;
+        e.slow = Math.max(e.slow || 0, n);
+        G.log(run, name + 'の動きが鈍くなった！（' + n + 'ターン）');
+        ev.push({ t: 'slow', targets: [at], thrown: true });
+        return;
+      }
+      case 'heal': {
+        const amt = d.type === 'cure' ? T.cureHeal : d.heal;
+        const before = e.hp;
+        e.hp = Math.min(e.maxhp, e.hp + amt);
+        G.log(run, name + 'のHPが' + (e.hp - before) + '回復してしまった。');
+        ev.push({ t: 'enemyHeal', x: e.x, y: e.y, n: e.hp - before });
+        return;
+      }
+      case 'warp': {
+        if (!e.boss && !D.ENEMIES[e.type].clone) {
+          for (let i = 0; i < 30; i++) {
+            const t = DG.randomRoomTile(run.rng, R.pick(run.rng, run.map.rooms));
+            if (G.isVisible(run, t.x, t.y) || G.enemyAt(run, t.x, t.y) || G.merchantAt(run, t.x, t.y) || DG.same(t, run.player)) continue;
+            e.x = t.x; e.y = t.y; e.tx = e.ty = null; e.charge = null;
+            G.log(run, name + 'は煙に包まれて、どこかへ消えた！');
+            ev.push({ t: 'warp', from: at, to: null });
+            return;
+          }
+        }
+        const n = G.throwSmallDamage(run);
+        damageEnemy(S, e, n, ev, '煙は効かなかった。' + name + 'に' + n + 'のダメージ。');
+        return;
+      }
+      case 'weapon': {
+        const atk = T.weapon.base + (d.atk + (it.plus || 0)) * T.weapon.mul;
+        const n = calcDamage(run.rng, atk, e.def);
+        damageEnemy(S, e, n, ev, name + 'に' + n + 'のダメージ。');
+        return;
+      }
+      default: {
+        const n = G.throwSmallDamage(run);
+        damageEnemy(S, e, n, ev, name + 'に' + n + 'のダメージ。');
+      }
+    }
+  }
+
   // ---------- ターン終了処理 ----------
   function endTurn(S, ev) {
     const run = S.run, p = run.player;
     run.turn++;
-    // 満腹度
-    p.hungerAcc++;
+    // 満腹度（満腹の腕輪を装備している間は減らない。今の満腹度はそのまま）
+    if (!G.hasAcc(run, 'hunger')) p.hungerAcc++;
     if (p.hungerAcc >= G.hungerTurns(run)) {
       p.hungerAcc = 0;
       if (p.hunger > 0) {
@@ -958,7 +1095,7 @@
       const n = Math.max(1, Math.round(p.maxhp * D.POISON.dmgRate));
       p.hp -= n;
       ev.push({ t: 'hit', x: p.x, y: p.y, n, target: 'player', poison: true });
-      if (p.hp <= 0) { die(S, '毒で倒れた'); return; }
+      if (p.hp <= 0 && die(S, '毒で倒れた')) return;
       if (p.poison === 0) { p.poisonGuard = D.POISON.guard; G.log(run, '毒が抜けた。'); }
     }
     if (p.hunger > 0 && !p.poison) {
@@ -976,7 +1113,7 @@
         p.starveAcc = 0;
         p.hp -= 1;
         ev.push({ t: 'hit', x: p.x, y: p.y, n: 1, target: 'player' });
-        if (p.hp <= 0) { die(S, '空腹で倒れた'); return; }
+        if (p.hp <= 0 && die(S, '空腹で倒れた')) return;
       }
     }
     // 敵の行動（1ターンに各敵1回まで）
@@ -1001,7 +1138,7 @@
           p.hp -= dmg;
           G.log(run, h.name + '！ たけは' + dmg + 'のダメージ。');
           ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player', big: true });
-          if (p.hp <= 0) { die(S, h.name + 'にやられた'); return; }
+          if (p.hp <= 0 && die(S, h.name + 'にやられた')) return;
         } else if (fire.some((o) => Math.max(Math.abs(o.x - p.x), Math.abs(o.y - p.y)) <= 1)) G.log(run, '床の印をかわした！');
       }
     }
@@ -1083,7 +1220,10 @@
         break;
       case 'thief':
         if (e.flee) { if (!stepAway(run, e)) randomStep(run, e); return; }
-        if (adjacent(run, e, p) && run.runGold > 0) { steal(S, e, ev); return; }
+        if (adjacent(run, e, p) && run.runGold > 0) {
+          if (!G.hasAcc(run, 'theft')) { steal(S, e, ev); return; }
+          if (!e.theftBlocked) { e.theftBlocked = true; G.log(run, E.name + 'がお金をねらったが、がまぐちの守りが口を閉じた！'); }
+        }
         break;
       case 'magic':
         if (sees && adjacent(run, e, p) && stepAway(run, e)) return;
@@ -1279,6 +1419,7 @@
     if (p.hp <= 0) { die(S, E.name + 'にやられた'); return; }
     // 毒（治ったあとしばらくはかからない＝連続しない）
     if (E.ai === 'poison' && !p.poison && !p.poisonGuard && R.chance(run.rng, D.POISON.chance)) {
+      if (G.hasAcc(run, 'poison')) { G.log(run, '毒よけの指輪が毒を防いだ！'); return; }
       p.poison = D.POISON.turns;
       G.log(run, 'たけは毒におかされた！（やくそう・どくけしそうで治る）');
       ev.push({ t: 'warn', msg: '毒になった！' });
@@ -1344,12 +1485,29 @@
   G._H = H;
 
   // ---------- 探索の終了 ----------
+  /* HPが0になったとき。命つなぎの首飾りを装備していれば、倒れる処理（所持品を失う・村へ戻る）より先に一度だけ立ち上がる。
+   * 戻り値：本当に倒れたら true。立ち上がったら false（呼び出し側はそのまま処理を続ける）。
+   * 立ち上がった同じターンの残りの攻撃では倒れない（HPは1で止まる）。次のターンからは普通にダメージで倒れる（無敵は残らない）。 */
   function die(S, cause) {
-    const run = S.run;
+    const run = S.run, p = run.player;
+    if (p.reviveTurn === run.turn) { p.hp = Math.max(1, p.hp); return false; }
+    const neck = G.equipped(run.bag, 'accessory');
+    if (neck && G.def(neck).acc === 'revive') {
+      run.bag.splice(run.bag.indexOf(neck), 1);
+      p.hp = p.maxhp;
+      p.hunger = Math.max(p.hunger, Math.ceil(D.PLAYER.maxHunger * 0.3));
+      p.poison = 0; p.bound = 0; p.starveAcc = 0;
+      p.reviveTurn = run.turn;
+      p.lowWarned = false;
+      run.revived = true;
+      G.log(run, '命つなぎの首飾りが光った！ たけは立ち上がった！（首飾りはくだけた）');
+      return false;
+    }
     run.player.hp = 0;
     run.over = true;
     run.result = { type: 'dead', cause, floor: run.floor, lostGold: run.runGold, lostItems: run.bag.filter((i) => i.id !== 'return_scroll').length };
     G.log(run, 'たけは倒れてしまった…。');
+    return true;
   }
 
   function endRun(S, type, msg) {

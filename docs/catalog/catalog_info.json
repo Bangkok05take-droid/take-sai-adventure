@@ -762,6 +762,34 @@
    "floorW": 32,
    "floorH": 32
   },
+  "poison_ring": {
+   "key": "ring:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "purse_charm": {
+   "key": "purse:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "full_bangle": {
+   "key": "bangle:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
+  "life_necklace": {
+   "key": "lifeneck:",
+   "art": false,
+   "file": null,
+   "floorW": 16,
+   "floorH": 16
+  },
   "wish_orb": {
    "key": "orb:",
    "art": true,

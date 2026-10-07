@@ -118,8 +118,11 @@ body.calm .hpwrap.hurt .bar { animation: none; }
 /* ログ：2行。タップで過去のメッセージ */
 /* 戦闘メッセージ：ダンジョン表示の下・操作キーのすぐ上。濃い紺、白文字、最新2行（高さ固定で操作ボタンが上下しない） */
 #log { position: relative; background: #0d1a33; padding: 4px 52px 4px 10px; font-size: 16.5px; line-height: 1.32; height: calc(1.32em * 2 + 9px); overflow: hidden;
-  border-top: 1.5px solid var(--line); border-bottom: 1px solid var(--line-soft); cursor: pointer; flex: none; }
-#log::after { content: "履歴"; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: bold; color: #e8dcc0; border: 1px solid var(--line); border-radius: 7px; padding: 3px 5px; }
+  border-top: 1.5px solid var(--line); border-bottom: 1px solid var(--line-soft); flex: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+/* 履歴を開くのは右端のボタンだけ（本文・余白は触っても何も起きない） */
+#b-log { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-width: 44px; min-height: 36px; padding: 0 6px; font-size: 12px; font-weight: bold;
+  color: #e8dcc0; background: transparent; border: 1px solid var(--line); border-radius: 7px; touch-action: manipulation; }
+#b-log:active { background: rgba(232, 220, 192, 0.15); }
 #log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #b8c4d8; }
 #log div.new { color: #fff; }
 #log b.n-dmg { color: #ffd84a; } #log b.n-hurt { color: #ff7a5a; } #log b.n-heal { color: #8aff8a; }

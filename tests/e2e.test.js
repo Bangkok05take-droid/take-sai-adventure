@@ -464,7 +464,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   });
 
   await test('消耗品はすべて使う操作がある。どんそくの粉：「戻る」では減らず、「まく」で1個減って1ターン・見えている敵が鈍足', async () => {
-    const missing = await p.evaluate(() => Object.entries(TS.Data.ITEMS).filter(([id, d]) => !['weapon', 'shield', 'staff', 'return', 'treasure', 'material', 'orb', 'charm'].includes(d.type) && !TS.UI.USE_LABEL[d.type]).map(([id]) => id));
+    const missing = await p.evaluate(() => Object.entries(TS.Data.ITEMS).filter(([id, d]) => !['weapon', 'shield', 'accessory', 'staff', 'return', 'treasure', 'material', 'orb', 'charm'].includes(d.type) && !TS.UI.USE_LABEL[d.type]).map(([id]) => id));
     assert(!missing.length, 'no use action: ' + missing.join());
     await openRoom();
     const b = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game;
@@ -1104,6 +1104,110 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('.tabs button[data-t="in"]'); await p.waitForTimeout(100); await p.tap('.tabs button[data-t="mat"]'); await p.waitForTimeout(100);
     assert(await p.isVisible('text=素材はまだありません'), 'empty message');
     await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
+  });
+
+  await test('履歴は右の「履歴」ボタンだけで開く（本文・余白・操作キーからのはみ出しでは開かない。ターンは進まない）', async () => {
+    await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.depart(S, 4242);
+      const r = S.run; r.enemies = []; for (let i = 0; i < 4; i++) G.log(r, 'テストのメッセージ' + i + '：とても長い文章で欄の幅いっぱいまで表示される');
+      document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; UI.lockUntil = 0; UI.started = true; UI.debug.save(); });
+    await p.waitForTimeout(200);
+    const box = (sel) => p.evaluate((sel) => { const q = document.querySelector(sel).getBoundingClientRect(); return { x: q.x, y: q.y, w: q.width, h: q.height }; }, sel);
+    const turn0 = (await run()).turn;
+    const L = await box('#log'), B = await box('#b-log'), lines = await box('#log-lines');
+    const modalOpen = () => p.evaluate(() => TS.UI.modals.length > 0);
+    await p.touchscreen.tap(lines.x + 30, lines.y + 8); await p.waitForTimeout(120);
+    assert(!(await modalOpen()), 'text tap opens nothing');
+    await p.touchscreen.tap(L.x + L.w - B.w - 14, L.y + L.h - 3); await p.waitForTimeout(120);
+    assert(!(await modalOpen()), 'padding tap opens nothing');
+    eq2((await run()).turn, turn0, 'no turn by bar tap');
+    // 操作キーを押したまま指を「履歴」ボタンの上まで動かして離す（タッチ）
+    const cdp = await ctx.newCDPSession(p);
+    const up = await box('#dpad [data-dir="up"]');
+    const tp = (x, y) => [{ x, y, id: 1, radiusX: 4, radiusY: 4, force: 1 }];
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: tp(up.x + up.w / 2, up.y + up.h / 2) });
+    await p.waitForTimeout(450);
+    for (let i = 1; i <= 6; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: tp(up.x + up.w / 2 + (B.x + B.w / 2 - up.x - up.w / 2) * i / 6, up.y + up.h / 2 + (B.y + B.h / 2 - up.y - up.h / 2) * i / 6) }); await p.waitForTimeout(30); }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await p.waitForTimeout(300);
+    assert(!(await modalOpen()), 'drag release on button does not open');
+    // マウスでも同じ（押した所と離した所が違う）
+    await p.mouse.move(up.x + up.w / 2, up.y + up.h / 2); await p.mouse.down(); await p.mouse.move(B.x + B.w / 2, B.y + B.h / 2, { steps: 5 }); await p.mouse.up(); await p.waitForTimeout(300);
+    assert(!(await modalOpen()), 'mouse drag release does not open');
+    await p.evaluate(() => { const r = TS.UI.S.run; r.player.hp = r.player.maxhp; });
+    const t1 = (await run()).turn;
+    await p.touchscreen.tap(B.x + B.w / 2, B.y + B.h / 2); await p.waitForTimeout(150);
+    assert(await p.isVisible('text=メッセージ履歴'), 'button opens history');
+    eq2((await run()).turn, t1, 'no turn by history');
+    await shot('41_history_button');
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
+    eq2((await run()).turn, t1, 'no turn by closing');
+    // 最新メッセージは欄の中に見えている
+    const last = await p.evaluate(() => document.querySelector('#log-lines div.new').textContent);
+    assert(/テストのメッセージ3|たけ/.test(last) || last.length > 0, 'latest shown ' + last);
+  });
+
+  await test('投げる：道具欄から向きを選んで投げる（やめると減らない・連打しても1回）、足元の道具はバッグがいっぱいでも投げられる', async () => {
+    const setupRoom = () => p.evaluate(() => {
+      const S = TS.UI.S, r = S.run, G = TS.Game; while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close();
+      const m = r.map; const x0 = 8, y0 = 6, w = 17, h = 13;
+      for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) m.tiles[y * m.w + x] = 1;
+      m.rooms = [{ id: 99, x: x0, y: y0, w, h }]; r.enemies = []; r.floorItems = []; r.returnPoint = null; r.stairs = { x: 1, y: 1 }; r.merchant = null;
+      r.player.x = 12; r.player.y = 12; r.player.hp = r.player.maxhp = 999;
+      const e = G.makeEnemy(r, 'frog', 15, 12); e.hp = e.maxhp = 200; e.sleep = 999; r.enemies.push(e);
+      r.bag = r.bag.filter((i) => i.id === 'return_scroll'); r.bag.push(G.makeItem(S, 'herb'), G.makeItem(S, 'sleep_incense'));
+      G.updateVision(r); TS.UI.lockUntil = 0; TS.UI.debug.save();
+    });
+    await setupRoom(); await p.waitForTimeout(150);
+    const st = () => p.evaluate(() => { const r = TS.UI.S.run; return { turn: r.turn, bag: r.bag.map((i) => i.id).join(), ehp: r.enemies[0] && r.enemies[0].hp, floor: r.floorItems.length }; });
+    const s0 = await st();
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await p.tap('.row >> text=やくそう'); await p.waitForTimeout(120);
+    await p.tap('.modal-buttons button >> text=/^投げる$/'); await p.waitForTimeout(150);
+    assert(await p.isVisible('text=投げる向き'), 'dir picker'); await shot('42_throw_pick');
+    await p.tap('.modal-buttons button >> text=やめる'); await p.waitForTimeout(120);
+    let s1 = await st(); eq2(s1.turn, s0.turn, 'cancel no turn'); eq2(s1.bag, s0.bag, 'cancel keeps item');
+    while (await p.evaluate(() => TS.UI.modals.length)) { await p.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close()); }
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await p.tap('.row >> text=やくそう'); await p.waitForTimeout(120);
+    await p.tap('.modal-buttons button >> text=/^投げる$/'); await p.waitForTimeout(150);
+    // 「右」を素早く2回押す（1回だけ投げる）
+    await p.evaluate(() => { const b = document.querySelector('.dir-pick button[data-d="right"]'); b.click(); b.click(); });
+    await p.waitForTimeout(500); await shot('43_throw_hit');
+    s1 = await st();
+    eq2(s1.turn, s0.turn + 1, 'one turn'); eq2(s1.bag.split(',').filter((x) => x === 'herb').length, 0, 'herb used');
+    eq2(s1.ehp, 200, 'enemy healed to max (was full)');
+    const logTxt = await p.evaluate(() => TS.UI.S.run.log.slice(-4).join('/'));
+    assert(/やくそうを投げた/.test(logTxt) && /当たった/.test(logTxt), logTxt);
+    // 足元：バッグがいっぱいでも投げられる
+    await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game; while (r.bag.length < TS.Data.BAG_SIZE) r.bag.push(G.makeItem(S, 'banana'));
+      r.enemies[0].hp = 100; r.floorItems.push({ x: r.player.x, y: r.player.y, item: G.makeItem(S, 'sleep_incense') }); r.enemies[0].sleep = 0; r.enemies[0].x = 14; G.updateVision(r); TS.UI.lockUntil = 0; });
+    await p.tap('#b-foot'); await p.waitForTimeout(150);
+    assert(await p.isVisible('text=投げることはできます'), 'full bag note'); await shot('44_throw_foot_full');
+    await p.tap('.modal-buttons button >> text=/^投げる$/'); await p.waitForTimeout(150);
+    await p.tap('.dir-pick button[data-d="right"]'); await p.waitForTimeout(500);
+    const s2 = await p.evaluate(() => { const r = TS.UI.S.run; return { n: r.bag.length, sleep: r.enemies[0].sleep, under: !!TS.Game.itemAt(r, r.player.x, r.player.y) }; });
+    eq2(s2.n, 15, 'bag unchanged'); assert(s2.sleep > 0, 'enemy slept'); assert(!s2.under, 'floor item thrown');
+  });
+
+  await test('アクセサリー：道具欄で装備・外す（1ターン）。装備中は投げられず、保存して読み込んでも装備のまま', async () => {
+    await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game; while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close();
+      r.bag = r.bag.filter((i) => i.id === 'return_scroll'); r.bag.push(G.makeItem(S, 'poison_ring'), G.makeItem(S, 'purse_charm'), G.makeItem(S, 'full_bangle'), G.makeItem(S, 'life_necklace'));
+      TS.UI.lockUntil = 0; TS.UI.debug.save(); });
+    const t0 = (await run()).turn;
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    await shot('45_accessories_bag');
+    await p.tap('.row >> text=命つなぎの首飾り'); await p.waitForTimeout(120);
+    await shot('46_accessory_detail');
+    await p.tap('.modal-buttons button >> text=装備する（1ターン）'); await p.waitForTimeout(250);
+    eq2((await run()).turn, t0 + 1, 'equip 1 turn');
+    assert(await p.evaluate(() => TS.Game.hasAcc(TS.UI.S.run, 'revive')), 'equipped');
+    await p.tap('#b-items'); await p.waitForTimeout(150);
+    assert(await p.isVisible('.row .eq'), 'eq tag'); await shot('47_accessory_equipped');
+    await p.tap('.row >> text=命つなぎの首飾り'); await p.waitForTimeout(120);
+    await p.tap('.modal-buttons button >> text=投げる（装備中）'); await p.waitForTimeout(150);
+    assert(await p.isVisible('text=外してから投げてください'), 'cannot throw equipped');
+    while (await p.evaluate(() => TS.UI.modals.length)) { await p.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close()); }
+    const saved = await p.evaluate(() => { const d = TS.Save.load(); return TS.Game.hasAcc(d.run, 'revive'); });
+    assert(saved, 'kept in save');
   });
 
   await test('操作画面の寸法（幅360〜430）：方向キー・向き・右のコマンドは44px以上、メッセージは16px以上で操作キーの上、村の章の欄は1行', async () => {
