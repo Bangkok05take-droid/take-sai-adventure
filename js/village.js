@@ -145,6 +145,9 @@
           P.set(gx, gy, c);
         }
         if (k === 's') for (let y = 0; y < T; y += 8) { P.rect(X, Y + y, T, 2, sh(C.stone, 0.15)); P.rect(X, Y + y + 6, T, 2, C.stoneD); }
+      } else if (k === 't' && TX.sandstone && lv.ruinArt) {
+        // 寺院の段（遺跡の床）：砂岩の石畳を古びた色に（少し暗く、赤みを足す）
+        for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) P.set(X + x, Y + y, mix(texAt(TX.sandstone, X + x, Y + y), '#7a4a34', 0.32));
       } else if (k === 't') {
         for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) P.set(X + x, Y + y, sh('#9a5a3a', ((hash(X + x >> 3, Y + y >> 2, 4) & 7) - 3.5) * 0.03));
       } else if (k === 'w' || k === 'd' || k === 'r') {
@@ -713,10 +716,56 @@
     return true;
   }
 
+  // ---------------- アユタヤの遺跡（素材の絵） ----------------
+  /* 丘の上の寺院の段（x7〜12・y0〜3、通れない）の上に、2本の赤レンガの塔と、石段の上に立つ古い門を置く。
+   * 門の開口は石段 (9,4)・(10,4) の真上：石段に立つと門の中に立つ（たけは門より手前に描く）。石段の両わきは木の根が絡む壁と崩れた壁。
+   * 当たり（通れるマス）は今までの地図のまま。寺院の修復の段階（章）は、塔の上に重ねて見せる：
+   *   第1章：塔の先が崩れたまま・がれき／第2〜3章：足場／第3章〜：門の旗／第4章〜：塔の先の金の飾り／全章クリア：門の上の光
+   *   村の発展「黄金の門」：門の頂の金の飾りと、敷居の金の帯 */
+  function ruinsObjects(lv, add) {
+    const A = SP.art.village, tw = A.ruin_tower, gt = A.ruin_gate, by = A.ruin_banyan_wall, bw = A.ruin_broken_wall;
+    if (!tw || !gt || !by || !bw) return false;
+    const ch = lv.chapter, base = 5 * T - 2;                 // 門・壁の足元（石段の行の下）
+    const gx = 10 * T - TS.ASSETS.village.ruins.gateOpen;    // 開口の中心を石段の真ん中（x=320）に
+    // 塔：門の左右の低い壁の奥（寺院の段の上）。第1章は先が崩れたまま（上を切る）
+    const cut = ch <= 1 && !lv.ending ? Math.round(tw.height * 0.34) : 0;
+    const towers = [[gx + 20, 3 * T + 20], [gx + gt.width - 22, 3 * T + 20]];
+    for (const [cx, foot] of towers) add({ img: tw, src: [0, cut, tw.width, tw.height - cut], x: cx - tw.width / 2, y: foot - tw.height + cut, w: tw.width, h: tw.height - cut, sortY: foot });
+    // 塔の上の重ね絵（足場・金の飾り・がれき）
+    const P = new SP.Pix(MW * T, 5 * T);
+    for (const [cx, foot] of towers) {
+      const top = foot - tw.height + cut;
+      if (ch <= 1 && !lv.ending) for (let i = 0; i < 6; i++) { const h = hash(cx, i, 9); P.ball(cx - 26 + (h % 52), foot - 2 - ((h >> 8) % 5), 4, 3, R('#b0603a'), {}); }
+      if ((ch === 2 || ch === 3) && !lv.ending) {   // 足場（木の柱と横木）
+        for (let x = cx - 24; x <= cx + 24; x += 16) P.rect(x, top + 18, 2, foot - top - 22, '#a87a48');
+        for (let y = top + 22; y < foot - 6; y += 18) { P.rect(cx - 25, y, 52, 2, '#c89a60'); P.rect(cx - 25, y + 2, 52, 1, '#7a5430'); }
+      }
+      if (ch >= 4 || lv.ending) { P.rect(cx - 1, top - 7, 3, 9, C.goldL); P.rect(cx, top - 7, 1, 9, C.gold); P.ball(cx + 0.5, top - 9, 2.5, 2.5, R(C.gold), { dither: false }); }
+    }
+    P.outline(0.6);
+    add({ cv: P.canvas(), x: 0, y: 0, sortY: 3 * T + 21 });
+    // 門（石段の上）
+    add({ img: gt, x: gx, y: base - gt.height + 1, w: gt.width, h: gt.height, sortY: base - 1 });
+    // 門の上の重ね絵（旗・黄金の門・全章クリアの光）
+    const Q = new SP.Pix(MW * T, 5 * T), gTop = base - gt.height + 1, ox = gx + TS.ASSETS.village.ruins.gateOpen;
+    if (ch >= 3 || lv.ending) { banner(Q, gx + 34, base - 22, C.teal); banner(Q, gx + gt.width - 46, base - 22, C.red); }
+    if (lv.decor.gate) {   // 黄金の門：門の頂の金の飾りと、敷居の金の帯
+      Q.rect(ox - 1, gTop - 8, 3, 10, C.goldL); Q.rect(ox, gTop - 8, 1, 10, C.gold); Q.ball(ox + 0.5, gTop - 10, 3, 3, R(C.gold), { dither: false });
+      Q.rect(ox - 15, base - 21, 30, 2, C.gold); Q.rect(ox - 15, base - 21, 30, 1, C.goldL);
+    }
+    if (lv.cleared) Q.ball(ox, gTop - 22, 5, 5, R('#c8f0ff'), { dither: false });
+    add({ cv: Q.canvas(), x: 0, y: 0, sortY: base });
+    // 石段の両わき：左に木の根が絡む壁、右に崩れた壁（足元は石段の行。人物は手前の道を歩く）
+    add({ img: by, x: gx - by.width + 6, y: base - by.height + 1, w: by.width, h: by.height, sortY: base - 1 });
+    add({ img: bw, x: gx + gt.width - 6, y: base - bw.height + 1, w: bw.width, h: bw.height, sortY: base - 1 });
+    return true;
+  }
+
   // ---------------- まとめ ----------------
   /* 村の絵と当たり判定を作る（村の状態が変わったときだけ） */
   VL.build = function (lv) {
-    lv = Object.assign({}, lv, { pierArt: hasArt('pier') && hasArt('boat') && hasArt('quay') });   // 港の素材の絵が使えるか
+    lv = Object.assign({}, lv, { pierArt: hasArt('pier') && hasArt('boat') && hasArt('quay'),   // 港の素材の絵が使えるか
+      ruinArt: ['tower', 'gate', 'banyan_wall', 'broken_wall'].every((n) => hasArt('ruin_' + n)) });   // 遺跡の素材の絵が使えるか
     const G = groundMap(lv), Lo = layout(lv);
     const solid = new Uint8Array(MW * MH);
     for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) solid[y * MW + x] = WALK[G[y][x]] ? 0 : 1;
@@ -724,7 +773,9 @@
     const objs = [], lights = [], smoke = [], steam = [], labels = [];
     const add = (o, sortY) => { objs.push(Object.assign(o, { sortY: sortY !== undefined ? sortY : o.sortY !== undefined ? o.sortY : o.y + o.cv.height - 3 })); if (o.lights) lights.push(...o.lights); if (o.smoke) smoke.push(...o.smoke); if (o.steam) steam.push(...o.steam); };
     // 寺院と建設予定地
-    add(temple(lv)); block(7, 0, 6, 4);
+    // 寺院（丘の上の遺跡）：素材の絵があれば、石段の上の古い門と、その奥の2本の赤レンガの塔。読み込めなければ今までの寺院
+    if (!(lv.ruinArt && ruinsObjects(lv, add))) add(temple(lv));
+    block(7, 0, 6, 4);
     add(site('school', [1, 1, 5, 3])); block(1, 1, 5, 3); labels.push(['学校（建設予定地）', 3.5 * T, 1 * T - 12]);
     add(site('library', [14, 1, 5, 3])); block(14, 1, 5, 3); labels.push(['図書館（建設予定地）', 16.5 * T, 1 * T - 12]);
     // 施設
@@ -746,8 +797,9 @@
     const st = stArt ? Object.assign(stArt, { statueAt: null }) : statue(lv);
     add(st); block(9, 11, 2, 2); labels.push(['マスターヤナイの像', 10 * T, 11 * T - (stArt ? 52 : 70)]);
     // 木・ヤシ（道や入口をふさがない場所だけ）
-    const trees = [['palm', 0, 4], ['round', 6, 4], ['round', 13, 4], ['palm', 19, 4], ['palm', 0, 8], ['palm', 19, 8], ['round', 5, 11], ['flower', 19, 12],
-      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 5, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]];
+    const trees = [['palm', 0, 4]].concat(lv.ruinArt ? [] : [['round', 6, 4], ['round', 13, 4]], [['palm', 19, 4]],   // 石段の両わきの木は、遺跡の壁（木の根が絡む壁・崩れた壁）に置きかえ
+      [ ['palm', 0, 8], ['palm', 19, 8], ['round', 5, 11], ['flower', 19, 12],
+      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 5, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]]);
     // 丸い木は素材の木（当たりは幹のマスだけ。樹冠は奥を歩く人の手前に重なる）
     for (const [k, x, y] of trees) { if (!WALK[G[y][x]] || G[y][x] === 'f') { add((k === 'round' && artProp('tree', x * T + 16, (y + 1) * T - 1)) || tree(k, x, y, lv.night)); solid[y * MW + x] = 1; } }
     // 小物：植木鉢・樽・灯り（道のわき）
@@ -799,11 +851,11 @@
     if (lv.legacy || lv.legacy30) { // 旧版の記録の記念碑
       const x = 12 * T + 16, y = 12 * T + 30; props.rect(x - 8, y - 22, 16, 22, sh(C.stone, -0.05)); props.rect(x - 9, y - 23, 18, 2, C.gold); props.ball(x, y - 28, 5, 5, R(lv.legacy30 ? C.gold : '#c0c8d0'), { dither: false }); propAt.push([12, 12]);
     }
-    if (lv.decor.gate) { // 黄金の門（寺院の石段）
+    if (lv.decor.gate && !lv.ruinArt) { // 黄金の門（寺院の石段。遺跡の絵があるときは門の絵の上に描く）
       for (const x of [8 * T + 20, 11 * T + 10]) { props.box(x, 4 * T - 30, 6, 34, R(C.gold)); }
       props.rect(8 * T + 16, 4 * T - 34, 3 * T + 4, 5, C.gold); props.rect(8 * T + 16, 4 * T - 35, 3 * T + 4, 1, C.goldL);
     }
-    if (lv.decor.gate) propAt.push([8, 3, 4]);
+    if (lv.decor.gate && !lv.ruinArt) propAt.push([8, 3, 4]);
     props.outline(0.75);
     // 小物は1マスずつの切り抜きにして、人物と足元の高さ順に重ねる（灯りの柱の奥を通ると、柱が手前に見える）
     const pcv = props.canvas();

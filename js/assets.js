@@ -85,6 +85,9 @@
        * pierCut：桟橋は川（3マス）に合わせて、くり返しの区間（綱の所 83〜178 行）を抜いて短くする
        * quayRect：岸壁は左右の透明な余白を除いた部分を横に並べる。quayTop：上面の石の高さ（その下が前面の石積み）
        * boatBob：舟だけゆっくり上下（描く位置だけ。操作の範囲は動かさない） */
+      /* アユタヤの遺跡（2026年10月）：見本 assets/reference/ayutthaya-ruins-v1.png から tools/extract-ruins.py で作った、村の大きさそのままの絵。
+       * gateOpen：門の開口の中心（絵の左から）。この位置を石段（x9〜10）の真ん中に置く */
+      ruins: { dir: 'assets/village/ruins/', names: ['tower', 'gate', 'banyan_wall', 'broken_wall'], gateOpen: 82 },
       harbor: { pierCut: [83, 178], quayRect: [2, 11, 252, 51], quayTop: 25, boatBob: { amp: 1, period: 4000 } },
       /* 施設の絵の入口の中心（絵の左からのドット）。絵の足元（anchor）ではなく、この位置を「入る位置」のマスの真上に置く。
        * 食堂の入口は左寄り。鍛冶屋は開いた作業場の正面。炉の口・煙突・鍋の位置は火の光・煙・湯気に使う */
