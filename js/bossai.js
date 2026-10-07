@@ -17,7 +17,8 @@
     return [sgn(dx), sgn(dy)];
   }
   // ボス部屋（ボスのいる部屋）
-  const arena = (run, e) => DG.roomAt(run.map, e.x, e.y) || run.map.rooms[run.map.rooms.length - 1];
+  // ボス部屋（階を作ったときに決めた部屋。ボスがどこにいても同じ部屋。以前はボスのいる部屋で、通路に出ると別の部屋になっていた）
+  const arena = (run, e) => run.bossFight || DG.roomAt(run.map, e.x, e.y) || run.map.rooms[run.map.rooms.length - 1];
   // たけに気づいているか（霧などで見えなくても、同じ部屋にいれば戦い続ける）
   function aware(run, e, sees) {
     if (sees) e.awake = true;
@@ -30,7 +31,7 @@
   const say = (run, msg) => G.log(run, msg);
   const freeTiles = (run, room, ok) => {
     const out = [];
-    for (let y = room.y; y < room.y + room.h; y++) for (let x = room.x; x < room.x + room.w; x++) if (ok(x, y)) out.push({ x, y });
+    for (let y = room.y; y < room.y + room.h; y++) for (let x = room.x; x < room.x + room.w; x++) if (DG.passable(run.map, x, y) && ok(x, y)) out.push({ x, y });
     return out;
   };
 

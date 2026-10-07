@@ -209,6 +209,7 @@
       const HC = { fire: [255, 110, 40], ice: [110, 210, 255], trap: [200, 90, 255], bolt: [255, 230, 80] };
       g.textAlign = 'center'; g.font = `bold ${Math.round(ts * 0.42)}px sans-serif`;
       for (const h of run.hazards) {
+        if (!run.explored[h.y * run.map.w + h.x]) continue;   // まだ見ていない場所の印は描かない（暗い所に数字だけ並ぶのを防ぐ）
         const c = HC[h.kind] || HC.fire, x = ox + h.x * ts, y = oy + h.y * ts, n = h.t - 1;
         g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${(n <= 0 ? 0.55 : 0.28) + 0.12 * Math.sin(now / 140)})`;
         g.fillRect(x + k, y + k, ts - 2 * k, ts - 2 * k);
@@ -300,12 +301,13 @@
         g.strokeStyle = `rgba(255,90,90,${0.55 + 0.3 * Math.sin(now / 120)})`;
         for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 2 * k, oy + t.y * ts + 2 * k, ts - 4 * k, ts - 4 * k);
       }
-      if (run.hazards && run.hazards.length) for (const h of run.hazards) { g.strokeStyle = 'rgba(255,240,200,0.7)'; g.strokeRect(ox + h.x * ts + 2 * k, oy + h.y * ts + 2 * k, ts - 4 * k, ts - 4 * k); }
+      if (run.hazards && run.hazards.length) for (const h of run.hazards) { if (!run.explored[h.y * run.map.w + h.x]) continue; g.strokeStyle = 'rgba(255,240,200,0.7)'; g.strokeRect(ox + h.x * ts + 2 * k, oy + h.y * ts + 2 * k, ts - 4 * k, ts - 4 * k); }
     }
     // 床の危険の数字（発動までにたけが動ける回数）：マスの中央に1回だけ、絵の上に描く
     if (run.hazards && run.hazards.length) {
       g.textAlign = 'center'; g.font = `bold ${Math.round(ts * 0.38)}px sans-serif`;
       for (const h of run.hazards) {
+        if (!run.explored[h.y * run.map.w + h.x]) continue;
         const x = ox + h.x * ts + ts / 2, y = oy + h.y * ts + ts * 0.66, n = String(Math.max(0, h.t - 1));
         g.lineWidth = k * 2.5; g.strokeStyle = '#1a0a10'; g.strokeText(n, x, y); g.fillStyle = '#ffffff'; g.fillText(n, x, y);
       }
@@ -356,7 +358,8 @@
     }
     drawFx(g, now, ox, oy, ts, k);
     // ボスのHP
-    const boss = run.enemies.find((e) => e.boss && (G.isVisible(run, e.x, e.y) || (run.fog > 0 && e.awake)));
+    // ボス戦が始まってから（部屋に入るまでは出さない）
+    const boss = (!run.bossFight || run.bossFight.engaged) && run.enemies.find((e) => e.boss && (G.isVisible(run, e.x, e.y) || (run.fog > 0 && e.awake) || (run.bossFight && run.bossFight.engaged)));
     if (boss) {
       const bw = W * 0.6, bx = (W - bw) / 2, by = H - 14 * dpr;
       g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(bx - 2 * dpr, by - 16 * dpr, bw + 4 * dpr, 26 * dpr);

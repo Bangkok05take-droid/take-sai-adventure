@@ -68,6 +68,12 @@
     if (A.bgmName === 'title' && !A.fanfareDone && A.enabled && !A.bgmHold && !A.titleQuiet && A.running()) A.playBgm('title', true);
   }
   /* 読み込み直後に、操作なしで音を出せるか試す（許されないブラウザでは止まったまま作られ、最初の操作で再開する） */
+  /* 場面の曲を止める（倒れたときなど。次に playBgm が呼ばれた場面の曲から流れる） */
+  A.stopBgm = function (fade) {
+    A.bgmName = null;
+    if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; }
+    stopSceneMusic(fade == null ? 0.8 : fade);
+  };
   A.tryAutoplay = function () { if (A.enabled && !A.ctx) A.unlock(); };
   function stopSceneMusic(fade) { const M = TS.Music; if (M && M.current && M.current.bgm) M.stop(fade); }
 

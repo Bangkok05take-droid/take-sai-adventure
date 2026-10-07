@@ -43,7 +43,17 @@ function addEnemy(S, type, x, y) {
 }
 
 // ボスを倒す（テスト用：HPを1にして隣から攻撃）
+// テスト用：ボス戦を始める（たけをボス部屋の中に置いたあと。入室の1ターン待ちは消して、以前のテストの手順のまま）
+function engage(S) {
+  const run = S.run;
+  if (!run.bossFight || run.bossFight.engaged) return;
+  const p = run.player;
+  if (!G.inArena(run, p.x, p.y)) { const c = G.arenaCenter(run, run.enemies); const keep = { x: p.x, y: p.y }; p.x = c.x; p.y = c.y; G.checkBossRoom(S, []); p.x = keep.x; p.y = keep.y; }
+  else G.checkBossRoom(S, []);
+  for (const e of run.enemies) if (e.boss) e.hold = 0;
+}
 function defeatBoss(S) {
+  engage(S);
   const run = S.run, b = run.enemies.find((e) => e.boss);
   b.hp = 1; b.sleep = 99; b.charge = null; run.hazards = [];
   run.enemies = run.enemies.filter((e) => e === b || !e.summoned);
@@ -1375,6 +1385,7 @@ function chapterRun(ch, seed, floor) {
 }
 // ボス部屋の中で、ボスから見て (dx,dy) の位置にたけを置く
 function placeNear(S, dx, dy) {
+  engage(S);
   const run = S.run, b = run.enemies.find((e) => e.boss);
   run.player.x = b.x + dx; run.player.y = b.y + dy; run.player.hp = run.player.maxhp = 5000;
   G.updateVision(run); return b;
@@ -1773,6 +1784,132 @@ test('床のお宝は宝箱の絵（素材は assets/chest/）。お金・素材
     assert(fs_.existsSync(path.join(root, A.items.byIdDir, id + '.png')) && fs_.existsSync(path.join(root, A.items.byIdDir, 'floor', id + '.png')), id + ' art');
   }
   for (const id of Object.keys(SV.RENAME_V4)) assert(!A.items.byId[id], 'old art entry removed ' + id);
+});
+
+console.log('ボス部屋：入室で戦闘開始・部屋の外へ出ない（2026年10月）');
+// ボスの階へ（ボスには触れない）。たけは前室（スタート）にいる
+function toBossFloor(ch, seed) {
+  const S = newRun(seed, (s) => { s.village.story.chapter = ch; if (ch === 6) for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) s.village.story.defeated[k] = true; });
+  const goal = D.CHAPTERS[ch].goal;
+  while (S.run.floor < goal) { const r = S.run; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+  S.run.player.hp = S.run.player.maxhp = 99999;
+  return S;
+}
+// 通路の、部屋の入口の1つ手前のマス（部屋の外）
+function doorOutside(run) {
+  const A = run.bossFight;
+  for (let y = A.y; y < A.y + A.h; y++) { const x = A.x - 1; if (TS.Dungeon.passable(run.map, x, y)) return { x, y }; }
+  throw new Error('no door');
+}
+const insideAll = (run) => run.enemies.filter((e) => e.boss || e.summoned).every((e) => G.inArena(run, e.x, e.y));
+test('全ボス：入室前は部屋の中央で待ち（移動・攻撃・特殊攻撃・予告なし、通路から見えても追わない）、入室で1回だけ戦闘開始。開始後も部屋の外へ出ない', () => {
+  for (const ch of [1, 2, 3, 4, 5, 6]) {
+    const S = toBossFloor(ch, 900 + ch), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
+    eq(G.maxFloor(run), D.CHAPTERS[ch].goal, 'boss floor kept ch' + ch); eq(b.type, D.CHAPTERS[ch].boss);
+    assert(A && !A.engaged, 'waiting ch' + ch);
+    // 中央（部屋の真ん中から1マス以内）
+    const cx = A.x + (A.w >> 1), cy = A.y + (A.h >> 1);
+    assert(Math.max(Math.abs(b.x - cx), Math.abs(b.y - cy)) <= 1, 'center ch' + ch + ' ' + JSON.stringify([b.x, b.y, cx, cy]));
+    eq(G.dungeonBgm(run), 'dungeon', 'normal music before');
+    // 通路を部屋の入口の手前まで歩き、そこで待つ（ボスから見える位置でも）
+    const door = doorOutside(run);
+    run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
+    const pos0 = [b.x, b.y], hp0 = b.hp;
+    for (let i = 0; i < 25; i++) { const r = G.act(S, { type: 'wait' }); assert(!r.events.some((e) => e.t === 'bossStart'), 'no start in corridor'); }
+    assert(b.x === pos0[0] && b.y === pos0[1] && !b.charge && !run.hazards.length && !run.fog && run.enemies.length === 1 && b.hp === hp0 && !A.engaged, 'boss stays idle ch' + ch);
+    // 部屋に入る（右へ1歩）：戦闘開始は1回だけ。入ったターンにボスは動かない
+    const r1 = G.act(S, { type: 'move', dir: 'right' });
+    eq(r1.events.filter((e) => e.t === 'bossStart').length, 1, 'start once ch' + ch);
+    assert(A.engaged && G.inArena(run, run.player.x, run.player.y));
+    assert(b.x === pos0[0] && b.y === pos0[1] && !b.charge, 'no extra action on the entry turn ch' + ch);
+    eq(G.dungeonBgm(run), 'boss');
+    // 戦い：入ったり出たりしながら長く続ける。ボス・分身・手下はいつも部屋の中。床の印は有効なマス
+    let starts = 0;
+    for (let t = 0; t < 160 && run.enemies.includes(b) && !run.over; t++) {
+      const out = Math.floor(t / 20) % 2 === 1;   // 20ターンごとに通路へ出る／戻る
+      const p = run.player;
+      if (out && G.inArena(run, p.x, p.y)) { const st = TS.Dungeon && G.act(S, { type: 'move', dir: 'left' }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
+      else if (!out && !G.inArena(run, p.x, p.y)) { const st = G.act(S, { type: 'move', dir: 'right' }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
+      else { const st = G.act(S, { type: 'wait' }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
+      run.player.hp = run.player.maxhp;
+      assert(insideAll(run), 'confined ch' + ch + ' t' + t + ' ' + JSON.stringify(run.enemies.map((e) => [e.type, e.x, e.y])));
+      for (const h of run.hazards) assert(TS.Dungeon.passable(run.map, h.x, h.y), 'hazard on a valid tile');
+      for (const e of run.enemies) if (e.charge) for (const tl of e.charge.tiles) assert(TS.Dungeon.passable(run.map, tl.x, tl.y), 'telegraph on a valid tile');
+      assert(A.engaged, 'stays engaged');
+    }
+    eq(starts, 0, 'no second start ch' + ch);
+    eq(G.dungeonBgm(run), 'boss', 'boss music while the fight continues (even in the corridor)');
+    // セーブ・再開：戦闘中の状態とHPはそのまま
+    const hp = b.hp, L = SV.deserialize(SV.serialize(S));
+    eq(L.run.bossFight.engaged, true); eq(L.run.enemies.find((e) => e.boss).hp, hp, 'hp kept ch' + ch);
+  }
+});
+test('戦いの前のボスには、投げる・杖・ねむり草・雷鳴の巻物・体当たりが効かない（道具・杖の回数・ターンは減らない）', () => {
+  const S = toBossFloor(1, 931), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
+  // ボスと同じ行の通路（入口の手前）。ボスが見える
+  run.player.x = A.x - 1; run.player.y = b.y; G.updateVision(run);
+  assert(TS.Dungeon.passable(run.map, run.player.x, run.player.y), 'door row');
+  const add = (id, extra) => { const it = G.makeItem(S, id, extra); run.bag.push(it); return it; };
+  const herb = add('herb'), staff = add('thunder_staff', { charges: 3 }), grass = add('sleep_incense'), scroll = add('fire_charm');
+  const turn0 = run.turn, hp0 = b.hp, n0 = run.bag.length;
+  let r = G.act(S, { type: 'throw', uid: herb.uid, dir: 'right' });
+  assert(!r.consumed && run.bag.includes(herb) && r.events.some((e) => e.t === 'warn' && e.msg.includes('部屋に入ってから')), 'throw blocked');
+  r = G.act(S, { type: 'use', uid: staff.uid, dir: 'right' });
+  assert(!r.consumed && staff.charges === 3, 'staff blocked, charges kept');
+  r = G.act(S, { type: 'use', uid: grass.uid });
+  assert(!r.consumed && run.bag.includes(grass) && !b.sleep, 'sleep blocked');
+  r = G.act(S, { type: 'use', uid: scroll.uid });
+  assert(!r.consumed && run.bag.includes(scroll), 'scroll blocked');
+  eq(run.turn, turn0); eq(b.hp, hp0); eq(run.bag.length, n0); assert(!A.engaged);
+  // 入室すれば効く
+  G.act(S, { type: 'move', dir: 'right' }); assert(A.engaged);
+  r = G.act(S, { type: 'use', uid: staff.uid, dir: 'right' });
+  assert(r.consumed && staff.charges === 2, 'staff works after the start');
+});
+test('最終章：大魔王バーン→準備→真大魔王バーンの間はボス戦の曲のまま。真大魔王バーンも部屋の中だけ。報酬は1回だけ', () => {
+  const S = toBossFloor(6, 941), run = S.run;
+  run.player.x = doorOutside(run).x; run.player.y = doorOutside(run).y; G.updateVision(run);
+  G.act(S, { type: 'move', dir: 'right' });
+  assert(run.bossFight.engaged);
+  defeatBoss(S);
+  eq(run.final.stage, 'prep'); eq(G.dungeonBgm(run), 'boss', 'prep keeps the boss music');
+  G.markFinalCutscene(S); G.startFinalBattle(S);
+  const tv = run.enemies.find((e) => e.type === 'truevearn');
+  assert(tv && G.inArena(run, tv.x, tv.y) && run.bossFight.engaged);
+  for (let i = 0; i < 40 && run.enemies.includes(tv); i++) { G.act(S, { type: 'wait' }); run.player.hp = run.player.maxhp; assert(insideAll(run)); }
+  defeatBoss(S);
+  assert(run.bossFight.won); eq(G.dungeonBgm(run), 'dungeon');
+  const n = run.floorItems.filter((f) => f.item && f.item.id === 'dream_crown').length;
+  const L = SV.deserialize(SV.serialize(S));
+  eq(L.run.floorItems.filter((f) => f.item && f.item.id === 'dream_crown').length, n, 'no duplicate reward after reload');
+});
+test('以前のセーブ（ボス戦の途中・ボスが通路にいる）：HPと戦いの状態を引き継ぎ、ボスを部屋の中（たけと重ならない所）へ戻す', () => {
+  // 戦いの途中（HPが減っている・ボスが通路）
+  const S = toBossFloor(2, 951), run = S.run, b = run.enemies.find((e) => e.boss);
+  const door = doorOutside(run);
+  b.hp = Math.floor(b.maxhp * 0.6); b.x = door.x - 1; b.y = door.y; run.player.x = door.x - 2; run.player.y = door.y;
+  const raw = JSON.parse(SV.serialize(S)); raw.version = 4; delete raw.run.bossFight;
+  const L = SV.deserialize(JSON.stringify(raw)), lb = L.run.enemies.find((e) => e.boss);
+  assert(L.run.bossFight && L.run.bossFight.engaged, 'engaged from hp');
+  eq(lb.hp, Math.floor(b.maxhp * 0.6), 'hp kept');
+  assert(G.inArena(L.run, lb.x, lb.y) && !(lb.x === L.run.player.x && lb.y === L.run.player.y), 'moved into the room');
+  for (let i = 0; i < 20; i++) { G.act(L, { type: 'wait' }); L.run.player.hp = L.run.player.maxhp; assert(insideAll(L.run)); }
+  // まだ始まっていない（満タン・たけは前室）：待機のまま、中央へ
+  const S2 = toBossFloor(3, 952), raw2 = JSON.parse(SV.serialize(S2)); raw2.version = 4; delete raw2.run.bossFight;
+  const L2 = SV.deserialize(JSON.stringify(raw2));
+  assert(L2.run.bossFight && !L2.run.bossFight.engaged, 'waiting');
+  // 倒したあと（ボスがいない）：戦いは終わり。報酬・撃破の記録はそのまま
+  const S3 = toBossFloor(1, 953); defeatBoss(S3);
+  const items = S3.run.floorItems.length, raw3 = JSON.parse(SV.serialize(S3)); raw3.version = 4; delete raw3.run.bossFight;
+  const L3 = SV.deserialize(JSON.stringify(raw3));
+  assert(L3.run.bossFight.won); eq(L3.run.floorItems.length, items); eq(L3.village.story.defeated.croc, true);
+});
+test('以前の不具合の再現：ボスが通路へ出て、見えていない部屋に炎の印が並ぶことはない（フレイザード・20階）', () => {
+  const S = toBossFloor(2, 77), run = S.run;
+  for (let t = 0; t < 40; t++) { const p = run.player; if (p.x < 10) G.act(S, { type: 'move', dir: 'right' }); else G.act(S, { type: 'wait' }); }
+  const b = run.enemies.find((e) => e.boss);
+  assert(G.inArena(run, b.x, b.y), 'boss stays in the room');
+  eq(run.hazards.length, 0, 'no hazards while waiting');
 });
 
 console.log('（参考）自動プレイによるバランス確認');

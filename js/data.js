@@ -4,7 +4,7 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 4;
+  D.SAVE_VERSION = 5;
   D.SAVE_KEY = 'takeSaiAdventure.save';
 
   // マップ（3x3 の区画にランダムな部屋を置く）

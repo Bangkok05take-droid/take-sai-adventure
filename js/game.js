@@ -210,15 +210,21 @@
     }
     placeMonsterHouse(S, gen, occupied);
     placeMerchant(S, gen);
+    run.bossFight = null;
     if (F.boss) {
-      const b = makeEnemy(run, F.boss, gen.bossPos.x, gen.bossPos.y);
+      /* ボス部屋：ボスは部屋の中央で待ち、たけが部屋の中へ初めて入ったときに戦いが始まる（run.bossFight.engaged）。
+       * ボスと呼び出された敵は、この部屋の中だけを動く */
+      const room = DG.roomAt(run.map, gen.bossPos.x, gen.bossPos.y) || run.map.rooms[run.map.rooms.length - 1];
+      run.bossFight = { x: room.x, y: room.y, w: room.w, h: room.h, engaged: false };
+      const c = G.arenaCenter(run, occupied);
+      const b = makeEnemy(run, F.boss, c.x, c.y);
       b.boss = true;
       run.enemies.push(b);
       if (run.final && F.boss === 'vearn') { run.final.stage = 'battle1'; run.final.healed = false; run.final.cutsceneSeen = false; S.village.story.finalStage = 'battle1'; }
     }
     G.log(run, '地下' + floor + '階　' + D.THEMES[F.theme].name);
     if (run.returnPoint) G.log(run, 'この階には村へ帰れる「帰還の祠」がある。');
-    if (F.boss) G.log(run, '奥から大きな気配がする…。' + D.ENEMIES[F.boss].name + 'が待ち構えている！');
+    if (F.boss) G.log(run, '奥から大きな気配がする…。' + D.ENEMIES[F.boss].name + 'が部屋の奥で待ち構えている！');
     G.updateVision(run);
   }
 
@@ -398,6 +404,8 @@
       else if (a.type === 'use') { const it = G.findBag(run, a.uid); if (it && ['heal', 'food', 'cure', 'clear'].includes(G.def(it).type)) useItem(S, a.uid, a.dir, ev); }
       return { consumed: false, events: ev };
     }
+    // すでにボス部屋の中にいる（読み込み直し・移動以外で入った）なら、行動の前に戦いを始める
+    if (run.bossFight && !run.bossFight.engaged) checkBossRoom(S, ev);
     switch (a.type) {
       case 'move': consumed = doMove(S, a.dir, ev); break;
       case 'wait': consumed = true; ev.push({ t: 'wait' }); break;
@@ -438,6 +446,7 @@
     // 商人には攻撃しない。ぶつかると話しかける（ターンは進まない）
     if (G.merchantAt(run, nx, ny)) { ev.push({ t: 'merchant' }); return false; }
     const e = G.enemyAt(run, nx, ny);
+    if (e && G.bossWaiting(run, e)) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; }
     if (e) { playerAttack(S, e, ev); return true; }
     if (p.bound > 0) { // 拘束中は移動できない（攻撃・道具・足踏みはできる）。ターンは消費しない
       G.log(run, '体が動かない！（攻撃・道具・足踏みはできる。あと' + p.bound + 'ターン）');
@@ -449,6 +458,7 @@
     G.updateVision(run);
     pickup(S, ev, false);
     checkMonsterHouse(run, ev);
+    checkBossRoom(S, ev);
     if (G.onStairs(run)) ev.push({ t: 'onStairs' });
     if (G.onReturnPoint(run)) ev.push({ t: 'onReturnPoint' });
     if (G.onPortal(run)) ev.push({ t: 'onPortal' });
@@ -538,10 +548,12 @@
   function bossDefeated(S, e, ev) {
     const run = S.run, V = S.village, E = D.ENEMIES[e.type], st = V.story;
     V.bossKills[e.type] = (V.bossKills[e.type] || 0) + 1;
+    // ボスがいなくなったら戦いは終わり（大魔王バーン1戦目のあとは、真大魔王バーンとの戦いが続く）
+    if (run.bossFight && !(e.type === 'vearn' && run.final)) run.bossFight.won = true;
     // 分身・呼ばれた手下・床の危険は消える
     run.enemies = run.enemies.filter((o) => !o.clone && !o.summoned);
     run.hazards = []; run.fog = 0; run.player.bound = 0;
-    const room = DG.roomAt(run.map, e.x, e.y);
+    const room = run.bossFight || DG.roomAt(run.map, e.x, e.y);   // 報酬と帰還口はボス部屋の中に
     const drop = (id) => {
       const taken = run.floorItems.concat([run.player]);
       const pos = !taken.some((t) => t.x === e.x && t.y === e.y) ? { x: e.x, y: e.y } : DG.freeTile(run.map, run.rng, taken, room);
@@ -604,6 +616,7 @@
     if (!run || !run.final || run.final.stage !== 'prep') return false;
     const room = run.map.rooms[1] || run.map.rooms[0];
     let pos = { x: room.x + (room.w >> 1), y: room.y + 2 };
+    if (run.bossFight) { run.bossFight.engaged = true; if (!G.inArena(run, pos.x, pos.y)) pos = G.arenaCenter(run, [run.player]); }
     if (DG.same(pos, run.player) || G.itemAt(run, pos.x, pos.y)) pos = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room);
     const b = makeEnemy(run, 'truevearn', pos.x, pos.y);
     b.boss = true; b.hold = 1;   // 現れたターンは動かない
@@ -634,7 +647,7 @@
    * 戻り値 { res, stop }。stop が null 以外ならダッシュを止める（理由の文字列）。
    * 敵への自動攻撃はしない。 */
   G.DASH_STOP = { enemy: '敵を発見', near: '敵が近い', attackBlocked: '前に敵がいる', damage: 'ダメージを受けた', wall: '壁の前', branch: '分かれ道',
-    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', merchant: '商人がいる', danger: 'HP・満腹度が危険', room: '部屋の出入り', over: '探索終了', event: 'できごと', monsterHouse: 'モンスターハウス' };
+    item: '足元に道具', stairs: '階段', returnPoint: '帰還地点', merchant: '商人がいる', danger: 'HP・満腹度が危険', room: '部屋の出入り', over: '探索終了', event: 'できごと', monsterHouse: 'モンスターハウス', bossStart: 'ボス戦' };
   /* ダッシュ開始時の状況を記録する。すでに見えている敵や、すでに危険域であることでは
    * 毎回止まらない（押し直せば必ず進める）。新しく起きたことだけで止まる。 */
   G.dashContext = function (S) {
@@ -665,6 +678,7 @@
     if (run.over) return 'over';
     const ev = res.events;
     if (ev.some((e) => e.t === 'monsterHouse')) return 'monsterHouse';
+    if (ev.some((e) => e.t === 'bossStart')) return 'bossStart';   // ボス部屋に入った：ダッシュ・長押しを止める
     if (p.hp < hpBefore || ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (G.visibleEnemies(run).some((e) => !ctx.seen.includes(e.id))) return 'enemy';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
@@ -701,6 +715,7 @@
     const ev = res.events;
     if (!ev.some((e) => e.t === 'move')) return 'attackBlocked'; // 攻撃や行動になった
     if (ev.some((e) => e.t === 'monsterHouse')) return 'monsterHouse';
+    if (ev.some((e) => e.t === 'bossStart')) return 'bossStart';   // ボス部屋に入った：ダッシュ・長押しを止める
     if (ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
     if (run.merchant && G.adjacent(run, p, run.merchant)) return 'merchant';
@@ -777,6 +792,8 @@
     if (!it) return false;
     const d = G.def(it);
     const remove = () => { if (fromFloor) run.floorItems.splice(run.floorItems.indexOf(fl), 1); else run.bag.splice(run.bag.indexOf(it), 1); };
+    // 戦いの前のボスには、道具・杖の効果をかけない（使う前に止める。道具・杖の回数・ターンは減らない）
+    if (G.bossWaiting(run) && waitingBossTargeted(run, d, dir)) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; }
     switch (d.type) {
       case 'heal': {
         const before = p.hp;
@@ -860,6 +877,7 @@
         G.log(run, 'けむり玉を投げた！たけは煙にまぎれて逃げ出した。');
         ev.push({ t: 'warp', from, to: { x: p.x, y: p.y } });
         checkMonsterHouse(run, ev);
+        checkBossRoom(S, ev);
         return true;
       }
       case 'slow': {
@@ -965,12 +983,31 @@
     return 'small';
   };
   G.throwSmallDamage = (run) => Math.max(1, Math.round(D.THROW.small.base + D.THROW.small.perFloor * run.floor));
+  /* 道具・杖・投げた物が、戦いの前のボスに当たるか（効果をかける前に調べる） */
+  function firstEnemyInLine(run, dir, range, stopAtMerchant) {
+    const p = run.player, [dx, dy] = DIRS[dir];
+    let x = p.x, y = p.y;
+    for (let i = 0; i < range; i++) {
+      if (!G.canStep(run.map, x, y, dx, dy)) return null;
+      if (stopAtMerchant && G.merchantAt(run, x + dx, y + dy)) return null;
+      x += dx; y += dy;
+      const e = G.enemyAt(run, x, y);
+      if (e) return e;
+    }
+    return null;
+  }
+  function waitingBossTargeted(run, d, dir) {
+    if (['sleep', 'slow', 'fire'].includes(d.type)) return G.visibleEnemies(run).some((e) => e.boss);
+    if (d.type === 'staff' && run.bag) { const dd = dir && DIRS[dir] ? dir : run.player.dir; const e = DIRS[dd] && firstEnemyInLine(run, dd, 20); return !!(e && e.boss); }
+    return false;
+  }
   function throwItem(S, uid, dir, ev, fromFloor) {
     const run = S.run, p = run.player, T = D.THROW;
     if (!DIRS[dir]) return false;
     const fl = fromFloor ? G.itemAt(run, p.x, p.y) : null;
     const it = fromFloor ? (fl && fl.item && fl.item.uid === uid ? fl.item : null) : G.findBag(run, uid);
     if (!it) return false;
+    if (G.bossWaiting(run)) { const e = firstEnemyInLine(run, dir, T.range, true); if (e && e.boss) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; } }
     const chk = G.canThrow(it);
     if (!chk.ok) { G.log(run, chk.msg); return false; }
     const d = G.def(it);
@@ -1081,6 +1118,7 @@
   // ---------- ターン終了処理 ----------
   function endTurn(S, ev) {
     const run = S.run, p = run.player;
+    checkBossRoom(S, ev);
     run.turn++;
     // 満腹度（満腹の腕輪を装備している間は減らない。今の満腹度はそのまま）
     if (!G.hasAcc(run, 'hunger')) p.hungerAcc++;
@@ -1179,10 +1217,51 @@
   }
   G.adjacent = adjacent;
 
+  // ---------- ボス部屋 ----------
+  G.inArena = (run, x, y) => { const A = run && run.bossFight; return !!A && x >= A.x && x < A.x + A.w && y >= A.y && y < A.y + A.h; };
+  // 部屋から出られない敵：ボス本人と、ボスが呼んだ敵・分身
+  const confined = (run, e) => !!(run.bossFight && (e.boss || e.summoned));
+  G.confined = confined;
+  // 戦いが始まる前（たけがまだボス部屋に入っていない）
+  G.bossWaiting = (run, e) => !!(run.bossFight && !run.bossFight.engaged && (!e || e.boss));
+  /* 部屋の中央に近い、空いている床（ボスの置き場所・補正先）。avoid：重ねたくない位置 */
+  G.arenaCenter = function (run, avoid) {
+    const A = run.bossFight, cx = A.x + (A.w >> 1), cy = A.y + (A.h >> 1);
+    let best = null, bd = 1e9;
+    for (let y = A.y; y < A.y + A.h; y++) for (let x = A.x; x < A.x + A.w; x++) {
+      if (!DG.passable(run.map, x, y) || G.enemyAt(run, x, y) || (run.player && run.player.x === x && run.player.y === y)) continue;
+      if (avoid && avoid.some((o) => o && o.x === x && o.y === y)) continue;
+      const d = Math.max(Math.abs(x - cx), Math.abs(y - cy)) * 100 + Math.abs(x - cx) + Math.abs(y - cy);
+      if (d < bd) { bd = d; best = { x, y }; }
+    }
+    return best || { x: cx, y: cy };
+  };
+  /* たけがボス部屋の中へ初めて入ったら戦い開始（1回だけ）。入ったターンにボスは動かない（入室直後の追い打ちなし） */
+  function checkBossRoom(S, ev) {
+    const run = S.run, A = run.bossFight, p = run.player;
+    if (!A || A.engaged || !G.inArena(run, p.x, p.y)) return;
+    A.engaged = true;
+    const bosses = run.enemies.filter((e) => e.boss);
+    for (const b of bosses) { b.hold = Math.max(b.hold || 0, 1); b.awake = true; }
+    const name = bosses.length ? D.ENEMIES[bosses[0].type].name : 'ボス';
+    G.log(run, name + 'との戦いが始まった！');
+    ev.push({ t: 'bossStart', boss: bosses.length ? bosses[0].type : null });
+  }
+  G.checkBossRoom = checkBossRoom;
+  /* ダンジョンの曲：ボス戦の間（入室から撃破まで。大魔王バーンから真大魔王バーンへの準備の間も）はボス戦の曲、それ以外は探索の曲 */
+  G.dungeonBgm = function (run) {
+    const A = run && run.bossFight;
+    if (A && A.engaged && !A.won) return 'boss';
+    return 'dungeon';
+  };
+  const WAIT_MSG = '部屋に入ってから戦おう';
+
   const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
   function enemyAct(S, e, ev) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type];
+    // ボス部屋：戦いが始まるまで、ボスは中央で待つ（移動・攻撃・特殊能力・予告をしない）
+    if (G.bossWaiting(run, e)) return;
     // モンスターハウスで目を覚ました直後のターンは動かない
     if (e.hold > 0) { e.hold--; return; }
     // 眠り（眠ると予告中の攻撃も中断される）
@@ -1250,6 +1329,17 @@
   }
 
   function moveEnemy(run, e) {
+    /* ボス部屋の中だけを動く。たけが部屋の外（通路）にいる間は、入口に立ちふさがらず部屋の中央へ戻る
+     * （入口をふさがない＝いつでも入り直せる。床の大技も部屋の中で使える）。呼ばれた手下は部屋の中をうろつく */
+    if (confined(run, e)) {
+      const A = run.bossFight, p = run.player, out = !G.inArena(run, p.x, p.y);
+      let gx = e.tx != null ? e.tx : p.x, gy = e.ty != null ? e.ty : p.y;
+      if (out) { if (e.boss) { gx = A.x + (A.w >> 1); gy = A.y + (A.h >> 1); } else { randomStep(run, e); return; } }
+      const tx = Math.max(A.x, Math.min(A.x + A.w - 1, gx)), ty = Math.max(A.y, Math.min(A.y + A.h - 1, gy));
+      if (tx === e.x && ty === e.y) return;
+      if (!stepToward(run, e, tx, ty)) randomStep(run, e);
+      return;
+    }
     if (e.tx !== null) {
       if (e.x === e.tx && e.y === e.ty) { e.tx = e.ty = null; randomStep(run, e); return; }
       if (!stepToward(run, e, e.tx, e.ty)) randomStep(run, e);
@@ -1289,8 +1379,10 @@
   function lineTiles(run, e, dx, dy, len) {
     const out = [];
     let x = e.x, y = e.y;
+    const conf = e.id != null && confined(run, e);   // ボスから伸びる直線（突進・剣技など）は部屋の中まで
     for (let i = 0; i < len; i++) {
       if (!G.canStep(run.map, x, y, dx, dy)) break;
+      if (conf && !G.inArena(run, x + dx, y + dy)) break;
       x += dx; y += dy;
       out.push({ x, y });
     }
@@ -1331,7 +1423,7 @@
     if (P.summon && e.cycle % P.summonEvery === 0) {
       const minions = run.enemies.filter((m) => m.summoned).length;
       if (minions < P.summonMax) {
-        const spot = areaTiles(run, e, 2).find((t) => !G.enemyAt(run, t.x, t.y) && !(t.x === p.x && t.y === p.y) && cheb(t, p) >= 2);
+        const spot = areaTiles(run, e, 2).find((t) => !G.enemyAt(run, t.x, t.y) && !(t.x === p.x && t.y === p.y) && cheb(t, p) >= 2 && (!run.bossFight || G.inArena(run, t.x, t.y)));
         if (spot) {
           const m = makeEnemy(run, P.summon, spot.x, spot.y);
           m.summoned = true; m.exp = Math.round(m.exp / 3);
@@ -1432,6 +1524,7 @@
 
   function stepTo(run, e, nx, ny) {
     if (!G.canStep(run.map, e.x, e.y, nx - e.x, ny - e.y) || blockedForEnemy(run, nx, ny) || (nx === run.player.x && ny === run.player.y)) return false;
+    if (confined(run, e) && !G.inArena(run, nx, ny)) return false;   // ボスと呼ばれた敵は部屋の外へ出ない
     e.dir = G.dirOf(nx - e.x, ny - e.y) || e.dir;
     e.x = nx; e.y = ny;
     return true;
@@ -1449,7 +1542,7 @@
     const m = run.map, W = m.w;
     const goal = ty * W + tx;
     const prev = new Int32Array(m.w * m.h).fill(-1);
-    const start = e.y * W + e.x;
+    const start = e.y * W + e.x, conf = confined(run, e);
     prev[start] = start;
     const q = [start];
     let found = false;
@@ -1459,6 +1552,7 @@
         const nx = x + dx, ny = y + dy, k = ny * W + nx;
         if (!G.canStep(m, x, y, dx, dy) || prev[k] !== -1) continue;
         if (k !== goal && blockedForEnemy(run, nx, ny)) continue;
+        if (conf && !G.inArena(run, nx, ny)) continue;
         prev[k] = c;
         if (k === goal) { found = true; break; }
         q.push(k);

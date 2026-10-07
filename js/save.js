@@ -92,6 +92,8 @@
       data.village = V;
       data.version = 4;
     }
+    // v4 → v5（2026年10月）：ボス部屋の戦いの状態（run.bossFight）を、探索途中のセーブから安全に作る（下の fixBossFight）
+    if (data.version === 4) data.version = 5;
     const def = G.newState();
     fill(data, def);
     fill(data.village, def.village);
@@ -105,11 +107,37 @@
       else {
         fill(data.run.player, { poison: 0, poisonGuard: 0, bound: 0, bindGuard: 0 });
         fill(data.run, { hazards: [], fog: 0 });
+        fixBossFight(data.run);
       }
     }
     data.version = D.SAVE_VERSION;
     return data;
   };
+
+  /* ボスの階の探索途中のセーブ（この更新の前）に、ボス部屋の戦いの状態を足す。HP・報酬・撃破の記録は変えない。
+   * - ボス部屋：ボスの階の地図のいちばん大きな部屋（ボスの階は「前室」と「大広間」の2部屋）
+   * - すでにボスがいない（倒した）：戦いは終わり（won）
+   * - ボスが傷ついている・目を覚ましている・予告中・分身や手下がいる・床の印がある・たけが部屋の中・最終決戦の途中：戦い中（engaged）
+   * - どれでもない：まだ始まっていない（ボスを部屋の中央へ戻す）
+   * - ボス・手下が通路など部屋の外にいたら、たけと重ならない部屋の中の空いた床へ移す（予告中の大技は取り消す） */
+  function fixBossFight(run) {
+    if (run.bossFight !== undefined && run.bossFight !== null) return;
+    let F; try { F = G.F(run); } catch (e) { return; }
+    if (!F || !F.boss || !run.map.rooms || !run.map.rooms.length) { run.bossFight = null; return; }
+    const room = run.map.rooms.slice().sort((a, b) => b.w * b.h - a.w * a.h)[0];
+    run.bossFight = { x: room.x, y: room.y, w: room.w, h: room.h, engaged: false };
+    const A = run.bossFight, p = run.player;
+    const bosses = (run.enemies || []).filter((e) => e.boss), helpers = (run.enemies || []).filter((e) => e.summoned || e.clone);
+    const inside = (o) => G.inArena(run, o.x, o.y);
+    if (!bosses.length) { A.engaged = true; A.won = true; return; }
+    A.engaged = bosses.some((b) => b.hp < b.maxhp || b.awake || b.charge || (b.cds && Object.keys(b.cds).length)) || helpers.length > 0 ||
+      (run.hazards && run.hazards.length > 0) || inside(p) || !!(run.final && run.final.stage && run.final.stage !== 'battle1');
+    for (const e of bosses.concat(helpers)) {
+      if (inside(e) && (A.engaged || !e.boss)) continue;
+      const c = G.arenaCenter(run, [p]);
+      e.x = c.x; e.y = c.y; e.tx = e.ty = null; e.charge = null;
+    }
+  }
 
   S_.deserialize = function (text) {
     let data;

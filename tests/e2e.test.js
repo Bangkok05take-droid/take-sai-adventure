@@ -865,9 +865,23 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     });
     await p.tap('#b-foot'); await p.waitForTimeout(200);       // 階段の確認
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(900);
-    assert(await p.isVisible('.talk'), 'boss intro talk');
+    // 着いただけでは戦いは始まらない（会話なし・HPバーなし・探索の曲・ボスは部屋の中央で待つ）
+    const arrive = await p.evaluate(() => { const r = TS.UI.S.run, b = r.enemies.find((e) => e.boss), A = r.bossFight;
+      return { talk: !!document.querySelector('.talk'), engaged: A.engaged, center: Math.max(Math.abs(b.x - (A.x + (A.w >> 1))), Math.abs(b.y - (A.y + (A.h >> 1)))), song: TS.Music.current && TS.Music.current.id, bgm: TS.Audio.bgmName }; });
+    assert(!arrive.talk && !arrive.engaged && arrive.center <= 1 && arrive.bgm === 'dungeon', 'waiting on arrival ' + JSON.stringify(arrive));
+    // 入口の手前（通路）からダッシュで入る：部屋に入った所でダッシュが止まり、戦闘開始の表示・会話・ボス戦の曲・HPバー
+    await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let y = A.y; while (!TS.Dungeon.passable(r.map, A.x - 1, y)) y++; r.player.x = A.x - 3; r.player.y = y; TS.Game.updateVision(r); });
+    await shot('17a_boss_waiting');
+    const before = await p.evaluate(() => TS.UI.S.run.player.x);
+    await p.tap('#b-dash'); await p.waitForTimeout(100);
+    // ボスが見えた所でダッシュは一度止まる（以前からの決まり）。押し直して進む
+    for (let k = 0; k < 6 && !(await p.$('.talk')); k++) { await p.tap('#dpad [data-dir="right"]'); for (let i = 0; i < 12 && !(await p.$('.talk')); i++) await p.waitForTimeout(80); }
+    assert(await p.isVisible('.talk'), 'boss intro talk on entering the room ' + await p.evaluate(() => { const r = TS.UI.S.run; return JSON.stringify({ p: [r.player.x, r.player.y], A: r.bossFight, dash: document.getElementById('b-dash').getAttribute('aria-pressed'), modal: document.querySelector('#modal-root').textContent.slice(0, 80), log: r.log ? r.log.slice(-3) : null }); }));
     assert(await p.isVisible('.who:has-text("クロコダイン")'), 'boss speaks');
+    const ent = await p.evaluate(() => { const r = TS.UI.S.run; return { x: r.player.x, inRoom: TS.Game.inArena(r, r.player.x, r.player.y), engaged: r.bossFight.engaged, bgm: TS.Audio.bgmName, song: TS.Music.current && TS.Music.current.id }; });
+    assert(ent.inRoom && ent.engaged && ent.x === (await p.evaluate(() => TS.UI.S.run.bossFight.x)) && ent.bgm === 'boss', 'dash stopped at the first room tile, boss music ' + JSON.stringify(ent) + ' from ' + before);
     await closeTalk();
+    await p.evaluate(() => { const b = document.getElementById('b-dash'); if (TS.UI.S.settings.dash || (b && /オン/.test(b.textContent))) b.click(); });
     await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 5; b.cds = { rush: 9, axe: 9 }; r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 900; G.updateVision(r); });
     await p.waitForTimeout(200);
     await shot('17_boss');
@@ -906,6 +920,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       b.hp = 5; b.cds = { circle: 9, bird: 9, summon: 9 };
       r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 600; r.player.maxhp = 900;
       G.updateVision(r);
+      G.checkBossRoom(S, []); b.hold = 0;   // 部屋の中から始める（入室の流れは第1章のテストで確認）
       document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-dungeon')); TS.UI.screen = 'dungeon';
     });
     await p.waitForTimeout(200);
@@ -1242,7 +1257,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'fanfare,yanai,village,dungeon,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'fanfare,yanai,village,dungeon,boss,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
@@ -1528,7 +1543,17 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
         r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); });
       await q.waitForTimeout(1200); await talkThrough();
       while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
-      c = await cur(); assert(!c.id && c.timer && c.old === 'boss' && c.scene === 'boss', 'boss music ' + JSON.stringify(c));
+      // ボスの階に着いただけ：探索の曲のまま（同じ再生が続く）。ボス部屋に入るとボス戦の新しい曲（以前の合成ループは使わない）
+      c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer && c.scene === 'dungeon', 'dungeon music on the boss floor before the fight ' + JSON.stringify(c));
+      await q.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let y = A.y; while (!TS.Dungeon.passable(r.map, A.x - 1, y)) y++; r.player.x = A.x - 1; r.player.y = y; TS.Game.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'right' }); });
+      await q.waitForTimeout(800); await talkThrough();
+      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      c = await cur(); assert(c.id === 'boss' && c.bgm && !c.timer && c.scene === 'boss', 'boss music after entering ' + JSON.stringify(c));
+      // メニューの開閉・部屋から出ても、ボス戦の曲は最初から流し直さない
+      await keep('__b');
+      await q.tap('#b-menu'); await q.waitForTimeout(200); await q.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await q.waitForTimeout(200);
+      await q.evaluate(() => { TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'left' }); }); await q.waitForTimeout(300);
+      assert(await same('__b'), 'boss music continues across the menu and leaving the room');
       // 帰還の巻物で村へ → 村の曲（ボス曲は止まる）
       await q.evaluate(() => { const r = TS.UI.S.run, it = r.bag.find((i) => i.id === 'return_scroll'); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'use', uid: it.uid }); });
       await q.waitForTimeout(1800); await talkThrough();

@@ -634,6 +634,70 @@
     return { bpm: 72, beats: 80, tail: 2.5, loop: true, loopStart: 8, loopEnd: 80, reverb: 0.42, events: S.ev };
   }
 
+  /* 5．ボス戦（新規・オリジナル）：BPM138・4拍子・ト短調・1周96拍＝約41.7秒。
+   * 強敵と向き合う危機感を、明るい行進曲にせず「重い低音・金管の旋律・刻み続ける弦・ティンパニ」で出す。
+   * 導入（4小節：金管の和音の打ちこみとティンパニ。♭II＝変イ長調の和音で不安を足し、属和音で張りつめる）→
+   * A（8小節：金管の旋律。弦の8分の刻みと、付点の重い低音）→ B（8小節：弦が旋律、ホルンが下で支え、半減七で緊張を高める）→
+   * 橋渡し（4小節：上っていく和音とティンパニの連打、属和音からAへ戻る）。ループ：17拍目〜96拍目（属和音→主和音で自然につながる）。
+   * 旋律は中〜高音域（スマホでも聞こえる）。効果音を邪魔しないよう、鋭い高音と大きなシンバルは区切りだけ。 */
+  function bossBattle() {
+    const S = score(0);
+    const CH = { Gm: ['G3', 'Bb3', 'D4'], Eb: ['Eb3', 'G3', 'Bb3'], D: ['D3', 'F#3', 'A3'], BbF: ['F3', 'Bb3', 'D4'], Cm: ['C3', 'Eb3', 'G3'], Ab: ['Ab2', 'C3', 'Eb3'],
+      Am7b5: ['A2', 'C3', 'Eb3'], D7: ['D3', 'F#3', 'C4'], F: ['F3', 'A3', 'C4'], Bb: ['F3', 'Bb3', 'D4'] };
+    const ROOT = { Gm: 'G1', Eb: 'Eb2', D: 'D2', BbF: 'F1', Cm: 'C2', Ab: 'Ab1', Am7b5: 'A1', D7: 'D2', F: 'F1', Bb: 'Bb1' };
+    const HI = { Gm: ['G4', 'Bb4', 'D5'], Ab: ['Ab4', 'C5', 'Eb5'], D: ['F#4', 'A4', 'D5'] };
+    // ---- 導入（0〜16拍） ----
+    for (const [b, c] of [[0, 'Gm'], [4, 'Ab'], [8, 'Gm']]) {
+      for (const [o, len, v] of [[0, 0.5, 1], [1.5, 0.5, 0.85], [2, 1.75, 1]]) { S.chord('brassEns', b + o, len, HI[c], v * 0.85); S.mel('lowBrass', b + o, ROOT[c].replace('1', '2') + ':' + len, v); }
+      S.hit('timpani', b, 1, c === 'Ab' ? 'Ab1' : 'G1'); S.hit('timpani', b + 1.5, 0.7, 'D2'); S.hit('timpani', b + 2, 0.9, c === 'Ab' ? 'Ab1' : 'G1');
+      S.mel('cello', b, ROOT[c].replace('1', '2') + ':4', 0.8);
+    }
+    S.chord('brassEns', 12, 3.5, HI.D, 0.75); S.chord('hornEns', 12, 3.5, ['D4', 'F#4', 'A4'], 0.7); S.mel('lowBrass', 12, 'D2:3.5', 0.9);
+    for (let i = 0; i < 16; i++) S.hit('timpani', 12 + i * 0.25, 0.25 + i * 0.04, 'D2');   // ティンパニの連打（だんだん強く）
+    S.hit('cymbal', 12, 0.7, null, 3.9);
+    // ---- 和音の進行（A：16〜48、B：48〜80、橋渡し：80〜96） ----
+    const prog = [];
+    const bar = (b, ...cs) => { const len = 4 / cs.length; cs.forEach((c, i) => prog.push([b + i * len, len, c])); };
+    ['Gm', 'Gm', 'Eb', 'D'].forEach((c, i) => bar(16 + i * 4, c)); bar(32, 'Gm'); bar(36, 'BbF', 'Cm'); bar(40, 'Ab'); bar(44, 'D');
+    ['Cm', 'Gm', 'Ab', 'Eb', 'Cm', 'Bb', 'Am7b5', 'D7'].forEach((c, i) => bar(48 + i * 4, c));
+    ['Eb', 'F', 'Ab', 'D'].forEach((c, i) => bar(80 + i * 4, c));
+    for (const [b, len, c] of prog) {
+      const [r, t3, f5] = CH[c];
+      // 弦の刻み（8分）：根音・5度・3度・5度…（緊張を保つ。音量は控えめ）
+      for (let k = 0; k < len; k += 0.5) { const nm = [r, f5, t3, f5][(k * 2) % 4]; S.mel('strStac', b + k, nm.replace(/(\d)$/, (m) => String(+m + 1)) + ':.5', k % 1 === 0 ? 0.62 : 0.48); }
+      // 重い低音：付点のリズム（低い金管＋チェロの持続）
+      const R = ROOT[c];
+      if (len === 4) S.mel('lowBrass', b, R + ':1.5 ' + R + ':1.5 ' + R.replace('1', '2').replace(/2$/, (m) => m) + ':1', 0.85);
+      else S.mel('lowBrass', b, R + ':1.5 ' + R + ':.5', 0.85);
+      S.ev.push({ b, len, n: midi(R) + 12, inst: 'cello', v: 0.7 });
+      // ティンパニ：小節の頭（根音）と3拍目の裏
+      if (len === 4 || b % 4 === 0) S.hit('timpani', b, 0.75, R.replace('1', '2'));
+      if (len === 4) S.hit('timpani', b + 2.5, 0.5, R.replace('1', '2'));
+      // 小太鼓：2拍目と4拍目（軽く）
+      if (len === 4 || b % 4 === 0) { S.hit('snare2', b + 1, 0.5); S.hit('snare2', b + 3, 0.55); S.hit('snare2', b + 3.5, 0.3); }
+      // Bと橋渡しは弦の持続和音で厚く
+      if (b >= 48) S.chord('stringsEns', b, len, CH[c].map((nm) => nm.replace(/(\d)$/, (m) => String(+m + 1))), 0.42);
+    }
+    // ---- A：金管の旋律（16〜48）。2回目の後半で高く上がる ----
+    S.mel('brassEns', 16, 'G4:1.5 D5:.5 D5:1 C5:.5 Bb4:.5 A4:1 Bb4:1 G4:2 G4:1.5 Eb5:.5 Eb5:1 D5:.5 C5:.5 D5:3 r:1 ' +
+      'Bb4:1.5 D5:.5 G5:1 F5:.5 Eb5:.5 D5:1 C5:1 Eb5:1.5 D5:.5 C5:1 Eb5:1 Ab5:1.5 G5:.5 F#5:3 r:1', 1);
+    S.mel('hornEns', 16, 'D4:4 D4:4 Eb4:4 F#4:4 G4:4 F4:2 G4:2 Ab4:4 A4:4', 0.6);   // ホルンの支え
+    // 答え（低い金管の短い応答。旋律の休みに）
+    S.mel('brassEns', 31, 'D4:.25 D4:.25 A4:.5', 0.7); S.mel('brassEns', 47, 'D4:.25 D4:.25 F#4:.5', 0.7);
+    // ---- B：弦が旋律、ホルンが1オクターブ下で重ねる（48〜80） ----
+    const Bmel = 'Eb5:2 D5:1 C5:1 Bb4:2 D5:2 C5:1.5 Eb5:.5 Ab5:2 G5:2 Bb4:2 C5:1 Eb5:1 G5:1 F5:1 D5:2 Bb4:2 C5:1 Eb5:1 A4:2 F#5:2 D5:1 C5:1';
+    S.mel('stringsEns', 48, Bmel, 1.15);
+    S.mel('hornEns', 48, Bmel.replace(/([A-G][#b]?)(\d)/g, (m, nn, o) => nn + (+o - 1)), 0.75);
+    for (const [b, nn] of [[51.5, ['C4', 'G4']], [59.5, ['Eb4', 'Bb4']], [67.5, ['D4', 'F4']], [75.5, ['D4', 'A4']]]) S.chord('brassEns', b, 0.5, nn, 0.55);   // 金管の短い打ちこみ
+    // ---- 橋渡し：上っていく金管と、ティンパニの連打（80〜96） ----
+    S.mel('brassEns', 80, 'G4:1 Bb4:1 Eb5:2 A4:1 C5:1 F5:2 C5:1 Eb5:1 Ab5:2 A5:2 F#5:1 D5:1', 1);
+    S.mel('hornEns', 80, 'Eb4:4 F4:4 Ab4:4 F#4:4', 0.7);
+    for (let i = 0; i < 16; i++) S.hit('timpani', 92 + i * 0.25, 0.3 + i * 0.035, 'D2');
+    S.hit('cymbal', 92, 0.6, null, 3.9);
+    for (const b of [16, 48, 80]) S.hit('cymbal', b, 0.75);
+    return { bpm: 138, beats: 96, tail: 1.5, loop: true, loopStart: 16, loopEnd: 96, reverb: 0.2, events: S.ev };
+  }
+
   // 曲の一覧（選ぶ処理）。file を書けば録音した音源で同じように再生する
   // group：'new'＝第2版（試聴の方向性確認用）、'old'＝第1版（比較用）
   M.LIBRARY = {
@@ -641,6 +705,7 @@
     yanai: { title: 'マスターヤナイのテーマ', group: 'new', note: '第2版・英雄のテーマ（主題Aからループ）', build: yanai2 },
     village: { title: '村の音楽', group: 'new', note: 'お祭りのにぎわい（ループ）', build: village },
     dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）', build: dungeon },
+    boss: { title: 'ボス戦', group: 'new', note: '強敵との対峙（ループ）。ボス部屋に入ったときから倒すまで', build: bossBattle },
     fanfare_v1: { title: '冒険のファンファーレ', group: 'old', note: '第1版（比較用）', build: fanfareV1 },
     yanai_v1: { title: 'マスターヤナイのテーマ', group: 'old', note: '第1版（比較用）', build: yanaiV1 },
   };
@@ -651,6 +716,7 @@
     title: { song: 'fanfare', once: true },
     village: { song: 'village' },
     dungeon: { song: 'dungeon' },
+    boss: { song: 'boss' },   // ボス戦（以前は合成の短いループ。今は新しい曲）
     yanai: { song: 'yanai' },
   };
   const cache = {};

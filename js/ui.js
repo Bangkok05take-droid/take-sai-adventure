@@ -67,7 +67,7 @@
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
     // 場面の曲（同じ曲が流れていれば続ける）。タイトルはファンファーレを1回だけ、ボスの階は以前のボス曲
-    AU.playBgm(name === 'dungeon' ? (UI.S.run && G.F(UI.S.run).boss ? 'boss' : 'dungeon') : name === 'title' ? 'title' : 'village');
+    AU.playBgm(name === 'dungeon' ? G.dungeonBgm(UI.S.run) : name === 'title' ? 'title' : 'village');
     if (name === 'village') { updateVillageHud(); resetWalker(); }
     if (name === 'dungeon') updateHud();
   }
@@ -1260,24 +1260,32 @@
     updateHud();
     pushLog(logLen);
     // 探索の終わり：帰還は魔法陣の光を見せてから村へ（少し長め）。倒れたときは短く
+    // 倒れたとき：ボス戦の曲などを止める（結果の画面のあと、村の曲になる）。帰還は村の曲へ切りかわるまで今の曲のまま
+    if (S.run && S.run.over && S.run.result && S.run.result.type === 'dead') AU.stopBgm(0.8);
     if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, res.events.some((e) => e.t === 'return') ? 760 : 350); return; }
     if (res.floorChanged) {
       RD.clearFx();
-      stopHold(); AU.playBgm(G.F(S.run).boss ? 'boss' : 'dungeon'); toast('地下' + S.run.floor + '階');
+      stopHold(); AU.playBgm(G.dungeonBgm(S.run)); toast('地下' + S.run.floor + '階');
+      // ボスの階に着いたとき：戦いはまだ始まらない（ボスは奥の部屋の中央で待つ。曲は探索のまま）
       const boss = G.F(S.run).boss;
-      // ボスの登場：名前の表示と短い会話（会話中は時間が進まない）
-      if (boss && G.chapterOf(S.run) !== 'legacy' && D.STORY.bossPre[boss]) {
-        setTimeout(() => { flash(); toast(D.ENEMIES[boss].name + ' 出現！', 'danger'); AU.sfx('warn'); storyTalk('pre_' + boss, D.STORY.bossPre[boss]); }, 400);
-      }
+      if (boss) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
+    }
+    // ボス部屋に入った：ダッシュ・長押し・予約を止め、ボス戦の開始を1回だけ表示し、ボス戦の曲へ（HPバーは描画側で出る）
+    if (res.events.some((e) => e.t === 'bossStart')) {
+      const b = res.events.find((e) => e.t === 'bossStart').boss;
+      stopHold(); AU.playBgm(G.dungeonBgm(S.run));
+      flash(); AU.sfx('warn'); toast((b ? D.ENEMIES[b].name : 'ボス') + 'との戦いが始まった！', 'danger');
+      if (b && G.chapterOf(S.run) !== 'legacy' && D.STORY.bossPre[b]) setTimeout(() => storyTalk('pre_' + b, D.STORY.bossPre[b]), 350);
+      return;
     }
     if (res.events.some((e) => e.t === 'bossDown')) {
       const b = res.events.find((e) => e.t === 'bossDown').boss;
-      stopHold();
+      stopHold(); AU.playBgm(G.dungeonBgm(S.run));   // 撃破：探索の曲へ（大魔王バーンの1戦目のあとは続けてボス戦の曲）
       setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b]); }, 500);
       return;
     }
     if (res.events.some((e) => e.t === 'finalTransform')) { stopHold(); setTimeout(() => finalCutscene(), 500); return; }
-    if (res.events.some((e) => e.t === 'finalWin')) { stopHold(); setTimeout(() => { flash(); storyTalk('final_win', D.STORY.finalWin); }, 500); return; }
+    if (res.events.some((e) => e.t === 'finalWin')) { stopHold(); AU.playBgm(G.dungeonBgm(S.run)); setTimeout(() => { flash(); storyTalk('final_win', D.STORY.finalWin); }, 500); return; }
     // 階段などに乗ったら確認
     const ev = res.events;
     if (ev.some((e) => e.t === 'onStairs')) { stopHold(); setTimeout(() => promptStairs(), 60); }
