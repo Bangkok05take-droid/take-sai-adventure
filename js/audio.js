@@ -1,7 +1,9 @@
-/* 効果音とBGM（WebAudioで合成。音源ファイル不要）。最初のタップ後に開始。 */
+/* 効果音とBGM（WebAudioで合成。音源ファイル不要）。最初のタップ後に開始。
+ * 音の出口：効果音 → sfxBus（効果音の音量）／BGM・音楽 → musicBus（BGMの音量）→ 音割れ防止 → master（音のオン/オフ）。 */
 (function (TS) {
   'use strict';
-  const A = { enabled: true, ctx: null, master: null, bgmTimer: null, bgmName: null, step: 0, nextTime: 0 };
+  const A = { enabled: true, ctx: null, master: null, sfxBus: null, musicBus: null, bgmVol: 1, sfxVol: 1, bgmHold: false,
+    bgmTimer: null, bgmName: null, step: 0, nextTime: 0 };
 
   A.unlock = function () {
     if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
@@ -11,14 +13,36 @@
     A.master = A.ctx.createGain();
     A.master.gain.value = A.enabled ? 0.6 : 0;
     A.master.connect(A.ctx.destination);
-    if (A.bgmName) A.playBgm(A.bgmName, true);
+    A.sfxBus = A.ctx.createGain(); A.sfxBus.gain.value = A.sfxVol; A.sfxBus.connect(A.master);
+    A.musicBus = A.ctx.createGain(); A.musicBus.gain.value = A.bgmVol;
+    if (TS.Music && TS.Music.makeMusicChain) { const ch = TS.Music.makeMusicChain(A.ctx); A.musicBus.connect(ch.input); ch.output.connect(A.master); }
+    else A.musicBus.connect(A.master);
+    if (A.bgmName && !A.bgmHold) A.playBgm(A.bgmName, true);
   };
   A.setEnabled = function (on) {
     A.enabled = on;
     if (A.master) A.master.gain.setTargetAtTime(on ? 0.6 : 0, A.ctx.currentTime, 0.05);
   };
+  // BGMと効果音の音量（0〜1）。急に変えずに短くならす
+  A.setVolumes = function (bgm, sfx) {
+    if (bgm != null) A.bgmVol = Math.max(0, Math.min(1, bgm));
+    if (sfx != null) A.sfxVol = Math.max(0, Math.min(1, sfx));
+    if (A.ctx) {
+      A.musicBus.gain.setTargetAtTime(A.bgmVol, A.ctx.currentTime, 0.03);
+      A.sfxBus.gain.setTargetAtTime(A.sfxVol, A.ctx.currentTime, 0.03);
+    }
+  };
+  // アプリが裏に回ったら音を止め、戻ったら再開する（止めている間は予約が進まないので、戻っても音が重ならない）
+  A.suspend = function () { if (A.ctx && A.ctx.state === 'running') A.ctx.suspend(); };
+  A.resume = function () { if (A.ctx && A.ctx.state === 'suspended' && A.enabled) A.ctx.resume(); };
+  /* 試聴などで場面のBGMを一時的に止める。hold の間に playBgm が呼ばれても曲名だけ覚えておき、解除したときにその曲を流す */
+  A.holdBgm = function (on) {
+    A.bgmHold = !!on;
+    if (on) { if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; } }
+    else if (A.bgmName) A.playBgm(A.bgmName, true);
+  };
 
-  function tone(freq, start, dur, type, vol, slideTo) {
+  function tone(freq, start, dur, type, vol, slideTo, dest) {
     const c = A.ctx;
     const o = c.createOscillator(), g = c.createGain();
     o.type = type || 'square';
@@ -27,7 +51,7 @@
     g.gain.setValueAtTime(0.0001, start);
     g.gain.exponentialRampToValueAtTime(vol || 0.08, start + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-    o.connect(g); g.connect(A.master);
+    o.connect(g); g.connect(dest || A.sfxBus);
     o.start(start); o.stop(start + dur + 0.02);
   }
   function noise(start, dur, vol) {
@@ -37,7 +61,7 @@
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
     const s = c.createBufferSource(), g = c.createGain();
     g.gain.value = vol || 0.08;
-    s.buffer = buf; s.connect(g); g.connect(A.master); s.start(start);
+    s.buffer = buf; s.connect(g); g.connect(A.sfxBus); s.start(start);
   }
 
   const SFX = {
@@ -81,7 +105,7 @@
     if (A.bgmName === name && !force && A.bgmTimer) return;
     A.bgmName = name;
     if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; }
-    if (!A.ctx || !name) return;
+    if (!A.ctx || !name || A.bgmHold) return;
     const B = BGM[name];
     A.step = 0;
     A.nextTime = A.ctx.currentTime + 0.1;
@@ -90,8 +114,8 @@
       while (A.nextTime < A.ctx.currentTime + 0.3) {
         const i = A.step % B.mel.length;
         const n = B.mel[i];
-        if (n >= 0) tone(B.scale[n] * 2, A.nextTime, B.tempo * 0.9, 'triangle', 0.025);
-        if (i % 4 === 0) tone(B.bass[(i / 4) % B.bass.length], A.nextTime, B.tempo * 3, 'sine', 0.035);
+        if (n >= 0) tone(B.scale[n] * 2, A.nextTime, B.tempo * 0.9, 'triangle', 0.025, null, A.musicBus);
+        if (i % 4 === 0) tone(B.bass[(i / 4) % B.bass.length], A.nextTime, B.tempo * 3, 'sine', 0.035, null, A.musicBus);
         A.nextTime += B.tempo;
         A.step++;
       }

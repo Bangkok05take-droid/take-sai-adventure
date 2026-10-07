@@ -68,7 +68,7 @@
     return V;
   };
   G.newState = function () {
-    return { version: D.SAVE_VERSION, village: G.newVillage(), run: null, settings: { sound: true, minimap: 1 } };
+    return { version: D.SAVE_VERSION, village: G.newVillage(), run: null, settings: { sound: true, minimap: 1, bgmVol: 1, sfxVol: 1 } };
   };
 
   G.makeItem = function (S, id, extra) {

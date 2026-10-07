@@ -283,3 +283,16 @@ details summary { cursor: pointer; margin: 4px 0; }
 .row.mat { cursor: default; }
 .row .nm.wrap { white-space: normal; overflow: visible; text-overflow: clip; }
 .tabs button { font-size: 14px; }
+
+/* 音楽試聴 */
+.mrow { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--line-soft); }
+.mtitle { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mtitle small { color: var(--muted); font-size: 12.5px; }
+.mplay { flex: none; min-width: 88px; min-height: 44px; }
+.mplay.on { outline: 2px solid #ffd84a; }
+.mnow { margin: 10px 0 6px; padding: 6px 8px; background: rgba(0, 0, 0, 0.25); border-radius: 8px; font-size: 14px; min-height: 1.5em; }
+.mctrl { display: flex; gap: 8px; margin-bottom: 8px; }
+.mctrl button { flex: 1; min-height: 44px; }
+.mvol { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 14px; }
+.mvol input { flex: 1; min-height: 32px; }
+.mvol span { width: 2.2em; text-align: right; }

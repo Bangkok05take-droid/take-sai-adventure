@@ -1110,6 +1110,69 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(100);
   });
 
+  await test('音楽試聴：2曲の再生・停止・連打・切り替え・ループ・最後まで再生・音量の保存・ミュート・閉じると元のBGM・裏に回すと停止（ターンは進まない）', async () => {
+    await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.depart(S, 5151); S.run.enemies = [];
+      document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; UI.lockUntil = 0; UI.started = true; UI.debug.save();
+      TS.Audio.unlock(); TS.Audio.playBgm('dungeon', true);
+      const M = TS.Music, orig = M.play; window.__plays = 0; M.play = function () { window.__plays++; return orig.apply(M, arguments); }; });
+    const turn0 = (await run()).turn;
+    await p.tap('#b-menu'); await p.waitForTimeout(150);
+    await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
+    assert(await p.isVisible('text=冒険のファンファーレ') && await p.isVisible('text=マスターヤナイのテーマ'), 'two songs listed');
+    assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
+    await shot('48_music_room');
+    // 連打：1回だけ再生
+    await p.evaluate(() => { const b = document.querySelector('[data-play="fanfare"]'); b.click(); b.click(); b.click(); });
+    await p.waitForTimeout(400);
+    let st = await p.evaluate(() => ({ plays: window.__plays, cur: TS.Music.current && TS.Music.current.id, ctx: TS.Audio.ctx.state, s: TS.Music.status() }));
+    eq2(st.plays, 1, 'debounced'); eq2(st.cur, 'fanfare'); assert(st.ctx === 'running' && st.s.sec > 0.1, 'playing ' + JSON.stringify(st));
+    await shot('49_music_playing');
+    // 切り替え：前の曲は止まり、鳴っているのは1曲だけ
+    await p.waitForTimeout(300);
+    await p.tap('[data-play="yanai"]'); await p.waitForTimeout(400);
+    st = await p.evaluate(() => ({ plays: window.__plays, cur: TS.Music.current.id, s: TS.Music.status() }));
+    eq2(st.cur, 'yanai'); eq2(st.plays, 2);
+    // 停止
+    await p.tap('#m-stop'); await p.waitForTimeout(200);
+    assert(await p.evaluate(() => !TS.Music.current && document.getElementById('m-now').textContent === '停止中'), 'stopped');
+    // ループのつなぎ目：1周目の終わりの8拍前から → 約5.5秒後に2周目（主題Aの頭）へ戻る
+    await p.waitForTimeout(300);
+    await p.tap('#m-seam'); await p.waitForTimeout(6800);
+    st = await p.evaluate(() => TS.Music.status());
+    assert(st && st.loops === 1 && st.sec > 10.9 && st.sec < 13, 'looped back ' + JSON.stringify(st));
+    // ファンファーレは最後まで鳴って自然に止まる
+    await p.waitForTimeout(300);
+    await p.tap('[data-play="fanfare"]'); await p.waitForTimeout(12800);
+    assert(await p.evaluate(() => !TS.Music.current && TS.Audio.bgmHold), 'fanfare finished, scene bgm still held while room open');
+    // 音量：保存される
+    await p.evaluate(() => { const i = document.getElementById('m-bgm'); i.value = 40; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change'));
+      const j = document.getElementById('m-sfx'); j.value = 70; j.dispatchEvent(new Event('input')); j.dispatchEvent(new Event('change')); });
+    await p.waitForTimeout(300);
+    const vol = await p.evaluate(() => ({ bgm: TS.UI.S.settings.bgmVol, sfx: TS.UI.S.settings.sfxVol, saved: JSON.parse(localStorage.getItem('takeSaiAdventure.save')).settings, g: TS.Audio.musicBus.gain.value, gs: TS.Audio.sfxBus.gain.value }));
+    assert(vol.bgm === 0.4 && vol.sfx === 0.7 && vol.saved.bgmVol === 0.4 && vol.saved.sfxVol === 0.7, 'volumes saved ' + JSON.stringify(vol));
+    assert(Math.abs(vol.g - 0.4) < 0.05 && Math.abs(vol.gs - 0.7) < 0.05, 'bus gains ' + JSON.stringify(vol));
+    // ミュート：オフの間は鳴らない
+    await p.tap('.modal-buttons button >> text=音：オン'); await p.waitForTimeout(150);
+    await p.tap('[data-play="yanai"]'); await p.waitForTimeout(300);
+    assert(await p.evaluate(() => !TS.Music.current && TS.UI.S.settings.sound === false), 'muted: no play');
+    await p.tap('.modal-buttons button >> text=音：オフ'); await p.waitForTimeout(300);
+    // 裏に回すと止まり、戻っても重ならない
+    await p.tap('[data-play="yanai"]'); await p.waitForTimeout(400);
+    await p.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+    await p.waitForTimeout(300);
+    assert(await p.evaluate(() => !TS.Music.current && TS.Audio.ctx.state === 'suspended'), 'stopped in background');
+    await p.evaluate(() => { Object.defineProperty(document, 'hidden', { value: false, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+    await p.waitForTimeout(300);
+    assert(await p.evaluate(() => !TS.Music.current && TS.Audio.ctx.state === 'running'), 'resumed without replay');
+    // 閉じる：試聴は止まり、元のBGMに戻る。ターンは進んでいない
+    await p.tap('[data-play="fanfare"]'); await p.waitForTimeout(300);
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(300);
+    const fin = await p.evaluate(() => ({ cur: TS.Music.current, hold: TS.Audio.bgmHold, bgm: TS.Audio.bgmName, timer: !!TS.Audio.bgmTimer }));
+    assert(!fin.cur && !fin.hold && fin.bgm === 'dungeon' && fin.timer, 'restored ' + JSON.stringify(fin));
+    eq2((await run()).turn, turn0, 'no turn');
+    await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); const s = TS.UI.S.settings; s.bgmVol = 1; s.sfxVol = 1; TS.Audio.setVolumes(1, 1); });
+  });
+
   await test('履歴は右の「履歴」ボタンだけで開く（本文・余白・操作キーからのはみ出しでは開かない。ターンは進まない）', async () => {
     await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.depart(S, 4242);
       const r = S.run; r.enemies = []; for (let i = 0; i < 4; i++) G.log(r, 'テストのメッセージ' + i + '：とても長い文章で欄の幅いっぱいまで表示される');

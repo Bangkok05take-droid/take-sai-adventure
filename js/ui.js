@@ -28,6 +28,12 @@
 
     UI.S = SV.load() || G.newState();
     AU.setEnabled(UI.S.settings.sound);
+    applyVolumes();
+    // アプリが裏に回ったら音楽の試聴を止め、音を一時停止。戻ったら再開（重ならない）
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { if (TS.Music) TS.Music.stop(0.05); AU.suspend(); if (UI.onMusicHidden) UI.onMusicHidden(); }
+      else AU.resume();
+    });
     applyFxSetting();
     bindTitleImages(); bindTitle(); bindVillage(); bindDungeon();
     document.addEventListener('keydown', onKey);
@@ -425,9 +431,14 @@
     $('btn-sound-title').textContent = '音：' + (UI.S.settings.sound ? 'オン' : 'オフ');
     showScreen('title');
   }
+  function applyVolumes() {
+    const st = UI.S.settings;
+    AU.setVolumes(st.bgmVol == null ? 1 : st.bgmVol, st.sfxVol == null ? 1 : st.sfxVol);
+  }
   function toggleSound() {
     UI.S.settings.sound = !UI.S.settings.sound;
     AU.setEnabled(UI.S.settings.sound);
+    if (!UI.S.settings.sound && TS.Music) TS.Music.stop(0.08);
     if (UI.S.settings.sound) { AU.unlock(); AU.sfx('tap'); }
     $('btn-sound-title').textContent = '音：' + (UI.S.settings.sound ? 'オン' : 'オフ');
     save();
@@ -440,10 +451,12 @@
   function applyFxSetting() { document.body.classList.toggle('calm', !!(UI.S && UI.S.settings && UI.S.settings.fx === 'calm')); }
   UI.applyFxSetting = applyFxSetting;
   function newGame() {
-    const sound = UI.S.settings.sound, fxs = UI.S.settings.fx;
+    const sound = UI.S.settings.sound, fxs = UI.S.settings.fx, bgmVol = UI.S.settings.bgmVol, sfxVol = UI.S.settings.sfxVol;
     SV.clear();
     UI.S = G.newState();
     UI.S.settings.sound = sound;
+    if (bgmVol != null) UI.S.settings.bgmVol = bgmVol;
+    if (sfxVol != null) UI.S.settings.sfxVol = sfxVol;
     if (fxs) UI.S.settings.fx = fxs;
     UI.started = true;
     save();
@@ -459,6 +472,7 @@
     UI.S = L;
     UI.started = true;
     AU.setEnabled(UI.S.settings.sound);
+    applyVolumes();
     if (UI.S.run) {
       showScreen('dungeon');
       if (UI.S.run.over) handleRunOver();
@@ -933,6 +947,60 @@
     else storyTalk('depart' + ch, D.STORY.depart[ch]);
   }
 
+  /* ---- 音楽試聴・音量（ターンは進まない。G.act を通さない） ----
+   * 開くと場面のBGMを一時停止し、閉じると試聴を止めて元のBGMに戻す。一度に鳴る曲は1つだけ（TS.Music.play が前の曲を止める）。
+   * 音が「オフ」のときは鳴らさない（オンにするボタンを出す）。音量は保存する */
+  function openMusicRoom(back) {
+    const MU = TS.Music, st = UI.S.settings;
+    if (st.bgmVol == null) st.bgmVol = 1;
+    if (st.sfxVol == null) st.sfxVol = 1;
+    AU.holdBgm(true); MU.stop(0.1);
+    let timer = null, lastTap = 0;
+    const fmt = (x) => Math.floor(x / 60) + ':' + String(Math.floor(x % 60)).padStart(2, '0');
+    const rows = Object.keys(MU.LIBRARY).map((id) => { const L = MU.LIBRARY[id], f = MU.info(id);
+      return `<div class="mrow" data-song="${id}"><div class="mtitle"><b>${esc(L.title)}</b><small>${esc(L.note)}・BPM${f.bpm}・${fmt(f.seconds + (f.loop ? 0 : f.tail))}</small></div>
+        <button class="mplay" data-play="${id}">▶ 再生</button></div>`; }).join('');
+    const html = `<p class="note">試聴している間は時間が進みません。閉じると元の音楽に戻ります。</p>${rows}
+      <div class="mnow" id="m-now">停止中</div>
+      <div class="mctrl"><button id="m-stop">■ 停止</button><button id="m-seam">ループのつなぎ目を聴く</button></div>
+      <label class="mvol">BGM音量 <input type="range" id="m-bgm" min="0" max="100" step="5" value="${Math.round(st.bgmVol * 100)}"><span id="m-bgm-v">${Math.round(st.bgmVol * 100)}</span></label>
+      <label class="mvol">効果音の音量 <input type="range" id="m-sfx" min="0" max="100" step="5" value="${Math.round(st.sfxVol * 100)}"><span id="m-sfx-v">${Math.round(st.sfxVol * 100)}</span></label>
+      <p class="note" id="m-mute">${st.sound ? '' : '音が「オフ」になっています。下のボタンでオンにすると試聴できます。'}</p>`;
+    const stopAll = () => { MU.stop(0.12); show(); };
+    const h = modal({ title: '音楽試聴・音量', html, buttons: [
+      { label: '音：' + (st.sound ? 'オン' : 'オフ'), keep: true, onClick: (hh) => { toggleSound(); hh.el.querySelectorAll('.modal-buttons button')[0].textContent = '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'); hh.body.querySelector('#m-mute').textContent = UI.S.settings.sound ? '' : '音が「オフ」になっています。'; show(); } },
+      { label: '閉じる', cls: 'primary' }],
+      onClose: () => { clearInterval(timer); UI.onMusicHidden = null; MU.stop(0.15); AU.holdBgm(false); save(); if (back) setTimeout(back, 0); } });
+    function show() {
+      const s = MU.status(), now = h.body.querySelector('#m-now');
+      h.body.querySelectorAll('.mplay').forEach((b) => b.classList.toggle('on', !!s && s.id === b.dataset.play));
+      if (!s) { now.textContent = '停止中'; return; }
+      const L = MU.LIBRARY[s.id];
+      now.textContent = '再生中：' + L.title + '　' + fmt(s.sec) + (s.loop ? '（' + (s.loops + 1) + '周目）' : ' / ' + fmt(s.total));
+    }
+    const play = (id, opts) => {
+      const t = performance.now();
+      if (t - lastTap < 250) return;   // 連打をまとめる（1回の再生だけ）
+      lastTap = t;
+      if (!UI.S.settings.sound) { show(); toast('音がオフです'); return; }
+      AU.unlock(); AU.holdBgm(true);
+      MU.play(id, Object.assign({ onEnd: show }, opts || {}));
+      show();
+    };
+    h.body.querySelectorAll('.mplay').forEach((b) => b.addEventListener('click', () => play(b.dataset.play)));
+    h.body.querySelector('#m-stop').addEventListener('click', stopAll);
+    // ループの確認：ヤナイのテーマを、つなぎ目（1周目の終わり）の8拍前から再生
+    h.body.querySelector('#m-seam').addEventListener('click', () => { const s = MU.song('yanai'); play('yanai', { fromBeat: s.loopEnd - 8 }); });
+    const vol = (key, el, lab) => { const inp = h.body.querySelector(el); inp.addEventListener('input', () => {
+      UI.S.settings[key] = +inp.value / 100; h.body.querySelector(lab).textContent = inp.value; applyVolumes(); });
+      inp.addEventListener('change', () => { save(); if (key === 'sfxVol') AU.sfx('pickup'); }); };
+    vol('bgmVol', '#m-bgm', '#m-bgm-v'); vol('sfxVol', '#m-sfx', '#m-sfx-v');
+    timer = setInterval(show, 250);
+    UI.onMusicHidden = show;
+    return h;
+  }
+  UI.openMusicRoom = openMusicRoom;
+
   function villageMenu() {
     modal({ title: 'メニュー', html: `<p class="note">セーブは自動で行われます。</p><p>帰還 ${UI.S.village.returns}回　敗北 ${UI.S.village.defeats}回　最深 地下${UI.S.village.bestFloor}階</p>
       <p>${(() => { const ss = G.storyStatus(UI.S.village); return ss.cleared ? '★ 全章クリア（最終決戦の勝利 ' + UI.S.village.clears + '回）' : '現在：' + esc(ss.name + '「' + ss.title + '」') + '　次のボス：' + esc(ss.bossName) + '（地下' + ss.goal + '階）'; })()}</p>
@@ -941,6 +1009,7 @@
       { label: 'ヤナイの記録', onClick: () => { setTimeout(showRecords, 0); } },
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(villageMenu, 0); } },
+      { label: '音楽試聴・音量', onClick: () => { setTimeout(() => openMusicRoom(villageMenu), 0); } },
       { label: '演出：' + (UI.S.settings.fx === 'calm' ? '控えめ' : '通常'), onClick: () => { toggleFx(); setTimeout(villageMenu, 0); } },
       { label: 'タイトルへ', onClick: () => { save(); setTimeout(showTitle, 0); } },
       { label: '閉じる', cls: 'primary' },
@@ -1694,6 +1763,7 @@
       { label: 'メッセージ履歴', onClick: () => { setTimeout(showLog, 0); } },
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(dungeonMenu, 0); } },
+      { label: '音楽試聴・音量', onClick: () => { setTimeout(() => openMusicRoom(dungeonMenu), 0); } },
       { label: '演出：' + (UI.S.settings.fx === 'calm' ? '控えめ' : '通常'), onClick: () => { toggleFx(); setTimeout(dungeonMenu, 0); } },
       { label: '中断してタイトルへ', onClick: () => { save(); setTimeout(showTitle, 0); } },
       { label: '閉じる', cls: 'primary' },
