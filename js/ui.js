@@ -957,12 +957,16 @@
     AU.holdBgm(true); MU.stop(0.1);
     let timer = null, lastTap = 0;
     const fmt = (x) => Math.floor(x / 60) + ':' + String(Math.floor(x % 60)).padStart(2, '0');
-    const rows = Object.keys(MU.LIBRARY).map((id) => { const L = MU.LIBRARY[id], f = MU.info(id);
-      return `<div class="mrow" data-song="${id}"><div class="mtitle"><b>${esc(L.title)}</b><small>${esc(L.note)}・BPM${f.bpm}・${fmt(f.seconds + (f.loop ? 0 : f.tail))}</small></div>
-        <button class="mplay" data-play="${id}">▶ 再生</button></div>`; }).join('');
-    const html = `<p class="note">試聴している間は時間が進みません。閉じると元の音楽に戻ります。</p>${rows}
+    const row = (id) => { const L = MU.LIBRARY[id], f = MU.info(id);
+      return `<div class="mrow" data-song="${id}"><div class="mtitle"><b><span class="mtag ${L.group}">${L.group === 'old' ? '旧' : '新'}</span>${esc(L.title)}</b>` +
+        `<small>${esc(L.note)}・BPM${f.bpm}・${f.loop ? '1周' + fmt(f.seconds) : fmt(f.seconds + f.tail)}</small></div>` +
+        `${f.loop ? `<button class="mseam" data-seam="${id}" aria-label="ループのつなぎ目を聴く">つなぎ目</button>` : ''}<button class="mplay" data-play="${id}">▶ 再生</button></div>`; };
+    const ids = Object.keys(MU.LIBRARY);
+    const html = `<p class="note">試聴している間は時間が進みません。閉じると元の音楽に戻ります。「つなぎ目」はループの直前から再生します。</p>
+      <h3 class="sub">第2版（今回の試作）</h3>${ids.filter((i) => MU.LIBRARY[i].group !== 'old').map(row).join('')}
+      <h3 class="sub">第1版（比較用）</h3>${ids.filter((i) => MU.LIBRARY[i].group === 'old').map(row).join('')}
       <div class="mnow" id="m-now">停止中</div>
-      <div class="mctrl"><button id="m-stop">■ 停止</button><button id="m-seam">ループのつなぎ目を聴く</button></div>
+      <div class="mctrl"><button id="m-stop">■ 停止</button></div>
       <label class="mvol">BGM音量 <input type="range" id="m-bgm" min="0" max="100" step="5" value="${Math.round(st.bgmVol * 100)}"><span id="m-bgm-v">${Math.round(st.bgmVol * 100)}</span></label>
       <label class="mvol">効果音の音量 <input type="range" id="m-sfx" min="0" max="100" step="5" value="${Math.round(st.sfxVol * 100)}"><span id="m-sfx-v">${Math.round(st.sfxVol * 100)}</span></label>
       <p class="note" id="m-mute">${st.sound ? '' : '音が「オフ」になっています。下のボタンでオンにすると試聴できます。'}</p>`;
@@ -976,7 +980,7 @@
       h.body.querySelectorAll('.mplay').forEach((b) => b.classList.toggle('on', !!s && s.id === b.dataset.play));
       if (!s) { now.textContent = '停止中'; return; }
       const L = MU.LIBRARY[s.id];
-      now.textContent = '再生中：' + L.title + '　' + fmt(s.sec) + (s.loop ? '（' + (s.loops + 1) + '周目）' : ' / ' + fmt(s.total));
+      now.textContent = '再生中：' + (L.group === 'old' ? '［旧］' : '') + L.title + '　' + fmt(s.sec) + (s.loop ? '（' + (s.loops + 1) + '周目）' : ' / ' + fmt(s.total));
     }
     const play = (id, opts) => {
       const t = performance.now();
@@ -989,8 +993,8 @@
     };
     h.body.querySelectorAll('.mplay').forEach((b) => b.addEventListener('click', () => play(b.dataset.play)));
     h.body.querySelector('#m-stop').addEventListener('click', stopAll);
-    // ループの確認：ヤナイのテーマを、つなぎ目（1周目の終わり）の8拍前から再生
-    h.body.querySelector('#m-seam').addEventListener('click', () => { const s = MU.song('yanai'); play('yanai', { fromBeat: s.loopEnd - 8 }); });
+    // ループの確認：その曲を、つなぎ目（1周目の終わり）の8拍前から再生
+    h.body.querySelectorAll('.mseam').forEach((b) => b.addEventListener('click', () => { const s = MU.song(b.dataset.seam); play(b.dataset.seam, { fromBeat: s.loopEnd - 8 }); }));
     const vol = (key, el, lab) => { const inp = h.body.querySelector(el); inp.addEventListener('input', () => {
       UI.S.settings[key] = +inp.value / 100; h.body.querySelector(lab).textContent = inp.value; applyVolumes(); });
       inp.addEventListener('change', () => { save(); if (key === 'sfxVol') AU.sfx('pickup'); }); };

@@ -296,3 +296,7 @@ details summary { cursor: pointer; margin: 4px 0; }
 .mvol { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 14px; }
 .mvol input { flex: 1; min-height: 32px; }
 .mvol span { width: 2.2em; text-align: right; }
+.mseam { flex: none; min-height: 44px; padding: 0 8px; font-size: 13px; }
+.mtag { display: inline-block; font-size: 11px; padding: 0 5px; margin-right: 5px; border-radius: 5px; vertical-align: 2px; }
+.mtag.new { background: #c8a040; color: #1a1408; }
+.mtag.old { background: #4a5568; color: #e8e8f0; }

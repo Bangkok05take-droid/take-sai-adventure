@@ -145,6 +145,178 @@
       o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.1);
       return t + 0.15;
     },
+    // ======== 第2版の楽器（ここから下。第1版の曲は上の楽器のまま） ========
+    // 金管アンサンブル風（トランペット＋ホルン群）：3本のずれたのこぎり波、出だしにわずかな音程のしゃくり、強さに応じて開くフィルター
+    brassEns(ctx, out, t, dur, n, v, rel) {
+      const f = hz(n), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.Q.value = 1.1;
+      const open = Math.min(4200, f * (4.5 + 3 * v)), body = Math.min(2600, f * 4.2);
+      lp.frequency.setValueAtTime(f * 1.4, t); lp.frequency.linearRampToValueAtTime(open, t + 0.045); lp.frequency.linearRampToValueAtTime(body, t + 0.35);
+      const end = env(g, t, 0.022, v * 0.19, dur, rel || 0.2, 0.78);
+      const os = oscs(ctx, ['sawtooth', 'sawtooth'], f, [-7, 7], t, end + 0.05);
+      for (const o of os) { o.frequency.setValueAtTime(f * 0.985, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.05); o.connect(lp); }
+      lp.connect(g); g.connect(out);
+      if (v >= 0.9) vibrato(ctx, os, t + 0.4, dur, 5.4, 8);   // ビブラートは主旋律だけ（軽くするため）
+      return end;
+    },
+    // ホルン群風：丸く暖かい（和音・合いの手）
+    hornEns(ctx, out, t, dur, n, v, rel) {
+      const f = hz(n), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.Q.value = 0.7;
+      lp.frequency.setValueAtTime(350, t); lp.frequency.linearRampToValueAtTime(Math.min(1700, f * 3.6), t + 0.08); lp.frequency.linearRampToValueAtTime(Math.min(1200, f * 2.8), t + 0.5);
+      const end = env(g, t, 0.05, v * 0.14, dur, rel || 0.3, 0.85);
+      const os = oscs(ctx, ['sawtooth', 'triangle'], f, [-5, 5], t, end + 0.05);
+      for (const o of os) o.connect(lp);
+      lp.connect(g); g.connect(out);
+      return end;
+    },
+    // 低い金管（トロンボーン・チューバ）風：アクセントで少し明るく開く
+    lowBrass(ctx, out, t, dur, n, v, rel) {
+      const f = hz(n), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.Q.value = 0.9;
+      lp.frequency.setValueAtTime(250, t); lp.frequency.linearRampToValueAtTime(Math.min(1500, f * (6 + 4 * v)), t + 0.05); lp.frequency.linearRampToValueAtTime(Math.min(900, f * 5), t + 0.45);
+      const end = env(g, t, 0.03, v * 0.17, dur, rel || 0.25, 0.75);
+      const os = oscs(ctx, ['sawtooth'], f, [0], t, end + 0.05);
+      for (const o of os) o.connect(lp);
+      lp.connect(g); g.connect(out);
+      return end;
+    },
+    // 弦楽合奏風：3本のずれたのこぎり波（共有フィルター）。att で立ち上がりを変える
+    stringsEns(ctx, out, t, dur, n, v, rel) {
+      const f = hz(n), g = ctx.createGain();
+      const end = env(g, t, Math.min(0.3, dur * 0.35), v * 0.05, dur, rel || 0.5, 0.95);
+      const os = oscs(ctx, ['sawtooth', 'sawtooth'], f, [-10, 10], t, end + 0.05);
+      for (const o of os) o.connect(g);
+      g.connect(section(ctx, out, 'ens', 2400));
+      return end;
+    },
+    // 弦の短い刻み（スピッカート風）
+    strStac(ctx, out, t, dur, n, v) {
+      const f = hz(n), g = ctx.createGain(), len = Math.min(dur, 0.22);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.09, t + 0.012); g.gain.exponentialRampToValueAtTime(v * 0.015, t + len); g.gain.linearRampToValueAtTime(0, t + len + 0.04);
+      const os = oscs(ctx, ['sawtooth'], f, [0], t, t + len + 0.06);
+      os[0].connect(g);
+      g.connect(section(ctx, out, 'stac', 2000));
+      return t + len + 0.05;
+    },
+    // ピチカート風（はじく弦）
+    pizz(ctx, out, t, dur, n, v) {
+      const f = hz(n), g = ctx.createGain(), len = 0.45;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.16, t + 0.004); g.gain.exponentialRampToValueAtTime(v * 0.004, t + len); g.gain.linearRampToValueAtTime(0, t + len + 0.02);
+      const os = oscs(ctx, ['sawtooth'], f, [0], t, t + len + 0.05);
+      os[0].connect(g);
+      g.connect(section(ctx, out, 'pizz', 1300));
+      return t + len;
+    },
+    // 低弦（チェロ・コントラバス）風：ゆっくり立ち上がり、揺れる
+    cello(ctx, out, t, dur, n, v, rel) {
+      const f = hz(n), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.Q.value = 0.8; lp.frequency.value = Math.min(1000, f * 6);
+      const end = env(g, t, Math.min(0.4, dur * 0.4), v * 0.09, dur, rel || 0.6, 0.9);
+      const os = oscs(ctx, ['sawtooth', 'sawtooth'], f, [-6, 6], t, end + 0.05);
+      for (const o of os) o.connect(lp);
+      lp.connect(g); g.connect(out);
+      vibrato(ctx, os, t + 0.45, dur, 4.4, 7);
+      return end;
+    },
+    // 笛（フルート・リコーダー）風：やわらかい基音＋少しの息の音
+    flute(ctx, out, t, dur, n, v, rel) {
+      const f = hz(n), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 0.3;
+      const end = env(g, t, 0.045, v * 0.16, dur, rel || 0.12, 0.85);
+      const os = oscs(ctx, ['sine', 'triangle'], f, [0, 3], t, end + 0.05);
+      os[0].connect(lp); const tg = ctx.createGain(); tg.gain.value = 0.35; os[1].connect(tg); tg.connect(lp);
+      lp.connect(g); g.connect(out);
+      noiseHit(ctx, out, t, 0.07, v * 0.025, 'bandpass', Math.min(5000, f * 3));   // 吹き始めの息
+      vibrato(ctx, os, t + 0.22, dur, 5.3, 10);
+      return end;
+    },
+    // リード（クラリネット・オーボエ）風：奇数倍音の多いこもった音
+    reed(ctx, out, t, dur, n, v, rel) {
+      const f = hz(n), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.Q.value = 0.9; lp.frequency.value = Math.min(1800, f * 3.2);
+      const end = env(g, t, 0.06, v * 0.08, dur, rel || 0.2, 0.85);
+      const os = oscs(ctx, ['square', 'sine'], f, [0, 0], t, end + 0.05);
+      os[0].connect(lp); const sg = ctx.createGain(); sg.gain.value = 0.8; os[1].connect(sg); sg.connect(lp);
+      lp.connect(g); g.connect(out);
+      vibrato(ctx, os, t + 0.3, dur, 4.8, 6);
+      return end;
+    },
+    // 木琴（ラナート風）：基音＋4倍の倍音、すぐ減衰
+    marimba(ctx, out, t, dur, n, v) {
+      const f = hz(n), g = ctx.createGain(), g2 = ctx.createGain(), len = Math.max(0.25, Math.min(0.8, 220 / f));
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.2, t + 0.003); g.gain.exponentialRampToValueAtTime(v * 0.002, t + len); g.gain.linearRampToValueAtTime(0, t + len + 0.02);
+      g2.gain.setValueAtTime(0, t); g2.gain.linearRampToValueAtTime(v * 0.05, t + 0.002); g2.gain.exponentialRampToValueAtTime(0.0003, t + len * 0.3); g2.gain.linearRampToValueAtTime(0, t + len * 0.3 + 0.02);
+      const os = oscs(ctx, ['sine', 'sine'], f, [0, 0], t, t + len + 0.05); os[1].frequency.value = f * 4;
+      os[0].connect(g); os[1].connect(g2); g.connect(out); g2.connect(out);
+      return t + len;
+    },
+    // 小さな鐘風：少しずれた倍音（控えめ）
+    bell(ctx, out, t, dur, n, v) {
+      const f = hz(n), len = 1.4;
+      [[1, 1], [2.76, 0.35], [5.4, 0.12]].forEach(([m, a]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f * m;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.07 * a, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0002, t + len / m); g.gain.linearRampToValueAtTime(0, t + len / m + 0.02);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + len / m + 0.05);
+      });
+      return t + len;
+    },
+    // 弾む低音（ベース）：はじいて少し残る
+    pluckBass(ctx, out, t, dur, n, v) {
+      const f = hz(n), g = ctx.createGain(), lp = ctx.createBiquadFilter(), len = Math.min(dur, 0.5);
+      lp.type = 'lowpass'; lp.Q.value = 1; lp.frequency.setValueAtTime(1100, t); lp.frequency.exponentialRampToValueAtTime(380, t + 0.18);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.24, t + 0.006); g.gain.exponentialRampToValueAtTime(v * 0.08, t + len); g.gain.linearRampToValueAtTime(0, t + len + 0.06);
+      const os = oscs(ctx, ['triangle', 'sawtooth'], f, [0, 0], t, t + len + 0.1);
+      const sg = ctx.createGain(); sg.gain.value = 0.35; os[0].connect(lp); os[1].connect(sg); sg.connect(lp);
+      lp.connect(g); g.connect(out);
+      return t + len;
+    },
+    // 太鼓（低い手持ちの太鼓）風
+    kick(ctx, out, t, dur, n, v) {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(58, t + 0.12);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.42, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.32); g.gain.linearRampToValueAtTime(0, t + 0.34);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.36);
+      noiseHit(ctx, out, t, 0.03, v * 0.08, 'lowpass', 1400);   // 皮を打つ音（スマホでも聞こえる）
+      return t + 0.34;
+    },
+    // タンバリン風（小さく、高すぎない帯域）
+    tamb(ctx, out, t, dur, n, v) { noiseHit(ctx, out, t, 0.09, v * 0.05, 'bandpass', 5200); return t + 0.1; },
+    // 木の拍子木（ウッドブロック）風
+    wblock(ctx, out, t, dur, n, v) {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = n ? hz(n) : 880;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.11, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0003, t + 0.07); g.gain.linearRampToValueAtTime(0, t + 0.08);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.09);
+      return t + 0.08;
+    },
+    // チン（タイの小さなシンバル）風：澄んだ短い金属音（ごく控えめ）
+    ching(ctx, out, t, dur, n, v) {
+      [[2350, 1], [3480, 0.5]].forEach(([fr, a]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = fr;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.025 * a, t + 0.002); g.gain.exponentialRampToValueAtTime(0.00005, t + 0.3); g.gain.linearRampToValueAtTime(0, t + 0.31);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32);
+      });
+      return t + 0.3;
+    },
+    // シンバル風（やわらかい。高域は抑える）。dur が長いと「わき上がる」
+    cymbal(ctx, out, t, dur, n, v) {
+      const s = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), g = ctx.createGain(), swell = dur > 0.5;
+      s.buffer = noiseBuf(ctx); s.loop = true; hp.type = 'highpass'; hp.frequency.value = 2500; lp.type = 'lowpass'; lp.frequency.value = 7000;
+      const peak = v * 0.05, len = 2.2;
+      g.gain.setValueAtTime(0, t);
+      if (swell) { g.gain.linearRampToValueAtTime(peak, t + dur); g.gain.exponentialRampToValueAtTime(0.0003, t + dur + 0.6); g.gain.linearRampToValueAtTime(0, t + dur + 0.62); }
+      else { g.gain.linearRampToValueAtTime(peak, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0003, t + len); g.gain.linearRampToValueAtTime(0, t + len + 0.02); }
+      s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(out); s.start(t); s.stop(t + (swell ? dur + 0.65 : len + 0.05));
+      return t + len;
+    },
+    // 小太鼓（やわらかめ）
+    snare2(ctx, out, t, dur, n, v) {
+      noiseHit(ctx, out, t, 0.12, v * 0.13, 'bandpass', 1800);
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = 210;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v * 0.07, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.07); g.gain.linearRampToValueAtTime(0, t + 0.08);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.09);
+      return t + 0.13;
+    },
   };
   // 合奏パートの共有フィルター（出口ごとに1つ。音ごとにフィルターを作らないので軽い）
   const sections = new WeakMap();
@@ -170,7 +342,7 @@
   // ---------- 曲 ----------
   /* 1．冒険のファンファーレ（BPM112・4拍子・約11秒・ループしない）。変ロ長調（下の楽譜はハ長調で書き、全体を2半音下げる）。
    * 上昇する分散和音 → 覚えやすい主題（2小節）→ 終止。主旋律は金管風、和音は低い金管風、低音＋ティンパニ風で支える。 */
-  function fanfare() {
+  function fanfareV1() {
     const tr = -2, ev = [];
     const add = (inst, list, vel) => { for (const [b, len, n] of list) ev.push({ b, len, n: n + tr, inst, v: vel }); };
     add('brass', seq(0, 'G4:.5 C5:.5 E5:.5 G5:2.5 ' +
@@ -204,8 +376,8 @@
    * 導入（4小節）→ 主題A（8）→ 展開B（8：ニ短調から希望へ）→ 主題Aの再提示（6）→ ループへの接続（2）。
    * ループ：17拍目（主題Aの頭）〜112拍目を繰り返す。接続の2小節は導入の後半と同じ形なので、自然に主題Aへ戻る。
    * ヤナイのモチーフ（主題Aの最初の2小節）：C4 F4 G4 A4 | A4 G4 F4 D4（音階の 5-1-2-3 | 3-2-1-6）。最終決戦で力強く編曲する予定。 */
-  const YANAI_MOTIF = 'C4:1 F4:1.5 G4:.5 A4:1 A4:.5 G4:.5 F4:1 D4:2';
-  function yanai() {
+  const YANAI_MOTIF_V1 = 'C4:1 F4:1.5 G4:.5 A4:1 A4:.5 G4:.5 F4:1 D4:2';   // 第1版（ヘ長調）
+  function yanaiV1() {
     const ev = [];
     const add = (inst, list, vel) => { for (const [b, len, n] of list) ev.push({ b, len, n, inst, v: vel }); };
     const V = {
@@ -238,11 +410,11 @@
       else { ev.push({ b, len: 2, n: r, inst: 'bass', v: 0.9 }); ev.push({ b: b + 2, len: 2, n: c === 'F' || c === 'FA' ? midi('C2') : r + (r < midi('C2') ? 7 : -5), inst: 'bass', v: 0.75 }); }
     }
     // ホルン（主旋律）
-    add('horn', seq(16, YANAI_MOTIF + ' F4:1 Bb4:1.5 A4:.5 G4:1 G4:.5 F4:.5 E4:1 C4:2 ' +
+    add('horn', seq(16, YANAI_MOTIF_V1 + ' F4:1 Bb4:1.5 A4:.5 G4:1 G4:.5 F4:.5 E4:1 C4:2 ' +
       'C4:1 F4:1.5 G4:.5 A4:1 C5:1.5 A4:.5 D5:1 C5:1 Bb4:1 A4:.5 G4:.5 E4:1 G4:1 F4:3.5 r:.5'), 1);
     add('horn', seq(48, 'A4:1.5 F4:.5 D4:1 F4:1 F4:1.5 D4:.5 Bb3:2 D4:1 G4:1.5 A4:.5 Bb4:1 A4:1 G4:.5 F4:.5 E4:2 ' +
       'F4:1 Bb4:1 C5:1 D5:1 C5:1.5 A4:.5 F4:1 A4:1 Bb4:1 D5:1 F5:2 E5:1.5 D5:.5 C5:2'), 1.05);
-    add('horn', seq(80, YANAI_MOTIF + ' F4:1 Bb4:1.5 A4:.5 G4:1 G4:1 A4:.5 Bb4:.5 C5:2 D5:1.5 C5:.5 Bb4:1 G4:1 A4:3.5 r:.5'), 1.1);
+    add('horn', seq(80, YANAI_MOTIF_V1 + ' F4:1 Bb4:1.5 A4:.5 G4:1 G4:1 A4:.5 Bb4:.5 C5:2 D5:1.5 C5:.5 Bb4:1 G4:1 A4:3.5 r:.5'), 1.1);
     // 木管：導入と接続でモチーフをほのめかし、主題・展開で温かい合いの手
     const hint = (b) => add('wood', seq(b, 'C5:1 F5:1.5 G5:.5 A5:1 G5:1.5 E5:.5 C5:2'), 0.8);
     hint(8); hint(104);
@@ -255,14 +427,224 @@
     for (let b = 48; b < 104; b += 4) { const w = b >= 80 ? 1.1 : 1; sn(b, 0.35 * w); sn(b + 2, 0.5 * w); sn(b + 3, 0.25 * w); sn(b + 3.5, 0.3 * w); }
     for (let i = 0; i < 8; i++) sn(110 + i * 0.25, 0.12 + i * 0.03);
     sn(14 + 1.5, 0.15); sn(14 + 1.75, 0.2);
-    return { bpm: 88, beats: 112, tail: 1.2, loop: true, loopStart: 16, loopEnd: 112, events: ev, motif: YANAI_MOTIF };
+    return { bpm: 88, beats: 112, tail: 1.2, loop: true, loopStart: 16, loopEnd: 112, events: ev, motif: YANAI_MOTIF_V1 };
+  }
+
+
+  // ======================= 第2版（2026年10月：聴いた感想をもとに作り直し・追加） =======================
+  // 楽譜を書くための小さな道具。tr：全体の移調（半音）
+  function score(tr) {
+    const ev = [];
+    const T = {
+      ev,
+      mel(inst, b, text, v, extra) { for (const [bb, len, n] of seq(b, text)) ev.push(Object.assign({ b: bb, len, n: n + tr, inst, v }, extra || {})); },
+      chord(inst, b, len, names, v, extra) { for (const nm of names) ev.push(Object.assign({ b, len, n: midi(nm) + tr, inst, v }, extra || {})); },
+      hit(inst, b, v, note, len) { ev.push({ b, len: len || 0.25, n: note ? midi(note) + tr : 0, inst, v }); },
+    };
+    return T;
+  }
+
+  /* 1．冒険のファンファーレ（第2版）：BPM96・4拍子・変ロ長調（ハ長調で書いて2半音下げる）・24拍＝15秒＋余韻約2.4秒。ループしない。
+   * 1小節目から金管の合奏。「呼びかけ（付点と休符）→ 応答（下りて長く伸ばす）」を2回くり返し、
+   * 5小節目で♭VII（変イ長調の和音）を通って、6小節目の主和音で大きく着地する。
+   * 伴奏は刻まず、低い金管・弦の持続音と、和音が変わる所のティンパニ・シンバルのアクセントで支える。 */
+  function fanfare2() {
+    const S = score(-2);
+    S.mel('brassEns', 0, 'C5:1 r:.5 G4:.5 C5:.75 E5:.25 G5:1 ' + 'A5:.75 G5:.25 F5:.5 E5:.5 D5:2 ' +
+      'E5:1 r:.5 C5:.5 E5:.75 F5:.25 A5:1 ' + 'G5:.75 F5:.25 E5:.5 D5:.5 E5:.5 F5:.5 G5:1 ' + 'A5:1.5 F5:.5 Bb5:1.5 A5:.5 ' + 'C6:4', 1);
+    S.mel('brassEns', 0, 'E4:1 r:.5 E4:.5 E4:.75 G4:.25 C5:1 ' + 'C5:.75 C5:.25 A4:.5 G4:.5 B4:2 ' +
+      'C5:1 r:.5 A4:.5 C5:.75 C5:.25 F5:1 ' + 'E5:.75 D5:.25 C5:.5 B4:.5 C5:.5 D5:.5 D5:1 ' + 'F5:1.5 C5:.5 F5:1.5 F5:.5 ' + 'G5:4', 0.48);
+    // ホルンの応答（主旋律が伸ばしている間に答える）
+    S.mel('hornEns', 4, 'r:2 G4:.5 A4:.5 B4:1', 0.95);
+    S.mel('hornEns', 20, 'E5:4', 0.6);
+    // 低い金管：和音の変わり目でアクセント、あとは持続
+    const lb = [[0, 4, ['C3', 'G3']], [4, 2, ['F2', 'C3', 'A3']], [6, 2, ['G2', 'D3', 'B3']], [8, 2, ['A2', 'E3', 'C4']], [10, 2, ['F2', 'C3', 'A3']],
+      [12, 2, ['D3', 'F3', 'C4']], [14, 2, ['G2', 'D3', 'B3']], [16, 2, ['F2', 'C3', 'A3']], [18, 2, ['Bb2', 'F3', 'D4']], [20, 4, ['C3', 'G3', 'C4', 'E4']]];
+    for (const [b, len, ns] of lb) S.chord('lowBrass', b, len, ns, b === 20 ? 0.95 : 0.75);
+    // 弦：高めの持続音（主旋律の後ろで響きを厚く）。4小節目の後半は上へ駆け上がる
+    const st = [[0, 4, ['G4', 'C5', 'E5']], [4, 2, ['A4', 'C5', 'F5']], [6, 2, ['G4', 'B4', 'D5']], [8, 2, ['A4', 'C5', 'E5']], [10, 2, ['A4', 'C5', 'F5']],
+      [12, 2, ['F4', 'A4', 'D5']], [16, 2, ['A4', 'C5', 'F5']], [18, 2, ['Bb4', 'D5', 'F5']], [20, 4, ['G4', 'C5', 'E5', 'G5']]];
+    for (const [b, len, ns] of st) S.chord('stringsEns', b, len, ns, 0.6);
+    S.mel('strStac', 14, 'D4:.25 E4:.25 F4:.25 G4:.25 A4:.25 B4:.25 C5:.25 D5:.25', 0.9);
+    S.mel('bass', 0, 'C2:4 F1:2 G1:2 A1:2 F1:2 D2:2 G1:2 F1:2 Bb1:2 C2:4', 1);
+    // ティンパニ・シンバル・小太鼓：要所だけ
+    S.hit('timpani', 0, 1, 'C2'); S.hit('timpani', 4, 0.8, 'F1'); S.hit('timpani', 6, 0.75, 'G1'); S.hit('timpani', 8, 0.8, 'A1');
+    for (let i = 0; i < 8; i++) S.hit('timpani', 14 + i * 0.25, 0.3 + i * 0.07, 'G1');
+    S.hit('timpani', 16, 1, 'F1'); S.hit('timpani', 18, 0.85, 'Bb1'); S.hit('timpani', 20, 1, 'C2');
+    for (let i = 1; i < 10; i++) S.hit('timpani', 20 + i * 0.25, 0.5 - i * 0.04, 'C2');
+    S.hit('timpani', 23, 0.8, 'C2');
+    S.hit('cymbal', 0, 0.8); S.ev.push({ b: 18, len: 2, n: 0, inst: 'cymbal', v: 0.7 }); S.hit('cymbal', 20, 1);
+    for (let i = 0; i < 8; i++) S.hit('snare2', 14 + i * 0.25, 0.15 + i * 0.05);
+    for (const e of S.ev) if (e.b >= 20 && /brass|Brass|horn|strings|Ens|bass/.test(e.inst)) e.rel = 1.8;   // 最後の和音はゆっくり消える
+    return { bpm: 96, beats: 24, tail: 2.4, loop: false, reverb: 0.25, events: S.ev };
+  }
+
+  /* 2．マスターヤナイのテーマ（第2版）：BPM112・4拍子・変ロ長調（ハ長調で書いて2半音下げる）・1周120拍＝約64.3秒。
+   * 導入（2小節）→ 主題A（8）→ 主題A'（8）→ 短い橋B（4：少しだけ哀愁、すぐ希望へ）→ 主題A''（6：勝利）→ 接続（2＝導入と同じ）。
+   * ループ：9拍目（主題Aの頭）〜120拍目。主旋律は中音域の金管合奏、ホルン群が1オクターブ下で支え、弦の8分の刻みと控えめな小太鼓で前へ進む。
+   * モチーフ（最終決戦用）：主題Aの最初の2小節。第1版の頭（5-1-2-3）を付点で力強くして、5度上まで駆け上がる形に発展させた。 */
+  const YANAI_MOTIF = 'G4:.75 C5:1.25 D5:.5 E5:.5 G5:1 A5:.75 G5:.25 F5:.5 E5:.5 D5:1.5';   // ハ長調で記譜（実際の音は2半音下＝変ロ長調）
+  function yanai2() {
+    const S = score(-2);
+    const A1 = 'G4:.75 C5:1.25 D5:.5 E5:.5 G5:1 A5:.75 G5:.25 F5:.5 E5:.5 D5:1.5 r:.5 E5:.75 A4:1.25 B4:.5 C5:.5 E5:1 D5:.75 C5:.25 B4:.5 A4:.5 G4:2 ' +
+      'G4:.75 C5:1.25 D5:.5 E5:.5 G5:1 A5:.75 G5:.25 F5:.5 A5:.5 G5:2 ';
+    S.mel('brassEns', 8, A1 + 'F5:.75 E5:.25 D5:.5 E5:.5 F5:.5 D5:.5 B4:1 C5:3 r:1', 1);
+    S.mel('brassEns', 40, A1 + 'F5:.75 E5:.25 D5:.5 C5:.5 B4:1 G4:1 G4:.75 A4:.25 B4:.5 C5:.5 D5:2', 1);
+    S.mel('hornEns', 8, A1.replace(/([A-G]b?)(\d)/g, (m, nn, o) => nn + (o - 1)) + 'F4:.75 E4:.25 D4:.5 E4:.5 F4:.5 D4:.5 B3:1 C4:3 r:1', 0.55);   // 1オクターブ下で支える
+    // A' はホルンが3度下で和音を作る
+    S.mel('hornEns', 40, 'E4:.75 E4:1.25 B4:.5 C5:.5 E5:1 F5:.75 E5:.25 D5:.5 C5:.5 B4:1.5 r:.5 C5:.75 E4:1.25 G4:.5 A4:.5 C5:1 A4:.75 A4:.25 G4:.5 F4:.5 D4:2 ' +
+      'E4:.75 E4:1.25 B4:.5 C5:.5 E5:1 F5:.75 E5:.25 C5:.5 F5:.5 E5:2 D5:.75 C5:.25 A4:.5 A4:.5 G4:1 D4:1 D4:.75 F4:.25 G4:.5 A4:.5 B4:2', 0.6);
+    S.mel('hornEns', 36, 'r:2 E4:.5 F4:.5 G4:1', 0.8);   // 主題Aの終わりの応答
+    // 橋B：ホルンの独奏（少しだけ哀愁）→ 上向きで希望へ
+    S.mel('hornEns', 72, 'E5:1.5 D5:.5 C5:1 A4:1 B4:1.5 A4:.5 G4:2 A4:1 C5:1 F5:1.5 E5:.5 D5:3 r:1', 1.25);
+    S.mel('flute', 76, 'r:2 B5:1 G5:1 r:4 r:2 D6:1 C6:1', 0.45);
+    // 主題A''：勝利
+    S.mel('brassEns', 88, 'G4:.75 C5:1.25 D5:.5 E5:.5 G5:1 A5:.75 G5:.25 F5:.5 E5:.5 D5:1.5 r:.5 E5:.75 C5:.25 E5:.5 F5:.5 G5:1 A5:1 ' +
+      'G5:.75 A5:.25 G5:.5 F5:.5 E5:.5 D5:.5 G5:1 A5:1.5 G5:.5 F5:1 D5:1 E5:2 C5:2', 1.1);
+    S.mel('brassEns', 88, 'E4:.75 E4:1.25 B4:.5 C5:.5 E5:1 F5:.75 E5:.25 D5:.5 C5:.5 B4:1.5 r:.5 C5:.75 A4:.25 C5:.5 C5:.5 E5:1 F5:1 ' +
+      'D5:.75 F5:.25 D5:.5 D5:.5 B4:.5 B4:.5 D5:1 F5:1.5 E5:.5 D5:1 B4:1 C5:2 G4:2', 0.55);
+    // 導入と接続（同じ形）：ホルンの短い呼びかけ
+    for (const b of [0, 112]) S.mel('hornEns', b, 'G4:.75 C5:.25 E5:1 r:2 A4:.75 C5:.25 F5:1 D5:2', 0.95);
+    // 和音の進行
+    const prog = [];
+    const bar = (b, ...cs) => { const len = 4 / cs.length; cs.forEach((c, i) => prog.push([b + i * len, len, c])); };
+    const Aprog = (b, end) => { bar(b, 'C'); bar(b + 4, 'F', 'G'); bar(b + 8, 'Am', 'Em'); bar(b + 12, 'F', 'G'); bar(b + 16, 'C'); bar(b + 20, 'F', 'CE');
+      if (end === 'A') { bar(b + 24, 'Dm7', 'G7'); bar(b + 28, 'C'); } else { bar(b + 24, 'Dm7', 'G'); bar(b + 28, 'G'); } };
+    bar(0, 'C'); bar(4, 'F', 'G');
+    Aprog(8, 'A'); Aprog(40, 'A2');
+    bar(72, 'Am'); bar(76, 'Em'); bar(80, 'F', 'G'); bar(84, 'Gsus', 'G');
+    bar(88, 'C'); bar(92, 'F', 'G'); bar(96, 'Am', 'F'); bar(100, 'Dm', 'G'); bar(104, 'F', 'G'); bar(108, 'C');
+    bar(112, 'C'); bar(116, 'F', 'G');
+    const PAD = { C: ['E4', 'G4', 'C5'], CE: ['E4', 'G4', 'C5'], F: ['F4', 'A4', 'C5'], G: ['D4', 'G4', 'B4'], Am: ['E4', 'A4', 'C5'], Em: ['E4', 'G4', 'B4'],
+      Dm7: ['D4', 'F4', 'C5'], Dm: ['D4', 'F4', 'A4'], G7: ['D4', 'F4', 'B4'], Gsus: ['D4', 'G4', 'C5'] };
+    const OST = { C: ['C3', 'G3', 'C4', 'G3'], CE: ['E3', 'G3', 'C4', 'G3'], F: ['F3', 'C4', 'F4', 'C4'], G: ['G3', 'D4', 'G4', 'D4'], Am: ['A3', 'E4', 'A4', 'E4'],
+      Em: ['E3', 'B3', 'E4', 'B3'], Dm7: ['D3', 'A3', 'C4', 'A3'], Dm: ['D3', 'A3', 'D4', 'A3'], G7: ['G3', 'D4', 'F4', 'D4'], Gsus: ['G3', 'D4', 'C4', 'D4'] };
+    const LOW = { C: ['C3', 'G3'], CE: ['E2', 'C3'], F: ['F2', 'C3'], G: ['G2', 'D3'], Am: ['A2', 'E3'], Em: ['E2', 'B2'], Dm7: ['D3', 'A3'], Dm: ['D3', 'A3'], G7: ['G2', 'F3'], Gsus: ['G2', 'D3'] };
+    const ROOT = { C: 'C2', CE: 'E2', F: 'F1', G: 'G1', Am: 'A1', Em: 'E2', Dm7: 'D2', Dm: 'D2', G7: 'G1', Gsus: 'G1' };
+    for (const [b, len, c] of prog) {
+      const sec = b < 8 || b >= 112 ? 'intro' : b < 40 ? 'A' : b < 72 ? 'A2' : b < 88 ? 'B' : 'A3';
+      // 弦：持続の和音（Bは厚め・ゆったり）＋ 8分の刻み（橋B以外）
+      S.chord('stringsEns', b, len, PAD[c], sec === 'B' ? 1.15 : sec === 'A3' ? 1.0 : 0.8);
+      if (sec !== 'B') for (let k = 0; k < len * 2; k++) S.mel('strStac', b + k * 0.5, OST[c][k % 4] + ':.5', (k % 2 ? 0.55 : 0.8) * (sec === 'A3' ? 1.1 : 1));
+      else for (let k = 0; k < len; k++) S.mel('pizz', b + k, OST[c][k % 4] + ':1', 0.6);
+      // 低い金管：和音の頭（A''は強め）
+      if (sec !== 'B') S.chord('lowBrass', b, Math.min(len, 2), LOW[c], sec === 'A3' ? 0.95 : 0.7);
+      // 低音：2分音符＋変わり目の前に経過音
+      S.mel('bass', b, ROOT[c] + ':' + len, 0.85);
+    }
+    // 小太鼓：行進風だが規則正しすぎないよう、小節の後半に飾りを入れる（橋Bは休み）
+    for (let b = 8; b < 120; b += 4) {
+      if (b >= 72 && b < 84) continue;
+      const w = b >= 88 && b < 112 ? 1.15 : 0.85;
+      S.hit('snare2', b, 0.45 * w); S.hit('snare2', b + 1.5, 0.22 * w); S.hit('snare2', b + 2, 0.35 * w);
+      if ((b / 4) % 2) { S.hit('snare2', b + 3.5, 0.25 * w); S.hit('snare2', b + 3.75, 0.32 * w); } else S.hit('snare2', b + 3, 0.28 * w);
+    }
+    for (let i = 0; i < 8; i++) S.hit('snare2', 86 + i * 0.25, 0.12 + i * 0.05);   // 橋Bの終わり：A''へのロール
+    for (const b of [8, 40, 88]) S.hit('timpani', b, b === 88 ? 1 : 0.75, 'C2');
+    S.hit('timpani', 86, 0.6, 'G1'); S.hit('timpani', 87, 0.7, 'G1'); S.hit('timpani', 108, 0.8, 'C2');
+    S.hit('cymbal', 8, 0.5); S.ev.push({ b: 84, len: 4, n: 0, inst: 'cymbal', v: 0.55 }); S.hit('cymbal', 88, 0.85);
+    return { bpm: 112, beats: 120, tail: 1.2, loop: true, loopStart: 8, loopEnd: 120, reverb: 0.18, events: S.ev, motif: YANAI_MOTIF };
+  }
+
+  /* 3．村の音楽（新規）：BPM120・4拍子・ト長調・1周144拍＝72秒。
+   * 導入（2小節：木琴の型）→ A（笛の主旋律、すき間に木琴が答える）→ B（笛と木琴が2拍ずつ掛け合う）→
+   * A'（役を入れかえ：木琴が主旋律、笛が答える）→ C（笛とクラリネットの3度の二重奏）→ 接続（＝導入）。ループ：9拍目〜144拍目。
+   * リズム：太鼓（1・3拍）、タンバリン（2・4拍、小さく）、拍子木の裏打ち、チン（タイの小さなシンバル）を控えめに。弾む低音と裏拍の和音。 */
+  function village() {
+    const S = score(0);
+    const riff = 'G4:.5 B4:.5 D5:.5 G5:.5 F#5:.5 D5:.5 B4:.5 D5:.5 A4:.5 C5:.5 D5:.5 F#5:.5 E5:.5 C5:.5 A4:.5 F#4:.5';
+    S.mel('marimba', 0, riff, 0.9); S.mel('marimba', 136, riff, 0.9);
+    const Amel = 'B4:.5 D5:.5 G5:.75 F#5:.25 E5:.5 D5:.5 B4:1 C5:.5 E5:.5 G5:.75 E5:.25 D5:.5 C5:.5 A4:1 ' +
+      'A4:.5 D5:.5 F#5:.5 E5:.5 D5:.5 C5:.5 A4:.5 F#4:.5 G4:.75 A4:.25 B4:.5 G4:.5 D5:1 r:1 ' +
+      'B4:.5 E5:.5 G5:.75 F#5:.25 E5:.5 B4:.5 G4:1 C5:.5 E5:.5 G5:1 F#5:.5 E5:.5 D5:1 ' +
+      'C5:.5 A4:.5 C5:.5 E5:.5 D5:.5 C5:.5 B4:.5 A4:.5 G4:2 r:2';
+    const Aans = (inst, b, v) => { S.mel(inst, b + 12, 'r:3 D5:.25 E5:.25 F#5:.25 G5:.25', v); S.mel(inst, b + 28, 'r:2 B4:.5 D5:.5 G5:1', v); };
+    S.mel('flute', 8, Amel, 1); Aans('marimba', 8, 0.95);
+    S.mel('marimba', 72, Amel, 1); Aans('flute', 72, 0.9);
+    S.mel('reed', 72, 'r:4 r:4 r:4 r:4 G4:2 B4:2 G4:2 A4:2 F#4:2 E4:2 D4:4', 0.55);
+    // B：掛け合い
+    S.mel('flute', 40, 'E5:1 G5:1 r:2 D5:1 B4:1 r:2 C5:1 E5:1 r:2 F#5:1 A5:.5 F#5:.5 D5:2 G5:.75 E5:.25 C5:1 r:2 D5:.75 B4:.25 G4:1 r:2 ' +
+      'C#5:.5 E5:.5 G5:.5 E5:.5 A5:1 G5:1 F#5:1 E5:.5 D5:.5 A4:2', 1);
+    S.mel('marimba', 40, 'r:2 E5:.5 D5:.5 C5:1 r:2 D5:.5 B4:.5 G4:1 r:2 A4:.5 C5:.5 E5:1 r:4 r:2 G4:.5 C5:.5 E5:1 r:2 B4:.5 D5:.5 G5:1 r:4 r:2 D5:.5 F#5:.5 A5:1', 0.95);
+    // C：二重奏
+    S.mel('flute', 104, 'G5:1.5 F#5:.5 E5:1 B4:1 C5:1 E5:1 G5:1.5 F#5:.5 D5:1.5 B4:.5 G4:1 B4:1 A4:1 D5:1 F#5:2 ' +
+      'G5:1.5 A5:.5 G5:1 E5:1 C5:1 E5:1 G5:2 E5:1 C5:1 D5:1 F#5:1 D5:2 C5:2', 0.95);
+    S.mel('reed', 104, 'E5:1.5 D5:.5 B4:1 G4:1 G4:1 C5:1 E5:1.5 D5:.5 B4:1.5 G4:.5 D4:1 G4:1 F#4:1 A4:1 D5:2 ' +
+      'E5:1.5 F#5:.5 E5:1 B4:1 G4:1 C5:1 E5:2 C5:1 A4:1 A4:1 D5:1 B4:2 A4:2', 0.8);
+    // 鐘：区切りに小さく
+    for (const [b, nm] of [[8, 'G5'], [40, 'E5'], [72, 'G5'], [104, 'B4']]) S.hit('bell', b, 0.8, nm, 2);
+    // 和音と低音
+    const prog = [];
+    const bar = (b, ...cs) => { const len = 4 / cs.length; cs.forEach((c, i) => prog.push([b + i * len, len, c])); };
+    const A = (b) => { bar(b, 'G'); bar(b + 4, 'C'); bar(b + 8, 'D'); bar(b + 12, 'G'); bar(b + 16, 'Em'); bar(b + 20, 'C'); bar(b + 24, 'Am', 'D'); bar(b + 28, 'G'); };
+    bar(0, 'G'); bar(4, 'D7');
+    A(8);
+    bar(40, 'C'); bar(44, 'GB'); bar(48, 'Am'); bar(52, 'D'); bar(56, 'C'); bar(60, 'G'); bar(64, 'A7'); bar(68, 'D');
+    A(72);
+    bar(104, 'Em'); bar(108, 'C'); bar(112, 'G'); bar(116, 'D'); bar(120, 'Em'); bar(124, 'C'); bar(128, 'Am', 'D'); bar(132, 'G', 'D7');
+    bar(136, 'G'); bar(140, 'D7');
+    const CH = { G: ['B3', 'D4', 'G4'], GB: ['B3', 'D4', 'G4'], C: ['C4', 'E4', 'G4'], D: ['A3', 'D4', 'F#4'], D7: ['A3', 'C4', 'F#4'], Em: ['B3', 'E4', 'G4'], Am: ['A3', 'C4', 'E4'], A7: ['A3', 'C#4', 'G4'] };
+    const R = { G: 'G2', GB: 'B2', C: 'C3', D: 'D3', D7: 'D3', Em: 'E2', Am: 'A2', A7: 'A2' };
+    const F5 = { G: 'D3', GB: 'D3', C: 'G2', D: 'A2', D7: 'A2', Em: 'B2', Am: 'E2', A7: 'E2' };
+    for (const [b, len, c] of prog) {
+      for (let k = 0.5; k < len; k += 1) S.chord('pizz', b + k, 0.5, CH[c], 0.42);   // 裏拍の和音
+      if (len === 4) S.mel('pluckBass', b, R[c] + ':.75 r:.75 ' + R[c] + ':.5 ' + F5[c] + ':.75 r:.75 ' + F5[c] + ':.5', 1);
+      else S.mel('pluckBass', b, R[c] + ':.75 r:.75 ' + F5[c] + ':.5', 1);
+    }
+    // 打楽器
+    for (let b = 0; b < 144; b += 4) {
+      S.hit('kick', b, 0.9); S.hit('kick', b + 2, 0.75); if ((b / 4) % 2) S.hit('kick', b + 2.75, 0.45);
+      S.hit('tamb', b + 1, 0.8); S.hit('tamb', b + 3, 0.8); S.hit('tamb', b + 3.5, 0.45);
+      S.hit('wblock', b + 0.5, 0.5, 'E5'); S.hit('wblock', b + 1.75, 0.4, 'B4'); S.hit('wblock', b + 2.5, 0.5, 'E5');
+      if ((b / 4) % 2) S.hit('ching', b + 3, 0.9);
+    }
+    return { bpm: 120, beats: 144, tail: 0.8, loop: true, loopStart: 8, loopEnd: 144, reverb: 0.1, events: S.ev };
+  }
+
+  /* 4．ダンジョンの音楽（新規）：BPM72・4拍子・ニ短調・1周80拍＝約66.7秒。
+   * 導入（2小節：低弦の持続音とピチカートの足音）→ A（クラリネットの短い不穏な旋律、間を残す。♭II＝変ホ長調の和音で影）→
+   * B（同じ形を笛が中音域で少し変えて。クラリネットは低く長い音で支える）→ 接続（＝導入）。ループ：9拍目〜80拍目。残響はやや深め。
+   * 大きな音・鋭い高音・急な強弱は使わない（効果音を邪魔しない）。 */
+  function dungeon() {
+    const S = score(0);
+    S.mel('reed', 8, 'r:1 A4:1 Bb4:.5 A4:.5 F4:1 E4:1.5 D4:.5 r:2 r:1 F4:1 G4:.5 A4:.5 Bb4:1 A4:3 r:1 ' +
+      'r:1 D5:1 C5:.5 Bb4:.5 G4:1 Bb4:1.5 G4:.5 r:2 r:1 F4:.5 E4:.5 D4:1 E4:1 E4:3 r:1', 1);
+    S.mel('flute', 40, 'r:1 G4:1 A4:.5 Bb4:.5 D5:1 C5:1.5 A4:.5 r:2 r:1 Bb4:1 C5:.5 D5:.5 F5:1 E5:3 r:1 ' +
+      'r:1 D5:1 C5:.5 Bb4:.5 A4:1 F4:1.5 A4:.5 r:2 r:1 G4:.5 Bb4:.5 D5:1 C#5:1 A4:3 r:1', 0.85);
+    S.mel('reed', 40, 'Bb3:4 A3:4 F4:4 E4:4 D4:4 A3:4 Bb3:4 C#4:4', 0.5);
+    const prog = [];
+    const bar = (b, c) => prog.push([b, 4, c]);
+    bar(0, 'Dm'); bar(4, 'Dm');
+    ['Dm', 'Dm', 'Bb', 'A', 'Gm', 'Eb', 'DmA', 'A'].forEach((c, i) => bar(8 + i * 4, c));
+    ['Gm', 'Dm', 'Bb', 'A', 'Gm', 'DmF', 'Em7b5', 'A'].forEach((c, i) => bar(40 + i * 4, c));
+    bar(72, 'Dm'); bar(76, 'Dm');
+    const PAD = { Dm: ['F3', 'A3', 'D4'], Bb: ['F3', 'Bb3', 'D4'], A: ['E3', 'A3', 'C#4'], Gm: ['G3', 'Bb3', 'D4'], Eb: ['G3', 'Bb3', 'Eb4'], DmA: ['F3', 'A3', 'D4'],
+      DmF: ['F3', 'A3', 'D4'], Em7b5: ['G3', 'Bb3', 'D4'] };
+    const LOWN = { Dm: 'D2', Bb: 'Bb1', A: 'A1', Gm: 'G1', Eb: 'Eb2', DmA: 'A1', DmF: 'F2', Em7b5: 'E2' };
+    const STEP = { Dm: ['D3', 'A2'], Bb: ['Bb2', 'F2'], A: ['A2', 'E2'], Gm: ['G2', 'D3'], Eb: ['Eb3', 'Bb2'], DmA: ['A2', 'D3'], DmF: ['F2', 'C3'], Em7b5: ['E2', 'Bb2'] };
+    for (const [b, len, c] of prog) {
+      const n = midi(LOWN[c]);
+      S.ev.push({ b, len, n, inst: 'cello', v: 0.95 }); S.ev.push({ b, len, n: n + 12, inst: 'cello', v: 0.55 });
+      S.chord('stringsEns', b, len, PAD[c], 0.55);
+      // ピチカートの足音（慎重に歩く）。Bでは小さな寄り道を足す
+      S.mel('pizz', b, STEP[c][0] + ':1', 0.7); S.mel('pizz', b + 2, STEP[c][1] + ':1', 0.55);
+      if (b >= 40 && b < 72) S.mel('pizz', b + 3.5, STEP[c][0] + ':.5', 0.35);
+    }
+    for (const b of [8, 24, 40, 56]) S.hit('timpani', b, 0.28, 'D2');
+    return { bpm: 72, beats: 80, tail: 2.5, loop: true, loopStart: 8, loopEnd: 80, reverb: 0.42, events: S.ev };
   }
 
   // 曲の一覧（選ぶ処理）。file を書けば録音した音源で同じように再生する
+  // group：'new'＝第2版（試聴の方向性確認用）、'old'＝第1版（比較用）
   M.LIBRARY = {
-    fanfare: { title: '冒険のファンファーレ', note: '冒険の始まり（約11秒・ループなし）', build: fanfare },
-    yanai: { title: 'マスターヤナイのテーマ', note: '師匠のテーマ（1周約76秒・主題Aからループ）', build: yanai },
+    fanfare: { title: '冒険のファンファーレ', group: 'new', note: '第2版・冒険の始まり（ループなし）', build: fanfare2 },
+    yanai: { title: 'マスターヤナイのテーマ', group: 'new', note: '第2版・英雄のテーマ（主題Aからループ）', build: yanai2 },
+    village: { title: '村の音楽', group: 'new', note: 'お祭りのにぎわい（ループ）', build: village },
+    dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）', build: dungeon },
+    fanfare_v1: { title: '冒険のファンファーレ', group: 'old', note: '第1版（比較用）', build: fanfareV1 },
+    yanai_v1: { title: 'マスターヤナイのテーマ', group: 'old', note: '第1版（比較用）', build: yanaiV1 },
   };
+  M.YANAI_MOTIF = YANAI_MOTIF; M.YANAI_MOTIF_V1 = YANAI_MOTIF_V1;
   const cache = {};
   M.song = function (id) {
     const L = M.LIBRARY[id];
@@ -297,6 +679,7 @@
     const s = M.song(id); if (!s) return null;
     const ctx = A.ctx, out = ctx.createGain();
     out.gain.value = 1; out.connect(A.musicBus);
+    if (s.reverb && A.reverbSend) { const send = ctx.createGain(); send.gain.value = s.reverb; out.connect(send); send.connect(A.reverbSend); }
     const from = opts.fromBeat || 0;
     const pb = { id, song: s, out, t0: ctx.currentTime + 0.08 - from * s.spb, idx: s.events.findIndex((e) => e.b >= from), offset: 0, loops: 0, done: false, onEnd: opts.onEnd };
     if (pb.idx < 0) pb.idx = s.events.length;
@@ -376,21 +759,46 @@
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     const ctx = new OAC(1, Math.ceil(secs * sr), sr);
     const bus = makeMusicChain(ctx); bus.output.connect(ctx.destination);
-    const t0 = 0.05;
+    let target = bus.input;
+    if (s.reverb) { target = ctx.createGain(); target.connect(bus.input); const send = ctx.createGain(); send.gain.value = s.reverb; target.connect(send); send.connect(bus.reverbIn); }
+    const t0 = 0.05, list = [];
     for (let k = 0; k < n; k++) {
       const off = k === 0 ? 0 : s.loopEnd + (k - 1) * (s.loopEnd - s.loopStart) - s.loopStart;
-      for (const e of s.events) { if (k > 0 && e.b < s.loopStart) continue; play1(ctx, bus.input, e, t0 + (e.b + off) * s.spb, s.spb); }
+      for (const e of s.events) { if (k > 0 && e.b < s.loopStart) continue; list.push([t0 + (e.b + off) * s.spb, e]); }
     }
+    list.sort((a, b) => a[0] - b[0]);
+    /* リアルタイムと同じく、少し先の音だけを用意しながら描く（一度に全部の音を作ると、描く処理が実際より重くなる） */
+    let i = 0;
+    const feed = (upTo) => { while (i < list.length && list[i][0] < upTo) { play1(ctx, target, list[i][1], list[i][0], s.spb); i++; } };
+    feed(1.0);
+    for (let c = 0.5; c < secs - 0.5; c += 0.5) ctx.suspend(c).then(() => { feed(c + 1.0); ctx.resume(); });
     return ctx.startRendering();
   };
   /* 音楽の出口の音作り：軽いコンプレッサーで音割れを防ぐ（リアルタイムでも同じものを使う） */
+  /* 残響：作った減衰ノイズ（約2.2秒、高域を丸める）を畳み込む。曲ごとの送り量（song.reverb）で深さを変える */
+  function makeIR(ctx) {
+    const len = Math.floor(ctx.sampleRate * 2.2), b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+    let lp = 0;
+    for (let i = 0; i < len; i++) {
+      const t = i / ctx.sampleRate, k = Math.min(1, t / 0.012);   // 最初の12msはなめらかに立ち上げる
+      lp += ((Math.random() * 2 - 1) - lp) * (0.35 - 0.25 * (i / len));   // 後ろほど高域が減る
+      d[i] = lp * Math.exp(-t * 2.6) * k;
+    }
+    // 総エネルギーを1にそろえる（残響の音量は送り量だけで決まる。そろえないと残響だけで大きく音割れする）
+    let e = 0; for (let i = 0; i < len; i++) e += d[i] * d[i];
+    const sc = 1 / Math.sqrt(e || 1); for (let i = 0; i < len; i++) d[i] *= sc;
+    return b;
+  }
   function makeMusicChain(ctx) {
     const input = ctx.createGain(), comp = ctx.createDynamicsCompressor(), output = ctx.createGain();
     input.gain.value = 0.62;
     comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.25;
     output.gain.value = 1;
     input.connect(comp); comp.connect(output);
-    return { input, output };
+    const reverbIn = ctx.createGain(), conv = ctx.createConvolver();
+    reverbIn.gain.value = 0.62; conv.normalize = false; conv.buffer = makeIR(ctx);
+    reverbIn.connect(conv); conv.connect(comp);
+    return { input, output, reverbIn };
   }
   M.makeMusicChain = makeMusicChain;
 

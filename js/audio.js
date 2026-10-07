@@ -15,7 +15,10 @@
     A.master.connect(A.ctx.destination);
     A.sfxBus = A.ctx.createGain(); A.sfxBus.gain.value = A.sfxVol; A.sfxBus.connect(A.master);
     A.musicBus = A.ctx.createGain(); A.musicBus.gain.value = A.bgmVol;
-    if (TS.Music && TS.Music.makeMusicChain) { const ch = TS.Music.makeMusicChain(A.ctx); A.musicBus.connect(ch.input); ch.output.connect(A.master); }
+    if (TS.Music && TS.Music.makeMusicChain) {
+      const ch = TS.Music.makeMusicChain(A.ctx); A.musicBus.connect(ch.input); ch.output.connect(A.master);
+      A.reverbSend = A.ctx.createGain(); A.reverbSend.gain.value = A.bgmVol; A.reverbSend.connect(ch.reverbIn);   // 残響もBGMの音量に合わせる
+    }
     else A.musicBus.connect(A.master);
     if (A.bgmName && !A.bgmHold) A.playBgm(A.bgmName, true);
   };
@@ -29,6 +32,7 @@
     if (sfx != null) A.sfxVol = Math.max(0, Math.min(1, sfx));
     if (A.ctx) {
       A.musicBus.gain.setTargetAtTime(A.bgmVol, A.ctx.currentTime, 0.03);
+      if (A.reverbSend) A.reverbSend.gain.setTargetAtTime(A.bgmVol, A.ctx.currentTime, 0.03);
       A.sfxBus.gain.setTargetAtTime(A.sfxVol, A.ctx.currentTime, 0.03);
     }
   };
