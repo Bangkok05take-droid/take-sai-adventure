@@ -550,6 +550,8 @@
 
   /* 村（歩ける1画面）。地面の1枚の上に、建物・木・小物・人物を足元の高さ順に重ねる。
    * W：たけの位置と向き（UI が動かす）。戻り値：タップ判定用の範囲と、画面の座標→マスの変換 */
+  let rmq = null;
+  const REDUCED = () => { try { if (!rmq) rmq = window.matchMedia('(prefers-reduced-motion: reduce)'); return rmq.matches; } catch (e) { return false; } };
   RD.drawVillage = function (canvas, V, now, W8) {
     const { g, W, H } = fit(canvas);
     const VLm = VL(), T = VLm.T;
@@ -622,7 +624,13 @@
       if (it.statue) { const s = SP.art.statue, B = TS.ASSETS.charBox; g.drawImage(s, Math.round(ox + vc.statue[0] * k - B.w / 2 * k), Math.round(oy + vc.statue[1] * k - B.foot * k), s.width * k, s.height * k); continue; }
       if (it.o) {
         const o = it.o;
-        if (o.img) { const x = Math.round(ox + o.x * k), y = Math.round(oy + o.y * k); g.drawImage(o.img, x, y, Math.round(ox + (o.x + o.w) * k) - x, Math.round(oy + (o.y + o.h) * k) - y); continue; }
+        if (o.img) {
+          // 舟だけ、ゆっくり上下（描く位置だけ。動きを減らす設定では止める）
+          const bob = o.bob && !REDUCED() ? Math.round(Math.sin(now / o.bob.period * Math.PI * 2) * o.bob.amp * k) : 0;
+          const x = Math.round(ox + o.x * k), y = Math.round(oy + o.y * k) + bob, w = Math.round(ox + (o.x + o.w) * k) - x, h = Math.round(oy + (o.y + o.h) * k) - (y - bob);
+          if (o.src) g.drawImage(o.img, o.src[0], o.src[1], o.src[2], o.src[3], x, y, w, h); else g.drawImage(o.img, x, y, w, h);
+          continue;
+        }
         if (o.crop) g.drawImage(o.cv, o.crop[0], o.crop[1], o.crop[2], o.crop[3], ox + o.x * k, oy + o.y * k, o.crop[2] * k, o.crop[3] * k);
         else g.drawImage(o.cv, ox + o.x * k, oy + o.y * k, o.cv.width * k, o.cv.height * k);
         continue;
@@ -670,7 +678,7 @@
     for (const n of vc.npcs) rect(n.fac, n.x * T - 4, (n.y + 1) * T - 56, T + 8, 56, 'npc');
     // 子供・猫：絵の大きさに合わせた小さめの範囲（施設の建物より先に調べる。大人の人より後）
     for (const n of near) rect(n.id, (n.x + 0.5) * T - n.w / 2, (n.y + 1) * T - n.h, n.w, n.h, n.kind);
-    for (const f of vc.fac) rect(f.id, f.fp[0] * T, f.fp[1] * T - 30, f.fp[2] * T, f.fp[3] * T + 30, 'fac');
+    for (const f of vc.fac) { const up = f.dock ? 0 : 30; rect(f.id, f.fp[0] * T, f.fp[1] * T - up, f.fp[2] * T, f.fp[3] * T + up, 'fac'); }   // 船着き場は桟橋と舟だけ（岸の道は含めない）
     rect('statue', 9 * T, 11 * T - 60, 2 * T, 2 * T + 60, 'statue');
     rect('site', 1 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site'); rect('site', 14 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site');
     return { hits, tile: (cx, cy) => ({ x: Math.floor((cx * cw - ox) / (T * k)), y: Math.floor((cy * cw - oy) / (T * k)) }), fac: vc.fac, solid: vc.solid };

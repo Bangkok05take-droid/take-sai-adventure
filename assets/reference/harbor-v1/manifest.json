@@ -1,0 +1,92 @@
+[
+  {
+    "file": "pier.png",
+    "canvas": [
+      96,
+      224
+    ],
+    "content_rect": [
+      9,
+      2,
+      78,
+      220
+    ],
+    "anchor": [
+      48,
+      222
+    ],
+    "collision": "configure from map; do not use full alpha bounding box as walkability"
+  },
+  {
+    "file": "boat.png",
+    "canvas": [
+      256,
+      96
+    ],
+    "content_rect": [
+      2,
+      27,
+      252,
+      67
+    ],
+    "anchor": [
+      128,
+      94
+    ],
+    "collision": "configure from map; do not use full alpha bounding box as walkability"
+  },
+  {
+    "file": "quay.png",
+    "canvas": [
+      256,
+      64
+    ],
+    "content_rect": [
+      2,
+      11,
+      252,
+      51
+    ],
+    "anchor": [
+      128,
+      62
+    ],
+    "collision": "configure from map; do not use full alpha bounding box as walkability"
+  },
+  {
+    "file": "supplies.png",
+    "canvas": [
+      96,
+      64
+    ],
+    "content_rect": [
+      2,
+      4,
+      92,
+      58
+    ],
+    "anchor": [
+      48,
+      62
+    ],
+    "collision": "configure from map; do not use full alpha bounding box as walkability"
+  },
+  {
+    "file": "bollard.png",
+    "canvas": [
+      32,
+      64
+    ],
+    "content_rect": [
+      3,
+      2,
+      26,
+      60
+    ],
+    "anchor": [
+      16,
+      62
+    ],
+    "collision": "configure from map; do not use full alpha bounding box as walkability"
+  }
+]

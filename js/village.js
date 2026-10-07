@@ -39,7 +39,9 @@
     L.fac.push({ id: 'develop', name: '村の発展', fp: [1, 17, 4, 3], at: [6, 18], face: 'left', npc: 'mot', npcAt: [5, 18], built: true });
     // 食堂：v2の絵は入口が左寄り。入口の前の道 (15,20) から上を向いて入る。ワーンは入口の左わき (14,19)
     L.fac.push({ id: 'diner', name: lv.diner ? '食堂' : '食堂（空き地）', fp: [15, 17, 4, 3], at: [15, 20], face: 'up', npc: 'waan', npcAt: [14, 19], built: lv.diner });
-    L.fac.push({ id: 'depart', name: '出発（船着き場）', fp: [9, 22, 2, 2], at: [11, 21], face: 'right', npc: 'tiw', npcAt: [12, 21], built: true, dock: true });
+    /* 船着き場（港 v1）：桟橋は x10 の1列（板の上の (10,22)・(10,23) だけ歩ける）。小舟は桟橋の先の右に横付け。
+     * 出発は桟橋の先 (10,23) で舟（右）を向いて。案内人ティウは入口わきの陸 (12,21)。fp は桟橋と舟のタップ範囲 */
+    L.fac.push({ id: 'depart', name: '出発（船着き場）', fp: [10, 22, 6, 3], at: [10, 23], face: 'right', npc: 'tiw', npcAt: [12, 21], built: true, dock: true });
     return L;
   }
 
@@ -59,7 +61,7 @@
         if (y === 11 && x >= 5 && x <= 8) c = 'g';      // 広場の左の木陰（木・ベンチ・本を読む子）
         if (y >= 20 && y <= 21) c = 'b';
         if (y >= 22 && y <= 24) c = 'w';
-        if (y >= 22 && y <= 23 && (x === 9 || x === 10)) c = 'd';
+        if (y >= 22 && y <= 23 && x === 10) c = 'd';   // 桟橋の板（欄干・水面は通れない）
         if (y === 25) c = 'f';
         if (lv.decor.bridge && y >= 22 && y <= 24 && (x === 3 || x === 4)) c = 'r';
         row.push(c);
@@ -123,7 +125,7 @@
           if ((hash(gx >> 1, gy, 6) & 31) === 0) c = sh(c, 0.25);
           P.set(gx, gy, c);
         }
-        if (k === 'd') { // 桟橋
+        if (k === 'd' && !lv.pierArt) { // 桟橋（素材の絵があるときは水面だけ描き、桟橋は絵で重ねる）
           for (let y = 0; y < T; y++) for (let x = 2; x < T - 2; x++) {
             const py = (Y + y) % 8;
             P.set(X + x, Y + y, py === 7 ? C.woodD : py === 0 ? C.woodL : sh(C.wood, ((hash(X + x >> 4, Y + y >> 3, 2) & 3) - 1.5) * 0.05));
@@ -637,9 +639,43 @@
     { id: 'black', x: 7, y: 14, pose: 'sit', walk: [7, 8] },   // 花壇の前を左右に短く歩く
   ];
 
+  // ---------------- 港（素材の絵） ----------------
+  let pierCv = null;
+  function pierCanvas() {
+    // 桟橋を短くする：上（陸とつながる所〜2区間）と、先端（最後の杭）をつなぐ。どちらも綱の所で切るので継ぎ目が目立たない
+    if (pierCv) return pierCv;
+    const img = SP.art.village.pier, [a, b] = TS.ASSETS.village.harbor.pierCut;
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height - (b - a);
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0, img.width, a, 0, 0, img.width, a); g.drawImage(img, 0, b, img.width, img.height - b, 0, a, img.width, img.height - b);
+    return (pierCv = c);
+  }
+  /* 岸壁・桟橋・小舟・係留杭・荷物を置く。足元（通れないマス）は地図で決める（絵の四角では決めない） */
+  function harborObjects(lv, add, solid) {
+    const VA = TS.ASSETS.village, H = VA.harbor, sc = VA.propScale, A = SP.art.village;
+    if (!A.pier || !A.boat || !A.quay || !A.bollard || !A.supplies) return false;
+    // 岸壁：上面の石を道の下の縁（21行の下）に、前面の石積みを水へ。左右の余白を除いた部分を並べる。赤い橋の所は空ける
+    const [qx, qy, qw, qh] = H.quayRect, segW = qw * sc, top = 22 * T - H.quayTop * sc;
+    const ranges = lv.decor.bridge ? [[0, 3 * T], [5 * T, MW * T]] : [[0, MW * T]];
+    for (const [x0, x1] of ranges) for (let x = x0; x < x1; x += segW) {
+      const w = Math.min(segW, x1 - x);
+      add({ img: A.quay, src: [qx, qy, w / sc, qh], x, y: top, w, h: qh * sc, sortY: 21 * T });
+    }
+    // 桟橋：x10 の列の中央。上端は岸壁の上面に少し重ねて陸とつなぐ
+    const pc = pierCanvas(), pw = pc.width * sc, ph = pc.height * sc;
+    add({ img: pc, x: 10 * T + 16 - pw / 2, y: 22 * T - 8, w: pw, h: ph, sortY: 21 * T + 1 });
+    // 小舟：桟橋の先の右に横付け（舟の上は歩かない）。描く位置だけ上下に揺れる
+    const bw = A.boat.width * sc, bx = 10 * T + 16 + 26 - 2 * sc, by = 25 * T - 5 - VA.props.boat[1] * sc;
+    add({ img: A.boat, x: bx, y: by, w: bw, h: A.boat.height * sc, sortY: 24 * T + 20, bob: H.boatBob });
+    // 係留杭（陸の縁 (8,21)・(13,21)）と荷物（右の岸 (16〜17,21)）：21行の通れないマス。20行の道はいつも通れる
+    for (const x of [8, 13]) { add(artProp('bollard', x * T + 16, 22 * T - 1)); solid[21 * MW + x] = 1; }
+    add(artProp('supplies', 17 * T, 22 * T - 1)); solid[21 * MW + 16] = solid[21 * MW + 17] = 1;
+    return true;
+  }
+
   // ---------------- まとめ ----------------
   /* 村の絵と当たり判定を作る（村の状態が変わったときだけ） */
   VL.build = function (lv) {
+    lv = Object.assign({}, lv, { pierArt: hasArt('pier') && hasArt('boat') && hasArt('quay') });   // 港の素材の絵が使えるか
     const G = groundMap(lv), Lo = layout(lv);
     const solid = new Uint8Array(MW * MH);
     for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) solid[y * MW + x] = WALK[G[y][x]] ? 0 : 1;
@@ -653,7 +689,7 @@
     // 施設
     const kindOf = { smith: 'smith', museum: 'museum', shop: 'shop', storage: 'storage', develop: 'develop', diner: 'diner' };
     for (const f of Lo.fac) {
-      if (f.dock) { labels.push([f.name, 10 * T, 21 * T + 4]); continue; }
+      if (f.dock) { labels.push([f.name, lv.pierArt ? 14 * T : 10 * T, lv.pierArt ? 23 * T + 2 : 21 * T + 4]); continue; }
       const [x, y, w, h] = f.fp;
       // 素材の絵の施設（サイの店・鍛冶屋・食堂・倉庫・展示室）：絵の入口の中心を、入る位置のマスの真上に置く。
       // 建っていない施設は今までの空き地の絵。読み込めなければコードで描いた建物（二重には描かない）
@@ -670,7 +706,7 @@
     add(st); block(9, 11, 2, 2); labels.push(['マスターヤナイの像', 10 * T, 11 * T - (stArt ? 52 : 70)]);
     // 木・ヤシ（道や入口をふさがない場所だけ）
     const trees = [['palm', 0, 4], ['round', 6, 4], ['round', 13, 4], ['palm', 19, 4], ['palm', 0, 8], ['palm', 19, 8], ['round', 5, 11], ['flower', 19, 12],
-      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 13, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]];
+      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 5, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]];
     // 丸い木は素材の木（当たりは幹のマスだけ。樹冠は奥を歩く人の手前に重なる）
     for (const [k, x, y] of trees) { if (!WALK[G[y][x]] || G[y][x] === 'f') { add((k === 'round' && artProp('tree', x * T + 16, (y + 1) * T - 1)) || tree(k, x, y, lv.night)); solid[y * MW + x] = 1; } }
     // 小物：植木鉢・樽・灯り（道のわき）
@@ -706,7 +742,8 @@
     // （以前の (15,10)・(18,10)・(1,10) の木箱と樽は、倉庫と店の絵に木箱・樽があり、屋根の陰に隠れて重なるのでやめた）
     const lamps = [[6, 8], [13, 8]];   // 鍛冶屋・展示室の絵の角に重ならないよう1マス内側へ（以前は (5,8)・(14,8)）
     if (lv.stage >= 2 || lv.decor.lanterns) lamps.push([5, 16], [14, 16]);
-    if (lv.decor.lanterns) lamps.push([2, 21], [7, 21], [12, 21], [17, 21]);
+    // 岸の灯り（「灯り」を建てたとき）：ティウ (12,21)・係留杭・荷物と重ならない所へ（以前は (7,21)・(12,21)・(17,21)）
+    if (lv.decor.lanterns) lamps.push([2, 21], [6, 21], [15, 21], [18, 21]);
     for (const [x, y] of lamps) { lantern(props, x * T + 16, y * T + 30); propAt.push([x, y]); lights.push([x * T + 16, y * T + 6, 18]); }
     if (lv.chapter >= 3 || lv.ending) for (const [x, y, c] of [[6, 7, C.teal], [13, 7, C.red]]) { banner(props, x * T + 14, y * T + 30, c); propAt.push([x, y]); }
     // 屋台（村の発展「屋台」を建てたときだけ）：素材の絵は2マス幅で、参道の両わき。読み込めなければ今までの1マスの屋台
@@ -743,11 +780,14 @@
       steam.push([10 * T, 16 * T + 12, 'fountain']);
     }
     // 小舟（水の上）
+    // ---- 港（素材の絵）：岸壁・桟橋・小舟・係留杭・荷物。読み込めなければ今までの舟（コード）----
+    if (lv.pierArt && harborObjects(lv, add, solid)) { /* 素材の港 */ } else {
     const boat = new SP.Pix(64, 26);
     boat.poly([[2, 10], [62, 10], [54, 22], [10, 22]], (x, y) => (y < 13 ? '#b07a48' : '#7a4a28'));
     boat.rect(6, 9, 52, 2, '#d8a868'); boat.rect(14, 2, 34, 8, '#e8dcc0'); boat.rect(14, 2, 34, 1, '#c84a3a'); boat.rect(16, 4, 30, 1, '#c84a3a');
     boat.outline(0.7);
     add({ cv: boat.canvas(), x: 8 * T + 32, y: 24 * T - 2, boat: true });
+    }
     // 人
     const npcs = [];
     for (const f of Lo.fac) if (f.npc) { npcs.push({ who: f.npc, x: f.npcAt[0], y: f.npcAt[1], fac: f.id }); solid[f.npcAt[1] * MW + f.npcAt[0]] = 1; }

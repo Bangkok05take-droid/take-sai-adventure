@@ -75,7 +75,14 @@
       dir: 'assets/village/', propScale: 2 / 3,
       props: { sai_shop: [112, 222], yanai_statue: [48, 158], tree: [64, 126], flowerbed: [48, 62], market_stall: [64, 126], bench: [48, 62],
         // 施設の外観 v2（2026年10月）：サイの店と同じ 224×224・同じ倍率（2/3）なので、人物に対する扉の大きさがそろう
-        blacksmith: [112, 222], eatery: [112, 222], warehouse: [112, 222], exhibition: [112, 222] },
+        blacksmith: [112, 222], eatery: [112, 222], warehouse: [112, 222], exhibition: [112, 222],
+        // 港 v1（2026年10月）：桟橋・小舟・岸壁・荷物・係留杭。建物と同じ倍率（桟橋の板の幅＝店の扉の幅）
+        pier: [48, 222], boat: [128, 94], quay: [128, 62], supplies: [48, 62], bollard: [16, 62] },
+      /* 港の絵の使い方（manifest の content_rect＝不透明な部分 [x, y, 幅, 高さ]）
+       * pierCut：桟橋は川（3マス）に合わせて、くり返しの区間（綱の所 83〜178 行）を抜いて短くする
+       * quayRect：岸壁は左右の透明な余白を除いた部分を横に並べる。quayTop：上面の石の高さ（その下が前面の石積み）
+       * boatBob：舟だけゆっくり上下（描く位置だけ。操作の範囲は動かさない） */
+      harbor: { pierCut: [83, 178], quayRect: [2, 11, 252, 51], quayTop: 25, boatBob: { amp: 1, period: 4000 } },
       /* 施設の絵の入口の中心（絵の左からのドット）。絵の足元（anchor）ではなく、この位置を「入る位置」のマスの真上に置く。
        * 食堂の入口は左寄り。鍛冶屋は開いた作業場の正面。炉の口・煙突・鍋の位置は火の光・煙・湯気に使う */
       doors: { sai_shop: 64, blacksmith: 104, eatery: 44, warehouse: 112, exhibition: 112 },
