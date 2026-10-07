@@ -435,17 +435,17 @@
   },
   "elixir": {
    "key": "potion:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/elixir",
+   "floorW": 32,
+   "floorH": 32
   },
   "banana": {
    "key": "banana:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/banana",
+   "floorW": 32,
+   "floorH": 32
   },
   "khaoniao": {
    "key": "bento:",
@@ -456,10 +456,10 @@
   },
   "loan_rice": {
    "key": "onigiri:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/riceball",
+   "floorW": 32,
+   "floorH": 32
   },
   "sleep_incense": {
    "key": "sleepgrass:",
@@ -533,10 +533,10 @@
   },
   "smoke_ball": {
    "key": "smoke:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/smoke_ball",
+   "floorW": 32,
+   "floorH": 32
   },
   "slow_powder": {
    "key": "powder:",
@@ -610,31 +610,31 @@
   },
   "water_charm": {
    "key": "charm:water",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/water_charm",
+   "floorW": 32,
+   "floorH": 32
   },
   "truth_mirror": {
    "key": "mirror:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/truth_mirror",
+   "floorW": 32,
+   "floorH": 32
   },
   "bolt_charm": {
    "key": "charm:bolt",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/bolt_charm",
+   "floorW": 32,
+   "floorH": 32
   },
   "clear_incense": {
    "key": "incense:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/clear_incense",
+   "floorW": 32,
+   "floorH": 32
   },
   "sense_scroll": {
    "key": "scroll:sense",
@@ -659,24 +659,24 @@
   },
   "jade_elephant": {
    "key": "elephant:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/jade_elephant",
+   "floorW": 32,
+   "floorH": 32
   },
   "golden_lotus": {
    "key": "lotus:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/golden_lotus",
+   "floorW": 32,
+   "floorH": 32
   },
   "guardian_gem": {
    "key": "gem:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/guardian_gem",
+   "floorW": 32,
+   "floorH": 32
   },
   "amber_pendant": {
    "key": "pendant:",
@@ -687,52 +687,52 @@
   },
   "bronze_bell": {
    "key": "bell:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/bronze_bell",
+   "floorW": 32,
+   "floorH": 32
   },
   "sunken_crown": {
    "key": "crown:blue",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/sunken_crown",
+   "floorW": 32,
+   "floorH": 32
   },
   "river_pearl": {
    "key": "pearl:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/river_pearl",
+   "floorW": 32,
+   "floorH": 32
   },
   "giant_crystal": {
    "key": "gem:crystal",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/giant_crystal",
+   "floorW": 32,
+   "floorH": 32
   },
   "prism_flower": {
    "key": "lotus:prism",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/prism_flower",
+   "floorW": 32,
+   "floorH": 32
   },
   "golden_elephant": {
    "key": "elephant:gold",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/golden_elephant",
+   "floorW": 32,
+   "floorH": 32
   },
   "dream_crown": {
    "key": "crown:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "items-v2/dream_crown",
+   "floorW": 32,
+   "floorH": 32
   },
   "amber_shard": {
    "key": "shard:amber",

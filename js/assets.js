@@ -44,6 +44,17 @@
         'coin:': 'coin', 'orb:': 'orb', 'pendant:': 'pendant_amber',
         'shard:crystal': 'shard_crystal', 'shard:amber': 'shard_amber', 'shard:bronze': 'shard_bronze', 'shard:gold': 'shard_gold',
       },
+      /* 追加の道具の絵（assets/items-v2/。2026年10月、18種）。キーは js/data.js の道具の内部ID、値はファイル名。
+       * 一覧用は assets/items-v2/○○.png（48×48）、床用は assets/items-v2/floor/○○.png（32×32。tools/make-items-v2-floor.py で作る）。
+       * ここに書いた道具は、上の map（アイコン名:色分け）よりこちらの絵を優先する。読み込めなければ今までの絵のまま。 */
+      byIdDir: 'assets/items-v2/',
+      byId: {
+        elixir: 'elixir', banana: 'banana', loan_rice: 'riceball', smoke_ball: 'smoke_ball', clear_incense: 'clear_incense',
+        water_charm: 'water_charm', truth_mirror: 'truth_mirror', bolt_charm: 'bolt_charm',
+        jade_elephant: 'jade_elephant', golden_lotus: 'golden_lotus', bronze_bell: 'bronze_bell', sunken_crown: 'sunken_crown',
+        giant_crystal: 'giant_crystal', prism_flower: 'prism_flower', golden_elephant: 'golden_elephant', dream_crown: 'dream_crown',
+        guardian_gem: 'guardian_gem', river_pearl: 'river_pearl',   // 以前の版のお宝（今の冒険では手に入らない。持っている分の表示用）
+      },
     },
     portraits: { take: null, sai: null, yanai: null, villager: null },
     /* ボス（assets/bosses/）：見本 assets/reference/bosses.png から tools/extract-bosses.py で作った透過PNG。

@@ -41,20 +41,22 @@ const fs = require('fs'), path = require('path'), OUT = path.join(__dirname, '..
     // ---- 道具 ----
     const ids = Object.keys(D.ITEMS);
     for (const id of ids) { const d = D.ITEMS[id], key = d.icon + ':' + (d.tint || ''), a = SP.art.items[key]; const fl = SP.iconFor(d);
-      info.items[id] = { key, art: !!(a && a.list), file: (TS.ASSETS.items.map[key] || null), floorW: fl.width, floorH: fl.height }; }
+      const bid = (TS.ASSETS.items.byId || {})[id], b = SP.art.itemsById && SP.art.itemsById[id];
+      info.items[id] = { key, art: !!((b && b.list) || (a && a.list)), file: bid ? 'items-v2/' + bid : (TS.ASSETS.items.map[key] || null), floorW: fl.width, floorH: fl.height }; }
     const TYPE = { weapon: '武器', shield: '盾', heal: '回復', food: '食料', sleep: '補助', staff: '杖', warp: '補助', slow: '補助', fire: '巻物', cure: '回復', return: '帰還', charm: '護符', clear: '補助', sense: '巻物', map: '巻物', treasure: 'お宝', material: '素材', orb: '大切な物' };
+    const bid2 = (id) => !!(TS.ASSETS.items.byId || {})[id];
     const loadImg = (src) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = src; });
     { const cw = 270, ch = 150, cols = 5;
       const c = document.createElement('canvas'); c.width = cw * cols; c.height = ch * Math.ceil(ids.length / cols) + 60; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
       g.fillStyle = '#3e4652'; g.fillRect(0, 0, c.width, c.height);
-      g.fillStyle = '#fff'; g.font = font(20); g.fillText('道具 ' + ids.length + '種（一覧で使う絵を96×96で表示。緑枠＝見本の絵 48×48、橙枠＝コードで描いた仮アイコン）', 12, 34);
+      g.fillStyle = '#fff'; g.font = font(20); g.fillText('道具 ' + ids.length + '種（一覧で使う絵を96×96で表示。緑枠＝画像ファイルの絵 48×48、橙枠＝コードで描いた仮アイコン）', 12, 34);
       for (let i = 0; i < ids.length; i++) { const id = ids[i], d = D.ITEMS[id], x = (i % cols) * cw, y = 52 + Math.floor(i / cols) * ch;
         const im = await loadImg(SP.iconURL(d)); const art = info.items[id].art;
         g.fillStyle = '#586272'; g.fillRect(x + 10, y + 6, 96, 96); if (im) g.drawImage(im, x + 10, y + 6, 96, 96);
         g.strokeStyle = art ? '#7ae07a' : '#ffa040'; g.lineWidth = 3; g.strokeRect(x + 10, y + 6, 96, 96);
         g.fillStyle = '#fff'; g.font = font(15); g.fillText(d.name, x + 10, y + 124);
         g.fillStyle = '#c8d4e8'; g.font = font(12); g.fillText(id, x + 10, y + 142);
-        g.fillStyle = art ? '#a8f0a8' : '#ffd08a'; g.font = font(13); g.fillText(TYPE[d.type] || d.type, x + 114, y + 26); g.fillText(art ? '見本の絵' : '仮アイコン', x + 114, y + 46);
+        g.fillStyle = art ? '#a8f0a8' : '#ffd08a'; g.font = font(13); g.fillText(TYPE[d.type] || d.type, x + 114, y + 26); g.fillText(art ? (bid2(id) ? '追加の絵' : '見本の絵') : '仮アイコン', x + 114, y + 46);
         g.fillStyle = '#c8d4e8'; g.fillText(art ? info.items[id].file + '.png' : 'コード:' + d.icon + (d.tint ? '/' + d.tint : ''), x + 114, y + 66); }
       out.items = c.toDataURL(); }
     // ---- 用意済みだが未使用の絵 ----

@@ -1159,7 +1159,18 @@
     SP.s = s;
     return s;
   };
-  const artIcon = (def, kind) => { const e = SP.art.items[def.icon + ':' + (def.tint || '')]; return e && e[kind] ? e[kind] : null; };
+  // 道具の定義 → 内部ID（内部IDごとの絵 TS.ASSETS.items.byId を探すため）
+  let defIds = null;
+  const idOf = (def) => {
+    if (!defIds) { defIds = new Map(); for (const [id, d] of Object.entries(TS.Data.ITEMS)) defIds.set(d, id); }
+    return defIds.get(def);
+  };
+  // 見本の絵：内部IDごとの絵を優先し、無ければ「アイコン名:色分け」の絵
+  const artIcon = (def, kind) => {
+    const b = SP.art.itemsById[idOf(def)];
+    if (b && b[kind]) return b[kind];
+    const e = SP.art.items[def.icon + ':' + (def.tint || '')]; return e && e[kind] ? e[kind] : null;
+  };
   SP.iconFor = function (def) {
     const key = def.icon + ':' + (def.tint || '');
     const a = artIcon(def, 'floor');
@@ -1173,7 +1184,8 @@
   const urlCache = {};
   SP.iconURL = function (def) {
     const a = artIcon(def, 'list');
-    const key = def.icon + (def.tint || '') + (a ? '@art' : '');
+    const byId = SP.art.itemsById[idOf(def)];
+    const key = def.icon + (def.tint || '') + (a ? (byId && byId.list === a ? '@id:' + idOf(def) : '@art') : '');
     if (!urlCache[key]) {
       // 一覧用は96×96（見本の絵48×48は2倍、コードで描いた32×32は3倍。どちらも整数倍で拡大）
       const c = document.createElement('canvas');
@@ -1226,7 +1238,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, bosses: {}, enemies: {}, take: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, bosses: {}, enemies: {}, take: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1241,6 +1253,11 @@
       const e = SP.art.items[key] = {};
       load(IT.dir + 'list/' + name + '.png', (img) => { e.list = toCanvas(img); });
       load(IT.dir + 'floor/' + name + '.png', (img) => { e.floor = toCanvas(img); });
+    }
+    for (const [id, name] of Object.entries(IT.byId || {})) {
+      const e = SP.art.itemsById[id] = {};
+      load(IT.byIdDir + name + '.png', (img) => { e.list = toCanvas(img); });
+      load(IT.byIdDir + 'floor/' + name + '.png', (img) => { e.floor = toCanvas(img); });
     }
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
