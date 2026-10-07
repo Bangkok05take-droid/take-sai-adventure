@@ -6,6 +6,11 @@
 - `title/title-logo.webp`：上のPNGを幅1200に縮小したWebP（読み込みを軽くするため。表示できない環境ではPNGを使う）。
 - ボタンはHTMLのボタン。扉の光（絵の x50%・y36%）はCSSの演出で、触っても何も起きない。
 
+## 村の素材（2026年10月、`village/`）
+- 受け取った個別の透過PNG 24枚（子供3人×正面・右・背面、猫3匹×座る・右向き・眠る、店・像・木・花壇・屋台・ベンチ）と `manifest.json`（寸法と足元）。変更していない。
+- `reference/village-v1-reference.png`：村の見本（雰囲気と配置の参考。ゲームには貼らない）。
+- 大きさ・配置・当たりは `docs/VILLAGE_V1.md`。
+
 ## ボスの報酬と床の宝箱（2026年10月）
 - 見本：`reference/boss-treasures.png`（受け取った一覧のデザイン見本。変更しない。ゲームは直接表示しない）。
 - `python3 tools/extract-boss-treasures.py` で、各アイコンを背景と周囲の光を消した透過PNGにする（描き直さない。縮小のみ）。

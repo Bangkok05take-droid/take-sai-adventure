@@ -551,7 +551,7 @@
     const { g, W, H } = fit(canvas);
     const VLm = VL(), T = VLm.T;
     const lv = RD.villageLevels(V);
-    const key = JSON.stringify(lv);
+    const key = JSON.stringify(lv) + (SP.art && SP.art.ready ? '/art' : '');   // 素材の絵が読み込めたら作り直す
     if (!vcache || vcache.key !== key) vcache = Object.assign({ key }, VLm.build(lv));
     const vc = vcache;
     // 1ドットの大きさは整数倍（にじませない）。横11マス・縦9マスほどが見える大きさ
@@ -583,8 +583,23 @@
       if (a && W8 && Math.abs(W8.x - n.x) + Math.abs(W8.y - n.y) <= 2 && W8.y < n.y && a.back) img = a.back;
       list.push({ y: (n.y + 1) * T - 1, char: img, fx: n.x, fy: n.y, bob: bob2(n.x), who: n.who });
     }
-    for (const kd of vc.kids) list.push({ y: (kd.y + 1) * T - 1, small: kd.cv, fx: kd.x + Math.sin(now / 1800 + kd.x) * 0.3, fy: kd.y, bob: bob2(kd.y) });
-    for (const ct of vc.cats) list.push({ y: (ct.y + 1) * T - 2, small: ct.cv, fx: ct.x, fy: ct.y, bob: 0 });
+    // 子供（素材の絵は向きの静止画。たけが近くに来たらそちらを向く）と猫（座る・眠る。黒猫は2マスを行き来する）
+    const VA = TS.ASSETS && TS.ASSETS.village, VART = (SP.art && SP.art.village) || {};
+    const near = [];
+    for (const kd of vc.kids) {
+      if (kd.cv) { list.push({ y: (kd.y + 1) * T - 1, small: kd.cv, fx: kd.x, fy: kd.y, bob: bob2(kd.y) }); near.push({ kind: 'kid', id: kd.id, x: kd.x, y: kd.y, w: 22, h: 38 }); continue; }
+      let face = kd.face;
+      if (W8) { const dx = wp.x - kd.x, dy = wp.y - kd.y; if (Math.abs(dx) + Math.abs(dy) <= 2) face = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy < 0 ? 'back' : 'front'); }
+      const img = VART[VA.kids[kd.id] + '_' + face] || VART[VA.kids[kd.id] + '_front'];
+      list.push({ y: (kd.y + 1) * T - 1, sprite: img, anchor: VA.kidAnchor, fx: kd.x, fy: kd.y, shadow: 8 });
+      near.push({ kind: 'kid', id: kd.id, x: kd.x, y: kd.y, w: 22, h: 38 });
+    }
+    for (const ct of vc.cats) {
+      const p = RD.catPose(ct, now);
+      if (ct.cv) list.push({ y: (ct.y + 1) * T - 2, small: ct.cv, fx: p.x, fy: ct.y, bob: 0 });
+      else list.push({ y: (ct.y + 1) * T - 2, sprite: VART[VA.cats[ct.id] + '_' + p.pose], anchor: VA.catAnchor, fx: p.x, fy: ct.y, shadow: 6 });
+      near.push({ kind: 'cat', id: ct.id, x: p.x, y: ct.y, w: 24, h: 22 });
+    }
     // たけ
     {
       // 村でも同じ歩行コマ（左足・通過・右足・通過）。止まると待機。武器を装備していなければ剣のない絵
@@ -604,12 +619,14 @@
       if (it.statue) { const s = SP.art.statue, B = TS.ASSETS.charBox; g.drawImage(s, Math.round(ox + vc.statue[0] * k - B.w / 2 * k), Math.round(oy + vc.statue[1] * k - B.foot * k), s.width * k, s.height * k); continue; }
       if (it.o) {
         const o = it.o;
+        if (o.img) { const x = Math.round(ox + o.x * k), y = Math.round(oy + o.y * k); g.drawImage(o.img, x, y, Math.round(ox + (o.x + o.w) * k) - x, Math.round(oy + (o.y + o.h) * k) - y); continue; }
         if (o.crop) g.drawImage(o.cv, o.crop[0], o.crop[1], o.crop[2], o.crop[3], ox + o.x * k, oy + o.y * k, o.crop[2] * k, o.crop[3] * k);
         else g.drawImage(o.cv, ox + o.x * k, oy + o.y * k, o.cv.width * k, o.cv.height * k);
         continue;
       }
       const fx = ox + (it.fx + 0.5) * T * k, fy = oy + (it.fy + 1) * T * k - 2 * k;
-      g.fillStyle = 'rgba(20,14,30,0.28)'; g.beginPath(); g.ellipse(fx, fy, 11 * k, 3.5 * k, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(20,14,30,0.28)'; g.beginPath(); g.ellipse(fx, fy, (it.shadow || 11) * k, (it.shadow ? it.shadow * 0.32 : 3.5) * k, 0, 0, Math.PI * 2); g.fill();
+      if (it.anchor) { if (it.sprite) g.drawImage(it.sprite, Math.round(fx - it.anchor[0] * k), Math.round(fy + 2 * k - it.anchor[1] * k), it.sprite.width * k, it.sprite.height * k); continue; }
       if (it.small) { g.drawImage(it.small, Math.round(fx - it.small.width / 2 * k), Math.round(fy - (it.small.height - 1 + it.bob) * k), it.small.width * k, it.small.height * k); continue; }
       if (it.char) RD.drawChar(g, it.char, fx, fy + 2 * k, k, it.bob);
       else if (it.take) g.drawImage(SP.s.take[it.dir === 'up' ? 'up' : it.dir] ? SP.s.take[it.dir].walk[0] : SP.s.take.down.walk[0], Math.round(fx - 16 * k), Math.round(fy - 30 * k), 32 * k, 32 * k);
@@ -648,10 +665,25 @@
     const hits = [];
     const rect = (id, x, y, w, h, kind) => hits.push({ id, kind, x: (ox + x * k) / cw, y: (oy + y * k) / cw, w: w * k / cw, h: h * k / cw });
     for (const n of vc.npcs) rect(n.fac, n.x * T - 4, (n.y + 1) * T - 56, T + 8, 56, 'npc');
+    // 子供・猫：絵の大きさに合わせた小さめの範囲（施設の建物より先に調べる。大人の人より後）
+    for (const n of near) rect(n.id, (n.x + 0.5) * T - n.w / 2, (n.y + 1) * T - n.h, n.w, n.h, n.kind);
     for (const f of vc.fac) rect(f.id, f.fp[0] * T, f.fp[1] * T - 30, f.fp[2] * T, f.fp[3] * T + 30, 'fac');
     rect('statue', 9 * T, 11 * T - 60, 2 * T, 2 * T + 60, 'statue');
     rect('site', 1 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site'); rect('site', 14 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site');
     return { hits, tile: (cx, cy) => ({ x: Math.floor((cx * cw - ox) / (T * k)), y: Math.floor((cy * cw - oy) / (T * k)) }), fac: vc.fac, solid: vc.solid };
+  };
+  /* 猫の今の姿勢と位置（時間だけで決める。タイマーを使わないので、村の画面を離れたり裏に回ったりすると止まる）。
+   * 黒猫：座る（4秒）→ 右へ歩く（1.6秒）→ 座る（4秒）→ 左へ歩く。茶白：ふだんは座り、ときどき丸くなって眠る。三毛：眠る */
+  RD.catPose = function (ct, now) {
+    if (ct.walk) {
+      const [a, b] = ct.walk, cyc = 11200, t = (now + ct.x * 997) % cyc;
+      if (t < 4000) return { x: a, pose: 'sit' };
+      if (t < 5600) return { x: a + (b - a) * (t - 4000) / 1600, pose: 'right' };
+      if (t < 9600) return { x: b, pose: 'sit' };
+      return { x: b - (b - a) * (t - 9600) / 1600, pose: 'left' };
+    }
+    if (ct.pose === 'sit') return { x: ct.x, pose: (now % 26000) > 19000 ? 'sleep' : 'sit' };
+    return { x: ct.x, pose: ct.pose };
   };
   // 歩いている途中の位置（マスの間をなめらかに）
   RD.walkerPos = function (w, now) {

@@ -66,6 +66,17 @@
     /* 床に落ちているお宝（種類 treasure）の宝箱。見本 assets/reference/boss-treasures.png から tools/extract-boss-treasures.py で作る。
      * 床では1マスいっぱいに描く。持ち物・展示室では、お宝ごとの絵（items）を使う */
     chest: { 32: 'assets/chest/chest_32.png', 48: 'assets/chest/chest_48.png' },
+    /* 村の素材（assets/village/、2026年10月「サイの店〜ヤナイ像の広場」）。寸法と足元の位置は assets/village/manifest.json。
+     * 建物・小物（店・像・木・花壇・屋台・ベンチ）は、見本の細かさが村のマスより細かいので 2/3 の大きさで描く（1マス32ドット）。
+     *   2/3 にすると店の幅が今までの店（4マス＋余白）とほぼ同じになる。スマホ（1ドット＝3ピクセル）ではちょうど2ピクセルずつになる。
+     * 子供（64×64、足元 32,60）と猫（32×32、足元 16,28）は人物と同じ等倍（子供は大人の約7割、猫はさらに小さい）。
+     * 子供の正面・右・背面は歩行のコマではなく、向きの静止画。左向きは右向きを反転する。読み込めなければ今までのコードの絵 */
+    village: {
+      dir: 'assets/village/', propScale: 2 / 3,
+      props: { sai_shop: [112, 222], yanai_statue: [48, 158], tree: [64, 126], flowerbed: [48, 62], market_stall: [64, 126], bench: [48, 62] },
+      kids: { play: 'child_play', book: 'child_book', cat: 'child_cat' }, kidAnchor: [32, 60],
+      cats: { ginger: 'cat_ginger', calico: 'cat_calico', black: 'cat_black' }, catAnchor: [16, 28],
+    },
     portraits: { take: null, sai: null, yanai: null, villager: null },
     /* ボス（assets/bosses/）：見本 assets/reference/bosses.png から tools/extract-bosses.py で作った透過PNG。
      * キャンバス 96×96（1ドット＝1ピクセル。たけと同じ細かさ）、足の裏は y=92、足元の中央は x=48。正面の1枚だけ（横向き・背面・歩行コマは無い）。

@@ -1268,7 +1268,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, bosses: {}, enemies: {}, take: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, bosses: {}, enemies: {}, take: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1293,6 +1293,14 @@
     }
     for (const [size, src] of Object.entries(A.gold || {})) if (src) load(src, (img) => { SP.art.gold[size] = toCanvas(img); });
     for (const [size, src] of Object.entries(A.chest || {})) if (src) load(src, (img) => { SP.art.chest[size] = toCanvas(img); });
+    // 村の素材：建物・小物、子供（正面・右・背面）、猫（座る・右向き・眠る）。右向きは反転して左向きも作る
+    const VA = A.village;
+    if (VA) {
+      const names = Object.keys(VA.props || {});
+      for (const v of Object.values(VA.kids || {})) names.push(v + '_front', v + '_right', v + '_back');
+      for (const v of Object.values(VA.cats || {})) names.push(v + '_sit', v + '_right', v + '_sleep');
+      for (const n of names) load(VA.dir + n + '.png', (img) => { const c = toCanvas(img); SP.art.village[n] = c; if (/_right$/.test(n)) SP.art.village[n.replace(/_right$/, '_left')] = flipCanvas(c); });
+    }
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
@@ -1354,6 +1362,16 @@
     }
     for (const who of Object.keys(ch)) if (ch[who].front) s.portrait[who] = headCrop(ch[who].front);
     if (ch.yanai && ch.yanai.front) SP.art.statue = bronze(ch.yanai.front);
+    // 村の子供の顔絵（会話用）：正面の絵の頭から肩まで
+    const VA = TS.ASSETS && TS.ASSETS.village;
+    if (VA) for (const [id, v] of Object.entries(VA.kids || {})) {
+      const cv = SP.art.village[v + '_front'];
+      if (!cv) continue;
+      const t = topRow(cv), c = document.createElement('canvas'); c.width = c.height = 36;
+      const g = c.getContext('2d'); g.fillStyle = '#e9dcc0'; g.fillRect(0, 0, 36, 36);
+      g.drawImage(cv, VA.kidAnchor[0] - 18, Math.max(0, t - 3), 36, 36, 0, 0, 36, 36);
+      s.portrait['kid_' + id] = c;
+    }
     // ボス：見本の絵（1枚）。待機・予告・被弾などの違いは描画側の動き・点滅で出す
     for (const [k, cv] of Object.entries(SP.art.bosses)) s.enemy[k] = [cv, cv];
     for (const [k, fr] of Object.entries(SP.art.enemies)) s.enemy[k] = fr;

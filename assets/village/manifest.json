@@ -1,0 +1,308 @@
+[
+  {
+    "file": "child_play_front.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "front",
+    "animated": false
+  },
+  {
+    "file": "child_play_right.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "right",
+    "animated": false
+  },
+  {
+    "file": "child_play_back.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "back",
+    "animated": false
+  },
+  {
+    "file": "child_book_front.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "front",
+    "animated": false
+  },
+  {
+    "file": "child_book_right.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "right",
+    "animated": false
+  },
+  {
+    "file": "child_book_back.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "back",
+    "animated": false
+  },
+  {
+    "file": "child_cat_front.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "front",
+    "animated": false
+  },
+  {
+    "file": "child_cat_right.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "right",
+    "animated": false
+  },
+  {
+    "file": "child_cat_back.png",
+    "canvas": [
+      64,
+      64
+    ],
+    "anchor": [
+      32,
+      60
+    ],
+    "pose": "back",
+    "animated": false
+  },
+  {
+    "file": "cat_ginger_sit.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "sit",
+    "animated": false
+  },
+  {
+    "file": "cat_ginger_right.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "right",
+    "animated": false
+  },
+  {
+    "file": "cat_ginger_sleep.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "sleep",
+    "animated": false
+  },
+  {
+    "file": "cat_calico_sit.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "sit",
+    "animated": false
+  },
+  {
+    "file": "cat_calico_right.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "right",
+    "animated": false
+  },
+  {
+    "file": "cat_calico_sleep.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "sleep",
+    "animated": false
+  },
+  {
+    "file": "cat_black_sit.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "sit",
+    "animated": false
+  },
+  {
+    "file": "cat_black_right.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "right",
+    "animated": false
+  },
+  {
+    "file": "cat_black_sleep.png",
+    "canvas": [
+      32,
+      32
+    ],
+    "anchor": [
+      16,
+      28
+    ],
+    "pose": "sleep",
+    "animated": false
+  },
+  {
+    "file": "sai_shop.png",
+    "canvas": [
+      224,
+      224
+    ],
+    "anchor": [
+      112,
+      222
+    ],
+    "collision": "must define from existing map; not alpha bounds"
+  },
+  {
+    "file": "yanai_statue.png",
+    "canvas": [
+      96,
+      160
+    ],
+    "anchor": [
+      48,
+      158
+    ],
+    "collision": "must define from existing map; not alpha bounds"
+  },
+  {
+    "file": "tree.png",
+    "canvas": [
+      128,
+      128
+    ],
+    "anchor": [
+      64,
+      126
+    ],
+    "collision": "must define from existing map; not alpha bounds"
+  },
+  {
+    "file": "flowerbed.png",
+    "canvas": [
+      96,
+      64
+    ],
+    "anchor": [
+      48,
+      62
+    ],
+    "collision": "must define from existing map; not alpha bounds"
+  },
+  {
+    "file": "market_stall.png",
+    "canvas": [
+      128,
+      128
+    ],
+    "anchor": [
+      64,
+      126
+    ],
+    "collision": "must define from existing map; not alpha bounds"
+  },
+  {
+    "file": "bench.png",
+    "canvas": [
+      96,
+      64
+    ],
+    "anchor": [
+      48,
+      62
+    ],
+    "collision": "must define from existing map; not alpha bounds"
+  }
+]

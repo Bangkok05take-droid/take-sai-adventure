@@ -25,7 +25,7 @@
 - **足元**（階段・拾う・帰還）／**道具**（使う・まく・投げる・読む・装備・置く・整理。杖は8方向から向きを選んで振る）／**メニュー**。倉庫と村の持ち物にも「整理」ボタン。
 - PC：矢印キー/WASD、斜めは Q・E・Z・C（テンキー 7・9・1・3）、足踏み=スペース、向き=F、ダッシュ切替=X、道具=I、メニュー=Esc。
 
-タイトル画面は採用版「たけとサイの大冒険 ― 封印の遺跡 ―」です。背景と二人の一枚絵 `assets/title/title-scene.webp` に透過ロゴ `assets/title/title-logo.png` を重ね、ボタン（つづきから・はじめから・遊び方・音）はHTMLのボタンです（素材の説明は `assets/README.md`）。アイテム名の変更前後の対応は [docs/ITEM_NAMES.md](docs/ITEM_NAMES.md) を参照。
+タイトル画面は採用版「たけとサイの大冒険 ― 封印の遺跡 ―」です。背景と二人の一枚絵 `assets/title/title-scene.webp` に透過ロゴ `assets/title/title-logo.png` を重ね、ボタン（つづきから・はじめから・遊び方・音）はHTMLのボタンです（素材の説明は `assets/README.md`）。村の「サイの店〜ヤナイ像の広場」は個別の素材（`assets/village/`）で仕上げた区画で、子供3人と猫3匹がいます（[docs/VILLAGE_V1.md](docs/VILLAGE_V1.md)）。アイテム名の変更前後の対応は [docs/ITEM_NAMES.md](docs/ITEM_NAMES.md) を参照。
 
 ## ファイル構成
 | ファイル | 役割 |

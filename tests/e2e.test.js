@@ -76,7 +76,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
 
   await test('村を歩く：地面をタップすると1マスずつ歩き、人物をタップするとその前まで歩いて施設が開く。像に話しかけるとヤナイの言葉', async () => {
     const tapAt = async (sel) => { const pt = await p.evaluate(sel); await p.touchscreen.tap(pt.x, pt.y); };
-    const hitPt = (id, kind) => `(() => { const h = TS.UI.vview.hits.find((h) => h.id === '${id}' && h.kind === '${kind}'); const r = document.getElementById('village-canvas').getBoundingClientRect(); return { x: r.left + h.x + h.w / 2, y: r.top + h.y + h.h - 6 }; })()`;
+    // タップする範囲のうち画面に見えている部分の中（端の人物は半分画面の外のことがある）
+    const hitPt = (id, kind) => `(() => { const h = TS.UI.vview.hits.find((h) => h.id === '${id}' && h.kind === '${kind}'); const r = document.getElementById('village-canvas').getBoundingClientRect();
+      const x0 = Math.max(0, h.x), x1 = Math.min(r.width, h.x + h.w); return { x: r.left + (x0 + x1) / 2, y: r.top + h.y + h.h - 6 }; })()`;
     const w0 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));
     // 2マス左の地面をタップ
     await tapAt(`(() => { const v = TS.UI.vview, r = document.getElementById('village-canvas').getBoundingClientRect(), w = TS.UI.walker;
@@ -87,10 +89,13 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const w1 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));
     assert(w1.x === w0.x - 2 && w1.y === w0.y, 'walked ' + JSON.stringify([w0, w1]));
     // サイをタップ → 店の前まで歩いて店が開く
-    await tapAt(hitPt('shop', 'npc'));
+    // サイ（新しい店の入口の前）が画面の外なら、店の建物をタップする（同じく店の前まで歩いて開く）
+    const saiVisible = await p.evaluate(() => { const h = TS.UI.vview.hits.find((h) => h.id === 'shop' && h.kind === 'npc'); return h.x + h.w > 8; });
+    await tapAt(saiVisible ? hitPt('shop', 'npc') : hitPt('shop', 'fac'));
     for (let i = 0; i < 60 && !(await p.$('.modal')); i++) await p.waitForTimeout(80);
-    assert(await p.isVisible('.modal h2:has-text("サイの店")'), 'shop by walking');
-    assert(await p.evaluate(() => TS.UI.walker.x === 3 && TS.UI.walker.y === 15 && TS.UI.walker.dir === 'up'), 'stands at shop');
+    assert(await p.isVisible('.modal h2:has-text("サイの店")'), 'shop by walking ' + await p.evaluate(() => JSON.stringify([TS.UI.walker.x, TS.UI.walker.y, document.querySelector('#modal-root') && document.querySelector('#modal-root').textContent.slice(0, 80)])));
+    // 店の入口（2026年10月の店の絵：左の入口の前）に立って上を向く
+    assert(await p.evaluate(() => { const f = TS.UI.vview.fac.find((f) => f.id === 'shop'); return TS.UI.walker.x === f.at[0] && TS.UI.walker.y === f.at[1] && TS.UI.walker.dir === 'up'; }), 'stands at shop');
     await shot('03b_village_walk_shop');
     await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(150);
     // 記念像
@@ -111,6 +116,78 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.isVisible('.modal'), 'smith modal');
     assert(await p.evaluate(() => TS.UI.S.village.smithLv === 0), 'smith still locked');
     await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(150);
+  });
+
+  await test('村の子供3人・猫3匹（サイの店〜ヤナイ像の広場）：素材の絵・大きさ・話す／調べる・通り道と施設をふさがない・出入りで増えない', async () => {
+    // 素材の絵が読み込まれ、大きさは「大人 > 子供 > 猫」
+    const art = await p.evaluate(() => {
+      const VA = TS.ASSETS.village, A = TS.Sprites.art.village, h = (cv) => { if (!cv) return 0; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let t = -1, b = -1; for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3]) { if (t < 0) t = y; b = y; } return b - t + 1; };
+      const missing = []; for (const n of Object.keys(VA.props)) if (!A[n]) missing.push(n);
+      for (const v of Object.values(VA.kids)) for (const f of ['front', 'right', 'left', 'back']) if (!A[v + '_' + f]) missing.push(v + '_' + f);
+      for (const v of Object.values(VA.cats)) for (const f of ['sit', 'right', 'left', 'sleep']) if (!A[v + '_' + f]) missing.push(v + '_' + f);
+      return { missing, adult: h(TS.Sprites.art.chars.sai.front), kid: Math.max(...Object.values(VA.kids).map((v) => h(A[v + '_front']))), cat: Math.max(...Object.values(VA.cats).map((v) => h(A[v + '_sit']))) };
+    });
+    eq2(art.missing.join(), '', 'village art loaded');
+    assert(art.kid >= art.adult * 0.65 && art.kid <= art.adult * 0.8 && art.cat < art.kid * 0.75, 'sizes ' + JSON.stringify(art));
+    // 決まった3人・3匹が1回ずつ。村を出入り・作り直しても増えない
+    const count = () => p.evaluate(() => { const v = TS.UI.vview.hits; return { kid: v.filter((h) => h.kind === 'kid').length, cat: v.filter((h) => h.kind === 'cat').length, ids: v.filter((h) => h.kind === 'kid' || h.kind === 'cat').map((h) => h.id).sort().join() }; });
+    const c0 = await count();
+    eq2(c0.kid, 3, 'kids'); eq2(c0.cat, 3, 'cats'); eq2(c0.ids, 'black,book,calico,cat,ginger,play', 'ids');
+    // すべての施設の入口・像の前へ、スタート地点から歩いて行ける。通り道（店の前・広場の横の道）は2マス以上
+    const reach = await p.evaluate(() => {
+      const VL = TS.Village, v = TS.UI.vview, bad = [];
+      for (const f of v.fac) if (!VL.path(v.solid, VL.START.x, VL.START.y, f.at[0], f.at[1]) && !(f.at[0] === VL.START.x && f.at[1] === VL.START.y)) bad.push(f.id);
+      for (const [x, y] of [[9, 13], [10, 13]]) if (!VL.path(v.solid, VL.START.x, VL.START.y, x, y)) bad.push('statue ' + x);
+      const narrow = [];
+      for (let x = 1; x <= 18; x++) { let n = 0; for (let y = 14; y <= 16; y++) if (!v.solid[y * VL.MW + x]) n++; if (n < 2) narrow.push(x); }
+      // 子供・猫は施設の入口・人の立つマスにいない
+      const on = []; for (const c of VL.KIDS.concat(VL.CATS)) for (const f of v.fac) if (f.at[0] === c.x && f.at[1] === c.y) on.push(c.id + '@' + f.id);
+      return { bad, narrow, on };
+    });
+    eq2(reach.bad.join(), '', 'unreachable'); eq2(reach.narrow.join(), '', 'path narrower than 2 tiles at x'); eq2(reach.on.join(), '', 'creature on an entrance');
+    const tapAt = async (pt) => { await p.touchscreen.tap(pt.x, pt.y); };
+    const hitPt = (id, kind) => p.evaluate(([id, kind]) => { const h = TS.UI.vview.hits.find((h) => h.id === id && h.kind === kind); const r = document.getElementById('village-canvas').getBoundingClientRect();
+      const x0 = Math.max(0, h.x), x1 = Math.min(r.width, h.x + h.w), y0 = Math.max(0, h.y), y1 = Math.min(r.height, h.y + h.h); return { x: r.left + (x0 + x1) / 2, y: r.top + (y0 + y1) / 2, h: [h.x, h.y, h.w, h.h] }; }, [id, kind]);
+    const talkText = async (label) => { for (let i = 0; i < 80 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
+      const t = await p.evaluate(() => { const e = document.querySelector('.talk .txt'); return e ? e.textContent : null; });
+      assert(t !== null, label + ' did not talk: ' + await p.evaluate(() => JSON.stringify({ w: [TS.UI.walker.x, TS.UI.walker.y], modal: document.querySelector('#modal-root').textContent.slice(0, 60) })));
+      return t; };
+    const before = await p.evaluate(() => ({ funds: TS.UI.S.village.funds, run: !!TS.UI.S.run }));
+    // 子供に話しかける（となりまで歩いて、短い会話）
+    const lines = { play: 'きょうも冒険', book: '遺跡の本', cat: 'サイちゃんが大好き' };
+    for (const id of ['cat', 'book', 'play']) {
+      const pt = await hitPt(id, 'kid'); await tapAt(pt);
+      const t = await talkText('kid ' + id + ' ' + JSON.stringify(pt));
+      assert(t.includes(lines[id]), id + ': ' + t);
+      if (id === 'book') await shot('04b_village_kid_talk');
+      await closeTalk();
+    }
+    // 猫を調べる（短い反応）
+    const meow = { ginger: 'すりすり', calico: 'すうすう', black: 'しっぽ' };
+    for (const id of ['ginger', 'calico', 'black']) {
+      // 猫の近く（2マス下の道）まで来てから調べる（カメラはたけを追うので、遠い猫は画面の外）
+      await p.evaluate((id) => { const c = TS.Village.CATS.find((c) => c.id === id), w = TS.UI.walker; w.x = c.x; w.y = 16; w.path = []; w.moving = false; }, id);
+      await p.waitForTimeout(200);
+      const pt = await hitPt(id, 'cat'); await tapAt(pt);
+      const t = await talkText('cat ' + id + ' ' + JSON.stringify(pt));
+      assert(t.includes(meow[id]), id + ': ' + t);
+      await closeTalk();
+    }
+    // 会話・調べるでお金・探索は変わらない
+    const after = await p.evaluate(() => ({ funds: TS.UI.S.village.funds, run: !!TS.UI.S.run }));
+    eq2(JSON.stringify(after), JSON.stringify(before), 'no side effects');
+    // サイ（店）は子供・猫がいても今までどおり開ける
+    await tapAt(await hitPt('shop', 'npc'));
+    for (let i = 0; i < 60 && !(await p.isVisible('.modal h2:has-text("サイの店")')); i++) await p.waitForTimeout(80);
+    assert(await p.isVisible('.modal h2:has-text("サイの店")'), 'shop opens');
+    await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(150);
+    // 村の作り直し（施設の変化）・画面の出入りでも増えない
+    await p.evaluate(() => { TS.UI.S.village.decor.stalls = true; });
+    await p.waitForTimeout(200);
+    await p.evaluate(() => { TS.UI.S.village.decor.stalls = false; });
+    await p.waitForTimeout(200);
+    const c1 = await count();
+    eq2(JSON.stringify(c1), JSON.stringify(c0), 'no duplicates after rebuild');
   });
 
   await test('サイの店でおにぎりを借りて買い物ができる。木刀の貸し出しは無く、はじめは武器なし', async () => {

@@ -351,6 +351,7 @@
       AU.sfx('tap');
       if (h && h.kind === 'site') { toast('学校・図書館は建設予定地です（まだ使えません）'); return; }
       if (h && h.kind === 'statue') { walkTo(Math.abs(UI.walker.x - 9) <= Math.abs(UI.walker.x - 10) ? 9 : 10, 13, 'up', statueTalk); return; }
+      if (h && (h.kind === 'kid' || h.kind === 'cat')) { approach(h.kind, h.id); return; }
       if (h) { const f = UI.vview.fac.find((f) => f.id === h.id); if (f) { walkTo(f.at[0], f.at[1], f.face, () => openFacility(f.id)); return; } }
       const t = UI.vview.tile(x, y);
       walkTo(t.x, t.y);
@@ -400,9 +401,52 @@
     const nx = w.x + dx, ny = w.y + dy;
     const f = v.fac.find((f) => f.at[0] === w.x && f.at[1] === w.y && (f.face === dir));
     if (f) { openFacility(f.id); return; }
+    // 子供・猫のマスへ進もうとしたら、話す／調べる
+    for (const [kind, list] of [['kid', TS.Village.KIDS], ['cat', TS.Village.CATS]]) {
+      const c = list.find((c) => c.y === ny && (c.walk ? nx >= c.walk[0] && nx <= c.walk[1] : c.x === nx));
+      if (c) { creatureTalk(kind, c.id); return; }
+    }
     if (nx < 0 || ny < 0 || nx >= TS.Village.MW || ny >= TS.Village.MH || v.solid[ny * TS.Village.MW + nx]) return;
     w.path = [{ x: nx, y: ny }]; tickWalker(performance.now());
   }
+  /* 村の子供・猫：となりのマスまで歩いて、そちらを向いて話す／調べる。お金・満腹度・探索のターンは変わらない */
+  const KID_LINES = {
+    play: [['kid_play', 'きょうも冒険に行くの？']],
+    book: [['kid_book', '遺跡の本を読んでいるんだ。']],
+    cat: [['kid_cat', 'この子、サイちゃんが大好きなんだよ。']],
+  };
+  const CAT_LINES = {
+    ginger: 'にゃー。すりすりと寄ってきた。',
+    calico: 'すうすう……気持ちよさそうに眠っている。',
+    black: 'にゃっ。しっぽをぴんと立てた。',
+  };
+  function creatureTalk(kind, id) {
+    if (kind === 'kid') talk(KID_LINES[id] || [['villager', '……']]);
+    else talk([['narration', CAT_LINES[id] || 'にゃー。']]);
+  }
+  function creatureAt(kind, id) {
+    const V = TS.Village, list = kind === 'kid' ? V.KIDS : V.CATS, c = list.find((c) => c.id === id);
+    if (!c) return null;
+    if (kind === 'cat' && c.walk) { const p = RD.catPose(c, performance.now()); return { x: Math.round(p.x), y: c.y, tiles: [c.walk[0], c.walk[1]] }; }
+    return { x: c.x, y: c.y, tiles: [c.x, c.x] };
+  }
+  function approach(kind, id) {
+    const c = creatureAt(kind, id), w = UI.walker;
+    if (!c || !w) return;
+    // となりのマス（行き来する猫は2マスのどちらかのとなり）のうち、行けて近いところ
+    const cand = [];
+    for (let x = c.tiles[0]; x <= c.tiles[1]; x++) for (const [dx, dy, face] of [[0, 1, 'up'], [-1, 0, 'right'], [1, 0, 'left'], [0, -1, 'down']]) {
+      const tx = x + dx, ty = c.y + dy;
+      if (tx < 0 || ty < 0 || tx >= TS.Village.MW || ty >= TS.Village.MH || UI.vview.solid[ty * TS.Village.MW + tx]) continue;
+      if (tx === w.x && ty === w.y) { w.dir = face; creatureTalk(kind, id); return; }
+      const p = TS.Village.path(UI.vview.solid, w.x, w.y, tx, ty);
+      if (p) cand.push({ tx, ty, face, n: p.length });
+    }
+    cand.sort((a, b) => a.n - b.n);
+    if (cand.length) walkTo(cand[0].tx, cand[0].ty, cand[0].face, () => creatureTalk(kind, id));
+    else creatureTalk(kind, id);
+  }
+  UI.approachCreature = approach;
   function statueTalk() {
     const L = D.STORY.yanaiMemories || [];
     UI.statueN = ((UI.statueN || 0) + 1) % Math.max(1, L.length);
