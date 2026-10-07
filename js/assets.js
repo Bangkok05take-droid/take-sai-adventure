@@ -87,6 +87,11 @@
        * boatBob：舟だけゆっくり上下（描く位置だけ。操作の範囲は動かさない） */
       /* アユタヤの遺跡（2026年10月）：見本 assets/reference/ayutthaya-ruins-v1.png から tools/extract-ruins.py で作った、村の大きさそのままの絵。
        * gateOpen：門の開口の中心（絵の左から）。この位置を石段（x9〜10）の真ん中に置く */
+      /* 村の飾り（2026年10月）：街灯・白いゾウの像・噴水・赤い橋。見本 assets/reference/village-decor-v1.png から tools/extract-decor.py で作った、
+       * 村の大きさそのままの絵。lampHead：街灯の灯りの中心（足元からの高さ）。fountainSpout：噴水の吹き出し口（絵の上からの高さ）。
+       * bridgeDeck：橋の床板の上端（絵の上から）。ここを岸壁の上面に重ねる。橋の長さは extract-decor.py で中ほどを抜いて、岸壁から向こう岸の草地まで。
+       * bridgeRail：左右の欄干の幅（人物との前後を決めるため、この幅で横に切って重ねる） */
+      decor: { dir: 'assets/village/decor/', names: ['lamp', 'elephant', 'fountain', 'bridge'], lampHead: 47, fountainSpout: 10, bridgeDeck: 25, bridgeRail: 18 },
       ruins: { dir: 'assets/village/ruins/', names: ['tower', 'gate', 'banyan_wall', 'broken_wall'], gateOpen: 82 },
       harbor: { pierCut: [83, 178], quayRect: [2, 11, 252, 51], quayTop: 25, boatBob: { amp: 1, period: 4000 } },
       /* 施設の絵の入口の中心（絵の左からのドット）。絵の足元（anchor）ではなく、この位置を「入る位置」のマスの真上に置く。

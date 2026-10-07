@@ -63,7 +63,8 @@
         if (y >= 22 && y <= 24) c = 'w';
         if (y >= 22 && y <= 23 && x === 10) c = 'd';   // 桟橋の板（欄干・水面は通れない）
         if (y === 25) c = 'f';
-        if (lv.decor.bridge && y >= 22 && y <= 24 && (x === 3 || x === 4)) c = 'r';
+        // 赤い橋（村の発展「橋」）：素材の絵があるときは x3 の1列（橋の板の真ん中を歩く。欄干は通れない）。無ければ以前の2列
+        if (lv.decor.bridge && y >= 22 && y <= 24 && (x === 3 || (x === 4 && !lv.bridgeArt))) c = 'r';
         row.push(c);
       }
       G.push(row);
@@ -165,7 +166,7 @@
           P.rect(X + 2, Y, 1, T, C.woodD); P.rect(X + T - 3, Y, 1, T, C.woodD);
           if (ty === 23) { P.rect(X + 3, Y + T - 3, 4, 3, C.woodD); P.rect(X + T - 7, Y + T - 3, 4, 3, C.woodD); }
         }
-        if (k === 'r') { // 赤い橋（板と欄干）
+        if (k === 'r' && !lv.bridgeArt) { // 赤い橋（板と欄干。素材の絵があるときは水面だけ描き、橋は絵で重ねる）
           for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const py = (Y + y) % 6; P.set(X + x, Y + y, py === 5 ? '#7a2a1c' : py === 0 ? '#e0744a' : '#c4482e'); }
           const edge = tx === 3 ? 0 : T - 3;
           P.rect(X + edge, Y, 3, T, '#8a2a1a'); P.rect(X + edge + 1, Y, 1, T, '#e86a3a');
@@ -699,10 +700,23 @@
     if (!A.pier || !A.boat || !A.quay || !A.bollard || !A.supplies) return false;
     // 岸壁：上面の石を道の下の縁（21行の下）に、前面の石積みを水へ。左右の余白を除いた部分を並べる。赤い橋の所は空ける
     const [qx, qy, qw, qh] = H.quayRect, segW = qw * sc, top = 22 * T - H.quayTop * sc;
-    const ranges = lv.decor.bridge ? [[0, 3 * T], [5 * T, MW * T]] : [[0, MW * T]];
+    // 古い描き方の赤い橋の所は岸壁を空ける。素材の橋は岸壁を切らずに、その上へ重ねる（橋の親柱が岸壁の上に立つ）
+    const ranges = lv.decor.bridge && !lv.bridgeArt ? [[0, 3 * T], [5 * T, MW * T]] : [[0, MW * T]];
     for (const [x0, x1] of ranges) for (let x = x0; x < x1; x += segW) {
       const w = Math.min(segW, x1 - x);
       add({ img: A.quay, src: [qx, qy, w / sc, qh], x, y: top, w, h: qh * sc, sortY: 21 * T });
+    }
+    // 赤い橋（縦向き）：x3 の列の中央。床板の上端（deckTop）を岸壁の上面に重ねて陸と、下端は向こう岸（25行の草地）につなぐ。
+    // 人物は橋の中央（欄干の内側）を歩くので、橋は人物より奥に描く
+    if (lv.decor.bridge && lv.bridgeArt) {
+      const bi = A.deco_bridge, bx = 3 * T + 16 - Math.round(bi.width / 2), by = 22 * T - 6 - VA.decor.bridgeDeck;
+      add({ img: bi, x: bx, y: by, w: bi.width, h: bi.height, sortY: 21 * T + 1 });
+      // 欄干（左右の親柱と手すり）は横に細く切って重ね直し、足元より下の欄干は人物の手前に来るようにする（盾やマントが欄干に重なる時）
+      const rw = VA.decor.bridgeRail;
+      for (let sy = VA.decor.bridgeDeck; sy < bi.height; sy += 8) {
+        const sh = Math.min(8, bi.height - sy), sortY = by + sy + sh;
+        for (const sx of [0, bi.width - rw]) add({ img: bi, src: [sx, sy, rw, sh], x: bx + sx, y: by + sy, w: rw, h: sh, sortY });
+      }
     }
     // 桟橋：x10 の列の中央。上端は岸壁の上面に少し重ねて陸とつなぐ
     const pc = pierCanvas(), pw = pc.width * sc, ph = pc.height * sc;
@@ -765,7 +779,8 @@
   /* 村の絵と当たり判定を作る（村の状態が変わったときだけ） */
   VL.build = function (lv) {
     lv = Object.assign({}, lv, { pierArt: hasArt('pier') && hasArt('boat') && hasArt('quay'),   // 港の素材の絵が使えるか
-      ruinArt: ['tower', 'gate', 'banyan_wall', 'broken_wall'].every((n) => hasArt('ruin_' + n)) });   // 遺跡の素材の絵が使えるか
+      ruinArt: ['tower', 'gate', 'banyan_wall', 'broken_wall'].every((n) => hasArt('ruin_' + n)),   // 遺跡の素材の絵が使えるか
+      bridgeArt: hasArt('deco_bridge') });   // 赤い橋の素材の絵が使えるか
     const G = groundMap(lv), Lo = layout(lv);
     const solid = new Uint8Array(MW * MH);
     for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) solid[y * MW + x] = WALK[G[y][x]] ? 0 : 1;
@@ -837,13 +852,21 @@
     if (lv.stage >= 2 || lv.decor.lanterns) lamps.push([5, 16], [14, 16]);
     // 岸の灯り（「灯り」を建てたとき）：ティウ (12,21)・係留杭・荷物と重ならない所へ（以前は (7,21)・(12,21)・(17,21)）
     if (lv.decor.lanterns) lamps.push([2, 21], [6, 21], [15, 21], [18, 21]);
-    for (const [x, y] of lamps) { lantern(props, x * T + 16, y * T + 30); propAt.push([x, y]); lights.push([x * T + 16, y * T + 6, 18]); }
+    // 街灯：素材の絵があれば絵の街灯（足元はマスの下の方。灯りの光は絵の灯りの位置に）。無ければ今までの灯り
+    const lampArt = SP.art.village.deco_lamp;
+    for (const [x, y] of lamps) {
+      if (lampArt) { add({ img: lampArt, x: x * T + 16 - lampArt.width / 2, y: y * T + 30 - lampArt.height, w: lampArt.width, h: lampArt.height, sortY: (y + 1) * T - 2 }); solid[y * MW + x] = 1; lights.push([x * T + 16, y * T + 30 - TS.ASSETS.village.decor.lampHead, 18]); }
+      else { lantern(props, x * T + 16, y * T + 30); propAt.push([x, y]); lights.push([x * T + 16, y * T + 6, 18]); }
+    }
     if (lv.chapter >= 3 || lv.ending) for (const [x, y, c] of [[6, 7, C.teal], [13, 7, C.red]]) { banner(props, x * T + 14, y * T + 30, c); propAt.push([x, y]); }
     // 屋台（村の発展「屋台」を建てたときだけ）：素材の絵は2マス幅で、参道の両わき。読み込めなければ今までの1マスの屋台
     if (lv.decor.stalls && hasArt('market_stall')) for (const x of [7, 11]) { add(artProp('market_stall', (x + 1) * T, 20 * T - 2)); block(x, 19, 2, 1); }
     else if (lv.decor.stalls) for (const [x, c] of [[6, '#e05a4a'], [13, '#3a9ad0']]) { awning(props, x * T + 2, 19 * T + 2, 28, 8, c, '#f4ead2'); props.rect(x * T + 4, 19 * T + 18, 24, 8, C.woodL); props.ball(x * T + 10, 19 * T + 16, 3, 3, R('#f0c040'), { dither: false }); props.ball(x * T + 20, 19 * T + 16, 3, 3, R('#7ac050'), { dither: false }); propAt.push([x, 19]); }
     if (lv.chapter <= 2 && !lv.ending) for (const [x, y] of [[7, 12], [12, 17]]) { for (let i = 0; i < 6; i++) { const h = hash(x, y, i); props.ball(x * T + 8 + h % 16, y * T + 24 - (h >> 6) % 10, 4, 3, R('#a89070'), {}); } propAt.push([x, y]); }
-    if (lv.decor.statue) { // 白い象の像
+    const eleArt = SP.art.village.deco_elephant;
+    if (lv.decor.statue && eleArt) { // 白いゾウの像（素材の絵）：(6,12) の足元に台座。当たりは今までどおり (6,12) の1マス
+      add({ img: eleArt, x: 6 * T + 16 - eleArt.width / 2, y: 12 * T + 30 - eleArt.height, w: eleArt.width, h: eleArt.height, sortY: 13 * T - 2 }); solid[12 * MW + 6] = 1;
+    } else if (lv.decor.statue) { // 白い象の像
       const x = 6 * T + 16, y = 12 * T + 28;
       props.rect(x - 12, y - 6, 26, 6, C.stoneD); props.ball(x, y - 16, 12, 9, R('#f4f0e8')); props.ball(x + 10, y - 20, 6, 6, R('#f4f0e8')); props.rect(x + 14, y - 18, 2, 12, '#e8e0d0');
       props.rect(x - 8, y - 10, 3, 6, '#e0d8c8'); props.rect(x + 4, y - 10, 3, 6, '#e0d8c8'); propAt.push([6, 12]);
@@ -865,7 +888,12 @@
       if (!w) solid[y * MW + x] = 1;
     }
     // 噴水
-    if (lv.decor.fountain) {
+    const fntArt = SP.art.village.deco_fountain;
+    if (lv.decor.fountain && fntArt) { // 噴水（素材の絵）：参道の (9〜10,17) に。石の部分は動かさず、吹き出し口の水しぶきだけ控えめに動く
+      const fx = 10 * T - fntArt.width / 2, fy = 18 * T - 2 - fntArt.height;
+      add({ img: fntArt, x: fx, y: fy, w: fntArt.width, h: fntArt.height, sortY: 18 * T - 2 }); block(9, 17, 2, 1);
+      steam.push([10 * T, fy + TS.ASSETS.village.decor.fountainSpout, 'fountain']);
+    } else if (lv.decor.fountain) {
       const P = new SP.Pix(2 * T, 2 * T), cx = T, cy = T + 8;
       P.ball(cx, cy, 28, 14, R(C.stone)); P.ball(cx, cy - 1, 23, 10, R('#3ab0d0'), { dither: false }); P.box(cx - 4, cy - 26, 8, 24, R(C.stone)); P.ball(cx, cy - 26, 10, 4, R(C.stone));
       P.outline(0.7);

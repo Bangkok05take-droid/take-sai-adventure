@@ -18,7 +18,7 @@ const STATES = {
     TS.Game.applyFacilities(V);
   },
 };
-const SPOTS = [['shop', 3, 15], ['plaza', 7, 13], ['statue', 9, 14], ['smith', 3, 10], ['museum', 16, 10], ['storage', 16, 15], ['diner', 14, 21], ['harbor', 10, 21], ['harborL', 4, 21], ['temple', 9, 5], ['templeL', 4, 5], ['templeR', 15, 5], ['stairs', 10, 4]];
+const SPOTS = [['shop', 3, 15], ['plaza', 7, 13], ['statue', 9, 14], ['smith', 3, 10], ['museum', 16, 10], ['storage', 16, 15], ['diner', 14, 21], ['harbor', 10, 21], ['harborL', 4, 21], ['temple', 9, 5], ['templeL', 4, 5], ['templeR', 15, 5], ['stairs', 10, 4], ['bridge', 3, 22], ['fountain', 10, 18], ['elephant', 6, 13]];
 (async () => {
   const b = await chromium.launch();
   for (const [vw, vh] of [[390, 844], [360, 780], [430, 932]]) {
@@ -36,7 +36,7 @@ const SPOTS = [['shop', 3, 15], ['plaza', 7, 13], ['statue', 9, 14], ['smith', 3
       await p.tap('#btn-continue'); await p.waitForTimeout(700);
       await p.evaluate(() => { for (const b of document.querySelectorAll('#modal-root .back')) b.remove(); TS.UI.modals.length = 0; });
       for (const [spot, x, y] of SPOTS) {
-        if (vw !== 390 && !['shop', 'plaza', 'smith', 'storage', 'diner', 'harbor', 'temple'].includes(spot)) continue;
+        if (vw !== 390 && !['shop', 'plaza', 'smith', 'storage', 'diner', 'harbor', 'temple', 'bridge', 'fountain'].includes(spot)) continue;
         await p.evaluate(([x, y]) => { const w = TS.UI.walker; w.x = x; w.y = y; w.dir = 'up'; w.moving = false; w.path = []; }, [x, y]);
         await p.waitForTimeout(350);
         const c = await p.evaluate(() => { const r = document.getElementById('village-canvas').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
