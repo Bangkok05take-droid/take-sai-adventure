@@ -1195,6 +1195,14 @@
     if (!s.iconT[key]) s.iconT[key] = I[def.icon] ? I[def.icon](def.tint).canvas() : s.icon.coin;
     return s.iconT[key];
   };
+  /* 床に落ちているお金の絵。描く大きさ（px）以上で一番小さい絵（無ければ一番大きい絵）を選ぶ＝縮めて点が欠けるのを避ける。
+   * 絵が無ければコードで描いたお金の山 */
+  SP.goldIcon = function (px) {
+    const sizes = Object.keys(SP.art.gold).map(Number).sort((a, b) => a - b);
+    if (!sizes.length) return SP.s.icon.gold;
+    const s = sizes.find((n) => n >= px) || sizes[sizes.length - 1];
+    return SP.art.gold[s];
+  };
   SP.enemyFrames = (sprite) => SP.s.enemy[sprite] || SP.s.enemy.frog;
 
   const urlCache = {};
@@ -1254,7 +1262,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, itemsById: {}, bosses: {}, enemies: {}, take: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, bosses: {}, enemies: {}, take: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1277,6 +1285,7 @@
       load(dir + base + '.png', (img) => { e.list = toCanvas(img); });
       load(dir + 'floor/' + base + '.png', (img) => { e.floor = toCanvas(img); });
     }
+    for (const [size, src] of Object.entries(A.gold || {})) if (src) load(src, (img) => { SP.art.gold[size] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う

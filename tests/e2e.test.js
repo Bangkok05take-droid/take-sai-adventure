@@ -56,6 +56,10 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
         return !D.ITEMS[id] || !e.list || e.list.width !== 48 || !e.floor || e.floor.width !== 32 || SP.iconFor(D.ITEMS[id]) !== e.floor || !/^data:image\/png/.test(SP.iconURL(D.ITEMS[id])); }) };
     });
     eq2(r.n, 22, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
+    // 床のお金（G）：32px用・48px用の金貨の絵（お宝の古金貨とは別）。描く大きさに合うほうを使う
+    const gold = await p.evaluate(() => { const SP = TS.Sprites; return { w32: SP.art.gold[32] && SP.art.gold[32].width, w48: SP.art.gold[48] && SP.art.gold[48].width,
+      small: SP.goldIcon(22) === SP.art.gold[32], big: SP.goldIcon(44) === SP.art.gold[48], notCoin: SP.goldIcon(44) !== SP.iconFor(TS.Data.ITEMS.old_coin) }; });
+    assert(gold.w32 === 32 && gold.w48 === 48 && gold.small && gold.big && gold.notCoin, 'gold pickup art ' + JSON.stringify(gold));
   });
 
   await test('はじめから → 会話・説明 → 村', async () => {

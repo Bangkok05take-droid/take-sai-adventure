@@ -59,6 +59,9 @@
         full_bangle: 'assets/accessories/hunger_bracelet', life_necklace: 'assets/accessories/revival_necklace',
       },
     },
+    /* 床に落ちているお金（G。拾うと探索中のお金が増える通貨）。お宝「アユタヤの古金貨」（items の coin）とは別の絵。
+     * 32px用と48px用。床では描く大きさに近いほうを最近傍で拡大縮小する（読み込めなければコードで描いた絵） */
+    gold: { 32: 'assets/gold/gold_pickup_32.png', 48: 'assets/gold/gold_pickup_48.png' },
     portraits: { take: null, sai: null, yanai: null, villager: null },
     /* ボス（assets/bosses/）：見本 assets/reference/bosses.png から tools/extract-bosses.py で作った透過PNG。
      * キャンバス 96×96（1ドット＝1ピクセル。たけと同じ細かさ）、足の裏は y=92、足元の中央は x=48。正面の1枚だけ（横向き・背面・歩行コマは無い）。

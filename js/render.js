@@ -161,8 +161,8 @@
       if (!run.explored[f.y * m.w + f.x]) continue;
       const sx = ox + f.x * ts, sy = oy + f.y * ts;
       if (f.item && G.def(f.item).type === 'treasure') { g.drawImage(SP.tiles.chest[(fr(450, 4) + f.x) % 4 === 0 ? 1 : 0], sx, sy, ts, ts); continue; }
-      const img = f.gold ? SP.s.icon.gold : SP.iconFor(G.def(f.item));
       const sz = Math.round(ts * 0.68), pad = Math.round((ts - sz) / 2);
+      const img = f.gold ? SP.goldIcon(sz) : SP.iconFor(G.def(f.item));
       // 置かれた道具：明るい台座の円と影で床から浮かせ、種類の形が分かる大きさで描く
       g.fillStyle = 'rgba(255,246,210,0.22)';
       g.beginPath(); g.ellipse(sx + ts / 2, sy + ts * 0.74, ts * 0.36, ts * 0.17, 0, 0, Math.PI * 2); g.fill();

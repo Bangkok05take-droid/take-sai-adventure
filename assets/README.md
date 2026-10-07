@@ -48,6 +48,8 @@
   - `js/assets.js` の `TS.ASSETS.items.byId`（キーは道具の内部ID）で登録。`items.map` より優先する。
 - `accessories/`（アクセサリー4種の絵、2026年10月）：直下が一覧用 48×48（いただいた絵そのまま）、`floor/` が床用 32×32（`python3 tools/make-items-v2-floor.py assets/accessories`）。
   ファイル名と道具の内部IDは違う（`money_guard`＝`purse_charm`、`hunger_bracelet`＝`full_bangle`、`revival_necklace`＝`life_necklace`）。対応は `js/assets.js` の `items.byId`。
+- `gold/`（床に落ちているお金＝通貨Gの絵、2026年10月）：`gold_pickup_32.png`（32×32）と `gold_pickup_48.png`（48×48）。いただいた絵そのまま。
+  床では描く大きさ（1マスの68%）以上でいちばん小さい絵を選び、最近傍で描く（スマホでは1マス64px→44pxなので48px用）。お宝「アユタヤの古金貨」（`items/coin`）とは別。
 - 使う画像の一覧とキーは `js/assets.js`。読み込めない画像は、コードで描いたドット絵に自動で戻る。
 
 ## まだ足りない素材（見本に無いもの）
