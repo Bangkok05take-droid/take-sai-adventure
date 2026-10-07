@@ -1268,7 +1268,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, bosses: {}, enemies: {}, take: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, ground: {}, bosses: {}, enemies: {}, take: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1295,6 +1295,7 @@
     for (const [size, src] of Object.entries(A.chest || {})) if (src) load(src, (img) => { SP.art.chest[size] = toCanvas(img); });
     // 村の素材：建物・小物、子供（正面・右・背面）、猫（座る・右向き・眠る）。右向きは反転して左向きも作る
     const VA = A.village;
+    if (VA && VA.ground) for (const n of Object.keys(VA.ground.textures)) load(VA.ground.dir + n + '.png', (img) => { SP.art.ground[n] = toCanvas(img); });
     if (VA) {
       const names = Object.keys(VA.props || {});
       for (const v of Object.values(VA.kids || {})) names.push(v + '_front', v + '_right', v + '_back');

@@ -164,6 +164,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       return { ok: s(10, 22) && s(10, 23) && s(10, 21) && ![[9, 22], [11, 22], [9, 23], [11, 23], [10, 24], [12, 23]].some(([x, y]) => s(x, y)) && [...Array(20).keys()].every((x) => s(x, 20)),
         at: f.at.join(), face: f.face, art: !!(TS.Sprites.art.village.pier && TS.Sprites.art.village.boat && TS.Sprites.art.village.quay) }; });
     assert(harbor.ok && harbor.at === '10,23' && harbor.face === 'right' && harbor.art, 'harbor ' + JSON.stringify(harbor));
+    // 街の床（2026年10月）：4種類の模様が読み込まれている（128×128＝4×4マス分）
+    eq2(await p.evaluate(() => ['sandstone', 'brick', 'grass', 'earth'].map((n) => (TS.Sprites.art.ground[n] || {}).width).join()), '128,128,128,128', 'ground textures');
     const tapAt = async (pt) => { await p.touchscreen.tap(pt.x, pt.y); };
     const hitPt = (id, kind) => p.evaluate(([id, kind]) => { const h = TS.UI.vview.hits.find((h) => h.id === id && h.kind === kind); const r = document.getElementById('village-canvas').getBoundingClientRect();
       const x0 = Math.max(0, h.x), x1 = Math.min(r.width, h.x + h.w), y0 = Math.max(0, h.y), y1 = Math.min(r.height, h.y + h.h); return { x: r.left + (x0 + x1) / 2, y: r.top + (y0 + y1) / 2, h: [h.x, h.y, h.w, h.h] }; }, [id, kind]);

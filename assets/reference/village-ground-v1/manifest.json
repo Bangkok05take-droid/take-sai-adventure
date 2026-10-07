@@ -1,0 +1,14 @@
+{
+  "tileSize": 32,
+  "patternSize": 128,
+  "periodTiles": 4,
+  "textures": [
+    "sandstone",
+    "brick",
+    "grass",
+    "earth"
+  ],
+  "sampling": "nearest",
+  "coordinateSpace": "world",
+  "note": "Base textures, not a complete autotile set. Do not randomize individual 32px cells."
+}

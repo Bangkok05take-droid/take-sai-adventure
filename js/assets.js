@@ -73,6 +73,9 @@
      * 子供の正面・右・背面は歩行のコマではなく、向きの静止画。左向きは右向きを反転する。読み込めなければ今までのコードの絵 */
     village: {
       dir: 'assets/village/', propScale: 2 / 3,
+      /* 街の床（2026年10月）：128×128＝32ドットの床4×4マス分の連続した模様。1マスに縮めず、地図のドット座標（128で割った余り）で
+       * そのまま写すので、模様は世界に固定（カメラが動いてもずれない）。contrast：明暗を少し弱める割合（人物・建物を引き立てる） */
+      ground: { dir: 'assets/village/ground/', size: 128, textures: { sandstone: 0.72, brick: 0.72, grass: 0.8, earth: 0.8 } },
       props: { sai_shop: [112, 222], yanai_statue: [48, 158], tree: [64, 126], flowerbed: [48, 62], market_stall: [64, 126], bench: [48, 62],
         // 施設の外観 v2（2026年10月）：サイの店と同じ 224×224・同じ倍率（2/3）なので、人物に対する扉の大きさがそろう
         blacksmith: [112, 222], eatery: [112, 222], warehouse: [112, 222], exhibition: [112, 222],

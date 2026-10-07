@@ -1,0 +1,3 @@
+Method: built-in image generation; exported by quadrant crop and nearest-neighbor resize.
+Prompt brief: One square terrain atlas with four equal quadrants: warm pale sandstone paving, muted red brick paving, olive emerald grass, ochre compacted earth. Top-down polished pixel-art Thai riverside RPG town; uniform illumination; no text, props, characters, perspective or margins; independently repeating textures, intended 128px texture patches spanning four by four 32px game cells.
+The requested seamless constraint is a generation target, not a guarantee; see integration notes.

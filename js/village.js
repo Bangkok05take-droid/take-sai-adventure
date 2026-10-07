@@ -73,14 +73,43 @@
   const WALK = { g: 0, p: 1, b: 1, w: 0, d: 1, s: 1, t: 0, r: 1, f: 1 };
 
   // ---------------- 地面を描く ----------------
-  function paintGround(lv, G) {
+  /* 街の床の模様（assets/village/ground/）：128×128 の画像を色の表にして、地図のドット座標で写す（世界に固定）。
+   * 明暗は contrast の割合で平均の色へ寄せて控えめにする（人物・建物・猫を引き立てる）。読み込めなければ null（今までの床） */
+  const texCache = {};
+  function texTable(name, night) {
+    const key = name + (night ? ':n' : '');
+    if (texCache[key] !== undefined) return texCache[key];
+    const GA = TS.ASSETS && TS.ASSETS.village && TS.ASSETS.village.ground, cv = SP.art && SP.art.ground && SP.art.ground[name];
+    if (!GA || !cv) return null;
+    const n = GA.size, d = cv.getContext('2d').getImageData(0, 0, n, n).data, k = GA.textures[name], dim = night ? 0.82 : 1;
+    let mr = 0, mg = 0, mb = 0;
+    for (let i = 0; i < n * n; i++) { mr += d[i * 4]; mg += d[i * 4 + 1]; mb += d[i * 4 + 2]; }
+    mr /= n * n; mg /= n * n; mb /= n * n;
+    const hex = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+    const t = new Array(n * n);
+    for (let i = 0; i < n * n; i++) t[i] = '#' + hex((mr + (d[i * 4] - mr) * k) * dim) + hex((mg + (d[i * 4 + 1] - mg) * k) * dim) + hex((mb + (d[i * 4 + 2] - mb) * k) * dim);
+    return (texCache[key] = t);
+  }
+  // 地図のドット (gx, gy) の色（128で割った余り＝4×4マスで1周）
+  const texAt = (t, gx, gy) => t[(((gy % 128) + 128) % 128) * 128 + (((gx % 128) + 128) % 128)];
+
+  function paintGround(lv, G, treeSpots) {
     const P = new SP.Pix(MW * T, MH * T);
     const night = lv.night;
+    const TX = { sandstone: texTable('sandstone', night), brick: texTable('brick', night), grass: texTable('grass', night), earth: texTable('earth', night) };
+    const fillTex = (t, X, Y) => { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) P.set(X + x, Y + y, texAt(t, X + x, Y + y)); };
     const gb = night ? '#5a8a44' : C.grass;
     const at = (x, y) => (y >= 0 && y < MH && x >= 0 && x < MW ? G[y][x] : 'g');
     for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
       const k = G[ty][tx], X = tx * T, Y = ty * T;
-      if (k === 'g' || k === 'f') {
+      if ((k === 'g' || k === 'f') && TX.grass) {
+        fillTex(TX.grass, X, Y);   // 草地（素材の模様。葉や花は模様に含まれる）
+      } else if ((k === 'p') && TX.sandstone) {
+        fillTex(TX.sandstone, X, Y);   // 中央広場・主な歩く道：砂岩の石畳
+      } else if ((k === 'b' || k === 's') && TX.brick) {
+        fillTex(TX.brick, X, Y);   // 寺院への道・港沿いの道：赤茶のレンガ
+        if (k === 's') for (let y = 0; y < T; y += 8) { P.rect(X, Y + y, T, 2, sh(C.stone, 0.15)); P.rect(X, Y + y + 6, T, 2, C.stoneD); }
+      } else if (k === 'g' || k === 'f') {
         for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
           const h = hash(X + x, Y + y, 3);
           let c = sh(gb, ((hash((X + x) >> 2, (Y + y) >> 2, 5) & 7) - 3.5) * 0.018);
@@ -146,6 +175,18 @@
         if (at(tx + 1, ty) === 'g') P.rect(X + T - 2, Y, 2, T, sh(C.stone, -0.3));
       }
       if (k === 'g' && (at(tx, ty - 1) === 'p' || at(tx, ty - 1) === 'b')) for (let x = 0; x < T; x++) P.set(X + x, Y, sh(gb, -0.35));
+    }
+    // 木の根元の土（草地の上だけ。ふちは市松に散らして、草と土を平らな境目にする）
+    if (TX.earth && treeSpots) for (const [, tx, ty] of treeSpots) {
+      if (!G[ty] || (G[ty][tx] !== 'g' && G[ty][tx] !== 'f')) continue;
+      const cx = tx * T + 16, cy = (ty + 1) * T - 7, rx = 15, ry = 8;
+      for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+        const gt = G[Math.floor(y / T)] && G[Math.floor(y / T)][Math.floor(x / T)];
+        if (gt !== 'g' && gt !== 'f') continue;
+        const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+        if (d > 1 || (d > 0.62 && ((x + y) & 1)) || (d > 0.82 && (hash(x, y, 77) & 1))) continue;
+        P.set(x, y, texAt(TX.earth, x, y));
+      }
     }
     // 水路の護岸（上の岸：石積みの壁、下の岸：石のふち）
     for (let x = 0; x < MW * T; x++) {
@@ -796,7 +837,7 @@
     const cats = VL.CATS.map((c, i) => Object.assign({}, c, { cv: hasArt('cat_' + c.id + '_sit') ? null : cat(i % 2) }));
     for (const k of kids) solid[k.y * MW + k.x] = 1;
     for (const c of cats) for (let x = c.x; x <= (c.walk ? c.walk[1] : c.x); x++) solid[c.y * MW + x] = 1;
-    const ground = paintGround(lv, G);
+    const ground = paintGround(lv, G, trees);
     // 建物の足元の影（地面に描く）
     const gcv = ground.canvas(), gg = gcv.getContext('2d');
     gg.fillStyle = 'rgba(30,20,40,0.22)';
