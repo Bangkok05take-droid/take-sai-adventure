@@ -44,29 +44,47 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 .screen.active { display: flex; }
 
 /* ---------- タイトル ---------- */
-/* 一枚の冒険イラスト：後ろの景色はキャンバス、ロゴと人物は画像、手前にボタン */
-#screen-title { position: relative; flex-direction: column; background: #0b2433; overflow: hidden; }
-#title-bg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: auto; }
-.title-stage { position: relative; z-index: 1; flex: 1; min-height: 0; width: 100%; max-width: 560px; margin: 0 auto;
-  display: flex; flex-direction: column; align-items: center; padding: 6px 12px 12px; }
-.title-head { flex: none; display: flex; flex-direction: column; align-items: center; }
-.title-logo { margin: 0; line-height: 0; }
-.title-logo img { display: block; width: min(94vw, 470px); height: auto; max-height: calc(var(--app-h) * 0.26); object-fit: contain;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45)); }
-.subtitle { margin: -2px 0 0; font-size: clamp(13px, 3.7vw, 16px); color: #fff0cc; font-weight: bold; letter-spacing: 2px;
-  text-shadow: 0 1px 2px #061820, 0 0 8px rgba(6, 24, 32, 0.9); opacity: 0.92; }
-.title-art { flex: 1 1 auto; min-height: 110px; width: 100%; display: flex; justify-content: center; margin-top: 2px; }
-.title-art img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; display: block; }
-.title-art img.paper { border: 3px solid #e8c25a; border-radius: 6px; background: #f0e4cd; height: auto; max-height: 100%; align-self: flex-end; }
-.title-buttons { display: flex; flex-direction: column; gap: 8px; width: min(88vw, 360px); flex: none; margin-top: 8px; }
-.title-row { display: flex; gap: 8px; }
-.title-row .big { flex: 1; }
-#screen-title .big { min-height: 48px; font-size: 18px; font-weight: bold; padding: 6px 12px; letter-spacing: 1px;
-  background: rgba(8, 40, 52, 0.82); color: #fff4dc; border: 2px solid #c89a3a; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45); border-radius: 12px; }
-#screen-title .big.sub { min-height: 44px; font-size: 15px; background: rgba(6, 26, 34, 0.75); border-color: rgba(200, 154, 58, 0.65); }
-#screen-title .big.primary { min-height: 58px; font-size: 22px; letter-spacing: 3px; color: #3a1a00; border: 2px solid #fff2b0;
-  background: linear-gradient(#ffe89a, #f0bc48 55%, #c88a20); box-shadow: 0 3px 0 #6a4210, 0 0 0 1px #6a4210; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
-#screen-title .big:active { transform: translateY(2px); box-shadow: none; }
+/* 採用タイトル「封印の遺跡」：背景と二人の絵（2:3）にロゴを重ね、ボタンは絵の下部（高さ78%から）に置く。
+ * 絵は画面の幅いっぱい（縦長の端末では左右を少しだけ切って大きく）。顔・ロゴ・ボタンが切れないことを優先し、
+ * 余った上下は深緑でつなぐ。低い画面では縦にスクロールできる（ボタンは小さくしない）。横画面は絵の右にボタン。 */
+#screen-title { position: relative; flex-direction: column; align-items: center; justify-content: flex-start; background: #0c261c;
+  overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.title-wrap { --tw: min(600px, 112vw, calc(var(--app-h, 100vh) * 0.6667)); position: relative; flex: none; width: var(--tw);
+  padding-bottom: max(14px, calc(190px - var(--tw) * 0.33)); }
+.title-art-box { position: relative; width: 100%; aspect-ratio: 2 / 3; overflow: hidden; background: #0c261c; }
+.title-scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-select: none; }
+/* 絵の下端を深緑へなじませる */
+.title-art-box::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9%; pointer-events: none;
+  background: linear-gradient(rgba(12, 38, 28, 0), #0c261c); }
+.title-logo { position: absolute; left: 16.5%; top: 0.5%; width: 67%; margin: 0; line-height: 0; z-index: 2; pointer-events: none; }
+.title-logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 3px 3px rgba(10, 30, 36, 0.8)); user-select: none; -webkit-user-select: none; }
+/* 封印の扉の光（絵の x50%・y36% 付近）。ゆっくり明滅、光の粒が少しだけ上る。触っても何も起きない */
+.title-glow { position: absolute; left: 50%; top: 36%; width: 0; height: 0; pointer-events: none; z-index: 1; }
+.title-glow b { position: absolute; left: calc(var(--tw) * -0.06); top: calc(var(--tw) * -0.06); width: calc(var(--tw) * 0.12); height: calc(var(--tw) * 0.12);
+  border-radius: 50%; background: #9affed; filter: blur(12px); mix-blend-mode: screen; opacity: 0.16; animation: seal-pulse 5s ease-in-out infinite; }
+.title-glow i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #c8fff4; box-shadow: 0 0 6px #9affed; opacity: 0;
+  animation: seal-mote 6s ease-in-out infinite; }
+.title-glow i:nth-of-type(1) { left: calc(var(--tw) * -0.05); top: 0; animation-delay: 0s; }
+.title-glow i:nth-of-type(2) { left: calc(var(--tw) * 0.03); top: calc(var(--tw) * 0.02); animation-delay: 1.5s; }
+.title-glow i:nth-of-type(3) { left: calc(var(--tw) * -0.02); top: calc(var(--tw) * 0.04); animation-delay: 3s; }
+.title-glow i:nth-of-type(4) { left: calc(var(--tw) * 0.05); top: calc(var(--tw) * -0.01); animation-delay: 4.5s; }
+@keyframes seal-pulse { 50% { opacity: 0.4; transform: scale(1.2); } }
+@keyframes seal-mote { 0% { opacity: 0; transform: translateY(0); } 30% { opacity: 0.85; } 100% { opacity: 0; transform: translateY(calc(var(--tw) * -0.09)); } }
+/* 画面を離れている間・裏に回っている間は止める。動きを減らす設定では動かさない */
+#screen-title:not(.active) .title-glow *, body.app-hidden .title-glow * { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .title-glow b { animation: none; opacity: 0.25; } .title-glow i { animation: none; display: none; } }
+.title-buttons { position: absolute; z-index: 3; top: calc(var(--tw) * 1.5 * 0.78); left: 50%; transform: translateX(-50%);
+  width: min(70%, 380px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; }
+.title-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#screen-title .big { min-height: 48px; font-size: clamp(16px, 4.4vw, 22px); font-weight: bold; padding: 6px 10px; letter-spacing: 2px;
+  color: #fff9df; border: 2px solid #d6b767; border-radius: 15px; background: linear-gradient(#1f5a40, #0b3322);
+  box-shadow: inset 0 0 0 2px rgba(54, 92, 70, 0.9), 0 3px 5px rgba(0, 0, 0, 0.55); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+#screen-title .big.sub { min-height: 44px; font-size: clamp(15px, 4vw, 18px); letter-spacing: 1px; }
+#screen-title .big.primary { min-height: 54px; font-size: clamp(18px, 5vw, 24px); letter-spacing: 3px; color: #40270e; border-color: #fff2b1;
+  background: linear-gradient(#fff2b1, #e6ae36); box-shadow: inset 0 0 0 2px #ffeebb, 0 3px 5px rgba(0, 0, 0, 0.55); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+#screen-title .big:active { transform: translateY(1px); }
+#screen-title .big:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .big { min-height: 54px; font-size: 19px; font-weight: bold; padding: 8px 16px; }
 
 /* ---------- 村 ---------- */
@@ -173,12 +191,15 @@ body.calm .hpwrap.hurt .bar { animation: none; }
   .vgoal { grid-area: goal; } .vchapter { grid-area: goal; }
   .vhud { grid-area: hud; } #village-view { grid-area: view; } .vbuttons { grid-area: btns; grid-template-columns: 1fr 1fr; align-content: center; border-top: 0; border-left: 1.5px solid var(--line); }
   .fac { min-height: 52px; }
-  .title-stage { max-width: 1000px; display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: 1fr auto auto 1fr;
-    grid-template-areas: "art ." "art head" "art btns" "art ."; column-gap: 16px; align-items: center; padding: 8px 16px; }
-  .title-art { grid-area: art; height: 100%; min-height: 0; }
-  .title-head { grid-area: head; }
-  .title-logo img { width: min(42vw, 440px); max-height: calc(var(--app-h) * 0.42); }
-  .title-buttons { grid-area: btns; justify-self: center; width: min(40vw, 360px); }
+  /* 横画面：絵（高さいっぱい）の右にボタン */
+  #screen-title.active { justify-content: center; }
+  .title-wrap { --tw: min(600px, 52vw, calc(var(--app-h, 100vh) * 0.6667)); width: auto; margin: auto 0; padding-bottom: 0;
+    display: flex; flex-direction: row; align-items: center; gap: 20px; }
+  .title-art-box { width: var(--tw); flex: none; }
+  .title-buttons { position: static; transform: none; width: min(38vw, 340px); flex: none; }
+  #screen-title .big { font-size: clamp(16px, 2.4vw, 22px); }
+  #screen-title .big.sub { font-size: clamp(15px, 2.1vw, 18px); }
+  #screen-title .big.primary { font-size: clamp(18px, 2.7vw, 24px); }
 }
 @media (orientation: landscape) and (max-height: 430px) {
   #log { font-size: 14px; }

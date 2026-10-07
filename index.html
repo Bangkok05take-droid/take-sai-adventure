@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#0b2a3a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="description" content="たけとサイの大冒険 〜アユタヤの夢見る遺跡〜：スマホで遊べるターン制ダンジョン探索ゲーム">
-  <title>たけとサイの大冒険 〜アユタヤの夢見る遺跡〜</title>
+  <meta name="description" content="たけとサイの大冒険 ― 封印の遺跡 ―：スマホで遊べるターン制ダンジョン探索ゲーム">
+  <title>たけとサイの大冒険 ― 封印の遺跡 ―</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
   <link rel="stylesheet" href="css/style.css">
@@ -16,21 +16,21 @@
   <div id="app">
     <!-- タイトル -->
     <section id="screen-title" class="screen active">
-      <canvas id="title-bg" aria-hidden="true"></canvas>
-      <div class="title-stage">
-        <div class="title-head">
-          <h1 class="title-logo"><img id="title-logo" src="assets/logo.png" alt="たけとサイの大冒険" draggable="false"></h1>
-          <p class="subtitle">〜 アユタヤの夢見る遺跡 〜</p>
+      <!-- 採用タイトル「たけとサイの大冒険 ― 封印の遺跡 ―」：背景と二人は1枚の絵、ロゴは透過画像、ボタンは本物の button -->
+      <div class="title-wrap">
+        <div class="title-art-box">
+          <img id="title-scene" class="title-scene" src="assets/title/title-scene.webp" alt="封印の扉の前に立つたけとサイ" draggable="false">
+          <div class="title-glow" aria-hidden="true"><b></b><i></i><i></i><i></i><i></i></div>
+          <h1 class="title-logo"><picture><source srcset="assets/title/title-logo.webp" type="image/webp"><img id="title-logo" src="assets/title/title-logo.png" alt="たけとサイの大冒険 ― 封印の遺跡 ―" draggable="false"></picture></h1>
         </div>
-        <div class="title-art"><img id="title-chars" src="assets/title-chars.webp" alt="たけとサイ" draggable="false"></div>
-        <div class="title-buttons">
+        <nav class="title-buttons" aria-label="ゲームメニュー">
           <button id="btn-continue" class="big primary">つづきから</button>
           <button id="btn-newgame" class="big">はじめから</button>
           <div class="title-row">
             <button id="btn-help-title" class="big sub">遊び方</button>
-            <button id="btn-sound-title" class="big sub">音：オン</button>
+            <button id="btn-sound-title" class="big sub" aria-pressed="true">音：オン</button>
           </div>
-        </div>
+        </nav>
       </div>
     </section>
 
