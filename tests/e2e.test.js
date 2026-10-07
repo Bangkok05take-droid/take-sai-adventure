@@ -48,14 +48,14 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await shot('01_title');
   });
 
-  await test('追加の道具の絵22種（assets/items-v2・assets/accessories）が読み込まれ、一覧・床の表示で使われる', async () => {
+  await test('追加の道具の絵24種（assets/items-v2・assets/accessories。ボスの報酬4種を含む）が読み込まれ、一覧・床の表示で使われる', async () => {
     await p.waitForFunction(() => TS.Sprites.art.ready, null, { timeout: 5000 });
     const r = await p.evaluate(() => {
       const SP = TS.Sprites, D = TS.Data, ids = Object.keys(TS.ASSETS.items.byId);
       return { n: ids.length, bad: ids.filter((id) => { const e = SP.art.itemsById[id] || {};
         return !D.ITEMS[id] || !e.list || e.list.width !== 48 || !e.floor || e.floor.width !== 32 || SP.iconFor(D.ITEMS[id]) !== e.floor || !/^data:image\/png/.test(SP.iconURL(D.ITEMS[id])); }) };
     });
-    eq2(r.n, 22, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
+    eq2(r.n, 24, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
     // 床のお金（G）：32px用・48px用の金貨の絵（お宝の古金貨とは別）。描く大きさに合うほうを使う
     const gold = await p.evaluate(() => { const SP = TS.Sprites; return { w32: SP.art.gold[32] && SP.art.gold[32].width, w48: SP.art.gold[48] && SP.art.gold[48].width,
       small: SP.goldIcon(22) === SP.art.gold[32], big: SP.goldIcon(44) === SP.art.gold[48], notCoin: SP.goldIcon(44) !== SP.iconFor(TS.Data.ITEMS.old_coin) }; });
@@ -760,7 +760,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.waitForTimeout(300); await shot('17b_boss_defeat');
     await p.waitForTimeout(400); await closeTalk();
     assert(await p.evaluate(() => !!TS.UI.S.run.portal && TS.UI.S.village.story.defeated.croc), 'portal opened');
-    assert(await p.evaluate(() => TS.UI.S.run.floorItems.some((f) => f.item && f.item.id === 'dragon_shield')), 'reward on floor');
+    assert(await p.evaluate(() => TS.UI.S.run.floorItems.some((f) => f.item && f.item.id === 'croc_tear')), 'reward on floor');
+    assert(await p.evaluate(() => !!TS.Sprites.chestIcon(32) && !!TS.Sprites.chestIcon(48)), 'treasure chest art loaded');
     const dir = await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game;
       for (const [d, [dx, dy]] of Object.entries(G.DIRS)) { const x = r.portal.x - dx, y = r.portal.y - dy;
         if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); return d; } } });
@@ -911,12 +912,12 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.evaluate((t) => localStorage.setItem('takeSaiAdventure.save', t), v1);
     await p.reload(); await p.waitForTimeout(400);
     await p.tap('#btn-continue'); await p.waitForTimeout(400);
-    const st = await p.evaluate(() => ({ screen: TS.UI.screen, floor: TS.UI.S.run && TS.UI.S.run.floor, ver: TS.UI.S.version, funds: TS.UI.S.village.funds, storage: TS.UI.S.village.storage.length }));
+    const st = await p.evaluate(() => ({ screen: TS.UI.screen, floor: TS.UI.S.run && TS.UI.S.run.floor, ver: TS.UI.S.version, sv: TS.Data.SAVE_VERSION, funds: TS.UI.S.village.funds, storage: TS.UI.S.village.storage.length }));
     const raw = JSON.parse(v1);
-    assert(st.screen === 'dungeon' && st.floor === 4 && st.ver === 3 && st.funds === raw.village.funds && st.storage === raw.village.storage.length, JSON.stringify(st));
+    assert(st.screen === 'dungeon' && st.floor === 4 && st.ver === st.sv && st.funds === raw.village.funds && st.storage === raw.village.storage.length, JSON.stringify(st));
     await p.tap('#b-wait'); await p.waitForTimeout(200);
-    const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('takeSaiAdventure.save')).version);
-    assert(saved === 3, 'saved as v3');
+    const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('takeSaiAdventure.save')).version === TS.Data.SAVE_VERSION);
+    assert(saved, 'saved as the current version');
     await shot('24_migrated');
   });
 

@@ -4,7 +4,7 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 3;
+  D.SAVE_VERSION = 4;
   D.SAVE_KEY = 'takeSaiAdventure.save';
 
   // マップ（3x3 の区画にランダムな部屋を置く）
@@ -110,10 +110,12 @@
     return_scroll: { name: '帰還の巻物', type: 'return', sell: 0, noSell: true, noStore: true, icon: 'scroll', tint: 'return',
       desc: 'その場で探索を終え、持ち物と探索中のお金を村へ持ち帰る。出発時に1枚無料支給。帰還・敗北で消える。' },
     // ---- 章の報酬（ボスを倒すと現れる装備） ----
-    dragon_shield: { name: 'りゅうりんの盾', type: 'shield', def: 15, sell: 520, icon: 'shield', tint: 'dragon',
-      desc: '獣王の大盾から作られた、竜のうろこ模様の盾。第1章の報酬。' },
-    frost_sword:   { name: 'ひょうえんの剣', type: 'weapon', atk: 21, sell: 640, icon: 'sword', tint: 'frost',
-      desc: '炎と氷の力を宿した剣。第2章の報酬。' },
+    // 2026年10月：旧「りゅうりんの盾」（dragon_shield・第1章）→ ファントムシールド（第3章）、
+    // 旧「ひょうえんの剣」（frost_sword・第2章）→ 真魔剛竜剣（第4章）。能力値・売値は以前のまま
+    phantom_shield: { name: 'ファントムシールド', type: 'shield', def: 15, sell: 520, icon: 'shield', tint: 'moon',
+      desc: '漆黒の盾。銀の縁と紫の宝石に、幻影の意匠が刻まれている。第3章の報酬。' },
+    shinma_sword:  { name: '真魔剛竜剣', type: 'weapon', atk: 21, sell: 640, icon: 'sword', tint: 'dragon',
+      desc: '竜をかたどった金色の鍔と赤い宝石の剣。第4章の報酬。' },
     moon_shield:   { name: 'げっこうの盾', type: 'shield', def: 17, sell: 620, icon: 'shield', tint: 'moon',
       desc: '月の光を映す盾。幻にまどわされない心をくれる。第3章の報酬。' },
     dragon_sword:  { name: 'りゅうきしの剣', type: 'weapon', atk: 24, sell: 760, icon: 'sword', tint: 'dragon',
@@ -141,16 +143,18 @@
       desc: '小さなひすいの置物。高く売れる。' },
     golden_lotus:  { name: '黄金の蓮', type: 'treasure', sell: 260, icon: 'lotus',
       desc: '金でできた蓮の花。とても高く売れる。' },
-    guardian_gem:  { name: '獅子の守り石', type: 'treasure', sell: 350, icon: 'gem',
-      desc: '10階の守護獅子が守っていた輝く石。とても高く売れる。' },
+    // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダイルの涙。売値は以前のまま
+    croc_tear:     { name: 'クロコダイルの涙', type: 'treasure', sell: 350, icon: 'gem', tint: 'crystal',
+      desc: '獣王クロコダインの涙が固まったという、青緑の大きなしずく形の宝石。第1章の報酬。' },
     amber_pendant: { name: '琥珀の首飾り', type: 'treasure', sell: 300, icon: 'pendant', depth: 11,
       desc: '地下庭園で見つかった琥珀の首飾り。' },
     bronze_bell:   { name: '古都の青銅鐘', type: 'treasure', sell: 420, icon: 'bell', depth: 16,
       desc: '水没した都の小さな鐘。澄んだ音がする。' },
     sunken_crown:  { name: '水の都の王冠', type: 'treasure', sell: 560, icon: 'crown', tint: 'blue', depth: 16,
       desc: '水没した都に沈んでいた古い王冠。' },
-    river_pearl:   { name: '大ナマズの大真珠', type: 'treasure', sell: 900, icon: 'pearl', depth: 20,
-      desc: '20階の大ナマズ王が抱えていた大きな真珠。' },
+    // 展示室8番目の旧「大ナマズの大真珠」（river_pearl）→ 氷炎結晶。売値は以前のまま
+    iceflame_crystal: { name: '氷炎結晶', type: 'treasure', sell: 900, icon: 'gem', tint: 'prism',
+      desc: '青い氷と赤橙の炎が一つになった結晶。フレイザードを倒すと手に入る。第2章の報酬。' },
     giant_crystal: { name: '大すいしょう', type: 'treasure', sell: 700, icon: 'gem', tint: 'crystal', depth: 21,
       desc: '洞窟を照らしていた大きなすいしょう。' },
     prism_flower:  { name: '七色の水晶花', type: 'treasure', sell: 950, icon: 'lotus', tint: 'prism', depth: 21,
@@ -236,9 +240,9 @@
       tip: '離れた所から光の矢を撃つ。物陰や斜めの角を使ってかわそう。' },
     guard:  { name: '神殿の番兵',   hp: 120, atk: 40, def: 18, exp: 120, ai: 'telegraph', sprite: 'guard', base: 26, heavy: 2.2,
       tip: '大剣を振りかぶってから強打する。予告を見たら離れよう。' },
-    lion:   { name: '守護獅子',     hp: 160, atk: 15, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true, drop: 'guardian_gem',
+    lion:   { name: '守護獅子',     hp: 160, atk: 15, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true, drop: 'croc_tear',
       pattern: { stomp: 1, stompMult: 2.0, line: 4, lineMult: 1.8, every: 4 } },
-    catfish: { name: '大ナマズ王',  hp: 380, atk: 26, def: 12, exp: 320, ai: 'boss',   sprite: 'catfish', noScale: true, drop: 'river_pearl',
+    catfish: { name: '大ナマズ王',  hp: 380, atk: 26, def: 12, exp: 320, ai: 'boss',   sprite: 'catfish', noScale: true, drop: 'iceflame_crystal',
       pattern: { stomp: 1, stompMult: 2.0, line: 6, lineMult: 1.7, every: 4, summon: 'jelly', summonEvery: 8, summonMax: 2 } },
     elephant: { name: '夢見の黄金象', hp: 720, atk: 36, def: 17, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown',
       pattern: { stomp: 2, stompMult: 1.7, line: 6, lineMult: 2.0, every: 4, summon: 'wisp', summonEvery: 9, summonMax: 2, enrage: 0.5 } },
@@ -459,7 +463,7 @@
     mango:     { name: 'マンゴーもち米', price: 180, desc: '防御力+3。', def: 3 },
   };
   // 展示室：寄贈できるお宝（各1回まで）、称号
-  D.MUSEUM_ITEMS = ['old_coin', 'jade_elephant', 'golden_lotus', 'guardian_gem', 'amber_pendant', 'bronze_bell', 'sunken_crown', 'river_pearl', 'giant_crystal', 'prism_flower', 'golden_elephant', 'dream_crown'];
+  D.MUSEUM_ITEMS = ['old_coin', 'jade_elephant', 'golden_lotus', 'croc_tear', 'amber_pendant', 'bronze_bell', 'sunken_crown', 'iceflame_crystal', 'giant_crystal', 'prism_flower', 'golden_elephant', 'dream_crown'];
   D.MUSEUM_THANKS = 0.3; // 初めて寄贈したときだけ、売値の3割を村からお礼としてもらえる
   D.TITLES = [[3, '見習い収集家'], [6, '遺跡の目利き'], [9, '宝物殿の主'], [12, 'アユタヤの語り部']];
   D.START_FUNDS = 50;

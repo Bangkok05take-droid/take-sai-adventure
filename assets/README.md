@@ -6,6 +6,13 @@
 - `title/title-logo.webp`：上のPNGを幅1200に縮小したWebP（読み込みを軽くするため。表示できない環境ではPNGを使う）。
 - ボタンはHTMLのボタン。扉の光（絵の x50%・y36%）はCSSの演出で、触っても何も起きない。
 
+## ボスの報酬と床の宝箱（2026年10月）
+- 見本：`reference/boss-treasures.png`（受け取った一覧のデザイン見本。変更しない。ゲームは直接表示しない）。
+- `python3 tools/extract-boss-treasures.py` で、各アイコンを背景と周囲の光を消した透過PNGにする（描き直さない。縮小のみ）。
+  - `items-v2/croc_tear.png`（クロコダイルの涙）・`iceflame_crystal.png`（氷炎結晶）・`phantom_shield.png`（ファントムシールド）・`shinma_sword.png`（真魔剛竜剣。ほかの剣と同じく斜め45度に傾けた）：一覧用 48×48。床用 32×32 は `python3 tools/make-items-v2-floor.py`。
+  - `chest/chest_32.png`・`chest_48.png`：床のお宝の宝箱。1マスで分かるよう、ふたと本体の境目を暗い線に、中央の鍵穴を大きめに仕上げている。
+- `items-v2/guardian_gem.png`・`river_pearl.png` は、お宝の入れ替えで未使用になった（記録として残す）。
+
 ## 以前のタイトル素材（今は表示していない。記録として残す）
 - `title-characters.png`：見本イラスト（人物・人物名・題字・ドット絵一覧を含む元画像。変更しない）。
 - `title-chars.webp`：タイトル画面の主役の人物。元画像から `node tests/make-title-art.js` で作る。

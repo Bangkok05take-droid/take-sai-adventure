@@ -1656,7 +1656,7 @@
   // ---- 施設・飾り ----
   G.facility = (id) => D.FACILITIES.find((f) => f.id === id);
   G.hasFacility = (V, id) => !!(V.built && V.built[id]);
-  G.donatedCount = (V) => Object.keys(V.donated || {}).length;
+  G.donatedCount = (V) => D.MUSEUM_ITEMS.filter((id) => (V.donated || {})[id]).length;   // 展示室の12枠のうち飾ってある数
   G.reqMet = function (V, r) {
     if (r.startsWith('floor')) return V.bestFloor >= +r.slice(5);
     if (r.startsWith('donate')) return G.donatedCount(V) >= +r.slice(6);

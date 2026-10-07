@@ -160,7 +160,20 @@
     for (const f of run.floorItems) {
       if (!run.explored[f.y * m.w + f.x]) continue;
       const sx = ox + f.x * ts, sy = oy + f.y * ts;
-      if (f.item && G.def(f.item).type === 'treasure') { g.drawImage(SP.tiles.chest[(fr(450, 4) + f.x) % 4 === 0 ? 1 : 0], sx, sy, ts, ts); continue; }
+      if (f.item && G.def(f.item).type === 'treasure') {
+        const shine = (fr(450, 4) + f.x) % 4 === 0, ci = SP.chestIcon(ts);
+        if (!ci) { g.drawImage(SP.tiles.chest[shine ? 1 : 0], sx, sy, ts, ts); continue; }
+        // 宝箱：影で床に置き、1マスいっぱいに描く（ときどき金具がきらっと光る）
+        g.fillStyle = 'rgba(0,0,0,0.45)';
+        g.beginPath(); g.ellipse(sx + ts / 2, sy + ts * 0.82, ts * 0.42, ts * 0.09, 0, 0, Math.PI * 2); g.fill();
+        g.drawImage(ci, sx, sy + Math.round(ts * 0.06), ts, ts);
+        if (shine) {
+          const u = Math.max(1, Math.round(ts / 24)), x = sx + Math.round(ts * 0.74), y = sy + Math.round(ts * 0.24);
+          g.fillStyle = '#fff6b0'; g.fillRect(x - u * 2, y, u * 5, u); g.fillRect(x, y - u * 2, u, u * 5);
+          g.fillStyle = '#ffffff'; g.fillRect(x, y, u, u);
+        }
+        continue;
+      }
       const sz = Math.round(ts * 0.68), pad = Math.round((ts - sz) / 2);
       const img = f.gold ? SP.goldIcon(sz) : SP.iconFor(G.def(f.item));
       // 置かれた道具：明るい台座の円と影で床から浮かせ、種類の形が分かる大きさで描く

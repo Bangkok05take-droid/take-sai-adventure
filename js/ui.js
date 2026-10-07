@@ -1726,6 +1726,12 @@
   /* 章クリアの帰還イベント・エンディングは story.pending に残してあるので、読み込み直しても必ず一度見られる。 */
   function showStoryPending() {
     const V = UI.S.village, st = V.story, pend = st.pending;
+    if (!pend && V.giftNotice && !UI.modals.length) {
+      // 報酬の入れ替え（2026年10月）の前にボスを倒していた人へ、新しいお宝を倉庫に届けたお知らせ（一度だけ）
+      const names = V.giftNotice.filter((id) => D.ITEMS[id]).map((id) => '<b>' + esc(D.ITEMS[id].name) + '</b>');
+      V.giftNotice = null; save();
+      if (names.length) { info('村からのお知らせ', `<p>ボスを倒した記念のお宝${names.join('と')}が見つかったので、<b>倉庫</b>に届けました。</p><p class="note">お宝展示室に寄贈することもできます。</p>`); return true; }
+    }
     if (!pend || UI.modals.length) return false;
     const finish = () => { st.pending = null; save(); updateVillageHud(); };
     if (pend.type === 'chapterClear') {

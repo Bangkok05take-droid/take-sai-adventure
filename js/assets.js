@@ -53,7 +53,8 @@
         water_charm: 'water_charm', truth_mirror: 'truth_mirror', bolt_charm: 'bolt_charm',
         jade_elephant: 'jade_elephant', golden_lotus: 'golden_lotus', bronze_bell: 'bronze_bell', sunken_crown: 'sunken_crown',
         giant_crystal: 'giant_crystal', prism_flower: 'prism_flower', golden_elephant: 'golden_elephant', dream_crown: 'dream_crown',
-        guardian_gem: 'guardian_gem', river_pearl: 'river_pearl',   // 以前の版のお宝（今の冒険では手に入らない。持っている分の表示用）
+        // ボスの報酬（見本 assets/reference/boss-treasures.png から tools/extract-boss-treasures.py で作る）
+        croc_tear: 'croc_tear', iceflame_crystal: 'iceflame_crystal', phantom_shield: 'phantom_shield', shinma_sword: 'shinma_sword',
         // アクセサリー（assets/accessories/。値に「/」があるときはフォルダ付きのパス。床用は同じフォルダの floor/）
         poison_ring: 'assets/accessories/poison_ring', purse_charm: 'assets/accessories/money_guard',
         full_bangle: 'assets/accessories/hunger_bracelet', life_necklace: 'assets/accessories/revival_necklace',
@@ -62,6 +63,9 @@
     /* 床に落ちているお金（G。拾うと探索中のお金が増える通貨）。お宝「アユタヤの古金貨」（items の coin）とは別の絵。
      * 32px用と48px用。床では描く大きさに近いほうを最近傍で拡大縮小する（読み込めなければコードで描いた絵） */
     gold: { 32: 'assets/gold/gold_pickup_32.png', 48: 'assets/gold/gold_pickup_48.png' },
+    /* 床に落ちているお宝（種類 treasure）の宝箱。見本 assets/reference/boss-treasures.png から tools/extract-boss-treasures.py で作る。
+     * 床では1マスいっぱいに描く。持ち物・展示室では、お宝ごとの絵（items）を使う */
+    chest: { 32: 'assets/chest/chest_32.png', 48: 'assets/chest/chest_48.png' },
     portraits: { take: null, sai: null, yanai: null, villager: null },
     /* ボス（assets/bosses/）：見本 assets/reference/bosses.png から tools/extract-bosses.py で作った透過PNG。
      * キャンバス 96×96（1ドット＝1ピクセル。たけと同じ細かさ）、足の裏は y=92、足元の中央は x=48。正面の1枚だけ（横向き・背面・歩行コマは無い）。

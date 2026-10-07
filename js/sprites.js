@@ -1203,6 +1203,12 @@
     const s = sizes.find((n) => n >= px) || sizes[sizes.length - 1];
     return SP.art.gold[s];
   };
+  /* 床のお宝の宝箱（assets/chest/）。選び方はお金と同じ。絵が無ければ null（コードで描いた宝箱を使う） */
+  SP.chestIcon = function (px) {
+    const sizes = Object.keys(SP.art.chest).map(Number).sort((a, b) => a - b);
+    if (!sizes.length) return null;
+    return SP.art.chest[sizes.find((n) => n >= px) || sizes[sizes.length - 1]];
+  };
   SP.enemyFrames = (sprite) => SP.s.enemy[sprite] || SP.s.enemy.frog;
 
   const urlCache = {};
@@ -1262,7 +1268,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, bosses: {}, enemies: {}, take: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, bosses: {}, enemies: {}, take: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1286,6 +1292,7 @@
       load(dir + 'floor/' + base + '.png', (img) => { e.floor = toCanvas(img); });
     }
     for (const [size, src] of Object.entries(A.gold || {})) if (src) load(src, (img) => { SP.art.gold[size] = toCanvas(img); });
+    for (const [size, src] of Object.entries(A.chest || {})) if (src) load(src, (img) => { SP.art.chest[size] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う

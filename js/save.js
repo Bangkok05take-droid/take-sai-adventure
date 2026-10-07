@@ -10,6 +10,9 @@
 
   S_.serialize = (S) => JSON.stringify(S);
 
+  // v4 で変わった道具の内部ID（旧 → 新）
+  S_.RENAME_V4 = { guardian_gem: 'croc_tear', river_pearl: 'iceflame_crystal', dragon_shield: 'phantom_shield', frost_sword: 'shinma_sword' };
+
   // 足りない項目を既定値で補う（将来の項目追加に備える）
   function fill(target, defaults) {
     for (const k of Object.keys(defaults)) {
@@ -54,6 +57,40 @@
       V.story = G.newStory();
       data.village = V;
       data.version = 3;
+    }
+    /* v3 → v4（2026年10月）：ボスの報酬の入れ替え。
+     * お宝：獅子の守り石 → クロコダイルの涙、大ナマズの大真珠 → 氷炎結晶（展示室の4番目・8番目の枠）。
+     * 装備：りゅうりんの盾 → ファントムシールド、ひょうえんの剣 → 真魔剛竜剣（強化値・装備中・番号はそのまま）。
+     * 寄贈済みの記録も新しいお宝へ移す（数は増やさない・お礼は払わない）。
+     * 新しい報酬になる前にクロコダイン・フレイザードを倒していた場合、そのお宝はもう手に入らないので、
+     * 持っていなければ1つだけ倉庫へ届ける（村で一度だけお知らせする）。 */
+    if (data.version === 3) {
+      const V = data.village || {};
+      const RENAME = S_.RENAME_V4;
+      const fix = (it) => { if (it && RENAME[it.id]) it.id = RENAME[it.id]; };
+      const all = () => {
+        const list = (V.bag || []).concat(V.storage || []);
+        if (data.run) list.push(...(data.run.bag || []), ...(data.run.floorItems || []).map((f) => f.item).filter(Boolean));
+        return list;
+      };
+      all().forEach(fix);
+      const don = V.donated || {};
+      for (const [from, to] of Object.entries(RENAME)) {
+        if (don[from]) { don[to] = true; delete don[from]; }
+      }
+      V.donated = don;
+      const st = V.story || {}, defeated = st.defeated || {};
+      const gifts = [];
+      for (const [boss, id] of [['croc', 'croc_tear'], ['flame', 'iceflame_crystal']]) {
+        if (!defeated[boss] || don[id] || all().some((it) => it.id === id)) continue;
+        V.storage = V.storage || [];
+        V.nextUid = V.nextUid || 1;
+        V.storage.push({ uid: V.nextUid++, id, plus: 0 });
+        gifts.push(id);
+      }
+      if (gifts.length) V.giftNotice = gifts;
+      data.village = V;
+      data.version = 4;
     }
     const def = G.newState();
     fill(data, def);

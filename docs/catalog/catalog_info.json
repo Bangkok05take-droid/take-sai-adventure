@@ -566,17 +566,17 @@
    "floorW": 32,
    "floorH": 32
   },
-  "dragon_shield": {
-   "key": "shield:dragon",
+  "phantom_shield": {
+   "key": "shield:moon",
    "art": true,
-   "file": "shield_dragon",
+   "file": "items-v2/phantom_shield",
    "floorW": 32,
    "floorH": 32
   },
-  "frost_sword": {
-   "key": "sword:frost",
+  "shinma_sword": {
+   "key": "sword:dragon",
    "art": true,
-   "file": "sword_frost",
+   "file": "items-v2/shinma_sword",
    "floorW": 32,
    "floorH": 32
   },
@@ -671,10 +671,10 @@
    "floorW": 32,
    "floorH": 32
   },
-  "guardian_gem": {
-   "key": "gem:",
+  "croc_tear": {
+   "key": "gem:crystal",
    "art": true,
-   "file": "items-v2/guardian_gem",
+   "file": "items-v2/croc_tear",
    "floorW": 32,
    "floorH": 32
   },
@@ -699,10 +699,10 @@
    "floorW": 32,
    "floorH": 32
   },
-  "river_pearl": {
-   "key": "pearl:",
+  "iceflame_crystal": {
+   "key": "gem:prism",
    "art": true,
-   "file": "items-v2/river_pearl",
+   "file": "items-v2/iceflame_crystal",
    "floorW": 32,
    "floorH": 32
   },
@@ -803,7 +803,9 @@
   "plan",
   "robe",
   "shield",
+  "shield_dragon",
   "soup",
-  "sword"
+  "sword",
+  "sword_frost"
  ]
 }
