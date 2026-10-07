@@ -12,10 +12,13 @@
   D.MAP.w = D.MAP.cols * D.MAP.cellW;
   D.MAP.h = D.MAP.rows * D.MAP.cellH;
 
-  /* 章の進め方：第1〜5章は1階から30階まで。30階でその章のボスが待つ（31階へは進めない）。
-   * 最終章は1階から35階まで。35階で大魔王バーン → 真大魔王バーン。章・会話は js/story.js */
-  D.MAX_FLOOR = 30;          // 第1〜5章の最深階
-  D.BOSS_FLOOR = 30;
+  /* 章の進め方（2026年10月から）：各章とも1階から、その章のボスの階（D.CHAPTERS[章].goal）まで。
+   * 第1章クロコダイン15階・第2章フレイザード20階・第3章キルバーン25階・第4章バラン30階・第5章ミストバーン30階（別々の章）。
+   * 最終章は1階から35階まで。35階で大魔王バーン → 真大魔王バーン。章・会話は js/story.js
+   * 配置の版（run.layout）：2＝この配置。更新前に始めた探索（layout なし）は、以前の配置（第1〜5章のボスは30階）のまま終える。 */
+  D.MAX_FLOOR = 30;          // 通常の階の最深（最終章はこの先31〜34階が大魔王の城、35階が玉座）
+  D.BOSS_FLOOR = 30;         // 以前の配置（layout 1）での第1〜5章のボスの階
+  D.LAYOUT = 2;              // 新しく始める探索の配置の版
   // 以前の版のボス配置（更新前から続いている探索だけが使う）
   D.LEGACY_BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
   D.BOSS_FLOORS = D.LEGACY_BOSS_FLOORS;   // 互換のため残す
@@ -289,10 +292,17 @@
 
   /* 階層ごとの出現テーブル [id, 重み] を作る。地域ごとに敵・道具・お宝が変わる。 */
   /* ch：章の番号（1〜6）、または以前の版の探索なら 'legacy' */
-  function floorDef(f, ch) {
+  // 章のボスの階（layout 1＝以前の配置：第1〜5章は30階）
+  D.bossFloorOf = (ch, layout) => {
+    const C = D.CHAPTERS && D.CHAPTERS[ch];
+    if (!C) return D.BOSS_FLOOR;
+    if (C.final) return D.LAST_FLOOR;
+    return (layout || D.LAYOUT) >= 2 ? C.goal : D.BOSS_FLOOR;
+  };
+  function floorDef(f, ch, layout) {
     const legacy = ch === 'legacy' || ch == null;
     const C = legacy ? null : D.CHAPTERS && D.CHAPTERS[ch];
-    const bossId = legacy ? D.LEGACY_BOSS_FLOORS[f] : C ? (C.final ? (f === D.LAST_FLOOR ? 'vearn' : null) : (f === D.BOSS_FLOOR ? C.boss : null)) : null;
+    const bossId = legacy ? D.LEGACY_BOSS_FLOORS[f] : C ? (f === D.bossFloorOf(ch, layout) ? C.boss : null) : null;
     if (bossId) {
       return { theme: legacy ? D.themeOf(f) : D.ENEMIES[bossId].arena, boss: bossId, enemies: [], enemyCount: [0, 0], itemCount: [3, 3], goldCount: [0, 0],
         items: [['herb', 2], ['elixir', 1], ['khaoniao', 1]].concat(f >= 20 ? [['big_herb', 2]] : []) };
@@ -369,9 +379,10 @@
   }
   // 章・深さごとの階の定義（作った結果は覚えておく）
   const floorCache = {};
-  D.floorFor = function (ch, f) {
-    const k = (ch == null ? 'legacy' : ch) + ':' + f;
-    return floorCache[k] || (floorCache[k] = floorDef(f, ch == null ? 'legacy' : ch));
+  D.floorFor = function (ch, f, layout) {
+    const L = layout || D.LAYOUT;
+    const k = (ch == null ? 'legacy' : ch) + ':' + f + ':' + L;
+    return floorCache[k] || (floorCache[k] = floorDef(f, ch == null ? 'legacy' : ch, L));
   };
   // 章による敵の強さ（深い階ほど差がつく。浅い階はほぼ同じ）
   D.chapterMul = (ch, f) => (typeof ch === 'number' ? 1 + 0.06 * (ch - 1) * Math.min(1, f / 18) : 1);

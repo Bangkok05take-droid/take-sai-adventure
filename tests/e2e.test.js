@@ -738,11 +738,12 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.evaluate(() => !TS.UI.S.run.bag.some((i) => i.id === 'wood_sword') && !TS.UI.S.run.bag.some((i) => i.eq && TS.Game.def(i).type === 'weapon')), 'retry without sword');
   });
 
-  await test('第1章：30階のクロコダインに登場の表示と会話。倒すと報酬と帰還口。帰ると章クリアの会話と第2章の表示', async () => {
+  await test('第1章：15階のクロコダインに登場の表示と会話。倒すと報酬と帰還口。帰ると章クリアの会話と第2章の表示', async () => {
     await p.evaluate(() => {
       const S = TS.UI.S, G = TS.Game;
       S.run.player.hp = S.run.player.maxhp = 9999;
-      while (S.run.floor < 29) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+      if (G.maxFloor(S.run) !== 15) throw new Error('chapter 1 boss floor ' + G.maxFloor(S.run));
+      while (S.run.floor < G.maxFloor(S.run) - 1) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; r.enemies = [];
     });
     await p.tap('#b-foot'); await p.waitForTimeout(200);       // 階段の確認
@@ -1404,7 +1405,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       c = await cur(); assert(c.ctx === 'running' && await same('__d2'), 'resumed same playback ' + JSON.stringify(c));
       // ボスの階：以前のボス曲（新しい曲は止まる）
       await q.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game; r.player.hp = r.player.maxhp = 99999;
-        while (r.floor < 29) { r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+        while (r.floor < G.maxFloor(r) - 1) { r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
         r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); });
       await q.waitForTimeout(1200); await talkThrough();
       while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());

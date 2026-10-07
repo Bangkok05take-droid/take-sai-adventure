@@ -24,18 +24,18 @@
     friend2:   { name: 'コイ', portrait: 'koi' },
   };
 
-  /* 章。boss は30階（最終章は35階）で待つ相手。
+  /* 章。boss は goal の階で待つ相手（第1章15階・第2章20階・第3章25階・第4章30階・第5章30階・最終章35階）。
    * bias：その章で多く出る敵（その深さにもともと出る敵だけを増やす。浅い階に強敵は出さない）
    * prep：その章で拾いやすい・お店に並ぶ「ボスに備える道具」
-   * reward：撃破で現れる品（30階に置かれる）と、村へ帰ったときの復興支援金（1回だけ） */
+   * reward：撃破で現れる品（ボスの階に置かれる）と、村へ帰ったときの復興支援金（1回だけ） */
   D.CHAPTERS = {
-    1: { name: '第1章', title: '沼地の獣王', boss: 'croc', goal: 30, color: '#4f9a5a',
+    1: { name: '第1章', title: '沼地の獣王', boss: 'croc', goal: 15, color: '#4f9a5a',
       bias: { frog: 2, lizard: 1.6, turtle: 1.5, jelly: 1.3 }, prep: [['slow_powder', 1.5], ['sleep_incense', 1]], shop: ['slow_powder'],
       reward: { items: ['dragon_shield', 'golden_elephant'], funds: 1000 }, tip: '突進は一直線。予告の赤い列から横へずれてかわし、隙に反撃しよう。' },
-    2: { name: '第2章', title: '炎と氷の将', boss: 'flame', goal: 30, color: '#d8603a',
+    2: { name: '第2章', title: '炎と氷の将', boss: 'flame', goal: 20, color: '#d8603a',
       bias: { wisp: 1.8, golem: 1.4, bat: 1.3 }, prep: [['water_charm', 1], ['big_herb', 1]], shop: ['water_charm'],
       reward: { items: ['frost_sword', 'dream_crown'], funds: 1500 }, tip: '炎と氷の床は交互に入れかわる。数字が0になる前に、印のない床へ。' },
-    3: { name: '第3章', title: '笑う死神', boss: 'kill', goal: 30, color: '#9a3a5a',
+    3: { name: '第3章', title: '笑う死神', boss: 'kill', goal: 25, color: '#9a3a5a',
       bias: { thief: 2, bat: 1.5, monkey: 1.5 }, prep: [['truth_mirror', 1], ['sight_scroll', 1]], shop: ['truth_mirror'],
       reward: { items: ['moon_shield', 'giant_crystal'], funds: 2000 }, tip: '分身には影がない。影のある本物を狙おう。罠は数字が0で破裂する。' },
     4: { name: '第4章', title: '竜の騎士', boss: 'baran', goal: 30, color: '#3a7ac8',
@@ -62,11 +62,11 @@
     ['sai', 'たけ、わたしたちで村を建て直そう。コイも、モッも、ワーンも、ティウもいるよ。'],
     ['narration', 'それから時が流れ――封印は少しずつ弱まり、遺跡の奥から魔王軍の気配が戻り始めた。'],
     ['take', '師匠の意志はおれが継ぐ。遺跡へ行こう、サイ。'],
-    ['sai', 'うん。まずは30階で待つ魔王軍の将を倒そう。お店と倉庫で支えるからね。'],
+    ['sai', 'うん。まずは15階で待つ魔王軍の将を倒そう。お店と倉庫で支えるからね。'],
   ];
   // 出発のあいさつ（章ごと。2回目以降はスキップできる）
   D.STORY.depart = {
-    1: [['sai', '30階の奥に、沼地の獣王クロコダインがいるんだって。突進には気をつけて！'], ['take', 'うん。まずは浅い階でお宝を集めながら進むよ。']],
+    1: [['sai', '15階の奥に、沼地の獣王クロコダインがいるんだって。突進には気をつけて！'], ['take', 'うん。まずは浅い階でお宝を集めながら進むよ。']],
     2: [['sai', '次は炎と氷の将、フレイザード。床が燃えたり凍ったりするみたい。'], ['take', 'みずがみの護符があれば少しは楽になるかな。']],
     3: [['sai', 'キルバーンは分身と罠を使うんだって。よく見れば本物がわかるはずだよ。'], ['take', 'あわてずに観察する。いってきます！']],
     4: [['sai', '竜の騎士バラン……大技のあとには必ず隙があるはず。'], ['take', '雷にも気をつける。準備はできた！']],

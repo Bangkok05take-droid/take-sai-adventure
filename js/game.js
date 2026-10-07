@@ -44,8 +44,11 @@
   };
   // 探索のルール（章）。更新前から続いている探索は 'legacy'（以前の版のルールのまま村へ帰る）
   G.chapterOf = (run) => (run && run.chapter != null ? run.chapter : 'legacy');
-  G.F = (run, f) => D.floorFor(G.chapterOf(run), f == null ? run.floor : f);
-  G.maxFloor = (run) => (G.chapterOf(run) === D.FINAL_CHAPTER ? D.LAST_FLOOR : D.MAX_FLOOR);
+  // 配置の版：新しい探索は D.LAYOUT。更新前から続いている探索（layout なし）は以前の配置（第1〜5章のボスは30階）
+  G.layoutOf = (run) => (run && run.layout) || 1;
+  G.F = (run, f) => D.floorFor(G.chapterOf(run), f == null ? run.floor : f, G.layoutOf(run));
+  // その探索の最深階（＝ボスの階）
+  G.maxFloor = (run) => (G.chapterOf(run) === 'legacy' ? D.MAX_FLOOR : D.bossFloorOf(G.chapterOf(run), G.layoutOf(run)));
   // 村に表示する「現在の章・次のボス・目標階」
   G.storyStatus = function (V) {
     const st = V.story || G.newStory(), C = D.CHAPTERS[st.chapter];
@@ -135,7 +138,7 @@
         hungerAcc: 0, regenAcc: 0, starveAcc: 0, dir: 'down', lowWarned: false, poison: 0, poisonGuard: 0, bound: 0, bindGuard: 0 },
       enemies: [], floorItems: [], map: null, explored: null, stairs: null, returnPoint: null, portal: null,
       log: [], over: false, result: null, nextEnemyId: 1, killedBy: null, revealed: false,
-      chapter: V.story.chapter, hazards: [], fog: 0,
+      chapter: V.story.chapter, layout: D.LAYOUT, hazards: [], fog: 0,
       final: V.story.chapter === D.FINAL_CHAPTER ? { stage: 'none', healed: false, cutsceneSeen: false } : null,
     };
     // 食堂の料理（この探索だけ）
@@ -161,7 +164,8 @@
     S.village.bestFloor = Math.max(S.village.bestFloor, floor);
     const Fdef = G.F(run), ch = G.chapterOf(run);
     const rpFloors = ch === 'legacy' ? D.RETURN_POINT_FLOORS : D.returnFloors(ch);
-    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss, returnPoint: rpFloors.includes(floor) });
+    // 帰還の祠は25階に1回だけ。ただしボスの階には置かない（第3章は25階がボスの階なので出ない）
+    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss, returnPoint: !Fdef.boss && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.map = gen.map;
     run.stairs = gen.stairs;
@@ -527,7 +531,7 @@
   }
 
   /* ボスを倒したとき。
-   * 章のボス：撃破を記録し、報酬の品と帰還口が現れる（31階へは進めない）。章は村へ帰ったときに進む。
+   * 章のボス：撃破を記録し、報酬の品と帰還口が現れる（その章ではボスの階より下へは進めない）。章は村へ帰ったときに進む。
    * 大魔王バーン（35階・1戦目）：静寂のあと変身の場面へ（回復はここで1回だけ）。準備画面で「最終決戦へ」を押すと2戦目。
    * 真大魔王バーン：最終決戦の勝利。帰還口から帰るとエンディング。
    * 以前の版のボス（更新前から続く探索）：お宝と帰還口・階段（以前と同じ。宝珠は出ない）。 */

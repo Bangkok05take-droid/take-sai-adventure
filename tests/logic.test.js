@@ -65,11 +65,11 @@ function goDown(S) {
 function goToFloor(S, f) { while (S.run.floor < f) goDown(S); }
 
 console.log('ダンジョン生成');
-test('多数のシードで30階すべて：入口から階段・帰還の碑・全道具・全敵に到達でき、不正配置がない', () => {
+test('多数のシードで各章のボスの階まで：入口から階段・帰還の祠・全道具・全敵に到達でき、不正配置がない', () => {
   let checked = 0;
   for (let seed = 1; seed <= 200; seed++) {
-    const S = newRun(seed);
-    for (let f = 1; f <= D.MAX_FLOOR; f++) {
+    const S = newRun(seed, (S0) => { S0.village.story.chapter = ((seed - 1) % 5) + 1; });
+    for (let f = 1; f <= G.maxFloor(S.run); f++) {
       if (f > 1) goDown(S);
       const run = S.run, m = run.map, p = run.player;
       eq(run.floor, f);
@@ -77,11 +77,12 @@ test('多数のシードで30階すべて：入口から階段・帰還の碑・
       const dist = DG.distances(m, p.x, p.y);
       const reach = (o) => dist[o.y * m.w + o.x] >= 0;
       assert(DG.passable(m, p.x, p.y), 'player on wall');
-      const boss = D.FLOORS[f].boss;
+      const boss = G.F(run, f).boss;
       if (!boss) { assert(run.stairs && reach(run.stairs), `stairs unreachable seed${seed} f${f}`); assert(!DG.same(run.stairs, p), 'stairs on start'); }
       else { assert(!run.stairs, 'no stairs before boss'); assert(run.enemies.some((e) => e.boss && e.type === boss), 'boss exists'); }
-      if (D.RETURN_POINT_FLOORS.includes(f)) { assert(run.returnPoint && reach(run.returnPoint), 'return point'); assert(!DG.same(run.returnPoint, run.stairs)); }
-      eq(D.RETURN_POINT_FLOORS.includes(f), f === 25, 'return point only on 25F');
+      if (f === 25 && !boss) { assert(run.returnPoint && reach(run.returnPoint), 'return point'); assert(!DG.same(run.returnPoint, run.stairs)); }
+      eq(!!run.returnPoint, f === 25 && !boss, 'return point only on 25F (not on a boss floor)');
+      if (boss) assert(run.enemies.every((e) => e.boss), 'no normal enemies on a boss floor');
       for (let i = 0; i < m.tiles.length; i++) if (m.tiles[i] !== DG.WALL) assert(dist[i] >= 0, `isolated tile seed${seed} f${f}`);
       const pos = new Set();
       for (const it of run.floorItems) {
@@ -104,7 +105,7 @@ test('多数のシードで30階すべて：入口から階段・帰還の碑・
       if (boss) {
         defeatBoss(S);
         assert(run.portal && reach(run.portal), 'portal after boss');
-        if (f < D.MAX_FLOOR) { assert(run.stairs && reach(run.stairs), 'stairs after midboss'); assert(!DG.same(run.stairs, run.portal)); }
+        assert(!run.stairs, 'no stairs below the chapter boss');
         for (const it of run.floorItems) { assert(!DG.same(it, run.portal), 'item on portal'); assert(!DG.same(it, run.stairs), 'item on stairs'); }
       }
       checked++;
@@ -613,19 +614,21 @@ test('帰還の巻物：持ち物と探索中のお金を持ち帰り、巻物�
   assert(S.village.bag.some((i) => i.id === 'jade_elephant'));
   assert(!S.village.bag.some((i) => i.id === 'return_scroll'), 'scroll removed');
 });
-test('帰還の祠は地下25階に1か所だけ（ほかの階には作られない）。到達でき、階段と重ならない。祠から帰れる', () => {
+test('帰還の祠は地下25階に1か所だけ。ボスの階には置かない（第1・2章は25階に届かず、第3章は25階がボス）。祠から帰れる', () => {
+  const want = { 1: 0, 2: 0, 3: 0, 4: 1, 5: 1, 6: 1 };
   for (let s = 0; s < 30; s++) {
-    const T = newRun(300 + s); T.village.story.chapter = (s % 6) + 1;
+    const ch = (s % 6) + 1, T = newRun(300 + s, (S0) => { S0.village.story.chapter = ch; });
     let count = 0;
-    while (T.run.floor < 30) {
+    for (;;) {
       const r = T.run;
       if (r.returnPoint) { count++; eq(r.floor, 25); assert(!DG.same(r.returnPoint, r.stairs)); }
-      if (r.floor === 25) { assert(r.returnPoint, 'shrine on 25F'); }
+      if (r.floor === 25) eq(!!r.returnPoint, !G.F(r).boss, 'shrine on 25F unless boss floor');
+      if (G.F(r).boss || r.floor >= 30) break;
       r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(T, { type: 'descend' });
     }
-    eq(count, 1, 'exactly one shrine');
+    eq(count, want[ch], 'shrines in chapter ' + ch);
   }
-  const S = newRun(22);
+  const S = newRun(22, (S0) => { S0.village.story.chapter = 4; });
   while (S.run.floor < 25) { const p = S.run.player; p.x = S.run.stairs.x; p.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
   eq(S.run.floor, 25);
   S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
@@ -887,15 +890,16 @@ test('旧セーブの探索途中に旧・宝珠があれば守護の輝石に�
 });
 
 console.log('ボス・宝珠・エンディング');
-test('第1章：10階・20階にボスはいない。30階でクロコダイン。倒すと報酬と帰還口（31階へは進めない）。帰ると第2章', () => {
+test('第1章：10階・14階にボスはいない。15階でクロコダイン。倒すと報酬と帰還口（16階へは進めない）。帰ると第2章', () => {
   const S = newRun(40);
+  eq(S.run.layout, D.LAYOUT); eq(G.maxFloor(S.run), 15);
   goToFloor(S, 10); assert(!G.F(S.run).boss && !S.run.enemies.some((e) => e.boss), 'no boss at 10');
-  goToFloor(S, 20); assert(!S.run.enemies.some((e) => e.boss), 'no boss at 20');
-  goToFloor(S, 30);
+  goToFloor(S, 14); assert(!S.run.enemies.some((e) => e.boss), 'no boss at 14');
+  goToFloor(S, 15);
   const run = S.run;
   eq(run.enemies.find((e) => e.boss).type, 'croc');
   defeatBoss(S);
-  assert(!run.stairs, 'no stairs (31F locked)'); assert(run.portal, 'portal');
+  assert(!run.stairs, 'no stairs (16F locked)'); assert(run.portal, 'portal');
   assert(run.floorItems.some((f) => f.item && f.item.id === 'dragon_shield'), 'reward');
   eq(S.village.story.defeated.croc, true); eq(S.village.story.chapter, 1, 'chapter advances on return');
   run.player.x = run.portal.x; run.player.y = run.portal.y;
@@ -907,18 +911,18 @@ test('第1章：10階・20階にボスはいない。30階でクロコダイン�
   eq(S.village.story.pending.type, 'chapterClear'); eq(S.village.story.records, 2);
   assert(!S.village.cleared);
 });
-test('次の章も1階から。第2章の30階はフレイザード。章の報酬は二重に受け取れない', () => {
+test('次の章も1階から。第2章の20階はフレイザード。章の報酬は二重に受け取れない', () => {
   const S = newRun(44);
-  goToFloor(S, 30); defeatBoss(S); S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' }); G.finishRun(S);
+  goToFloor(S, 15); defeatBoss(S); S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' }); G.finishRun(S);
   const funds = S.village.funds;
   G.depart(S, 45); eq(S.run.floor, 1); eq(S.run.chapter, 2);
-  goToFloor(S, 30); eq(S.run.enemies.find((e) => e.boss).type, 'flame');
+  goToFloor(S, 20); eq(S.run.enemies.find((e) => e.boss).type, 'flame');
   G.useReturnScroll(S); const r = G.finishRun(S);
   assert(!r.chapterClear && !r.rewardFunds, 'no reward without the boss'); eq(S.village.story.chapter, 2);
   eq(S.village.funds, funds + r.gold);
 });
 test('帰還して再出発すると1階から', () => {
-  const S = newRun(43); goToFloor(S, 25);
+  const S = newRun(43, (S0) => { S0.village.story.chapter = 4; }); goToFloor(S, 25);
   S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
   G.act(S, { type: 'returnHome' }); G.finishRun(S);
   G.depart(S, 44); eq(S.run.floor, 1);
@@ -1014,7 +1018,7 @@ test('雷帝の杖：いかずちの杖の約1.8倍。16階以降の出現表だ
   assert(kw / tot < 0.03, 'rare'); 
   // 階で生成されるときも3〜5回
   let found = 0;
-  for (let seed = 1; seed <= 300 && found < 3; seed++) { const S = newRun(seed); goToFloor(S, 16);
+  for (let seed = 1; seed <= 300 && found < 3; seed++) { const S = newRun(seed, (S0) => { S0.village.story.chapter = 4; }); goToFloor(S, 16);
     for (const fi of S.run.floorItems) if (fi.item && fi.item.id === 'thunder_king_staff') { found++; assert(fi.item.charges >= 3 && fi.item.charges <= 5); } }
   assert(found > 0, 'appears on deep floors');
 });
@@ -1199,7 +1203,7 @@ function findMerchant(seed0, ch, minF) {
     const S = G.newState(); S.village.story.chapter = ch || 3;
     G.depart(S, s);
     const r = S.run;
-    while (r.floor < 29) {
+    while (r.floor < G.maxFloor(r) - 1) {
       r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' });
       if (r.merchant && r.floor >= (minF || 8)) return S;
     }
@@ -1373,16 +1377,22 @@ function placeNear(S, dx, dy) {
   G.updateVision(run); return b;
 }
 const stepOk = (run, dir) => { const [dx, dy] = G.DIRS[dir]; return G.canStep(run.map, run.player.x, run.player.y, dx, dy) && !G.enemyAt(run, run.player.x + dx, run.player.y + dy); };
-test('章ごとに30階のボスが変わる（第1〜5章）。最終章は30階が通常の階で、31〜35階へ進め、35階に大魔王バーン', () => {
-  const want = { 1: 'croc', 2: 'flame', 3: 'kill', 4: 'baran', 5: 'mist' };
-  for (const ch of [1, 2, 3, 4, 5]) { const S = chapterRun(ch, 200 + ch, 30); eq(S.run.enemies.find((e) => e.boss).type, want[ch]); eq(G.maxFloor(S.run), 30); }
+test('章ごとのボスの階：第1章15階・第2章20階・第3章25階・第4章30階・第5章30階（別々の章）。最終章は30階が通常の階で、31〜35階へ進め、35階に大魔王バーン', () => {
+  const want = { 1: ['croc', 15], 2: ['flame', 20], 3: ['kill', 25], 4: ['baran', 30], 5: ['mist', 30] };
+  for (const ch of [1, 2, 3, 4, 5]) {
+    const [boss, fl] = want[ch];
+    const S = chapterRun(ch, 200 + ch, fl);
+    eq(S.run.enemies.filter((e) => e.boss).map((e) => e.type).join(), boss, 'only one boss'); eq(G.maxFloor(S.run), fl); eq(D.CHAPTERS[ch].goal, fl);
+    for (let f = 1; f < fl; f++) assert(!G.F(S.run, f).boss, 'no boss above ' + f);
+    eq(S.run.map.monsterHouse, null, 'no monster house on boss floor');
+  }
   const S = chapterRun(6, 210, 30);
   assert(!S.run.enemies.some((e) => e.boss) && S.run.stairs, '30F normal in final');
   goToFloor(S, 31); eq(G.F(S.run).theme, 'demon');
   goToFloor(S, 35); eq(S.run.enemies.find((e) => e.boss).type, 'vearn'); eq(S.run.final.stage, 'battle1'); eq(G.maxFloor(S.run), 35);
 });
 test('クロコダイン：一直線の突進を予告し、横へずれればかわせて、そのあと2ターンの隙。隣では縦一列の大斧', () => {
-  const S = chapterRun(1, 220, 30), run = S.run;
+  const S = chapterRun(1, 220, 15), run = S.run;
   const b = placeNear(S, 0, 4);   // 真下に4マス
   let r = G.act(S, { type: 'wait' });
   assert(b.charge && b.charge.kind === 'rush', 'rush telegraph');
@@ -1397,7 +1407,7 @@ test('クロコダイン：一直線の突進を予告し、横へずれれば�
   assert(b2.charge && b2.charge.tiles.some((t) => t.x === run.player.x && t.y === run.player.y), 'axe telegraph on player column');
 });
 test('フレイザード：炎と氷の床が交互に。印のない床が必ず残り、そこにいれば無傷。印の上で発動するとダメージ', () => {
-  const S = chapterRun(2, 230, 30), run = S.run;
+  const S = chapterRun(2, 230, 20), run = S.run;
   placeNear(S, 0, 3);
   const kinds = [];
   for (let i = 0; i < 40 && kinds.length < 2; i++) {
@@ -1422,7 +1432,7 @@ test('フレイザード：炎と氷の床が交互に。印のない床が必�
   eq(kinds.length, 2, 'fire and ice alternate ' + kinds);
 });
 test('キルバーン：分身2体（1回当てると消える幻）と罠。罠は一撃で倒れない上限つき。本体を倒すと分身も消える', () => {
-  const S = chapterRun(3, 240, 30), run = S.run;
+  const S = chapterRun(3, 240, 25), run = S.run;
   const b = placeNear(S, 0, 3); run.player.hp = run.player.maxhp = 200;
   let clones = [];
   for (let i = 0; i < 6 && clones.length < 2; i++) { G.act(S, { type: 'wait' }); clones = run.enemies.filter((e) => e.type === 'kill_clone'); }
@@ -1438,7 +1448,7 @@ test('キルバーン：分身2体（1回当てると消える幻）と罠。罠
   while (run.hazards.some((h) => h.x === t.x && h.y === t.y)) G.act(S, { type: 'wait' });
   assert(hp - run.player.hp <= Math.round(200 * 0.35) + 60, 'trap capped (plus boss hits)');
   // 分身を1回たたくと消える
-  const S2 = chapterRun(3, 241, 30), r2 = S2.run; placeNear(S2, 0, 3);
+  const S2 = chapterRun(3, 241, 25), r2 = S2.run; placeNear(S2, 0, 3);
   for (let i = 0; i < 6 && !r2.enemies.some((e) => e.type === 'kill_clone'); i++) G.act(S2, { type: 'wait' });
   const c = r2.enemies.find((e) => e.type === 'kill_clone');
   r2.player.x = c.x - 1; r2.player.y = c.y; c.hold = 5; G.updateVision(r2);
@@ -1527,14 +1537,14 @@ test('最終決戦で敗北：通常の敗北ルールで村へ。最終章は�
   G.depart(S, 281); goToFloor(S, 35); eq(S.run.final.stage, 'battle1'); eq(S.run.enemies.find((e) => e.boss).type, 'vearn');
 });
 test('章のボスを倒したあとに倒れても、その章はクリア扱い（やり直させない）。倒す前の敗北・途中帰還では章はそのまま', () => {
-  const S = chapterRun(2, 290, 30);
+  const S = chapterRun(2, 290, 20);
   G.useReturnScroll(S); G.finishRun(S); eq(S.village.story.chapter, 2, 'mid return keeps chapter');
-  G.depart(S, 291); goToFloor(S, 30); S.run.player.hp = 0;
+  G.depart(S, 291); goToFloor(S, 20); S.run.player.hp = 0;
   const r0 = G.act(S, { type: 'wait' });
-  S.run.over = true; S.run.result = { type: 'dead', cause: 'test', floor: 30, lostGold: 0, lostItems: 0 };
+  S.run.over = true; S.run.result = { type: 'dead', cause: 'test', floor: 20, lostGold: 0, lostItems: 0 };
   G.finishRun(S); eq(S.village.story.chapter, 2, 'death before boss keeps chapter');
-  G.depart(S, 292); goToFloor(S, 30); defeatBoss(S);
-  S.run.over = true; S.run.result = { type: 'dead', cause: 'test', floor: 30, lostGold: 0, lostItems: 0 };
+  G.depart(S, 292); goToFloor(S, 20); defeatBoss(S);
+  S.run.over = true; S.run.result = { type: 'dead', cause: 'test', floor: 20, lostGold: 0, lostItems: 0 };
   const res = G.finishRun(S);
   eq(res.chapterClear, 2); eq(S.village.story.chapter, 3);
 });
@@ -1544,7 +1554,8 @@ test('全章を順に進める：第1章→第5章→最終章→エンディン
   for (let ch = 1; ch <= 5; ch++) {
     if (ch > 1) G.depart(S, 300 + ch);
     eq(S.run.chapter, ch);
-    goToFloor(S, 30); defeatBoss(S);
+    goToFloor(S, D.CHAPTERS[ch].goal); eq(S.run.enemies.filter((e) => e.boss).length, 1); defeatBoss(S);
+    assert(!S.run.stairs, 'cannot go deeper after the chapter boss');
     S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' });
     const res = G.finishRun(S);
     eq(res.chapterClear, ch); eq(res.rewardFunds, D.CHAPTERS[ch].reward.funds);
@@ -1588,6 +1599,31 @@ test('旧セーブ（v2・探索途中）：今の冒険と地形はそのまま
   G.useReturnScroll(L); const res = G.finishRun(L);
   assert(!res.chapterClear && !L.village.cleared); eq(L.village.story.chapter, 1);
   G.depart(L, 322); eq(L.run.chapter, 1);
+});
+
+test('ボス階の変更前に始めた探索（layout なし）：その探索は以前の配置（第1章のボスは30階）のまま終え、次の探索から新しい配置', () => {
+  // 第1章で地下22階まで進んでいた探索（新しいボス階15階より深い）
+  const S = newRun(330); delete S.run.layout;
+  eq(G.maxFloor(S.run), 30, 'old layout: 30F');
+  goToFloor(S, 22);
+  const L = SV.deserialize(SV.serialize(S));
+  eq(L.run.layout, undefined); eq(L.run.floor, 22);
+  for (let f = 23; f < 30; f++) assert(!G.F(L.run, f).boss, 'no boss at ' + f + ' in the old run');
+  goToFloor(L, 30); eq(L.run.enemies.find((e) => e.boss).type, 'croc', 'croc at 30F for the old run');
+  defeatBoss(L); L.run.player.x = L.run.portal.x; L.run.player.y = L.run.portal.y; G.act(L, { type: 'returnHome' });
+  const res = G.finishRun(L); eq(res.chapterClear, 1); eq(L.village.story.chapter, 2);
+  // 次の探索は新しい配置：第2章は20階でフレイザード
+  G.depart(L, 331); eq(L.run.layout, D.LAYOUT); eq(G.maxFloor(L.run), 20);
+  goToFloor(L, 20); eq(L.run.enemies.find((e) => e.boss).type, 'flame');
+  // 第1章の報酬は二重に出ない
+  defeatBoss(L); assert(!L.run.floorItems.some((f) => f.item && f.item.id === 'dragon_shield'), 'no duplicate chapter-1 reward');
+});
+test('ボス階の変更前に始めた探索（layout なし）で、新しいボス階より浅い所にいる場合も、以前の配置のまま進む（15階は通常の階）', () => {
+  const S = newRun(332); delete S.run.layout; goToFloor(S, 12);
+  const L = SV.deserialize(SV.serialize(S));
+  goToFloor(L, 16); assert(!L.run.enemies.some((e) => e.boss) && L.run.stairs, '15-16F are normal floors in the old run');
+  G.useReturnScroll(L); G.finishRun(L); eq(L.village.story.chapter, 1, 'chapter unchanged without the boss');
+  G.depart(L, 333); eq(L.run.layout, D.LAYOUT); goToFloor(L, 15); eq(L.run.enemies.find((e) => e.boss).type, 'croc');
 });
 
 console.log('（参考）自動プレイによるバランス確認');
@@ -1885,7 +1921,7 @@ test('アクセサリーの入手：中盤以降の道具の表にまれに入�
   for (const ch of [1, 3, 6]) {
     assert(!has(ch, 10, 'poison_ring') && has(ch, 11, 'poison_ring') && has(ch, 11, 'purse_charm'), 'mid ' + ch);
     assert(!has(ch, 20, 'life_necklace') && has(ch, 21, 'life_necklace') && has(ch, 21, 'full_bangle'), 'deep ' + ch);
-    assert(!has(ch, D.BOSS_FLOOR, 'life_necklace') || ch === 6, 'not on boss floor');
+    assert(!has(ch, D.bossFloorOf(ch), 'life_necklace'), 'not on boss floor');
   }
   assert(has(6, 33, 'life_necklace'), 'demon floors');
   const acc = Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === 'accessory');
