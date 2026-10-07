@@ -145,6 +145,20 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       return { bad, narrow, on };
     });
     eq2(reach.bad.join(), '', 'unreachable'); eq2(reach.narrow.join(), '', 'path narrower than 2 tiles at x'); eq2(reach.on.join(), '', 'creature on an entrance');
+    // 村のいろいろな状態（はじめ・発展後・旧版の記念碑・庭）でも、すべての施設の入口と像の前へ行け、広場の上下をつなぐ通路（x13〜14）は2マス
+    const states = await p.evaluate(() => {
+      const VL = TS.Village, RD = TS.Render, out = [];
+      const fns = { early: () => {}, dev: (V) => { V.story.chapter = 4; V.stage = 3; for (const f of TS.Data.FACILITIES) V.built[f.id] = true; TS.Game.applyFacilities(V); },
+        legacy: (V) => { V.legacyClear10 = true; V.legacyClear30 = true; V.built.garden = true; TS.Game.applyFacilities(V); } };
+      for (const [name, fn] of Object.entries(fns)) {
+        const S = TS.Game.newState(); fn(S.village);
+        const v = VL.build(RD.villageLevels(S.village));
+        for (const f of v.fac) if (!(f.at[0] === VL.START.x && f.at[1] === VL.START.y) && !VL.path(v.solid, VL.START.x, VL.START.y, f.at[0], f.at[1])) out.push(name + ':' + f.id);
+        for (const y of [11, 12, 13]) if ([13, 14].some((x) => v.solid[y * VL.MW + x])) out.push(name + ':passage' + y);
+      }
+      return out;
+    });
+    eq2(states.join(), '', 'reachable in all village states');
     const tapAt = async (pt) => { await p.touchscreen.tap(pt.x, pt.y); };
     const hitPt = (id, kind) => p.evaluate(([id, kind]) => { const h = TS.UI.vview.hits.find((h) => h.id === id && h.kind === kind); const r = document.getElementById('village-canvas').getBoundingClientRect();
       const x0 = Math.max(0, h.x), x1 = Math.min(r.width, h.x + h.w), y0 = Math.max(0, h.y), y1 = Math.min(r.height, h.y + h.h); return { x: r.left + (x0 + x1) / 2, y: r.top + (y0 + y1) / 2, h: [h.x, h.y, h.w, h.h] }; }, [id, kind]);

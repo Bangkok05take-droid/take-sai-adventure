@@ -33,9 +33,12 @@
     L.fac.push({ id: 'museum', name: lv.museum ? '展示室' : '展示室（空き地）', fp: [14, 6, 5, 3], at: [16, 9], face: 'up', built: lv.museum });
     // サイの店（2026年10月の素材）：左の入口の前にサイ、その下が店に入る位置。足元は左端の草地まで5マス
     L.fac.push({ id: 'shop', name: 'サイの店', fp: [0, 11, 5, 3], at: [1, 15], face: 'up', npc: 'sai', npcAt: [1, 14], built: true });
+    // 倉庫：v2の絵は扉が中央。扉を入る位置 (16,14) の真上に置くので、絵の左端（麻袋）は足元の外の (14,…) に少しかかる。
+    // 足元（通れないマス）は15〜18のまま：x13〜14 の通路（広場の下半分と上半分をつなぐ）を2マスあけておく
     L.fac.push({ id: 'storage', name: '倉庫', fp: [15, 11, 4, 3], at: [16, 14], face: 'up', built: true });
     L.fac.push({ id: 'develop', name: '村の発展', fp: [1, 17, 4, 3], at: [6, 18], face: 'left', npc: 'mot', npcAt: [5, 18], built: true });
-    L.fac.push({ id: 'diner', name: lv.diner ? '食堂' : '食堂（空き地）', fp: [15, 17, 4, 3], at: [13, 18], face: 'right', npc: 'waan', npcAt: [14, 18], built: lv.diner });
+    // 食堂：v2の絵は入口が左寄り。入口の前の道 (15,20) から上を向いて入る。ワーンは入口の左わき (14,19)
+    L.fac.push({ id: 'diner', name: lv.diner ? '食堂' : '食堂（空き地）', fp: [15, 17, 4, 3], at: [15, 20], face: 'up', npc: 'waan', npcAt: [14, 19], built: lv.diner });
     L.fac.push({ id: 'depart', name: '出発（船着き場）', fp: [9, 22, 2, 2], at: [11, 21], face: 'right', npc: 'tiw', npcAt: [12, 21], built: true, dock: true });
     return L;
   }
@@ -609,6 +612,18 @@
     return { img, x: fx - ax * sc, y: fy - ay * sc, w: img.width * sc, h: img.height * sc, sortY: sortY !== undefined ? sortY : fy - 1 };
   }
   const hasArt = (name) => !!(SP.art && SP.art.village && SP.art.village[name]);
+  const ART_OF = { shop: 'sai_shop', smith: 'blacksmith', diner: 'eatery', storage: 'warehouse', museum: 'exhibition' };
+  /* 施設の絵：入口の中心（doors）がマス doorTx の中央に来るように置く。炉の光・煙・湯気は絵の中の位置から */
+  function facilityArt(name, doorTx, baseY) {
+    const VA = TS.ASSETS.village, sc = VA.propScale, ax = VA.props[name][0];
+    const o = artProp(name, doorTx * T + 16 + (ax - VA.doors[name]) * sc, baseY, baseY - 2);
+    if (!o) return null;
+    const fx = VA.fx && VA.fx[name], at = (p) => [o.x + p[0] * sc, o.y + p[1] * sc];
+    if (fx && fx.light) o.lights = [at(fx.light).concat([fx.light[2]])];
+    if (fx && fx.smoke) o.smoke = [at(fx.smoke)];
+    if (fx && fx.steam) o.steam = [at(fx.steam)];
+    return o;
+  }
   /* 子供と猫（いつも同じ3人・3匹。決まった番号で作るので、村を出入りしても増えない）。
    * 立つマスは通れない（大人と同じ）。入口・通り道は2マス以上あける。猫の黒は花壇の前の2マスを行き来する */
   VL.KIDS = [
@@ -640,9 +655,11 @@
     for (const f of Lo.fac) {
       if (f.dock) { labels.push([f.name, 10 * T, 21 * T + 4]); continue; }
       const [x, y, w, h] = f.fp;
-      // サイの店は素材の絵（入口の中央を、サイの立つマスの真上に）。読み込めなければコードで描いた店
-      const shopArt = f.id === 'shop' && artProp('sai_shop', f.npcAt[0] * T + 16 + (112 - 64) * TS.ASSETS.village.propScale, (y + h) * T, (y + h) * T - 2);
-      if (shopArt) add(shopArt); else add(building(f.built ? kindOf[f.id] : 'lot', f.fp, lv));
+      // 素材の絵の施設（サイの店・鍛冶屋・食堂・倉庫・展示室）：絵の入口の中心を、入る位置のマスの真上に置く。
+      // 建っていない施設は今までの空き地の絵。読み込めなければコードで描いた建物（二重には描かない）
+      const artName = f.built && ART_OF[f.id];
+      const o = artName && facilityArt(artName, f.id === 'shop' ? f.npcAt[0] : f.at[0], (y + h) * T);
+      if (o) add(o); else add(building(f.built ? kindOf[f.id] : 'lot', f.fp, lv));
       block(x, y, w, h);
       labels.push([f.name, (x + w / 2) * T, y * T - (f.id === 'shop' || f.id === 'museum' ? 22 : 12)]);
     }
@@ -653,18 +670,19 @@
     add(st); block(9, 11, 2, 2); labels.push(['マスターヤナイの像', 10 * T, 11 * T - (stArt ? 52 : 70)]);
     // 木・ヤシ（道や入口をふさがない場所だけ）
     const trees = [['palm', 0, 4], ['round', 6, 4], ['round', 13, 4], ['palm', 19, 4], ['palm', 0, 8], ['palm', 19, 8], ['round', 5, 11], ['flower', 19, 12],
-      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['round', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 13, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]];
+      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 13, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]];
     // 丸い木は素材の木（当たりは幹のマスだけ。樹冠は奥を歩く人の手前に重なる）
     for (const [k, x, y] of trees) { if (!WALK[G[y][x]] || G[y][x] === 'f') { add((k === 'round' && artProp('tree', x * T + 16, (y + 1) * T - 1)) || tree(k, x, y, lv.night)); solid[y * MW + x] = 1; } }
     // 小物：植木鉢・樽・灯り（道のわき）
     const props = new SP.Pix(MW * T, MH * T);
     const propAt = [];
     const putPot = (x, y, fl) => { pot(props, x * T + 16, y * T + 30, fl); propAt.push([x, y]); };
-    putPot(5, 6, [C.pink, '#ffffff']); putPot(14, 6, ['#ffe070', C.pink]);   // 像の両わきの鉢は、素材の像の灯籠と花壇に置きかえた
+    putPot(6, 6, [C.pink, '#ffffff']); putPot(13, 6, ['#ffe070', C.pink]);   // 鍛冶屋・展示室の絵と重ならないよう1マス内側へ（以前は (5,6)・(14,6)）   // 像の両わきの鉢は、素材の像の灯籠と花壇に置きかえた
     putPot(0, 16, [C.pink]);   // 店の入口 (1,15) の前をあけるため、左の草地へ（以前は (1,16)）
-    putPot(18, 16, ['#ffe070']); putPot(5, 20, [C.pink, '#ffffff']); putPot(14, 20, ['#ffe070', C.pink]);
+    putPot(19, 16, ['#ffe070']);   // 食堂の屋根に隠れないよう右の草地へ（以前は (18,16)） putPot(5, 20, [C.pink, '#ffffff']); putPot(14, 20, ['#ffe070', C.pink]);
     // 庭の鉢：(5,13) は三毛猫の場所なので、像の左わき (8,12) へ
-    if (lv.decor.garden) { putPot(8, 12, [C.pink]); putPot(14, 13, ['#ffe070']); putPot(5, 19, [C.pink, '#ffffff']); putPot(14, 19, [C.pink]); }
+    // 庭の鉢：(14,13) は倉庫の足元、(14,19) はワーンの場所になったので、像の右わき (11,12) と (14,17) へ
+    if (lv.decor.garden) { putPot(8, 12, [C.pink]); putPot(11, 12, ['#ffe070']); putPot(5, 19, [C.pink, '#ffffff']); putPot(14, 17, [C.pink]); }
     // 長いす・木箱・花壇（入口と通り道はあける）
     const bench = (x, y) => { const X = x * T + 3, Y = y * T + 26; props.rect(X, Y - 10, 26, 4, '#b8834e'); props.rect(X, Y - 10, 26, 1, '#e0b07a'); props.rect(X, Y - 15, 26, 3, '#9a6a3a'); props.rect(X + 2, Y - 6, 2, 6, C.woodD); props.rect(X + 22, Y - 6, 2, 6, C.woodD); propAt.push([x, y]); };
     // 長いす：素材の絵は2マス幅（寺院の前の2つと、広場の左の木陰の1つ）。読み込めなければ1マスの長いす
@@ -685,9 +703,8 @@
       const o = artProp('flowerbed', (x + 1) * T, 14 * T - 2);
       if (o) { add(o); block(x, 13, 2, 1); } else { bed(x, 13, cols); bed(x + 1, 13, cols); }
     }
-    crate(props, 15 * T + 2, 10 * T + 30, 12); barrel(props, 18 * T + 18, 10 * T + 30); propAt.push([15, 10], [18, 10]);
-    crate(props, 1 * T + 4, 10 * T + 30, 12); propAt.push([1, 10]);
-    const lamps = [[5, 8], [14, 8]];
+    // （以前の (15,10)・(18,10)・(1,10) の木箱と樽は、倉庫と店の絵に木箱・樽があり、屋根の陰に隠れて重なるのでやめた）
+    const lamps = [[6, 8], [13, 8]];   // 鍛冶屋・展示室の絵の角に重ならないよう1マス内側へ（以前は (5,8)・(14,8)）
     if (lv.stage >= 2 || lv.decor.lanterns) lamps.push([5, 16], [14, 16]);
     if (lv.decor.lanterns) lamps.push([2, 21], [7, 21], [12, 21], [17, 21]);
     for (const [x, y] of lamps) { lantern(props, x * T + 16, y * T + 30); propAt.push([x, y]); lights.push([x * T + 16, y * T + 6, 18]); }
@@ -695,14 +712,14 @@
     // 屋台（村の発展「屋台」を建てたときだけ）：素材の絵は2マス幅で、参道の両わき。読み込めなければ今までの1マスの屋台
     if (lv.decor.stalls && hasArt('market_stall')) for (const x of [7, 11]) { add(artProp('market_stall', (x + 1) * T, 20 * T - 2)); block(x, 19, 2, 1); }
     else if (lv.decor.stalls) for (const [x, c] of [[6, '#e05a4a'], [13, '#3a9ad0']]) { awning(props, x * T + 2, 19 * T + 2, 28, 8, c, '#f4ead2'); props.rect(x * T + 4, 19 * T + 18, 24, 8, C.woodL); props.ball(x * T + 10, 19 * T + 16, 3, 3, R('#f0c040'), { dither: false }); props.ball(x * T + 20, 19 * T + 16, 3, 3, R('#7ac050'), { dither: false }); propAt.push([x, 19]); }
-    if (lv.chapter <= 2 && !lv.ending) for (const [x, y] of [[14, 12], [12, 17]]) { for (let i = 0; i < 6; i++) { const h = hash(x, y, i); props.ball(x * T + 8 + h % 16, y * T + 24 - (h >> 6) % 10, 4, 3, R('#a89070'), {}); } propAt.push([x, y]); }
+    if (lv.chapter <= 2 && !lv.ending) for (const [x, y] of [[7, 12], [12, 17]]) { for (let i = 0; i < 6; i++) { const h = hash(x, y, i); props.ball(x * T + 8 + h % 16, y * T + 24 - (h >> 6) % 10, 4, 3, R('#a89070'), {}); } propAt.push([x, y]); }
     if (lv.decor.statue) { // 白い象の像
       const x = 6 * T + 16, y = 12 * T + 28;
       props.rect(x - 12, y - 6, 26, 6, C.stoneD); props.ball(x, y - 16, 12, 9, R('#f4f0e8')); props.ball(x + 10, y - 20, 6, 6, R('#f4f0e8')); props.rect(x + 14, y - 18, 2, 12, '#e8e0d0');
       props.rect(x - 8, y - 10, 3, 6, '#e0d8c8'); props.rect(x + 4, y - 10, 3, 6, '#e0d8c8'); propAt.push([6, 12]);
     }
     if (lv.legacy || lv.legacy30) { // 旧版の記録の記念碑
-      const x = 13 * T + 16, y = 12 * T + 30; props.rect(x - 8, y - 22, 16, 22, sh(C.stone, -0.05)); props.rect(x - 9, y - 23, 18, 2, C.gold); props.ball(x, y - 28, 5, 5, R(lv.legacy30 ? C.gold : '#c0c8d0'), { dither: false }); propAt.push([13, 12]);
+      const x = 12 * T + 16, y = 12 * T + 30; props.rect(x - 8, y - 22, 16, 22, sh(C.stone, -0.05)); props.rect(x - 9, y - 23, 18, 2, C.gold); props.ball(x, y - 28, 5, 5, R(lv.legacy30 ? C.gold : '#c0c8d0'), { dither: false }); propAt.push([12, 12]);
     }
     if (lv.decor.gate) { // 黄金の門（寺院の石段）
       for (const x of [8 * T + 20, 11 * T + 10]) { props.box(x, 4 * T - 30, 6, 34, R(C.gold)); }

@@ -73,7 +73,13 @@
      * 子供の正面・右・背面は歩行のコマではなく、向きの静止画。左向きは右向きを反転する。読み込めなければ今までのコードの絵 */
     village: {
       dir: 'assets/village/', propScale: 2 / 3,
-      props: { sai_shop: [112, 222], yanai_statue: [48, 158], tree: [64, 126], flowerbed: [48, 62], market_stall: [64, 126], bench: [48, 62] },
+      props: { sai_shop: [112, 222], yanai_statue: [48, 158], tree: [64, 126], flowerbed: [48, 62], market_stall: [64, 126], bench: [48, 62],
+        // 施設の外観 v2（2026年10月）：サイの店と同じ 224×224・同じ倍率（2/3）なので、人物に対する扉の大きさがそろう
+        blacksmith: [112, 222], eatery: [112, 222], warehouse: [112, 222], exhibition: [112, 222] },
+      /* 施設の絵の入口の中心（絵の左からのドット）。絵の足元（anchor）ではなく、この位置を「入る位置」のマスの真上に置く。
+       * 食堂の入口は左寄り。鍛冶屋は開いた作業場の正面。炉の口・煙突・鍋の位置は火の光・煙・湯気に使う */
+      doors: { sai_shop: 64, blacksmith: 104, eatery: 44, warehouse: 112, exhibition: 112 },
+      fx: { blacksmith: { light: [108, 150, 22], smoke: [176, 22] }, eatery: { steam: [128, 150], light: [128, 160, 14] } },
       kids: { play: 'child_play', book: 'child_book', cat: 'child_cat' }, kidAnchor: [32, 60],
       cats: { ginger: 'cat_ginger', calico: 'cat_calico', black: 'cat_black' }, catAnchor: [16, 28],
     },

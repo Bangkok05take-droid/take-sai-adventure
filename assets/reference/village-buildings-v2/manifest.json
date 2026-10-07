@@ -1,0 +1,50 @@
+[
+  {
+    "file": "blacksmith.png",
+    "canvas": [
+      224,
+      224
+    ],
+    "anchor": [
+      112,
+      222
+    ],
+    "note": "anchor is canvas bottom center, not door position; inspect actual entrance"
+  },
+  {
+    "file": "eatery.png",
+    "canvas": [
+      224,
+      224
+    ],
+    "anchor": [
+      112,
+      222
+    ],
+    "note": "anchor is canvas bottom center, not door position; inspect actual entrance"
+  },
+  {
+    "file": "warehouse.png",
+    "canvas": [
+      224,
+      224
+    ],
+    "anchor": [
+      112,
+      222
+    ],
+    "note": "anchor is canvas bottom center, not door position; inspect actual entrance"
+  },
+  {
+    "file": "exhibition.png",
+    "canvas": [
+      224,
+      224
+    ],
+    "anchor": [
+      112,
+      222
+    ],
+    "note": "anchor is canvas bottom center, not door position; inspect actual entrance"
+  }
+]
