@@ -645,6 +645,14 @@
     yanai_v1: { title: 'マスターヤナイのテーマ', group: 'old', note: '第1版（比較用）', build: yanaiV1 },
   };
   M.YANAI_MOTIF = YANAI_MOTIF; M.YANAI_MOTIF_V1 = YANAI_MOTIF_V1;
+  /* 場面 → 曲（通常プレイで使う曲を選ぶ表）。ここを書きかえれば、場面の曲や録音音源への差し替えができる。
+   * ここに無い場面（boss など）は TS.Audio の以前の合成BGMを使う。title のファンファーレは1回だけ鳴らす（once） */
+  M.SCENES = {
+    title: { song: 'fanfare', once: true },
+    village: { song: 'village' },
+    dungeon: { song: 'dungeon' },
+    yanai: { song: 'yanai' },
+  };
   const cache = {};
   M.song = function (id) {
     const L = M.LIBRARY[id];
@@ -672,16 +680,17 @@
   M.play = function (id, opts) {
     const A = TS.Audio;
     opts = opts || {};
-    M.stop(0.12);
+    M.stop(opts.fadeOut == null ? 0.12 : opts.fadeOut);
     if (!A.ctx || !A.musicBus) return null;
     const L = M.LIBRARY[id];
     if (L && L.file) return playFile(id, L, opts);
     const s = M.song(id); if (!s) return null;
     const ctx = A.ctx, out = ctx.createGain();
-    out.gain.value = 1; out.connect(A.musicBus);
+    if (opts.fadeIn) { out.gain.setValueAtTime(0, ctx.currentTime); out.gain.linearRampToValueAtTime(1, ctx.currentTime + opts.fadeIn); } else out.gain.value = 1;
+    out.connect(A.musicBus);
     if (s.reverb && A.reverbSend) { const send = ctx.createGain(); send.gain.value = s.reverb; out.connect(send); send.connect(A.reverbSend); }
     const from = opts.fromBeat || 0;
-    const pb = { id, song: s, out, t0: ctx.currentTime + 0.08 - from * s.spb, idx: s.events.findIndex((e) => e.b >= from), offset: 0, loops: 0, done: false, onEnd: opts.onEnd };
+    const pb = { id, song: s, out, bgm: !!opts.bgm, t0: ctx.currentTime + 0.08 - from * s.spb, idx: s.events.findIndex((e) => e.b >= from), offset: 0, loops: 0, done: false, onEnd: opts.onEnd };
     if (pb.idx < 0) pb.idx = s.events.length;
     pb.timer = setInterval(() => tick(pb), 100);
     M.current = pb;
@@ -712,7 +721,7 @@
   function playFile(id, L, opts) {
     const A = TS.Audio, ctx = A.ctx, out = ctx.createGain();
     out.connect(A.musicBus);
-    const pb = { id, out, file: true, done: false, onEnd: opts.onEnd, t0: ctx.currentTime };
+    const pb = { id, out, file: true, bgm: !!opts.bgm, done: false, onEnd: opts.onEnd, t0: ctx.currentTime };
     M.current = pb;
     fetch(L.file).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).then((buf) => {
       if (M.current !== pb) return;

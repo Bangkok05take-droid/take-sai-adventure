@@ -1181,8 +1181,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       // 閉じる：試聴は止まり、元のBGMに戻る。ターンは進んでいない
       await p.tap('[data-play="fanfare"]'); await p.waitForTimeout(300);
       await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(300);
-      const fin = await p.evaluate(() => ({ cur: TS.Music.current, hold: TS.Audio.bgmHold, bgm: TS.Audio.bgmName, timer: !!TS.Audio.bgmTimer }));
-      assert(!fin.cur && !fin.hold && fin.bgm === 'dungeon' && fin.timer, 'restored ' + JSON.stringify(fin));
+      await p.waitForTimeout(400);
+      const fin = await p.evaluate(() => ({ cur: TS.Music.current && TS.Music.current.id, isBgm: !!(TS.Music.current && TS.Music.current.bgm), hold: TS.Audio.bgmHold, bgm: TS.Audio.bgmName }));
+      assert(fin.cur === 'dungeon' && fin.isBgm && !fin.hold && fin.bgm === 'dungeon', 'restored scene music ' + JSON.stringify(fin));
       eq2((await run()).turn, turn0, 'no turn');
       await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); const s = TS.UI.S.settings; s.bgmVol = 1; s.sfxVol = 1; TS.Audio.setVolumes(1, 1); });
     
@@ -1342,6 +1343,88 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       return out;
     });
     assert(!bad.length, bad.slice(0, 5).join(' / '));
+  });
+
+  await test('場面の音楽：タイトル（操作後にファンファーレ1回）→村→施設の開閉→ヤナイの記録・像→ダンジョン→階の移動・道具・メニュー→ミュート→裏に回す→ボス→帰還→読み込み直し', async () => {
+    const { ctx: c2, p: q } = await mk(phone);
+    try {
+      const FIXT = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-cleared.json'), 'utf8');
+      await q.goto(URL); await q.waitForTimeout(300);
+      await q.evaluate((t) => localStorage.setItem('takeSaiAdventure.save', t), FIXT); await q.reload(); await q.waitForTimeout(800);
+      const cur = () => q.evaluate(() => { const c = TS.Music.current; return { id: c && c.id, bgm: !!(c && c.bgm), timer: !!TS.Audio.bgmTimer, old: TS.Audio.oldBgm, scene: TS.Audio.bgmName, ctx: TS.Audio.ctx && TS.Audio.ctx.state }; });
+      const same = (tag) => q.evaluate((tag) => window[tag] === TS.Music.current, tag);
+      const keep = (tag) => q.evaluate((tag) => { window[tag] = TS.Music.current; }, tag);
+      const talkThrough = async () => { for (let i = 0; i < 40 && await q.$('.talk'); i++) { await q.tap('.modal-buttons button.primary'); await q.waitForTimeout(60); } };
+      // タイトル：操作の前は鳴らない。最初の操作のあとファンファーレ（1回だけ）
+      let c = await cur(); assert(!c.id && !c.ctx, 'silent before gesture ' + JSON.stringify(c));
+      await q.touchscreen.tap(20, 20); await q.waitForTimeout(400);
+      c = await cur(); assert(c.id === 'fanfare' && c.bgm, 'fanfare after gesture ' + JSON.stringify(c));
+      await keep('__f'); await q.touchscreen.tap(30, 30); await q.waitForTimeout(200);
+      assert(await same('__f'), 'fanfare not restarted by another tap');
+      // つづきから → 村の曲（ファンファーレはフェードして切り替わる）
+      await q.tap('#btn-continue'); await q.waitForTimeout(300); await talkThrough();
+      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await q.waitForTimeout(700);
+      c = await cur(); assert(c.id === 'village' && c.bgm && !c.timer, 'village music ' + JSON.stringify(c));
+      await keep('__v');
+      for (const fac of ['shop', 'storage', 'develop']) { await q.tap(`.fac[data-fac="${fac}"]`); await q.waitForTimeout(200); await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close()); await q.waitForTimeout(100); }
+      assert(await same('__v'), 'village music continues across facilities');
+      // ヤナイの記録・記念像：ヤナイのテーマ → 閉じると村の曲
+      await q.evaluate(() => TS.UI.debug.showRecords()); await q.waitForTimeout(800);
+      c = await cur(); assert(c.id === 'yanai' && c.bgm, 'yanai theme for records ' + JSON.stringify(c));
+      await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close()); await q.waitForTimeout(800);
+      c = await cur(); assert(c.id === 'village', 'back to village after records ' + JSON.stringify(c));
+      await q.evaluate(() => TS.UI.debug.statueTalk()); await q.waitForTimeout(800);
+      c = await cur(); assert(c.id === 'yanai', 'yanai theme at statue ' + JSON.stringify(c));
+      await talkThrough(); await q.waitForTimeout(800);
+      c = await cur(); assert(c.id === 'village', 'back to village after statue ' + JSON.stringify(c));
+      // 出発 → ダンジョンの曲
+      await q.tap('.fac.depart'); await q.waitForTimeout(200); await q.click('text=出発する'); await q.waitForTimeout(300); await talkThrough();
+      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await q.waitForTimeout(800);
+      c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer, 'dungeon music ' + JSON.stringify(c));
+      await keep('__d');
+      // 通常の階を降りても、道具・メニュー・履歴を開いても最初に戻らない
+      for (let i = 0; i < 2; i++) { await q.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); }); await q.waitForTimeout(300); }
+      for (const b of ['#b-items', '#b-menu', '#b-log']) { await q.tap(b); await q.waitForTimeout(200); await q.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await q.waitForTimeout(100); }
+      assert(await same('__d'), 'dungeon music continues across floors and menus');
+      // ダッシュ・高速足踏みで曲のテンポは変わらない（曲の拍の長さは BPM だけで決まる）
+      eq2(await q.evaluate(() => TS.Music.current.song.spb), 60 / 72, 'dungeon tempo');
+      // ミュート → 解除で今の場面の曲
+      await q.tap('#b-menu'); await q.waitForTimeout(150); await q.tap('.modal-buttons button >> text=音：オン'); await q.waitForTimeout(500);
+      c = await cur(); assert(!c.id && !c.timer, 'muted: nothing scheduled ' + JSON.stringify(c));
+      await q.tap('.modal-buttons button >> text=音：オフ'); await q.waitForTimeout(500);
+      c = await cur(); assert(c.id === 'dungeon', 'unmute plays current scene ' + JSON.stringify(c));
+      await q.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); });
+      await keep('__d2');
+      // 裏に回す → 一時停止、戻ると同じ曲の続き（重ならない）
+      await q.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); }); await q.waitForTimeout(300);
+      c = await cur(); assert(c.ctx === 'suspended' && c.id === 'dungeon', 'paused in background ' + JSON.stringify(c));
+      await q.evaluate(() => { Object.defineProperty(document, 'hidden', { value: false, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); }); await q.waitForTimeout(400);
+      c = await cur(); assert(c.ctx === 'running' && await same('__d2'), 'resumed same playback ' + JSON.stringify(c));
+      // ボスの階：以前のボス曲（新しい曲は止まる）
+      await q.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game; r.player.hp = r.player.maxhp = 99999;
+        while (r.floor < 29) { r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+        r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); });
+      await q.waitForTimeout(1200); await talkThrough();
+      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      c = await cur(); assert(!c.id && c.timer && c.old === 'boss' && c.scene === 'boss', 'boss music ' + JSON.stringify(c));
+      // 帰還の巻物で村へ → 村の曲（ボス曲は止まる）
+      await q.evaluate(() => { const r = TS.UI.S.run, it = r.bag.find((i) => i.id === 'return_scroll'); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'use', uid: it.uid }); });
+      await q.waitForTimeout(1800); await talkThrough();
+      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await q.waitForTimeout(800);
+      c = await cur(); assert(c.id === 'village' && !c.timer, 'village after return ' + JSON.stringify(c));
+      // 読み込み直して「つづきから」：ファンファーレ → 村の曲。ボスの進行・所持品はそのまま
+      const before = await q.evaluate(() => JSON.stringify({ v: TS.UI.S.village.bag.map((i) => i.id), st: TS.UI.S.village.story.chapter, f: TS.UI.S.village.funds }));
+      await q.reload(); await q.waitForTimeout(800);
+      await q.touchscreen.tap(20, 20); await q.waitForTimeout(300);
+      await q.tap('#btn-continue'); await q.waitForTimeout(300); await talkThrough();
+      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await q.waitForTimeout(800);
+      c = await cur(); assert(c.id === 'village', 'village after reload ' + JSON.stringify(c));
+      eq2(await q.evaluate(() => JSON.stringify({ v: TS.UI.S.village.bag.map((i) => i.id), st: TS.UI.S.village.story.chapter, f: TS.UI.S.village.funds })), before, 'save intact');
+    } finally { await c2.close(); }
   });
 
   await test('ブラウザのエラー・読み込み失敗がない', async () => {

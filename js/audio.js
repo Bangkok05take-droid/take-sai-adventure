@@ -23,8 +23,12 @@
     if (A.bgmName && !A.bgmHold) A.playBgm(A.bgmName, true);
   };
   A.setEnabled = function (on) {
+    const was = A.enabled;
     A.enabled = on;
     if (A.master) A.master.gain.setTargetAtTime(on ? 0.6 : 0, A.ctx.currentTime, 0.05);
+    // 音オフ：曲の予約も止める（裏で鳴らし続けない）。オンに戻したら、今の場面の曲を流す
+    if (!on) { stopSceneMusic(0.1); if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; } }
+    else if (!was && A.ctx && !A.bgmHold) A.playBgm(A.bgmName, true);
   };
   // BGMと効果音の音量（0〜1）。急に変えずに短くならす
   A.setVolumes = function (bgm, sfx) {
@@ -42,9 +46,15 @@
   /* 試聴などで場面のBGMを一時的に止める。hold の間に playBgm が呼ばれても曲名だけ覚えておき、解除したときにその曲を流す */
   A.holdBgm = function (on) {
     A.bgmHold = !!on;
-    if (on) { if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; } }
+    if (on) { if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; } stopSceneMusic(0.3); }
     else if (A.bgmName) A.playBgm(A.bgmName, true);
   };
+  /* 物語の場面だけ一時的に別の曲（例：ヤナイの会話）。終わったら、その間に変わった場面の曲も含めて元に戻す */
+  A.eventBgm = null;
+  A.startEventBgm = function (name) { A.eventBgm = name; A.playBgm(A.bgmName, true); };
+  A.endEventBgm = function () { if (!A.eventBgm) return; A.eventBgm = null; A.playBgm(A.bgmName, true); };
+  A.fanfareDone = false;
+  function stopSceneMusic(fade) { const M = TS.Music; if (M && M.current && M.current.bgm) M.stop(fade); }
 
   function tone(freq, start, dur, type, vol, slideTo, dest) {
     const c = A.ctx;
@@ -105,12 +115,30 @@
       mel: [0, 0, 3, -1, 0, 0, 4, -1, 0, 0, 3, 2, 1, -1, 0, -1],
       bass: [110, 110, 117, 117, 110, 110, 98, 104] },
   };
+  /* 場面のBGM。name は場面（title / village / dungeon / boss）。
+   * TS.Music.SCENES に曲があれば新しい曲（同じ曲が流れていれば続ける）、無ければ以前の合成BGM（boss）。
+   * 物語の場面の曲（eventBgm）が流れている間は、場面の名前だけ覚えて切り替えない。曲の変わり目は短くフェードする */
   A.playBgm = function (name, force) {
-    if (A.bgmName === name && !force && A.bgmTimer) return;
     A.bgmName = name;
+    if (!A.ctx || !name || A.bgmHold || !A.enabled) { if (A.bgmHold || !A.enabled || !name) { if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; } } return; }
+    const M = TS.Music, scene = M && M.SCENES && M.SCENES[A.eventBgm || name];
+    if (scene) {
+      if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; }
+      const cur = M.current;
+      if (cur && cur.bgm && cur.id === scene.song && !cur.done) return;   // 同じ曲は最初から流し直さない
+      if (scene.once) {
+        if (A.fanfareDone) { stopSceneMusic(0.6); return; }
+        A.fanfareDone = true;
+      }
+      M.play(scene.song, { bgm: true, fadeOut: 0.6, fadeIn: cur && cur.bgm ? 0.4 : 0 });
+      return;
+    }
+    stopSceneMusic(0.6);
+    if (A.bgmTimer && !force && A.oldBgm === name) return;
     if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; }
-    if (!A.ctx || !name || A.bgmHold) return;
+    A.oldBgm = name;
     const B = BGM[name];
+    if (!B) return;
     A.step = 0;
     A.nextTime = A.ctx.currentTime + 0.1;
     A.bgmTimer = setInterval(() => {

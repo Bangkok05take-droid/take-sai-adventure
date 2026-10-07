@@ -31,7 +31,8 @@
     applyVolumes();
     // アプリが裏に回ったら音楽の試聴を止め、音を一時停止。戻ったら再開（重ならない）
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { if (TS.Music) TS.Music.stop(0.05); AU.suspend(); if (UI.onMusicHidden) UI.onMusicHidden(); }
+      // 試聴は止める。場面の曲は音の処理ごと一時停止し、戻ったら続きから（再開できなければ次のタップで再開）
+      if (document.hidden) { if (TS.Music && TS.Music.current && !TS.Music.current.bgm) TS.Music.stop(0.05); AU.suspend(); if (UI.onMusicHidden) UI.onMusicHidden(); }
       else AU.resume();
     });
     applyFxSetting();
@@ -54,7 +55,8 @@
     applyFxSetting();
     UI.screen = name;
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === 'screen-' + name);
-    AU.playBgm(name === 'dungeon' ? (UI.S.run && G.F(UI.S.run).boss ? 'boss' : 'dungeon') : 'village');
+    // 場面の曲（同じ曲が流れていれば続ける）。タイトルはファンファーレを1回だけ、ボスの階は以前のボス曲
+    AU.playBgm(name === 'dungeon' ? (UI.S.run && G.F(UI.S.run).boss ? 'boss' : 'dungeon') : name === 'title' ? 'title' : 'village');
     if (name === 'village') { updateVillageHud(); resetWalker(); }
     if (name === 'dungeon') updateHud();
   }
@@ -460,9 +462,11 @@
     if (fxs) UI.S.settings.fx = fxs;
     UI.started = true;
     save();
+    AU.startEventBgm('yanai');   // 冒頭：師匠ヤナイが封印する場面はヤナイのテーマ
     showScreen('village');
     talk(D.STORY.intro.concat([['sai', 'おにぎりは無料で持たせるね。武器は遺跡で拾えるし、お金がたまったらお店でも買えるよ。危なくなったら帰還の巻物で帰ってきて！']]), () => {
       UI.S.village.seenIntro = true; UI.S.village.story.introDone = true; save();
+      AU.endEventBgm();
       showHelp(() => info('はじめの一歩', '<p>下の<b>「遺跡へ出発」</b>から探索に出かけよう。</p><p class="note">はじめは素手です。出発前にサイの店で<b>旅人のおにぎりを無料で借りられます</b>。武器や盾は遺跡で拾えます。</p>'));
     });
   }
@@ -554,7 +558,8 @@
   function statueTalk() {
     const L = D.STORY.yanaiMemories || [];
     UI.statueN = ((UI.statueN || 0) + 1) % Math.max(1, L.length);
-    talk([['narration', 'マスターヤナイの像。村を守った師匠をしのんで、みんなで建てた。'], L[UI.statueN] || ['yanai', '……']], null, { skip: false });
+    AU.startEventBgm('yanai');   // 記念像の言葉はヤナイのテーマで。閉じたら村の曲へ
+    talk([['narration', 'マスターヤナイの像。村を守った師匠をしのんで、みんなで建てた。'], L[UI.statueN] || ['yanai', '……']], () => AU.endEventBgm(), { skip: false });
   }
   function updateVillageHud() {
     const V = UI.S.village;
@@ -1897,7 +1902,8 @@
     const html = recs.map((r, i) => i < st.records
       ? `<details${i === st.records - 1 ? ' open' : ''}><summary><b>${esc(r.title)}</b></summary><p>${esc(r.text)}</p></details>`
       : `<p class="note">？？？（章を進めると読める）</p>`).join('');
-    modal({ title: 'マスターヤナイの記録', right: `${Math.min(st.records, recs.length)}/${recs.length}`, html, buttons: [{ label: '閉じる', cls: 'primary' }] });
+    AU.startEventBgm('yanai');   // ヤナイの記録を読む間はヤナイのテーマ
+    modal({ title: 'マスターヤナイの記録', right: `${Math.min(st.records, recs.length)}/${recs.length}`, html, buttons: [{ label: '閉じる', cls: 'primary' }], onClose: () => AU.endEventBgm() });
   }
 
   // ================= 探索の終了 =================
@@ -1975,7 +1981,7 @@
   }
 
   // テスト用に一部を公開
-  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save, finalCutscene, openFinalPrep, showStoryPending, showRecords, updateVillageHud };
+  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save, finalCutscene, openFinalPrep, showStoryPending, showRecords, updateVillageHud, statueTalk };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(globalThis.TS = globalThis.TS || {});
