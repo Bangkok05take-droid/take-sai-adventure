@@ -42,7 +42,7 @@ const fs = require('fs'), path = require('path'), OUT = path.join(__dirname, '..
     const ids = Object.keys(D.ITEMS);
     for (const id of ids) { const d = D.ITEMS[id], key = d.icon + ':' + (d.tint || ''), a = SP.art.items[key]; const fl = SP.iconFor(d);
       const bid = (TS.ASSETS.items.byId || {})[id], b = SP.art.itemsById && SP.art.itemsById[id];
-      info.items[id] = { key, art: !!((b && b.list) || (a && a.list)), file: bid ? 'items-v2/' + bid : (TS.ASSETS.items.map[key] || null), floorW: fl.width, floorH: fl.height }; }
+      info.items[id] = { key, art: !!((b && b.list) || (a && a.list)), file: bid ? (bid.includes('/') ? bid.replace(/^assets\//, '') : 'items-v2/' + bid) : (TS.ASSETS.items.map[key] || null), floorW: fl.width, floorH: fl.height }; }
     const TYPE = { weapon: '武器', shield: '盾', heal: '回復', food: '食料', sleep: '補助', staff: '杖', warp: '補助', slow: '補助', fire: '巻物', cure: '回復', return: '帰還', charm: '護符', clear: '補助', sense: '巻物', map: '巻物', treasure: 'お宝', material: '素材', orb: '大切な物' };
     const bid2 = (id) => !!(TS.ASSETS.items.byId || {})[id];
     const loadImg = (src) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = src; });

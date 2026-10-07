@@ -48,14 +48,14 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await shot('01_title');
   });
 
-  await test('追加の道具の絵18種（assets/items-v2）が読み込まれ、一覧・床の表示で使われる', async () => {
+  await test('追加の道具の絵22種（assets/items-v2・assets/accessories）が読み込まれ、一覧・床の表示で使われる', async () => {
     await p.waitForFunction(() => TS.Sprites.art.ready, null, { timeout: 5000 });
     const r = await p.evaluate(() => {
       const SP = TS.Sprites, D = TS.Data, ids = Object.keys(TS.ASSETS.items.byId);
       return { n: ids.length, bad: ids.filter((id) => { const e = SP.art.itemsById[id] || {};
         return !D.ITEMS[id] || !e.list || e.list.width !== 48 || !e.floor || e.floor.width !== 32 || SP.iconFor(D.ITEMS[id]) !== e.floor || !/^data:image\/png/.test(SP.iconURL(D.ITEMS[id])); }) };
     });
-    eq2(r.n, 18, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
+    eq2(r.n, 22, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
   });
 
   await test('はじめから → 会話・説明 → 村', async () => {

@@ -764,31 +764,31 @@
   },
   "poison_ring": {
    "key": "ring:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "accessories/poison_ring",
+   "floorW": 32,
+   "floorH": 32
   },
   "purse_charm": {
    "key": "purse:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "accessories/money_guard",
+   "floorW": 32,
+   "floorH": 32
   },
   "full_bangle": {
    "key": "bangle:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "accessories/hunger_bracelet",
+   "floorW": 32,
+   "floorH": 32
   },
   "life_necklace": {
    "key": "lifeneck:",
-   "art": false,
-   "file": null,
-   "floorW": 16,
-   "floorH": 16
+   "art": true,
+   "file": "accessories/revival_necklace",
+   "floorW": 32,
+   "floorH": 32
   },
   "wish_orb": {
    "key": "orb:",

@@ -1272,8 +1272,10 @@
     }
     for (const [id, name] of Object.entries(IT.byId || {})) {
       const e = SP.art.itemsById[id] = {};
-      load(IT.byIdDir + name + '.png', (img) => { e.list = toCanvas(img); });
-      load(IT.byIdDir + 'floor/' + name + '.png', (img) => { e.floor = toCanvas(img); });
+      // 値がフォルダ付きのパスならそのフォルダ、名前だけなら byIdDir。床用は同じフォルダの floor/
+      const cut = name.lastIndexOf('/'), dir = cut >= 0 ? name.slice(0, cut + 1) : IT.byIdDir, base = name.slice(cut + 1);
+      load(dir + base + '.png', (img) => { e.list = toCanvas(img); });
+      load(dir + 'floor/' + base + '.png', (img) => { e.floor = toCanvas(img); });
     }
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });

@@ -54,6 +54,9 @@
         jade_elephant: 'jade_elephant', golden_lotus: 'golden_lotus', bronze_bell: 'bronze_bell', sunken_crown: 'sunken_crown',
         giant_crystal: 'giant_crystal', prism_flower: 'prism_flower', golden_elephant: 'golden_elephant', dream_crown: 'dream_crown',
         guardian_gem: 'guardian_gem', river_pearl: 'river_pearl',   // 以前の版のお宝（今の冒険では手に入らない。持っている分の表示用）
+        // アクセサリー（assets/accessories/。値に「/」があるときはフォルダ付きのパス。床用は同じフォルダの floor/）
+        poison_ring: 'assets/accessories/poison_ring', purse_charm: 'assets/accessories/money_guard',
+        full_bangle: 'assets/accessories/hunger_bracelet', life_necklace: 'assets/accessories/revival_necklace',
       },
     },
     portraits: { take: null, sai: null, yanai: null, villager: null },

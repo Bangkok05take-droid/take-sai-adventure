@@ -1,13 +1,13 @@
-"""assets/items-v2/（道具の絵 48×48、追加分18種）から、床に置いたときの絵 32×32 を作る。
+"""道具の絵 48×48（assets/items-v2/ の18種、assets/accessories/ のアクセサリー4種）から、床に置いたときの絵 32×32 を作る。
 既存の床の絵（tools/extract-items.py の fit）と同じ方法：絵の部分だけを切り出し、色は面積平均・形は不透明度のしきい値で縮め、
 暗い輪郭を1ドット付けて中央に置く。元の48×48の絵は変更しない。
-使い方：python3 tools/make-items-v2-floor.py"""
-import os, glob
+使い方：python3 tools/make-items-v2-floor.py [フォルダ（既定は assets/items-v2）]。出力はそのフォルダの floor/"""
+import os, sys, glob
 import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'assets', 'items-v2')
+SRC = os.path.join(ROOT, sys.argv[1]) if len(sys.argv) > 1 else os.path.join(ROOT, 'assets', 'items-v2')
 OUT = os.path.join(SRC, 'floor')
 
 

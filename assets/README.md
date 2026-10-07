@@ -46,6 +46,8 @@
   - 直下の `○○.png`：一覧用 48×48（いただいた切り出し済みの絵をそのまま使用）。
   - `floor/○○.png`：床用 32×32（`python3 tools/make-items-v2-floor.py` で48×48から作る。`items/floor/` と同じ縮め方と輪郭）。
   - `js/assets.js` の `TS.ASSETS.items.byId`（キーは道具の内部ID）で登録。`items.map` より優先する。
+- `accessories/`（アクセサリー4種の絵、2026年10月）：直下が一覧用 48×48（いただいた絵そのまま）、`floor/` が床用 32×32（`python3 tools/make-items-v2-floor.py assets/accessories`）。
+  ファイル名と道具の内部IDは違う（`money_guard`＝`purse_charm`、`hunger_bracelet`＝`full_bangle`、`revival_necklace`＝`life_necklace`）。対応は `js/assets.js` の `items.byId`。
 - 使う画像の一覧とキーは `js/assets.js`。読み込めない画像は、コードで描いたドット絵に自動で戻る。
 
 ## まだ足りない素材（見本に無いもの）
