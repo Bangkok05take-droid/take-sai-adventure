@@ -75,7 +75,12 @@
       dir: 'assets/village/', propScale: 2 / 3,
       /* 街の床（2026年10月）：128×128＝32ドットの床4×4マス分の連続した模様。1マスに縮めず、地図のドット座標（128で割った余り）で
        * そのまま写すので、模様は世界に固定（カメラが動いてもずれない）。contrast：明暗を少し弱める割合（人物・建物を引き立てる） */
-      ground: { dir: 'assets/village/ground/', size: 128, textures: { sandstone: 0.72, brick: 0.72, grass: 0.8, earth: 0.8 } },
+      ground: { dir: 'assets/village/ground/', size: 128, textures: { sandstone: 0.72, brick: 0.72, grass: 0.8, earth: 0.8, water: 0.9 } },
+      /* 村の木・川・こもれびの家（2026年10月、assets/reference/community-nature-v1/ の完成素材を tools/extract-community.py で縮めた絵）。
+       * water（上の ground）：川の水面。256×256 を世界の座標で交互に反転して並べる（size の 128 ではなく絵の大きさで写す）。
+       * house：「村の発展」のテントに代わる「こもれびの家」（117×96）。階段の下の端が足元。名前は TS.Village.COMMUNITY_NAME。
+       * tree：ヤシに代わる白い花の広葉樹（64×56）。幹の根元が足元 */
+      community: { dir: 'assets/village/community/', names: ['house', 'tree'] },
       props: { sai_shop: [112, 222], yanai_statue: [48, 158], tree: [64, 126], flowerbed: [48, 62], market_stall: [64, 126], bench: [48, 62],
         // 施設の外観 v2（2026年10月）：サイの店と同じ 224×224・同じ倍率（2/3）なので、人物に対する扉の大きさがそろう
         blacksmith: [112, 222], eatery: [112, 222], warehouse: [112, 222], exhibition: [112, 222],

@@ -36,7 +36,9 @@
     // 倉庫：v2の絵は扉が中央。扉を入る位置 (16,14) の真上に置くので、絵の左端（麻袋）は足元の外の (14,…) に少しかかる。
     // 足元（通れないマス）は15〜18のまま：x13〜14 の通路（広場の下半分と上半分をつなぐ）を2マスあけておく
     L.fac.push({ id: 'storage', name: '倉庫', fp: [15, 11, 4, 3], at: [16, 14], face: 'up', built: true });
-    L.fac.push({ id: 'develop', name: '村の発展', fp: [1, 17, 4, 3], at: [6, 18], face: 'left', npc: 'mot', npcAt: [5, 18], built: true });
+    /* 村の発展（こもれびの家、2026年10月）：敷地は今までの4×3マス。入口の階段は x2 の下（20行の道）から上を向いて入る。
+     * もっちゃんは階段の左わきの縁側 (1,19)。港への道（20行）はあけておく。機能・名前（下のボタン・メニュー）は「村の発展」のまま。地図の名札は家の名前 */
+    L.fac.push({ id: 'develop', name: '村の発展', fp: [1, 17, 4, 3], at: [2, 20], face: 'up', npc: 'mot', npcAt: [1, 19], built: true });
     // 食堂：v2の絵は入口が左寄り。入口の前の道 (15,20) から上を向いて入る。ワーンは入口の左わき (14,19)
     L.fac.push({ id: 'diner', name: lv.diner ? '食堂' : '食堂（空き地）', fp: [15, 17, 4, 3], at: [15, 20], face: 'up', npc: 'waan', npcAt: [14, 19], built: lv.diner });
     /* 船着き場（港 v1）：桟橋は x10 の1列（板の上の (10,22)・(10,23) だけ歩ける）。小舟は桟橋の先の右に横付け。
@@ -82,7 +84,7 @@
     if (texCache[key] !== undefined) return texCache[key];
     const GA = TS.ASSETS && TS.ASSETS.village && TS.ASSETS.village.ground, cv = SP.art && SP.art.ground && SP.art.ground[name];
     if (!GA || !cv) return null;
-    const n = GA.size, d = cv.getContext('2d').getImageData(0, 0, n, n).data, k = GA.textures[name], dim = night ? 0.82 : 1;
+    const n = cv.width, d = cv.getContext('2d').getImageData(0, 0, n, n).data, k = GA.textures[name], dim = night ? 0.82 : 1;
     let mr = 0, mg = 0, mb = 0;
     for (let i = 0; i < n * n; i++) { mr += d[i * 4]; mg += d[i * 4 + 1]; mb += d[i * 4 + 2]; }
     mr /= n * n; mg /= n * n; mb /= n * n;
@@ -93,11 +95,21 @@
   }
   // 地図のドット (gx, gy) の色（128で割った余り＝4×4マスで1周）
   const texAt = (t, gx, gy) => t[(((gy % 128) + 128) % 128) * 128 + (((gx % 128) + 128) % 128)];
+  /* 水面（assets/village/ground/water.png、256×256）：世界の座標で、256ごとに左右・上下を交互に反転して並べる（512で1周）。
+   * 反転した2枚は同じ縁どうしで接するので、継ぎ目が出ない（同梱の river-renderer.js と同じ並べ方） */
+  const WATER_N = 256;
+  const waterAt = (t, gx, gy) => {
+    let u = ((gx % 512) + 512) % 512, v = ((gy % 512) + 512) % 512;
+    if (u >= WATER_N) u = 2 * WATER_N - 1 - u;
+    if (v >= WATER_N) v = 2 * WATER_N - 1 - v;
+    return t[v * WATER_N + u];
+  };
 
   function paintGround(lv, G, treeSpots) {
     const P = new SP.Pix(MW * T, MH * T);
     const night = lv.night;
     const TX = { sandstone: texTable('sandstone', night), brick: texTable('brick', night), grass: texTable('grass', night), earth: texTable('earth', night) };
+    const WT0 = texTable('water', night), WT = WT0 && WT0.length === WATER_N * WATER_N ? WT0 : null;   // 水面（読み込めなければ今までの水）
     const fillTex = (t, X, Y) => { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) P.set(X + x, Y + y, texAt(t, X + x, Y + y)); };
     const gb = night ? '#5a8a44' : C.grass;
     const at = (x, y) => (y >= 0 && y < MH && x >= 0 && x < MW ? G[y][x] : 'g');
@@ -151,8 +163,17 @@
         for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) P.set(X + x, Y + y, mix(texAt(TX.sandstone, X + x, Y + y), '#7a4a34', 0.32));
       } else if (k === 't') {
         for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) P.set(X + x, Y + y, sh('#9a5a3a', ((hash(X + x >> 3, Y + y >> 2, 4) & 7) - 3.5) * 0.03));
-      } else if (k === 'w' || k === 'd' || k === 'r') {
+      } else if ((k === 'w' || k === 'd' || k === 'r') && WT) {
+        // 水面の素材（川の中だけに描く）。手前の岸ぎわほど少しだけ深い色に、上の岸壁の下に薄い影
         for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+          const gx = X + x, gy = Y + y, depth = (gy - 22 * T) / (3 * T), top = gy - 22 * T;
+          let c = mix(waterAt(WT, gx, gy), night ? '#0e2a44' : '#0e5a78', depth * 0.18);
+          if (top < 14) c = mix(c, '#0a3a50', (14 - top) / 14 * 0.3);
+          P.set(gx, gy, c);
+        }
+      }
+      if (k === 'w' || k === 'd' || k === 'r') {
+        if (!WT) for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
           const gx = X + x, gy = Y + y, depth = (gy - 22 * T) / (3 * T);
           let c = mix(night ? '#2a7090' : '#3cc0d8', night ? '#163a5a' : '#1a78a8', Math.min(1, depth * 1.2));
           if ((hash(gx >> 1, gy, 6) & 31) === 0) c = sh(c, 0.25);
@@ -202,7 +223,7 @@
       if (G[24][tx] === 'w') for (let y = 0; y < 4; y++) P.set(x, 25 * T - 4 + y, y === 0 ? '#1a5a78' : sh(C.stone, -0.1 + y * 0.05));
     }
     // 水面の蓮の葉と花
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < (WT ? 8 : 26); i++) {   // 素材の水面のときは蓮を少しだけ残す
       const h = hash(i, 7, 41), x = (h % (MW * T)), y = 22 * T + 14 + ((h >> 10) % 70), tx = x >> 5, ty = y >> 5;
       if (G[ty] && G[ty][tx] !== 'w') continue;
       const r = 4 + (h >> 20) % 3;
@@ -673,11 +694,14 @@
   }
   /* 子供と猫（いつも同じ3人・3匹。決まった番号で作るので、村を出入りしても増えない）。
    * 立つマスは通れない（大人と同じ）。入口・通り道は2マス以上あける。猫の黒は花壇の前の2マスを行き来する */
+  /* 2026年10月：3人とも、こもれびの家（村の発展）の前と、もっちゃんのまわりへ（人数・絵・会話はそのまま）。
+   * 入口の階段の前 (2,20)、港への道（20〜21行）、赤い橋 (3,21)、広場の通り道はあけておく（3人とも家の敷地か、広場の端に立つ） */
   VL.KIDS = [
-    { id: 'play', x: 12, y: 11, face: 'front' },     // 広場の脇（像の右）
-    { id: 'book', x: 8, y: 11, face: 'front' },      // 木陰のベンチの横
-    { id: 'cat', x: 4, y: 14, face: 'left' },        // サイの店の近く（店先の猫のほうを向く）
+    { id: 'book', x: 3, y: 19, face: 'front' },      // 階段の右の縁側（ベンチのそば）
+    { id: 'cat', x: 4, y: 19, face: 'left' },        // 家の右の鉢植えのわき（もっちゃんのほうを向く）
+    { id: 'play', x: 5, y: 18, face: 'left' },       // 家の右の広場の端（家のほうを向く）
   ];
+  VL.COMMUNITY_NAME = 'こもれびの家';   // 村の発展の建物の名前（地図の名札）
   VL.CATS = [
     { id: 'ginger', x: 2, y: 14, pose: 'sit' },      // サイの店先
     { id: 'calico', x: 5, y: 13, pose: 'sleep' },    // 店の横で眠る
@@ -801,9 +825,13 @@
       // 素材の絵の施設（サイの店・鍛冶屋・食堂・倉庫・展示室）：絵の入口の中心を、入る位置のマスの真上に置く。
       // 建っていない施設は今までの空き地の絵。読み込めなければコードで描いた建物（二重には描かない）
       const artName = f.built && ART_OF[f.id];
-      const o = artName && facilityArt(artName, f.id === 'shop' ? f.npcAt[0] : f.at[0], (y + h) * T);
+      const house = f.id === 'develop' && SP.art.village.com_house;
+      // こもれびの家：階段の中心を、入る位置のマス（at）の中央に。階段の下の端が敷地の下の端。名札は屋根の上に家の名前
+      const o = house ? { img: house, x: f.at[0] * T + 16 - Math.round(house.width / 2), y: (y + h) * T - house.height, w: house.width, h: house.height, sortY: (y + h) * T - 2 }
+        : artName && facilityArt(artName, f.id === 'shop' ? f.npcAt[0] : f.at[0], (y + h) * T);
       if (o) add(o); else add(building(f.built ? kindOf[f.id] : 'lot', f.fp, lv));
       block(x, y, w, h);
+      if (house) { labels.push([VL.COMMUNITY_NAME, f.at[0] * T + 16, (y + h) * T - house.height - 8]); continue; }
       labels.push([f.name, (x + w / 2) * T, y * T - (f.id === 'shop' || f.id === 'museum' ? 22 : 12)]);
     }
     // ヤナイの記念像
@@ -812,11 +840,15 @@
     const st = stArt ? Object.assign(stArt, { statueAt: null }) : statue(lv);
     add(st); block(9, 11, 2, 2); labels.push(['マスターヤナイの像', 10 * T, 11 * T - (stArt ? 52 : 70)]);
     // 木・ヤシ（道や入口をふさがない場所だけ）
+    // (0,17) のヤシは、こもれびの家の左の軒に重なるので、家の絵があるときは置かない
     const trees = [['palm', 0, 4]].concat(lv.ruinArt ? [] : [['round', 6, 4], ['round', 13, 4]], [['palm', 19, 4]],   // 石段の両わきの木は、遺跡の壁（木の根が絡む壁・崩れた壁）に置きかえ
       [ ['palm', 0, 8], ['palm', 19, 8], ['round', 5, 11], ['flower', 19, 12],
-      ['palm', 0, 17], ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 5, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]]);
+      ...(hasArt('com_house') ? [] : [['palm', 0, 17]]), ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 5, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]]);
     // 丸い木は素材の木（当たりは幹のマスだけ。樹冠は奥を歩く人の手前に重なる）
-    for (const [k, x, y] of trees) { if (!WALK[G[y][x]] || G[y][x] === 'f') { add((k === 'round' && artProp('tree', x * T + 16, (y + 1) * T - 1)) || tree(k, x, y, lv.night)); solid[y * MW + x] = 1; } }
+    // ヤシは白い花の広葉樹の絵に（幹の根元をマスの足元に。2マス幅の樹冠は左右に半マスずつはみ出す）
+    const comTree = SP.art.village.com_tree;
+    const palmArt = (x, y) => comTree && { img: comTree, x: x * T + 16 - comTree.width / 2, y: (y + 1) * T - 1 - comTree.height, w: comTree.width, h: comTree.height, sortY: (y + 1) * T - 1 };
+    for (const [k, x, y] of trees) { if (!WALK[G[y][x]] || G[y][x] === 'f') { add((k === 'round' && artProp('tree', x * T + 16, (y + 1) * T - 1)) || (k === 'palm' && palmArt(x, y)) || tree(k, x, y, lv.night)); solid[y * MW + x] = 1; } }
     // 小物：植木鉢・樽・灯り（道のわき）
     const props = new SP.Pix(MW * T, MH * T);
     const propAt = [];

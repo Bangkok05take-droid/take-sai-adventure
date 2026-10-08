@@ -1313,6 +1313,7 @@
     for (const [size, src] of Object.entries(A.chest || {})) if (src) load(src, (img) => { SP.art.chest[size] = toCanvas(img); });
     // 村の素材：建物・小物、子供（正面・右・背面）、猫（座る・右向き・眠る）。右向きは反転して左向きも作る
     const VA = A.village;
+    if (VA && VA.community) for (const n of VA.community.names) load(VA.community.dir + n + '.png', (img) => { SP.art.village['com_' + n] = toCanvas(img); });
     if (VA && VA.decor) for (const n of VA.decor.names) load(VA.decor.dir + n + '.png', (img) => { SP.art.village['deco_' + n] = toCanvas(img); });
     if (VA && VA.ruins) for (const n of VA.ruins.names) load(VA.ruins.dir + n + '.png', (img) => { SP.art.village['ruin_' + n] = toCanvas(img); });
     if (VA && VA.ground) for (const n of Object.keys(VA.ground.textures)) load(VA.ground.dir + n + '.png', (img) => { SP.art.ground[n] = toCanvas(img); });

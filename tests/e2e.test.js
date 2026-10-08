@@ -177,6 +177,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     // 子供に話しかける（となりまで歩いて、短い会話）
     const lines = { play: 'きょうも冒険', book: '遺跡の本', cat: 'サイちゃんが大好き' };
     for (const id of ['cat', 'book', 'play']) {
+      // 子供はこもれびの家（村の発展）のまわり（2026年10月）。家の前の道（21行）まで来てから話しかける（カメラはたけを追う）
+      await p.evaluate((id) => { const c = TS.Village.KIDS.find((c) => c.id === id), w = TS.UI.walker; w.x = c.x; w.y = 21; w.path = []; w.moving = false; }, id);
+      await p.waitForTimeout(200);
       const pt = await hitPt(id, 'kid'); await tapAt(pt);
       const t = await talkText('kid ' + id + ' ' + JSON.stringify(pt));
       assert(t.includes(lines[id]), id + ': ' + t);

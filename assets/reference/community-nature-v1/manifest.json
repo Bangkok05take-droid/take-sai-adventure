@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "status": "Image assets ready; game integration not performed",
+  "assets": [
+    {
+      "file": "assets/community-house.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "anchor_normalized": [
+        0.5,
+        0.951
+      ],
+      "suggested_draw_width": 320
+    },
+    {
+      "file": "assets/flowering-tree.png",
+      "size": [
+        1312,
+        1199
+      ],
+      "mode": "RGBA",
+      "anchor_normalized": [
+        0.5,
+        0.96
+      ],
+      "suggested_draw_width": 112
+    },
+    {
+      "file": "assets/river-water.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGB",
+      "anchor_normalized": null,
+      "suggested_draw_width": 256
+    }
+  ]
+}
