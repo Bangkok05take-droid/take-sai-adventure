@@ -1235,12 +1235,19 @@
     const byId = SP.art.itemsById[idOf(def)];
     const key = def.icon + (def.tint || '') + (a ? (byId && byId.list === a ? '@id:' + idOf(def) : '@art') : '');
     if (!urlCache[key]) {
-      // 一覧用は96×96（見本の絵48×48は2倍、コードで描いた32×32は3倍。どちらも整数倍で拡大）
-      const c = document.createElement('canvas');
-      c.width = c.height = 96;
-      const g = c.getContext('2d');
-      g.imageSmoothingEnabled = false;
-      g.drawImage(a || SP.iconFor(def), 0, 0, 96, 96);
+      const c = document.createElement('canvas'), src = a || SP.iconFor(def);
+      if (src.width > 96 || src.height > 96) {
+        // 細かい絵（ボスの報酬の装備、128×128）：縮めずにそのままの大きさで、縦横比を保って正方形の中央に置く（画面では表示の大きさへなめらかに縮む）
+        const n = Math.max(src.width, src.height);
+        c.width = c.height = n;
+        c.getContext('2d').drawImage(src, Math.round((n - src.width) / 2), Math.round((n - src.height) / 2));
+      } else {
+        // 一覧用は96×96（見本の絵48×48は2倍、コードで描いた32×32は3倍。どちらも整数倍で拡大）
+        c.width = c.height = 96;
+        const g = c.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        g.drawImage(src, 0, 0, 96, 96);
+      }
       urlCache[key] = c.toDataURL();
     }
     return urlCache[key];

@@ -229,7 +229,7 @@ body.calm .hpwrap.hurt .bar { animation: none; }
 .tabs button.on { background: linear-gradient(#1f5566, #174654); color: #fff; border-color: var(--accent); }
 .list { display: flex; flex-direction: column; gap: 6px; }
 .row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; min-height: 56px; background: linear-gradient(#143a47, #10303b); border: 1px solid var(--line-soft); border-radius: 10px; text-align: left; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); width: 100%; }
-.row img { width: 36px; height: 36px; image-rendering: auto; flex: none; background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 2px; }
+.row img { width: 36px; height: 36px; object-fit: contain; image-rendering: auto; flex: none; background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 2px; }
 .row .nm { flex: 1; font-weight: bold; min-width: 0; }
 .row .nm small { display: block; font-weight: normal; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .pr { color: var(--accent); font-weight: bold; white-space: nowrap; }
@@ -240,7 +240,7 @@ body.calm .hpwrap.hurt .bar { animation: none; }
 .warnbox { background: rgba(110, 24, 18, 0.55); border: 1px solid #ff8a6a; border-radius: 10px; padding: 8px 10px; margin: 6px 0; font-size: 15px; }
 .okbox { background: rgba(20, 80, 50, 0.55); border: 1px solid #7ed957; border-radius: 10px; padding: 8px 10px; margin: 6px 0; font-size: 15px; }
 .detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.detail-head img { width: 56px; height: 56px; image-rendering: auto; padding: 4px; background: rgba(0, 0, 0, 0.3); border-radius: 10px; border: 1px solid var(--line-soft); }
+.detail-head img { width: 56px; height: 56px; object-fit: contain; image-rendering: auto; padding: 4px; background: rgba(0, 0, 0, 0.3); border-radius: 10px; border: 1px solid var(--line-soft); }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 15px; margin-top: 6px; }
 .kv span:nth-child(odd) { color: var(--muted); }
 .dir-pick { display: grid; grid-template-columns: repeat(3, 76px); grid-template-rows: repeat(3, 76px); gap: 6px; justify-content: center; margin: 6px auto; }
@@ -339,3 +339,10 @@ details summary { cursor: pointer; margin: 4px 0; }
 .movie-msg { position: absolute; left: 50%; top: calc(16px + env(safe-area-inset-top)); transform: translateX(-50%); max-width: calc(100% - 32px); color: #fff4dc;
   background: rgba(10, 32, 40, 0.86); border: 1px solid rgba(226, 178, 60, 0.7); padding: 8px 14px; border-radius: 8px; font-size: 14px; text-align: center; }
 .movie [hidden] { display: none; }
+
+/* ボスの報酬の一覧（章クリア・倉庫へ届けたお知らせ）。絵は持ち物と同じ（縦横比を保つ） */
+.rewards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin: 6px 0 10px; }
+.reward { display: flex; align-items: center; gap: 8px; padding: 6px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--line-soft); border-radius: 8px; }
+.reward img { width: 48px; height: 48px; object-fit: contain; flex: none; }
+.reward span { display: flex; flex-direction: column; line-height: 1.25; }
+.reward small { opacity: 0.75; font-size: 12px; }

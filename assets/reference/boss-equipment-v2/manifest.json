@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "items": [
+    {
+      "asset_slug": "crocodine-axe",
+      "name": "クロコダインの斧",
+      "boss": "クロコダイン",
+      "category": "weapon",
+      "icon": "icons-128/crocodine-axe.png",
+      "stats": "preserve_existing_or_unresolved"
+    },
+    {
+      "asset_slug": "icefire-shield",
+      "name": "氷炎の盾",
+      "boss": "フレイザード",
+      "category": "shield",
+      "icon": "icons-128/icefire-shield.png",
+      "stats": "preserve_existing_or_unresolved"
+    },
+    {
+      "asset_slug": "phantom-shield",
+      "name": "ファントムシールド",
+      "boss": "キルバーン",
+      "category": "shield",
+      "icon": "icons-128/phantom-shield.png",
+      "stats": "preserve_existing_or_unresolved"
+    },
+    {
+      "asset_slug": "phantom-mask",
+      "name": "ファントムマスク",
+      "boss": "キルバーン",
+      "category": "accessory",
+      "icon": "icons-128/phantom-mask.png",
+      "stats": "preserve_existing_or_unresolved"
+    },
+    {
+      "asset_slug": "shinma-goryuken",
+      "name": "真魔剛竜剣",
+      "boss": "バラン",
+      "category": "weapon",
+      "icon": "icons-128/shinma-goryuken.png",
+      "stats": "preserve_existing_or_unresolved"
+    },
+    {
+      "asset_slug": "dragon-emblem",
+      "name": "竜の紋章",
+      "boss": "バラン",
+      "category": "accessory",
+      "icon": "icons-128/dragon-emblem.png",
+      "stats": "preserve_existing_or_unresolved"
+    },
+    {
+      "asset_slug": "great-demon-robe",
+      "name": "大魔王のローブ",
+      "boss": "大魔王バーン",
+      "category": "accessory",
+      "icon": "icons-128/great-demon-robe.png",
+      "stats": "preserve_existing_or_unresolved"
+    }
+  ],
+  "note": "Complete seven-item set; revised dragon emblem, sword and robe included."
+}

@@ -54,7 +54,12 @@
         jade_elephant: 'jade_elephant', golden_lotus: 'golden_lotus', bronze_bell: 'bronze_bell', sunken_crown: 'sunken_crown',
         giant_crystal: 'giant_crystal', prism_flower: 'prism_flower', golden_elephant: 'golden_elephant', dream_crown: 'dream_crown',
         // ボスの報酬（見本 assets/reference/boss-treasures.png から tools/extract-boss-treasures.py で作る）
-        croc_tear: 'croc_tear', iceflame_crystal: 'iceflame_crystal', phantom_shield: 'phantom_shield', shinma_sword: 'shinma_sword',
+        croc_tear: 'croc_tear', iceflame_crystal: 'iceflame_crystal',
+        // ボスの報酬の装備7種（2026年10月、ZIP take-sai-boss-equipment-v2-complete。元の素材は assets/reference/boss-equipment-v2/）。
+        // 一覧・装備・報酬の画面は assets/items-boss/（icons-128、128×128）、床は assets/items-boss/floor/（icons-64）。描き直しはしていない
+        croc_axe: 'assets/items-boss/crocodine-axe', iceflame_shield: 'assets/items-boss/icefire-shield',
+        phantom_shield: 'assets/items-boss/phantom-shield', phantom_mask: 'assets/items-boss/phantom-mask',
+        shinma_sword: 'assets/items-boss/shinma-goryuken', dragon_crest: 'assets/items-boss/dragon-emblem', demon_robe: 'assets/items-boss/great-demon-robe',
         // アクセサリー（assets/accessories/。値に「/」があるときはフォルダ付きのパス。床用は同じフォルダの floor/）
         poison_ring: 'assets/accessories/poison_ring', purse_charm: 'assets/accessories/money_guard',
         full_bangle: 'assets/accessories/hunger_bracelet', life_necklace: 'assets/accessories/revival_necklace',

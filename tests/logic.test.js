@@ -1786,7 +1786,7 @@ test('床のお宝は宝箱の絵（素材は assets/chest/）。お金・素材
   eq(A.chest[32], 'assets/chest/chest_32.png'); eq(A.chest[48], 'assets/chest/chest_48.png');
   const fs_ = require('fs'), path = require('path'), root = path.join(__dirname, '..');
   for (const f of Object.values(A.chest)) assert(fs_.existsSync(path.join(root, f)), f);
-  for (const id of ['croc_tear', 'iceflame_crystal', 'phantom_shield', 'shinma_sword']) {
+  for (const id of ['croc_tear', 'iceflame_crystal']) {   // 盾・剣の絵は、ボスの報酬の装備7種（assets/items-boss/）へ移った
     eq(A.items.byId[id], id);
     assert(fs_.existsSync(path.join(root, A.items.byIdDir, id + '.png')) && fs_.existsSync(path.join(root, A.items.byIdDir, 'floor', id + '.png')), id + ' art');
   }
@@ -2322,6 +2322,64 @@ test('登場ムービー：クロコダインだけ。初めての入室で pend
   // ほかのボスにはムービーがない
   for (const ch of [2, 3, 4, 5]) { const T = toBossFloor(ch, 1410 + ch), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
     const rr = G.act(T, { type: 'move', dir: 'right' }); assert(!rr.events.some((e) => e.t === 'bossIntro') && T.run.bossFight.engaged && !T.run.bossFight.intro, 'no intro ch' + ch); }
+});
+
+console.log('ボスの報酬の装備7種（2026年10月・絵 v2）');
+test('ボスの報酬の装備7種：既存のIDのまま（重複なし）・分類・絵（128と床用64）・ボスとの対応・能力値はそのまま', () => {
+  require('../js/assets.js'); const A = TS.ASSETS, fs_ = require('fs'), path = require('path'), root = path.join(__dirname, '..');
+  const want = { croc_axe: ['weapon', 'crocodine-axe', 1], iceflame_shield: ['shield', 'icefire-shield', 2], phantom_shield: ['shield', 'phantom-shield', 3], phantom_mask: ['accessory', 'phantom-mask', 3],
+    shinma_sword: ['weapon', 'shinma-goryuken', 4], dragon_crest: ['accessory', 'dragon-emblem', 4], demon_robe: ['accessory', 'great-demon-robe', 6] };
+  const png = (f) => { const b = fs_.readFileSync(path.join(root, f)); return [b.readUInt32BE(16), b.readUInt32BE(20), b[25]]; };
+  for (const [id, [type, file, ch]] of Object.entries(want)) {
+    eq(D.ITEMS[id].type, type, id);
+    eq(A.items.byId[id], 'assets/items-boss/' + file, id + ' art');
+    eq(JSON.stringify(png('assets/items-boss/' + file + '.png')), JSON.stringify([128, 128, 6]), id + ' 128 RGBA');
+    eq(JSON.stringify(png('assets/items-boss/floor/' + file + '.png')), JSON.stringify([64, 64, 6]), id + ' 64 RGBA');
+    assert(D.CHAPTERS[ch].reward.items.includes(id), id + ' reward of chapter ' + ch);
+  }
+  // 同じ名前の道具は1つだけ（竜の紋章・龍の紋章も1つ）
+  const names = Object.values(D.ITEMS).map((d) => d.name);
+  for (const id of Object.keys(want)) eq(names.filter((n) => n === D.ITEMS[id].name).length, 1, 'unique ' + id);
+  eq(D.ITEMS.dragon_crest.name, '竜の紋章'); assert(!names.includes('龍の紋章'));
+  // 能力値・効果は前回の見直しのまま
+  eq(D.ITEMS.croc_axe.atk, 16); eq(D.ITEMS.iceflame_shield.def, 15); eq(D.ITEMS.phantom_shield.def, 17); eq(D.ITEMS.shinma_sword.atk, 24);
+  eq(D.ITEMS.phantom_mask.acc, 'hunger'); eq(D.ITEMS.phantom_mask.def, 5); eq(D.ITEMS.dragon_crest.acc, 'revive'); eq(D.ITEMS.dragon_crest.atk, 5); eq(D.ITEMS.demon_robe.acc, 'deep');
+  // 武器2種・盾2種・アクセサリー3種がそれぞれの枠に装備できる（アクセサリーは1枠）
+  const S = newRun(1501);
+  for (const id of Object.keys(want)) { const it = G.makeItem(S, id); S.run.bag.push(it); G.act(S, { type: 'equip', uid: it.uid }); eq(G.equipped(S.run.bag, want[id][0]).id, id, 'equip ' + id); }
+});
+test('ボスの報酬：同じ撃破で1回だけ。持ち物がいっぱいで拾えずに帰っても、倒れても、倉庫へ1回だけ届ける（知らせは一度）', () => {
+  for (const [ch, ids] of [[3, ['phantom_shield', 'phantom_mask']], [4, ['shinma_sword', 'dragon_crest']]]) {
+    const S = toBossFloor(ch, 1510 + ch), run = S.run;
+    while (run.bag.length < D.BAG_SIZE) run.bag.push(G.makeItem(S, 'herb'));
+    const st0 = S.village.storage.length;
+    defeatBoss(S);
+    const onFloor = run.floorItems.filter((f) => f.item && f.item.bossReward).map((f) => f.item.id).sort();
+    eq(JSON.stringify(onFloor), JSON.stringify(ids.slice().sort()), 'both rewards ch' + ch);
+    // 読み込み直しても増えない
+    const L = SV.deserialize(SV.serialize(S));
+    eq(L.run.floorItems.filter((f) => f.item && f.item.bossReward).length, 2, 'no dup after reload');
+    // いっぱいで拾えない → 帰還口で帰る
+    L.run.enemies = []; const f0 = L.run.floorItems.find((f) => f.item && f.item.bossReward); L.run.player.x = f0.x; L.run.player.y = f0.y; G.act(L, { type: 'pickup' });
+    eq(L.run.bag.length, D.BAG_SIZE, 'bag full');
+    L.run.player.x = L.run.portal.x; L.run.player.y = L.run.portal.y; G.act(L, { type: 'returnHome' });
+    const res = G.finishRun(L);
+    eq(JSON.stringify(res.rewardToStorage.slice().sort()), JSON.stringify(ids.slice().sort()));
+    for (const id of ids) eq(L.village.storage.filter((i) => i.id === id).length, 1, 'stored ' + id);
+    assert(L.village.storage.every((i) => !i.bossReward) && L.village.bag.every((i) => !i.bossReward), 'flag removed');
+    eq(JSON.stringify(L.village.rewardNotice.slice().sort()), JSON.stringify(ids.slice().sort()));
+    eq(L.village.storage.length, st0 + 2);
+  }
+  // 拾ってから帰る：倉庫へは届けない（二重にしない）
+  const S = toBossFloor(1, 1520), run = S.run; defeatBoss(S); run.enemies = [];
+  for (const f of run.floorItems.slice()) if (f.item && f.item.bossReward) { run.player.x = f.x; run.player.y = f.y; G.act(S, { type: 'pickup' }); }
+  run.player.x = run.portal.x; run.player.y = run.portal.y; G.act(S, { type: 'returnHome' });
+  const r = G.finishRun(S); assert(!r.rewardToStorage && !S.village.rewardNotice);
+  for (const id of ['croc_tear', 'croc_axe']) eq(S.village.bag.concat(S.village.storage).filter((i) => i.id === id).length, 1, 'once ' + id);
+  // 倒れた：持ち物は失うが、床に残した報酬は倉庫へ
+  const T = toBossFloor(2, 1521); defeatBoss(T); T.run.player.hp = 1; T.run.enemies = [];
+  T.run.over = true; T.run.result = { type: 'dead', floor: T.run.floor };
+  G.finishRun(T); for (const id of ['iceflame_shield', 'iceflame_crystal']) eq(T.village.storage.filter((i) => i.id === id).length, 1, 'dead keeps ' + id);
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

@@ -49,14 +49,15 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await shot('01_title');
   });
 
-  await test('追加の道具の絵24種（assets/items-v2・assets/accessories。ボスの報酬4種を含む）が読み込まれ、一覧・床の表示で使われる', async () => {
+  await test('追加の道具の絵29種（assets/items-v2・assets/accessories・assets/items-boss。ボスの報酬の装備7種は128／床64）が読み込まれ、一覧・床の表示で使われる', async () => {
     await p.waitForFunction(() => TS.Sprites.art.ready, null, { timeout: 5000 });
     const r = await p.evaluate(() => {
       const SP = TS.Sprites, D = TS.Data, ids = Object.keys(TS.ASSETS.items.byId);
       return { n: ids.length, bad: ids.filter((id) => { const e = SP.art.itemsById[id] || {};
-        return !D.ITEMS[id] || !e.list || e.list.width !== 48 || !e.floor || e.floor.width !== 32 || SP.iconFor(D.ITEMS[id]) !== e.floor || !/^data:image\/png/.test(SP.iconURL(D.ITEMS[id])); }) };
+        const boss = /^assets\/items-boss\//.test(TS.ASSETS.items.byId[id]), lw = boss ? 128 : 48, fw = boss ? 64 : 32;
+        return !D.ITEMS[id] || !e.list || e.list.width !== lw || !e.floor || e.floor.width !== fw || SP.iconFor(D.ITEMS[id]) !== e.floor || !/^data:image\/png/.test(SP.iconURL(D.ITEMS[id])); }) };
     });
-    eq2(r.n, 24, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
+    eq2(r.n, 29, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
     // 床のお金（G）：32px用・48px用の金貨の絵（お宝の古金貨とは別）。描く大きさに合うほうを使う
     const gold = await p.evaluate(() => { const SP = TS.Sprites; return { w32: SP.art.gold[32] && SP.art.gold[32].width, w48: SP.art.gold[48] && SP.art.gold[48].width,
       small: SP.goldIcon(22) === SP.art.gold[32], big: SP.goldIcon(44) === SP.art.gold[48], notCoin: SP.goldIcon(44) !== SP.iconFor(TS.Data.ITEMS.old_coin) }; });
@@ -938,6 +939,14 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(200);
     const ch = await p.evaluate(() => ({ ch: TS.UI.S.village.story.chapter, txt: document.getElementById('v-chapter').textContent, pend: TS.UI.S.village.story.pending }));
     assert(ch.ch === 2 && ch.txt.includes('第2章') && ch.txt.includes('フレイザード') && !ch.pend, JSON.stringify(ch));
+    // 拾わずに帰ったボスの報酬（涙と斧）は倉庫へ届き、章クリアのあとに一度だけ知らせる（絵つき）
+    for (let i = 0; i < 20 && !(await p.$('.reward')); i++) await p.waitForTimeout(80);
+    const nt = await p.evaluate(() => ({ txt: document.querySelector('#modal-root').textContent, ids: [...document.querySelectorAll('.reward')].map((r) => r.dataset.id).sort(),
+      st: TS.UI.S.village.storage.map((i) => i.id), notice: TS.UI.S.village.rewardNotice }));
+    assert(nt.txt.includes('倉庫に届けました') && nt.ids.join() === 'croc_axe,croc_tear' && nt.st.includes('croc_axe') && nt.st.includes('croc_tear') && !nt.notice, 'rewards to storage ' + JSON.stringify(nt));
+    await shot('18b_rewards_to_storage');
+    await p.tap('.modal-buttons button'); await p.waitForTimeout(200);
+    assert(await p.evaluate(() => !TS.UI.modals.length), 'notice closed');
   });
 
   await test('最終章：35階で大魔王バーン→静寂と変身の演出→準備画面（時間停止）→「最終決戦へ」→真大魔王バーン→帰還口→エンディング', async () => {

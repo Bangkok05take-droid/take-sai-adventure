@@ -1899,13 +1899,24 @@
       V.giftNotice = null; save();
       if (names.length) { info('村からのお知らせ', `<p>ボスを倒した記念の品${names.join('と')}が見つかったので、<b>倉庫</b>に届けました。</p>${V_hasTreasure ? '<p class="note">お宝は展示室に寄贈することもできます。</p>' : ''}`); return true; }
     }
+    // 報酬の一覧（絵・名前・種類。持ち物・装備と同じ絵）
+    const KIND = { weapon: '武器', shield: '盾', accessory: 'アクセサリー', treasure: 'お宝' };
+    const rewardList = (ids) => '<div class="rewards">' + ids.filter((id) => D.ITEMS[id]).map((id) => { const d = D.ITEMS[id];
+      return `<div class="reward" data-id="${id}"><img src="${SP.iconURL(d)}" alt=""><span><b>${esc(d.name)}</b><small>${KIND[d.type] || '道具'}</small></span></div>`; }).join('') + '</div>';
+    if (!pend && V.rewardNotice && !UI.modals.length) {
+      // 持ちきれずに床に残したボスの報酬を、倉庫へ届けたお知らせ（一度だけ）
+      const ids = V.rewardNotice.slice(), names = ids.filter((id) => D.ITEMS[id]).map((id) => '<b>' + esc(D.ITEMS[id].name) + '</b>');
+      V.rewardNotice = null; save();
+      if (names.length) { info('村からのお知らせ', `<p>ボスの部屋に残っていた報酬${names.join('と')}を、<b>倉庫</b>に届けました。</p>` + rewardList(ids)); return true; }
+    }
     if (!pend || UI.modals.length) return false;
-    const finish = () => { st.pending = null; save(); updateVillageHud(); };
+    const finish = () => { st.pending = null; save(); updateVillageHud(); if (V.rewardNotice || V.giftNotice) setTimeout(showStoryPending, 300); };   // 章のできごとのあとに、届け物のお知らせ
     if (pend.type === 'chapterClear') {
       const ch = pend.chapter, C = D.CHAPTERS[ch], next = D.CHAPTERS[ch + 1];
       const rec = D.STORY.records[ch];
       talk(D.STORY.chapterClear[ch] || [], () => {
         modal({ title: C.name + ' クリア！', html: `<div class="ending"><p class="big-t">${esc(D.ENEMIES[C.boss].name)}を倒した！</p></div>
+          <p class="note">ボスの報酬（ボスの部屋に現れた品）</p>${rewardList(C.reward.items)}
           <div class="kv"><span>復興支援金</span><span>${pend.funds ? pend.funds + 'G（村の資金へ）' : '受け取り済み'}</span>
           <span>ヤナイの記録</span><span>${rec ? '「' + esc(rec.title) + '」が読めるようになった' : '-'}</span>
           <span>次の章</span><span>${next ? esc(next.name + '「' + next.title + '」') + '　目標：地下' + next.goal + '階' : '-'}</span></div>

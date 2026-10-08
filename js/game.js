@@ -571,7 +571,8 @@
     const drop = (id) => {
       const taken = run.floorItems.concat([run.player]);
       const pos = !taken.some((t) => t.x === e.x && t.y === e.y) ? { x: e.x, y: e.y } : DG.freeTile(run.map, run.rng, taken, room);
-      if (pos) run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id) });
+      // bossReward：拾わずに探索を終えても失わないための印（G.finishRun で倉庫へ届ける。拾った品・村の品からは外す）
+      if (pos) run.floorItems.push({ x: pos.x, y: pos.y, item: Object.assign(G.makeItem(S, id), { bossReward: true }) });
     };
     const openPortal = () => {
       run.portal = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room);
@@ -1669,6 +1670,17 @@
     const run = S.run, V = S.village;
     if (!run || !run.over) return null;
     const res = Object.assign({}, run.result);
+    /* ボスの報酬を床に残したまま終わった（持ち物がいっぱいで拾えなかった・拾う前に帰った・倒れた）：
+     * 撃破は記録済みで二度と出ないので、倉庫へ届ける（倉庫がいっぱいでも届ける。村で一度だけ知らせる）。同じ品を二重には届けない */
+    const left = (run.floorItems || []).filter((f) => f.item && f.item.bossReward).map((f) => f.item);
+    for (const it of run.bag.concat(left)) delete it.bossReward;
+    if (left.length) {
+      V.storage = V.storage || [];
+      for (const it of left) V.storage.push(it);
+      run.floorItems = run.floorItems.filter((f) => !(f.item && left.includes(f.item)));
+      V.rewardNotice = (V.rewardNotice || []).concat(left.map((it) => it.id));
+      res.rewardToStorage = left.map((it) => it.id);
+    }
     if (res.type === 'dead') {
       V.bag = [];
       V.defeats++;
