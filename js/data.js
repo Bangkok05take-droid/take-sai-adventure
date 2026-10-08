@@ -118,8 +118,9 @@
       desc: '獣王クロコダインの大きな斧。重い一撃が魅力。第1章の報酬。' },
     iceflame_shield: { name: '氷炎の盾', type: 'shield', def: 15, sell: 560, icon: 'shield', tint: 'iceflame',
       desc: '半分が氷、半分が炎でできた盾。第2章の報酬。' },
-    phantom_shield: { name: 'ファントムシールド', type: 'shield', def: 17, sell: 620, icon: 'shield', tint: 'moon',
-      desc: '漆黒の盾。銀の縁と紫の宝石に、幻影の意匠が刻まれている。第3章の報酬。' },
+    // 2026年10月：「ファントムシールド」から「漆黒の盾」へ名前だけ変更（内部ID・能力値・絵はそのまま）
+    phantom_shield: { name: '漆黒の盾', type: 'shield', def: 17, sell: 620, icon: 'shield', tint: 'moon',
+      desc: '銀の縁と紫の宝石に、幻影の意匠が刻まれた黒い盾。第3章の報酬。' },
     shinma_sword:  { name: '真魔剛竜剣', type: 'weapon', atk: 24, sell: 760, icon: 'sword', tint: 'dragon',
       desc: '竜をかたどった金色の鍔と赤い宝石の剣。第4章の報酬。' },
     hero_sword:    { name: '勇者の剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',

@@ -1728,7 +1728,7 @@ test('旧セーブの移行（v3→v4）：旧お宝・旧装備を新しいID�
   const L = SV.deserialize(JSON.stringify(raw));
   const V = L.village;
   eq(L.version, D.SAVE_VERSION);
-  const sh = V.bag.find((i) => i.uid === 101); eq(sh.id, 'phantom_shield'); eq(sh.plus, 3); eq(G.itemName(sh), 'ファントムシールド+3');
+  const sh = V.bag.find((i) => i.uid === 101); eq(sh.id, 'phantom_shield'); eq(sh.plus, 3); eq(G.itemName(sh), '漆黒の盾+3');
   eq(V.bag.find((i) => i.uid === 102).id, 'croc_tear');
   const sw = V.storage.find((i) => i.uid === 103); eq(sw.id, 'shinma_sword'); eq(sw.plus, 2);
   eq(V.storage.find((i) => i.uid === 104).id, 'iceflame_crystal');

@@ -38,7 +38,7 @@ const IDS = ['croc_axe', 'iceflame_shield', 'phantom_shield', 'phantom_mask', 's
       await p.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close()); await p.waitForTimeout(100);
     }
     console.log(details.join('\n'));
-    chk(details.length === 7 && /クロコダインの斧\|種類,武器,攻撃力,\+16/.test(details[0]) && /氷炎の盾\|種類,盾,防御力,\+15/.test(details[1]) && /ファントムシールド\+2\|種類,盾,防御力,\+19/.test(details[2]) && /ファントムマスク\|種類,アクセサリー.*防御力,\+5/.test(details[3])
+    chk(details.length === 7 && /クロコダインの斧\|種類,武器,攻撃力,\+16/.test(details[0]) && /氷炎の盾\|種類,盾,防御力,\+15/.test(details[1]) && /漆黒の盾\+2\|種類,盾,防御力,\+19/.test(details[2]) && /ファントムマスク\|種類,アクセサリー.*防御力,\+5/.test(details[3])
       && /真魔剛竜剣\+3\|種類,武器,攻撃力,\+27/.test(details[4]) && /竜の紋章\|種類,アクセサリー.*攻撃力,\+5/.test(details[5]) && /大魔王のローブ\|種類,アクセサリー/.test(details[6]), `${w} 名前・種類・能力値`);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); });
     // 章クリアの報酬画面（第4章）と、倉庫へ届けたお知らせ
@@ -53,7 +53,7 @@ const IDS = ['croc_axe', 'iceflame_shield', 'phantom_shield', 'phantom_mask', 's
     await p.waitForTimeout(400); await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.S.village.rewardNotice = ['phantom_shield', 'phantom_mask']; TS.UI.debug.showStoryPending(); });
     await p.waitForTimeout(300);
     const nt = await p.evaluate(() => document.querySelector('#modal-root').textContent);
-    chk(/ファントムシールドとファントムマスクを、倉庫に届けました/.test(nt), `${w} 倉庫へ届けたお知らせ`);
+    chk(/漆黒の盾とファントムマスクを、倉庫に届けました/.test(nt), `${w} 倉庫へ届けたお知らせ`);
     if (w === 390) await p.screenshot({ path: path.join(OUT, `notice_${w}.png`) });
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); });
     // ダンジョン：キルバーン（第3章）を倒して、床に現れた2点
