@@ -5,6 +5,8 @@
   const D = {};
 
   D.SAVE_VERSION = 6;
+  /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
+  D.BOSS_INTROS = { croc: 'crocodine' };
   D.SAVE_KEY = 'takeSaiAdventure.save';
 
   // マップ（3x3 の区画にランダムな部屋を置く）

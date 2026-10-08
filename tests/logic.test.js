@@ -50,6 +50,7 @@ function engage(S) {
   const p = run.player;
   if (!G.inArena(run, p.x, p.y)) { const c = G.arenaCenter(run, run.enemies); const keep = { x: p.x, y: p.y }; p.x = c.x; p.y = c.y; G.checkBossRoom(S, []); p.x = keep.x; p.y = keep.y; }
   else G.checkBossRoom(S, []);
+  G.finishBossIntro(S);   // 登場ムービーのあるボス（クロコダイン）は、ムービーを終えた扱いにして戦いを始める
   for (const e of run.enemies) if (e.boss) e.hold = 0;
 }
 function defeatBoss(S) {
@@ -1825,7 +1826,13 @@ test('全ボス：入室前は部屋の中央で待ち（移動・攻撃・特�
     assert(b.x === pos0[0] && b.y === pos0[1] && !b.charge && !run.hazards.length && !run.fog && run.enemies.length === 1 && b.hp === hp0 && !A.engaged, 'boss stays idle ch' + ch);
     // 部屋に入る（右へ1歩）：戦闘開始は1回だけ。入ったターンにボスは動かない
     const r1 = G.act(S, { type: 'move', dir: 'right' });
-    eq(r1.events.filter((e) => e.t === 'bossStart').length, 1, 'start once ch' + ch);
+    let nStart = r1.events.filter((e) => e.t === 'bossStart').length;
+    if (D.BOSS_INTROS[b.type]) {   // 登場ムービーのあるボス：入室ではムービーだけ。終えたときに1回だけ戦闘開始
+      eq(r1.events.filter((e) => e.t === 'bossIntro').length, 1, 'intro ch' + ch); assert(!A.engaged && A.intro === 'pending');
+      nStart += G.finishBossIntro(S).filter((e) => e.t === 'bossStart').length;
+      eq(G.finishBossIntro(S).length, 0, 'finish once ch' + ch);
+    } else assert(!r1.events.some((e) => e.t === 'bossIntro'), 'no intro ch' + ch);
+    eq(nStart, 1, 'start once ch' + ch);
     assert(A.engaged && G.inArena(run, run.player.x, run.player.y));
     assert(b.x === pos0[0] && b.y === pos0[1] && !b.charge, 'no extra action on the entry turn ch' + ch);
     eq(G.dungeonBgm(run), 'boss');
@@ -1868,7 +1875,7 @@ test('戦いの前のボスには、投げる・杖・ねむり草・雷鳴の�
   assert(!r.consumed && run.bag.includes(scroll), 'scroll blocked');
   eq(run.turn, turn0); eq(b.hp, hp0); eq(run.bag.length, n0); assert(!A.engaged);
   // 入室すれば効く
-  G.act(S, { type: 'move', dir: 'right' }); assert(A.engaged);
+  G.act(S, { type: 'move', dir: 'right' }); G.finishBossIntro(S); assert(A.engaged);
   r = G.act(S, { type: 'use', uid: staff.uid, dir: 'right' });
   assert(r.consumed && staff.charges === 2, 'staff works after the start');
 });
@@ -2284,6 +2291,37 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
   const RL = SV.deserialize(JSON.stringify(raw)); eq(G.equipped(RL.run.bag, 'weapon').id, 'shinma_sword');
   // 何も倒していなければ届け物なし
   const N = G.newState(); N.version = 5; const NL = SV.deserialize(JSON.stringify(N)); assert(!NL.village.giftNotice); eq(NL.village.storage.length, 0);
+});
+
+console.log('クロコダインの登場ムービー（2026年10月）');
+test('登場ムービー：クロコダインだけ。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
+  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc']));
+  const S = toBossFloor(1, 1401), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
+  const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
+  const t0 = run.turn, pos = [b.x, b.y, b.hp];
+  const r = G.act(S, { type: 'move', dir: 'right' });
+  assert(r.events.some((e) => e.t === 'bossIntro') && !r.events.some((e) => e.t === 'bossStart'));
+  eq(A.intro, 'pending'); assert(!A.engaged); eq(run.turn, t0 + 1, 'entry move is one turn');
+  // 保存して読み込み直しても pending のまま（HP・位置はそのまま）
+  const L = SV.deserialize(SV.serialize(S)), LA = L.run.bossFight, lb = L.run.enemies.find((e) => e.boss);
+  eq(LA.intro, 'pending'); assert(!LA.engaged); eq(JSON.stringify([lb.x, lb.y, lb.hp]), JSON.stringify(pos));
+  // ムービー中に行動が来ても（画面が止めているはずだが）固まらない：ムービーを終えた扱いで開始、行動・ターンはなし
+  const r2 = G.act(L, { type: 'wait' });
+  assert(!r2.consumed && r2.events.filter((e) => e.t === 'bossStart').length === 1 && LA.engaged && LA.intro === 'done'); eq(L.run.turn, t0 + 1);
+  assert(L.village.story.introSeen.croc);
+  eq(G.finishBossIntro(L).length, 0, 'only once');
+  // ボスはムービーのあと、次のターンから動ける（待たせるターンは足さない）
+  assert(!(L.run.enemies.find((e) => e.boss).hold > 0));
+  // 次の探索：入室ですぐ戦い（ムービーなし）
+  L.run = null; G.depart(L, 1402); goToFloor(L, 15);
+  const c = G.arenaCenter(L.run, L.run.enemies); L.run.player.x = c.x; L.run.player.y = c.y;
+  const r3 = G.act(L, { type: 'wait' }); assert(!r3.events.some((e) => e.t === 'bossIntro') && r3.events.some((e) => e.t === 'bossStart'));
+  // 以前のセーブ（introSeen なし）は読み込みで空の記録が足される
+  const old = JSON.parse(SV.serialize(G.newState())); delete old.village.story.introSeen;
+  eq(JSON.stringify(SV.deserialize(JSON.stringify(old)).village.story.introSeen), '{}');
+  // ほかのボスにはムービーがない
+  for (const ch of [2, 3, 4, 5]) { const T = toBossFloor(ch, 1410 + ch), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
+    const rr = G.act(T, { type: 'move', dir: 'right' }); assert(!rr.events.some((e) => e.t === 'bossIntro') && T.run.bossFight.engaged && !T.run.bossFight.intro, 'no intro ch' + ch); }
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

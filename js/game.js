@@ -40,6 +40,7 @@
       seen: {},                   // 一度見た会話（2回目からスキップできる）
       pending: null,              // 村で見せる章のできごと（帰還イベント・エンディング）
       introDone: false,
+      introSeen: {},              // 見終わった（またはスキップした）ボスの登場ムービー（ボスID → true）。一度だけ流す
     };
   };
   // 探索のルール（章）。更新前から続いている探索は 'legacy'（以前の版のルールのまま村へ帰る）
@@ -414,8 +415,11 @@
       else if (a.type === 'use') { const it = G.findBag(run, a.uid); if (it && ['heal', 'food', 'cure', 'clear'].includes(G.def(it).type)) useItem(S, a.uid, a.dir, ev); }
       return { consumed: false, events: ev };
     }
+    /* ボスの登場ムービーの途中（ふつうは画面の動画が入力を止めている）：動画を出せずに行動が来たときの安全策として、
+     * ムービーを終えた扱いにして戦いを始める（行動はしない・ターンは進まない）。固まったままにしない */
+    if (run.bossFight && run.bossFight.intro === 'pending') return { consumed: false, events: G.finishBossIntro(S) };
     // すでにボス部屋の中にいる（読み込み直し・移動以外で入った）なら、行動の前に戦いを始める
-    if (run.bossFight && !run.bossFight.engaged) checkBossRoom(S, ev);
+    if (run.bossFight && !run.bossFight.engaged) { checkBossRoom(S, ev); if (run.bossFight.intro === 'pending') return { consumed: false, events: ev }; }
     switch (a.type) {
       case 'move': consumed = doMove(S, a.dir, ev); break;
       case 'wait': consumed = true; ev.push({ t: 'wait' }); break;
@@ -689,7 +693,7 @@
     if (run.over) return 'over';
     const ev = res.events;
     if (ev.some((e) => e.t === 'monsterHouse')) return 'monsterHouse';
-    if (ev.some((e) => e.t === 'bossStart')) return 'bossStart';   // ボス部屋に入った：ダッシュ・長押しを止める
+    if (ev.some((e) => e.t === 'bossStart' || e.t === 'bossIntro')) return 'bossStart';   // ボス部屋に入った：ダッシュ・長押しを止める
     if (p.hp < hpBefore || ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (G.visibleEnemies(run).some((e) => !ctx.seen.includes(e.id))) return 'enemy';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
@@ -726,7 +730,7 @@
     const ev = res.events;
     if (!ev.some((e) => e.t === 'move')) return 'attackBlocked'; // 攻撃や行動になった
     if (ev.some((e) => e.t === 'monsterHouse')) return 'monsterHouse';
-    if (ev.some((e) => e.t === 'bossStart')) return 'bossStart';   // ボス部屋に入った：ダッシュ・長押しを止める
+    if (ev.some((e) => e.t === 'bossStart' || e.t === 'bossIntro')) return 'bossStart';   // ボス部屋に入った：ダッシュ・長押しを止める
     if (ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
     if (run.merchant && G.adjacent(run, p, run.merchant)) return 'merchant';
@@ -1247,18 +1251,45 @@
     }
     return best || { x: cx, y: cy };
   };
-  /* たけがボス部屋の中へ初めて入ったら戦い開始（1回だけ）。入ったターンにボスは動かない（入室直後の追い打ちなし） */
+  /* たけがボス部屋の中へ初めて入ったら戦い開始（1回だけ）。入ったターンにボスは動かない（入室直後の追い打ちなし）。
+   * 登場ムービーのあるボス（D.BOSS_INTROS。ボスIDで決める）で、まだ見ていなければ、戦いを始める前にムービーを流す：
+   *   run.bossFight.intro = 'pending'（ムービー中）→ 画面が G.finishBossIntro を1回だけ呼ぶ → 'done' で戦い開始。
+   *   ムービー中は戦いが始まっていない（ボスは中央で待つ・HPと位置はそのまま）。たけは動けない（画面が入力を止め、G.act も進めない）。
+   *   見た記録は村の story.introSeen（セーブに残る）。退室・再入室・次の探索では流さない。
+   *   読み込み直したときに 'pending' なら、画面がムービーを最初から流し直す（スキップできる）。 */
   function checkBossRoom(S, ev) {
     const run = S.run, A = run.bossFight, p = run.player;
-    if (!A || A.engaged || !G.inArena(run, p.x, p.y)) return;
+    if (!A || A.engaged || A.intro === 'pending' || !G.inArena(run, p.x, p.y)) return;
+    const boss = run.enemies.find((e) => e.boss), id = boss ? boss.type : null, st = S.village.story;
+    if (id && D.BOSS_INTROS && D.BOSS_INTROS[id] && A.intro !== 'done' && !(st.introSeen && st.introSeen[id])) {
+      A.intro = 'pending';
+      ev.push({ t: 'bossIntro', boss: id });
+      return;
+    }
+    engageBoss(S, ev, false);
+  }
+  G.checkBossRoom = checkBossRoom;
+  function engageBoss(S, ev, afterIntro) {
+    const run = S.run, A = run.bossFight;
     A.engaged = true;
     const bosses = run.enemies.filter((e) => e.boss);
-    for (const b of bosses) { b.hold = Math.max(b.hold || 0, 1); b.awake = true; }
+    // ムービーのあとは、入室のターンはもう終わっているので、待たせるターンは足さない（次のターンから動く＝今までと同じ間合い）
+    for (const b of bosses) { if (!afterIntro) b.hold = Math.max(b.hold || 0, 1); b.awake = true; }
     const name = bosses.length ? D.ENEMIES[bosses[0].type].name : 'ボス';
     G.log(run, name + 'との戦いが始まった！');
     ev.push({ t: 'bossStart', boss: bosses.length ? bosses[0].type : null });
   }
-  G.checkBossRoom = checkBossRoom;
+  /* 登場ムービーの終わり（最後まで見た・スキップ・読み込めなかった、のどれでも同じ）。何度呼んでも戦いの開始は1回だけ。
+   * ターンは進めない。戻り値：起きたできごと（bossStart。すでに終わっていれば空） */
+  G.finishBossIntro = function (S) {
+    const run = S.run, A = run && run.bossFight, ev = [];
+    if (!A || A.intro !== 'pending') return ev;
+    A.intro = 'done';
+    const boss = run.enemies.find((e) => e.boss), st = S.village.story;
+    if (boss) { st.introSeen = st.introSeen || {}; st.introSeen[boss.type] = true; }
+    if (!A.engaged) engageBoss(S, ev, true);
+    return ev;
+  };
   /* ダンジョンの曲：ボス戦の間（入室から撃破まで。大魔王バーンから真大魔王バーンへの準備の間も）はボス戦の曲、それ以外は探索の曲 */
   G.dungeonBgm = function (run) {
     const A = run && run.bossFight;

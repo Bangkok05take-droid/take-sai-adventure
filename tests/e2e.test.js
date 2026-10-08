@@ -27,7 +27,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     p.setDefaultTimeout(5000);
     p.on('pageerror', (e) => errors.push(e.message));
     p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    p.on('requestfailed', (r) => errors.push('request failed ' + r.url()));
+    // 登場ムービー（mp4）は、このテストの Chromium が H.264 を再生できないので読み込みが止められる（実際のスマホは再生できる）。場所が正しいことは別に確かめる
+    p.on('requestfailed', (r) => { if (!/assets\/movies\/.*\.mp4$/.test(r.url())) errors.push('request failed ' + r.url()); });
     p.on('response', (r) => { if (r.status() >= 400) errors.push(r.status() + ' ' + r.url()); });
     return { ctx, p };
   };
@@ -899,7 +900,13 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const before = await p.evaluate(() => TS.UI.S.run.player.x);
     await p.tap('#b-dash'); await p.waitForTimeout(100);
     // ボスが見えた所でダッシュは一度止まる（以前からの決まり）。押し直して進む
-    for (let k = 0; k < 6 && !(await p.$('.talk')); k++) { await p.tap('#dpad [data-dir="right"]'); for (let i = 0; i < 12 && !(await p.$('.talk')); i++) await p.waitForTimeout(80); }
+    // 部屋に入ると、まずクロコダインの登場ムービー（2026年10月）。ムービー中は戦いが始まらず、スキップすると一度だけ戦闘開始
+    for (let k = 0; k < 6 && !(await p.$('.movie')) && !(await p.$('.talk')); k++) { await p.tap('#dpad [data-dir="right"]'); for (let i = 0; i < 12 && !(await p.$('.movie')); i++) await p.waitForTimeout(80); }
+    const mv = await p.evaluate(() => { const r = TS.UI.S.run; return { movie: !!document.querySelector('.movie'), intro: r.bossFight.intro, engaged: r.bossFight.engaged, inRoom: TS.Game.inArena(r, r.player.x, r.player.y), hold: TS.Audio.bgmHold }; });
+    assert(mv.movie && mv.intro === 'pending' && !mv.engaged && mv.inRoom && mv.hold, 'crocodine intro movie on entering the room ' + JSON.stringify(mv));
+    await shot('17m_boss_movie');
+    await p.tap('.movie-skip'); await p.waitForTimeout(100);
+    for (let i = 0; i < 30 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.talk'), 'boss intro talk on entering the room ' + await p.evaluate(() => { const r = TS.UI.S.run; return JSON.stringify({ p: [r.player.x, r.player.y], A: r.bossFight, dash: document.getElementById('b-dash').getAttribute('aria-pressed'), modal: document.querySelector('#modal-root').textContent.slice(0, 80), log: r.log ? r.log.slice(-3) : null }); }));
     assert(await p.isVisible('.who:has-text("クロコダイン")'), 'boss speaks');
     const ent = await p.evaluate(() => { const r = TS.UI.S.run; return { x: r.player.x, inRoom: TS.Game.inArena(r, r.player.x, r.player.y), engaged: r.bossFight.engaged, bgm: TS.Audio.bgmName, song: TS.Music.current && TS.Music.current.id }; });
@@ -1572,6 +1579,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let y = A.y; while (!TS.Dungeon.passable(r.map, A.x - 1, y)) y++; r.player.x = A.x - 1; r.player.y = y; TS.Game.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'right' }); });
       await q.waitForTimeout(800); await talkThrough();
       while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      // クロコダインの登場ムービー（いま閉じた＝スキップ）のあとに、戦いの前の会話が開くので、それも進める
+      await q.waitForTimeout(600); await talkThrough();
+      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
       c = await cur(); assert(c.id === 'boss' && c.bgm && !c.timer && c.scene === 'boss', 'boss music after entering ' + JSON.stringify(c));
       // メニューの開閉・部屋から出ても、ボス戦の曲は最初から流し直さない
       await keep('__b');
@@ -1598,6 +1608,13 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
 
   await test('ブラウザのエラー・読み込み失敗がない', async () => {
     assert(errors.length === 0, errors.join('\n'));
+  });
+  await test('登場ムービーの動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
+    const r = await p.evaluate(async () => { const M = TS.ASSETS.movies.crocodine, out = {};
+      for (const [k, u] of Object.entries(M)) { const res = await fetch(u); const b = await res.arrayBuffer(); out[k] = { url: res.url, status: res.status, size: b.byteLength, head: Array.from(new Uint8Array(b.slice(0, 12))).map((x) => String.fromCharCode(x)).join('') }; }
+      return out; });
+    assert(r.video.status === 200 && r.video.size > 1e6 && r.video.head.slice(4, 8) === 'ftyp' && /\/take-sai-adventure\/assets\/movies\//.test(r.video.url), 'video ' + JSON.stringify(r.video));
+    assert(r.poster.status === 200 && r.poster.size > 1e4, 'poster ' + JSON.stringify(r.poster));
   });
 
   await browser.close();

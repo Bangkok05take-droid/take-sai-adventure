@@ -328,3 +328,14 @@ details summary { cursor: pointer; margin: 4px 0; }
 .mtag { display: inline-block; font-size: 11px; padding: 0 5px; margin-right: 5px; border-radius: 5px; vertical-align: 2px; }
 .mtag.new { background: #c8a040; color: #1a1408; }
 .mtag.old { background: #4a5568; color: #e8e8f0; }
+
+/* ボスの登場ムービー（縦の動画を切らずに、黒い余白で全体を見せる。ゲームより手前で、タッチ・キーを受け止める） */
+.movie { position: fixed; inset: 0; z-index: 30; background: #000; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+.movie video { position: relative; z-index: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+.movie-skip, .movie-play, .movie-msg { z-index: 2; }
+.movie-skip { position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); min-width: 120px; min-height: 52px; font-size: 17px; opacity: 0.92; }
+/* 中央寄せは transform を使わない（押している間の button:active の transform で、ボタンが指の下から逃げないように） */
+.movie-play { position: absolute; left: 0; right: 0; top: calc(50% - 30px); margin: 0 auto; width: 220px; height: 60px; font-size: 19px; }
+.movie-msg { position: absolute; left: 50%; top: calc(16px + env(safe-area-inset-top)); transform: translateX(-50%); max-width: calc(100% - 32px); color: #fff4dc;
+  background: rgba(10, 32, 40, 0.86); border: 1px solid rgba(226, 178, 60, 0.7); padding: 8px 14px; border-radius: 8px; font-size: 14px; text-align: center; }
+.movie [hidden] { display: none; }

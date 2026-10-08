@@ -348,6 +348,9 @@
       else {
         pushLog(); toast('地下' + UI.S.run.floor + '階から再開');
         if (UI.S.run.final && UI.S.run.final.stage === 'prep') setTimeout(() => finalCutscene(), 300);
+        // 登場ムービーの途中で読み込み直した：ボス戦の状態（HP・位置）はそのままで、ムービーを最初から流し直す（スキップできる）
+        const A = UI.S.run.bossFight, ib = A && A.intro === 'pending' && UI.S.run.enemies.find((e) => e.boss);
+        if (A && A.intro === 'pending') setTimeout(() => playBossIntro(ib ? ib.type : null), 300);
       }
     } else { showScreen('village'); showStoryPending(); }
   }
@@ -1257,6 +1260,90 @@
     afterAction(res, action, logLen);
     return res;
   }
+  // ================= ボスの登場ムービー =================
+  /* 流れ：ボス部屋に初めて入る → G が bossIntro（run.bossFight.intro = 'pending'）→ playBossIntro。
+   * 最後まで見た・スキップ・読み込めなかった、のどれでも finish が1回だけ G.finishBossIntro を呼び、今までの戦闘開始（bossStart）へ進む。
+   * 動画の間：UI.modals に入れて方向ボタン・キー・タップを止める（ゲームのターン・敵は進まない）。探索の曲は止め（holdBgm）、終わったらボス戦の曲。
+   * 音：音オフなら消音のまま（勝手に鳴らさない）。音量はBGMの音量。音つきの自動再生が拒否されたら「タップして再生」（消音で流して見た扱いにはしない）。
+   * 読み込めない（404・形式が合わない）：短く知らせて、そのまま戦いへ。読み込みが長いとき：案内と「再試行」。スキップはいつでも押せる。
+   * アプリを裏にしたら一時停止し、戻ったら「タップして再開」。決まった時間で打ち切るタイマーは使わない */
+  const introMovie = (id) => { const M = TS.ASSETS && TS.ASSETS.movies, n = id && D.BOSS_INTROS && D.BOSS_INTROS[id]; return (M && n && M[n]) || null; };
+  function prepareBossIntro(id) {
+    const m = introMovie(id), st = UI.S.village.story;
+    if (!m || (st.introSeen && st.introSeen[id]) || (UI.moviePre && UI.moviePre.id === id)) return;
+    try { const v = document.createElement('video'); v.preload = 'auto'; v.muted = true; v.setAttribute('playsinline', ''); v.poster = m.poster; v.src = m.video; UI.moviePre = { id, v }; } catch (e) { UI.moviePre = null; }
+  }
+  function playBossIntro(id) {
+    if (UI.movie) return;
+    const m = introMovie(id);
+    const finishLogic = () => {   // 戦いの開始（1回だけ）。曲はボス戦へ
+      const S = UI.S, logLen = S.run ? S.run.log.length : 0;
+      const ev = S.run ? G.finishBossIntro(S) : [];
+      AU.playBgm(S.run ? G.dungeonBgm(S.run) : 'dungeon');
+      AU.holdBgm(false);
+      UI.lockUntil = performance.now() + 300;   // スキップのタップが、そのまま方向ボタンの入力にならないように
+      afterAction({ events: ev, consumed: false }, null, logLen);
+    };
+    stopAllInput(); closeAllModals();
+    if (!m) { finishLogic(); return; }   // 動画の設定が無い：そのまま戦いへ
+    AU.holdBgm(true);
+    const root = document.createElement('div');
+    root.className = 'movie';
+    root.innerHTML = '<div class="movie-msg" hidden></div><button class="movie-play primary" hidden>▶ タップして再生</button><button class="movie-skip">スキップ ▶▶</button>';
+    const pre = UI.moviePre && UI.moviePre.id === id ? UI.moviePre.v : null;
+    const v = pre || document.createElement('video');
+    UI.moviePre = null;
+    v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.playsInline = true; v.loop = false; v.controls = false; v.preload = 'auto';
+    v.poster = m.poster;
+    const st = UI.S.settings;
+    v.muted = !st.sound; v.volume = Math.max(0, Math.min(1, st.bgmVol == null ? 1 : st.bgmVol));
+    if (!pre) v.src = m.video;
+    root.prepend(v);
+    document.body.appendChild(root);
+    const msg = root.querySelector('.movie-msg'), playBtn = root.querySelector('.movie-play'), skipBtn = root.querySelector('.movie-skip');
+    let done = false, stall = null;
+    const say = (t) => { msg.textContent = t || ''; msg.hidden = !t; };
+    const ask = (label) => { playBtn.textContent = label; playBtn.hidden = false; };
+    function finish(reason) {
+      if (done) return;
+      done = true; UI.movie = null; UI.movieEnd = reason;
+      clearTimeout(stall); document.removeEventListener('visibilitychange', onVis);
+      try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* 片付けだけ */ }
+      root.remove();
+      const i = UI.modals.indexOf(handle); if (i >= 0) UI.modals.splice(i, 1);
+      finishLogic();
+    }
+    function tryPlay() {
+      if (done) return;
+      playBtn.hidden = true;
+      let p; try { p = v.play(); } catch (e) { p = Promise.reject(e); }
+      if (p && p.catch) p.catch((e) => { if (done) return; if (v.error) return onError(); say(''); ask(e && e.name === 'NotAllowedError' ? '▶ タップして再生' : '▶ 再生する'); });
+    }
+    function onError() {
+      if (done) return;
+      playBtn.hidden = true; say('ムービーを読み込めませんでした。戦いを始めます。');
+      setTimeout(() => finish('error'), 1200);
+    }
+    function onVis() { if (done) return; if (document.hidden) v.pause(); else if (v.paused && !v.ended) ask('▶ タップして再開'); }
+    v.addEventListener('ended', () => finish('ended'));
+    v.addEventListener('error', onError);
+    v.addEventListener('waiting', () => { clearTimeout(stall); stall = setTimeout(() => { if (!done && !v.ended) { say('読み込みに時間がかかっています。スキップもできます。'); ask('↻ 再試行'); } }, 6000); });
+    v.addEventListener('playing', () => { clearTimeout(stall); say(''); playBtn.hidden = true; });
+    if (pre && pre.error) setTimeout(onError, 0);
+    document.addEventListener('visibilitychange', onVis);
+    // 動画の上のタッチ・クリックは、後ろのゲームへ伝えない
+    for (const t of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'contextmenu']) root.addEventListener(t, (e) => { e.stopPropagation(); if (t === 'contextmenu') e.preventDefault(); });
+    skipBtn.addEventListener('click', () => finish('skip'));
+    playBtn.addEventListener('click', () => { if (playBtn.textContent.includes('再試行')) { say(''); try { v.load(); } catch (e) { /* 次の再生で */ } } tryPlay(); });
+    v.addEventListener('click', () => { if (!playBtn.hidden) playBtn.click(); });   // 「タップして再生」は、動画のどこをタップしてもよい
+    // UI.modals に入れて、ほかの入力を止める（Escキー＝スキップ）
+    const handle = { el: root, back: root, body: root, opts: {}, close: () => finish('skip'), accept: () => true, movie: true };
+    UI.modals.push(handle);
+    UI.movie = { id, video: v, finish };
+    tryPlay();
+  }
+  UI.playBossIntro = playBossIntro;
+
   function afterAction(res, action, logLen) {
     const S = UI.S;
     handleEvents(res.events, action);
@@ -1276,7 +1363,10 @@
       // ボスの階に着いたとき：戦いはまだ始まらない（ボスは奥の部屋の中央で待つ。曲は探索のまま）
       const boss = G.F(S.run).boss;
       if (boss) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
+      if (boss) prepareBossIntro(boss);   // 登場ムービーがあれば、ここで動画の読み込みだけ始める（起動時には読まない）
     }
+    // ボス部屋に初めて入った（登場ムービーのあるボス）：ダッシュ・長押し・予約を止めて、ムービーへ。戦いの開始はムービーのあと
+    if (res.events.some((e) => e.t === 'bossIntro')) { stopAllInput(); playBossIntro(res.events.find((e) => e.t === 'bossIntro').boss); return; }
     // ボス部屋に入った：ダッシュ・長押し・予約を止め、ボス戦の開始を1回だけ表示し、ボス戦の曲へ（HPバーは描画側で出る）
     if (res.events.some((e) => e.t === 'bossStart')) {
       const b = res.events.find((e) => e.t === 'bossStart').boss;
