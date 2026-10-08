@@ -4,7 +4,7 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 6;
+  D.SAVE_VERSION = 7;
   /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
   D.BOSS_INTROS = { croc: 'crocodine' };
   D.SAVE_KEY = 'takeSaiAdventure.save';
@@ -458,7 +458,8 @@
     { id: 'bridge', kind: 'decor', name: '水路の赤い橋', price: 900, desc: '水路に赤い橋がかかる。', req: ['floor10'] },
     { id: 'statue', kind: 'decor', name: '象の像', price: 500, desc: '白い象の像。', req: ['donate3'] },
     { id: 'fountain', kind: 'decor', name: '噴水', price: 900, desc: '村の真ん中に噴水。', req: ['donate6'] },
-    { id: 'gate', kind: 'decor', name: '黄金の門', price: 1500, desc: '遺跡へ続く道に黄金の門。', req: ['donate9'] },
+    // 2026年10月：「黄金の門」（gate）を「マスターヤナイの像」に変更。値段・解放条件は同じ。旧セーブの購入済みは save.js（v7）で引き継ぐ
+    { id: 'yanai_statue', kind: 'decor', name: 'マスターヤナイの像', price: 1500, desc: '広場に、村を守った師匠マスターヤナイの像を建てる。話しかけると師匠の言葉を思い出せる。', req: ['donate9'] },
   ];
   D.REQ_TEXT = {
     storage2: '「倉庫の拡張」の後', smith1: '「鍛冶屋と屋台」の後', smith2: '「鍛冶屋の大きな炉」の後', storage3: '「倉庫の増築」の後',

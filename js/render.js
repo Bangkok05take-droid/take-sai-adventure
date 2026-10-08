@@ -551,6 +551,61 @@
   /* 村（歩ける1画面）。地面の1枚の上に、建物・木・小物・人物を足元の高さ順に重ねる。
    * W：たけの位置と向き（UI が動かす）。戻り値：タップ判定用の範囲と、画面の座標→マスの変換 */
   let rmq = null;
+  /* 噴水の水流と波紋（ZIP take-sai-fountain-endgame-v1 の fountain-overlay.js の描き方と数値をそのまま移したもの）。
+   * 世界の座標で描く（カメラの位置 ox・oy と倍率 k は、ここで1回だけかける）。時間は描画ループの now（新しいタイマーは作らない）。
+   * 波紋：外側の水盤の楕円で切り抜き、さらに噴水の絵の「外側の水面」の点だけに残す（段の石・前の石縁には出ない＝石縁が手前）。
+   * 動きを減らす設定では、水流の伸び縮みと波紋を止める（水流の絵は出す） */
+  let fountainMask = null;
+  function fountainWaterMask(img, seed) {
+    if (fountainMask && fountainMask.img === img) return fountainMask.cv;
+    const W = img.width, H = img.height, d = img.getContext('2d').getImageData(0, 0, W, H).data;
+    const isWater = (i) => d[i * 4 + 3] > 0 && d[i * 4 + 1] > d[i * 4] + 25 && d[i * 4 + 2] > d[i * 4] + 15;
+    const on = new Uint8Array(W * H), st = [seed[1] * W + seed[0]];
+    while (st.length) { const i = st.pop(); if (on[i] || !isWater(i)) continue; on[i] = 1; const x = i % W, y = (i / W) | 0;
+      if (x > 0) st.push(i - 1); if (x < W - 1) st.push(i + 1); if (y > 0) st.push(i - W); if (y < H - 1) st.push(i + W); }
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'), m = g.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) if (on[i]) m.data[i * 4 + 3] = 255;
+    g.putImageData(m, 0, 0);
+    fountainMask = { img, cv };
+    return cv;
+  }
+  let rippleCv = null;
+  function drawFountainFx(g, o, ox, oy, k, now) {
+    const F = TS.ASSETS.village.decor.fountainFx, spray = SP.art.village.deco_fountain_spray;
+    if (!F || !spray) return;
+    const t = REDUCED() ? 0 : now / 1000, still = REDUCED();
+    // 波紋（水盤の水面だけ）
+    if (!still) {
+      const S = k * 2, W = o.w, H = o.h;
+      if (!rippleCv) rippleCv = document.createElement('canvas');
+      if (rippleCv.width !== W * S || rippleCv.height !== H * S) { rippleCv.width = W * S; rippleCv.height = H * S; }
+      const r = rippleCv.getContext('2d');
+      r.setTransform(1, 0, 0, 1, 0, 0); r.globalCompositeOperation = 'source-over'; r.globalAlpha = 1; r.clearRect(0, 0, W * S, H * S);
+      r.setTransform(S, 0, 0, S, 0, 0);
+      const [cx, cy, rx, ry] = F.basin;
+      r.save(); r.beginPath(); r.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); r.clip();
+      r.strokeStyle = '#d4fbff'; r.lineWidth = Math.max(0.5, rx * 0.018);
+      for (let i = 0; i < 3; i++) {
+        const p = ((t * 0.55 + i / 3) % 1 + 1) % 1;
+        r.globalAlpha = 0.24 * (1 - p);
+        r.beginPath(); r.ellipse(cx, cy, rx * (0.18 + 0.8 * p), ry * (0.18 + 0.8 * p), 0, 0, Math.PI * 2); r.stroke();
+      }
+      r.restore();
+      r.setTransform(1, 0, 0, 1, 0, 0); r.globalAlpha = 1; r.globalCompositeOperation = 'destination-in'; r.imageSmoothingEnabled = false;
+      r.drawImage(fountainWaterMask(o.img, F.basinSeed), 0, 0, W * S, H * S);
+      r.globalCompositeOperation = 'source-over';
+      g.drawImage(rippleCv, Math.round(ox + o.x * k), Math.round(oy + o.y * k), W * k, H * k);
+    }
+    // 水流：下端中央を吹き出し口に。幅は水盤の幅×0.46、不透明度0.82、縦にだけ小さく伸び縮み
+    const w = o.w * F.width, h = w * spray.height / spray.width, sy = 1 + (still ? 0 : 0.025 * Math.sin(t * 4));
+    g.save();
+    g.translate(ox, oy); g.scale(k, k);
+    g.globalAlpha *= F.alpha; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.translate(o.x + F.nozzle[0], o.y + F.nozzle[1]); g.scale(1, sy);
+    g.drawImage(spray, -w / 2, -h, w, h);
+    g.restore();
+  }
   const REDUCED = () => { try { if (!rmq) rmq = window.matchMedia('(prefers-reduced-motion: reduce)'); return rmq.matches; } catch (e) { return false; } };
   RD.drawVillage = function (canvas, V, now, W8) {
     const { g, W, H } = fit(canvas);
@@ -629,6 +684,7 @@
           const bob = o.bob && !REDUCED() ? Math.round(Math.sin(now / o.bob.period * Math.PI * 2) * o.bob.amp * k) : 0;
           const x = Math.round(ox + o.x * k), y = Math.round(oy + o.y * k) + bob, w = Math.round(ox + (o.x + o.w) * k) - x, h = Math.round(oy + (o.y + o.h) * k) - (y - bob);
           if (o.src) g.drawImage(o.img, o.src[0], o.src[1], o.src[2], o.src[3], x, y, w, h); else g.drawImage(o.img, x, y, w, h);
+          if (o.fountainFx) drawFountainFx(g, o, ox, oy, k, now);
           continue;
         }
         if (o.crop) g.drawImage(o.cv, o.crop[0], o.crop[1], o.crop[2], o.crop[3], ox + o.x * k, oy + o.y * k, o.crop[2] * k, o.crop[3] * k);
@@ -679,7 +735,7 @@
     // 子供・猫：絵の大きさに合わせた小さめの範囲（施設の建物より先に調べる。大人の人より後）
     for (const n of near) rect(n.id, (n.x + 0.5) * T - n.w / 2, (n.y + 1) * T - n.h, n.w, n.h, n.kind);
     for (const f of vc.fac) { const up = f.dock ? 0 : 30; rect(f.id, f.fp[0] * T, f.fp[1] * T - up, f.fp[2] * T, f.fp[3] * T + up, 'fac'); }   // 船着き場は桟橋と舟だけ（岸の道は含めない）
-    rect('statue', 9 * T, 11 * T - 60, 2 * T, 2 * T + 60, 'statue');
+    if (vc.yanai) rect('statue', 9 * T, 11 * T - 60, 2 * T, 2 * T + 60, 'statue');   // マスターヤナイの像は、建てたあとだけ話しかけられる
     rect('site', 1 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site'); rect('site', 14 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site');
     return { hits, tile: (cx, cy) => ({ x: Math.floor((cx * cw - ox) / (T * k)), y: Math.floor((cy * cw - oy) / (T * k)) }), fac: vc.fac, solid: vc.solid };
   };

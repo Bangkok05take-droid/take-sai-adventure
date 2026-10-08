@@ -105,7 +105,13 @@
        * 村の大きさそのままの絵。lampHead：街灯の灯りの中心（足元からの高さ）。fountainSpout：噴水の吹き出し口（絵の上からの高さ）。
        * bridgeDeck：橋の床板の上端（絵の上から）。ここを岸壁の上面に重ねる。橋の長さは extract-decor.py で中ほどを抜いて、岸壁から向こう岸の草地まで。
        * bridgeRail：左右の欄干の幅（人物との前後を決めるため、この幅で横に切って重ねる） */
-      decor: { dir: 'assets/village/decor/', names: ['lamp', 'elephant', 'fountain', 'bridge'], lampHead: 47, fountainSpout: 10, bridgeDeck: 25, bridgeRail: 18 },
+      decor: { dir: 'assets/village/decor/', names: ['lamp', 'elephant', 'fountain', 'bridge', 'fountain_spray'], lampHead: 47, fountainSpout: 10, bridgeDeck: 25, bridgeRail: 18,
+        /* 噴水の水流（2026年10月、ZIP take-sai-fountain-endgame-v1。元の素材と描画の見本は assets/reference/fountain-endgame-v1/）。
+         * fountain_spray.png：ChatGPT制作の透過の水流（1328×1173 を縦横比のまま幅256へ縮めただけ。描き直しなし）。
+         * nozzle：噴水の絵（78×77）の中の吹き出し口＝頂の飾りの先。水流の下端中央をここに合わせる。
+         * basin：外側の水盤の楕円 [中心x, 中心y, 横半径, 縦半径]（波紋の範囲）。basinSeed：外側の水面の1点（水面だけを選ぶ）。
+         * width：水流の幅＝外側の水盤の幅（絵の幅）×0.46。alpha：不透明度 0.82（見本のまま） */
+        fountainFx: { nozzle: [39, 2], basin: [39, 41, 29, 13], basinSeed: [12, 40], width: 0.46, alpha: 0.82 } },
       ruins: { dir: 'assets/village/ruins/', names: ['tower', 'gate', 'banyan_wall', 'broken_wall'], gateOpen: 82 },
       harbor: { pierCut: [83, 178], quayRect: [2, 11, 252, 51], quayTop: 25, boatBob: { amp: 1, period: 4000 } },
       /* 施設の絵の入口の中心（絵の左からのドット）。絵の足元（anchor）ではなく、この位置を「入る位置」のマスの真上に置く。

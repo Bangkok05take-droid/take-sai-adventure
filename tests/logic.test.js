@@ -2272,7 +2272,7 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
   Object.assign(V.story.defeated, { croc: true, flame: true, kill: true, baran: true, mist: true, vearn: true, truevearn: true });
   V.story.endingDone = true; V.story.chapter = 6;
   const L = SV.deserialize(JSON.stringify(S)), LV = L.village;
-  eq(L.version, D.SAVE_VERSION); eq(D.SAVE_VERSION, 6);
+  eq(L.version, D.SAVE_VERSION); assert(D.SAVE_VERSION >= 6);
   const sh = LV.bag.find((i) => i.uid === 201), sw = LV.bag.find((i) => i.uid === 202);
   eq(sh.id, 'phantom_shield'); eq(sh.plus, 2); assert(sh.eq); eq(sw.id, 'shinma_sword'); eq(sw.plus, 5); assert(sw.eq);
   eq(G.itemName(sw), '真魔剛竜剣+5');
@@ -2380,6 +2380,28 @@ test('ボスの報酬：同じ撃破で1回だけ。持ち物がいっぱいで�
   const T = toBossFloor(2, 1521); defeatBoss(T); T.run.player.hp = 1; T.run.enemies = [];
   T.run.over = true; T.run.result = { type: 'dead', floor: T.run.floor };
   G.finishRun(T); for (const id of ['iceflame_shield', 'iceflame_crystal']) eq(T.village.storage.filter((i) => i.id === id).length, 1, 'dead keeps ' + id);
+});
+
+console.log('村の発展「マスターヤナイの像」（旧「黄金の門」、セーブ v7）');
+test('マスターヤナイの像：黄金の門の値段・解放条件を引き継ぐ。旧セーブの黄金の門を買っていれば像を建てた扱い（追加の支払いなし）。買っていなければ無し', () => {
+  const F = D.FACILITIES.find((f) => f.id === 'yanai_statue');
+  assert(F && F.kind === 'decor' && F.name === 'マスターヤナイの像' && F.price === 1500 && JSON.stringify(F.req) === JSON.stringify(['donate9']));
+  assert(!D.FACILITIES.some((f) => f.id === 'gate' || f.name === '黄金の門'), 'golden gate removed');
+  // 旧セーブ（v6）：黄金の門を購入済み
+  const S = G.newState(); S.version = 6; S.village.built.gate = true; S.village.built.lanterns = true; S.village.funds = 777; G.applyFacilities(S.village);
+  const L = SV.deserialize(JSON.stringify(S));
+  eq(L.version, 7); assert(L.village.built.yanai_statue && L.village.decor.yanai_statue, 'statue built'); assert(!('gate' in L.village.built) && !('gate' in L.village.decor));
+  eq(L.village.funds, 777); assert(L.village.built.lanterns && L.village.decor.lanterns, 'other decor kept');
+  eq(G.facilityStatus(L, 'yanai_statue').built, true);
+  // 未購入：像は無い（以前は最初から広場に像があったが、購入扱いにしない）
+  const N = G.newState(); N.version = 6; N.village.funds = 5000; const NL = SV.deserialize(JSON.stringify(N));
+  assert(!NL.village.built.yanai_statue && !NL.village.decor.yanai_statue); eq(NL.village.funds, 5000);
+  // 解放の条件（お宝9種類の寄贈）を満たして建てると、資金から1500
+  const B = G.newState(); B.village.funds = 2000; B.village.built.museum = true; B.village.museum = true;
+  for (const id of D.MUSEUM_ITEMS.slice(0, 9)) B.village.donated[id] = true;
+  const r = G.buildFacility(B, 'yanai_statue'); assert(r.ok, r.msg); eq(B.village.funds, 500); assert(B.village.decor.yanai_statue);
+  // 読み込み直しても変わらない
+  const t = SV.serialize(L); eq(SV.serialize(SV.deserialize(t)), t);
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

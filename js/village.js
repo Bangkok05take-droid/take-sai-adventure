@@ -784,13 +784,9 @@
     add({ cv: P.canvas(), x: 0, y: 0, sortY: 3 * T + 21 });
     // 門（石段の上）
     add({ img: gt, x: gx, y: base - gt.height + 1, w: gt.width, h: gt.height, sortY: base - 1 });
-    // 門の上の重ね絵（旗・黄金の門・全章クリアの光）
+    // 門の上の重ね絵（旗・全章クリアの光）。以前の「黄金の門」の金の飾りは、発展項目を「マスターヤナイの像」に変えたので描かない
     const Q = new SP.Pix(MW * T, 5 * T), gTop = base - gt.height + 1, ox = gx + TS.ASSETS.village.ruins.gateOpen;
     if (ch >= 3 || lv.ending) { banner(Q, gx + 34, base - 22, C.teal); banner(Q, gx + gt.width - 46, base - 22, C.red); }
-    if (lv.decor.gate) {   // 黄金の門：門の頂の金の飾りと、敷居の金の帯
-      Q.rect(ox - 1, gTop - 8, 3, 10, C.goldL); Q.rect(ox, gTop - 8, 1, 10, C.gold); Q.ball(ox + 0.5, gTop - 10, 3, 3, R(C.gold), { dither: false });
-      Q.rect(ox - 15, base - 21, 30, 2, C.gold); Q.rect(ox - 15, base - 21, 30, 1, C.goldL);
-    }
     if (lv.cleared) Q.ball(ox, gTop - 22, 5, 5, R('#c8f0ff'), { dither: false });
     add({ cv: Q.canvas(), x: 0, y: 0, sortY: base });
     // 石段の両わき：左に木の根が絡む壁、右に崩れた壁（足元は石段の行。人物は手前の道を歩く）
@@ -836,9 +832,13 @@
     }
     // ヤナイの記念像
     // 素材の像は台座・灯籠ごと1枚（今までの台座と青銅の像は描かない＝二重にしない）。当たりは台座の2×2マスだけ
-    const stArt = artProp('yanai_statue', 10 * T, 13 * T, 13 * T - 1);
-    const st = stArt ? Object.assign(stArt, { statueAt: null }) : statue(lv);
-    add(st); block(9, 11, 2, 2); labels.push(['マスターヤナイの像', 10 * T, 11 * T - (stArt ? 52 : 70)]);
+    // 村の発展「マスターヤナイの像」を建てたときだけ（建てる前は像・台座・名札・当たり・話しかけ、どれも無い。広場の床のまま）
+    let st = { statueAt: null };
+    if (lv.decor.yanai_statue) {
+      const stArt = artProp('yanai_statue', 10 * T, 13 * T, 13 * T - 1);
+      st = stArt ? Object.assign(stArt, { statueAt: null }) : statue(lv);
+      add(st); block(9, 11, 2, 2); labels.push(['マスターヤナイの像', 10 * T, 11 * T - (stArt ? 52 : 70)]);
+    }
     // 木・ヤシ（道や入口をふさがない場所だけ）
     // (0,17) のヤシは、こもれびの家の左の軒に重なるので、家の絵があるときは置かない
     const trees = [['palm', 0, 4]].concat(lv.ruinArt ? [] : [['round', 6, 4], ['round', 13, 4]], [['palm', 19, 4]],   // 石段の両わきの木は、遺跡の壁（木の根が絡む壁・崩れた壁）に置きかえ
@@ -906,11 +906,6 @@
     if (lv.legacy || lv.legacy30) { // 旧版の記録の記念碑
       const x = 12 * T + 16, y = 12 * T + 30; props.rect(x - 8, y - 22, 16, 22, sh(C.stone, -0.05)); props.rect(x - 9, y - 23, 18, 2, C.gold); props.ball(x, y - 28, 5, 5, R(lv.legacy30 ? C.gold : '#c0c8d0'), { dither: false }); propAt.push([12, 12]);
     }
-    if (lv.decor.gate && !lv.ruinArt) { // 黄金の門（寺院の石段。遺跡の絵があるときは門の絵の上に描く）
-      for (const x of [8 * T + 20, 11 * T + 10]) { props.box(x, 4 * T - 30, 6, 34, R(C.gold)); }
-      props.rect(8 * T + 16, 4 * T - 34, 3 * T + 4, 5, C.gold); props.rect(8 * T + 16, 4 * T - 35, 3 * T + 4, 1, C.goldL);
-    }
-    if (lv.decor.gate && !lv.ruinArt) propAt.push([8, 3, 4]);
     props.outline(0.75);
     // 小物は1マスずつの切り抜きにして、人物と足元の高さ順に重ねる（灯りの柱の奥を通ると、柱が手前に見える）
     const pcv = props.canvas();
@@ -923,8 +918,10 @@
     const fntArt = SP.art.village.deco_fountain;
     if (lv.decor.fountain && fntArt) { // 噴水（素材の絵）：参道の (9〜10,17) に。石の部分は動かさず、吹き出し口の水しぶきだけ控えめに動く
       const fx = 10 * T - fntArt.width / 2, fy = 18 * T - 2 - fntArt.height;
-      add({ img: fntArt, x: fx, y: fy, w: fntArt.width, h: fntArt.height, sortY: 18 * T - 2 }); block(9, 17, 2, 1);
-      steam.push([10 * T, fy + TS.ASSETS.village.decor.fountainSpout, 'fountain']);
+      // 水流の素材があれば、上の小さな水しぶきの代わりに水流と水盤の波紋（描画は render.js の drawFountainFx。石の本体は動かさない）
+      const spray = SP.art.village.deco_fountain_spray;
+      add({ img: fntArt, x: fx, y: fy, w: fntArt.width, h: fntArt.height, sortY: 18 * T - 2, fountainFx: !!spray }); block(9, 17, 2, 1);
+      if (!spray) steam.push([10 * T, fy + TS.ASSETS.village.decor.fountainSpout, 'fountain']);
     } else if (lv.decor.fountain) {
       const P = new SP.Pix(2 * T, 2 * T), cx = T, cy = T + 8;
       P.ball(cx, cy, 28, 14, R(C.stone)); P.ball(cx, cy - 1, 23, 10, R('#3ab0d0'), { dither: false }); P.box(cx - 4, cy - 26, 8, 24, R(C.stone)); P.ball(cx, cy - 26, 10, 4, R(C.stone));
@@ -957,7 +954,7 @@
     // 素材の木・像・ベンチの足元に、控えめな影（光は左上から。影は右下へ少しずらす）
     gg.fillStyle = 'rgba(30,20,40,0.2)';
     for (const o of objs) if (o.img) { const cx = o.x + o.w / 2 + 3, cy = o.sortY + 1; gg.beginPath(); gg.ellipse(cx, cy, o.w * 0.36, 4, 0, 0, Math.PI * 2); gg.fill(); }
-    return { ground: gcv, objs, solid, fac: Lo.fac, npcs, kids, cats, lights, smoke, steam, labels, statue: st.statueAt, W: MW * T, H: MH * T };
+    return { ground: gcv, objs, solid, fac: Lo.fac, npcs, kids, cats, lights, smoke, steam, labels, statue: st.statueAt, yanai: !!lv.decor.yanai_statue, W: MW * T, H: MH * T };
   };
 
   /* 歩ける道をさがす（8方向。壁の角をななめに抜けない）。戻り値はマスの並び（出発点は含まない）。行けなければ null */

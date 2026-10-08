@@ -100,7 +100,10 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.evaluate(() => { const f = TS.UI.vview.fac.find((f) => f.id === 'shop'); return TS.UI.walker.x === f.at[0] && TS.UI.walker.y === f.at[1] && TS.UI.walker.dir === 'up'; }), 'stands at shop');
     await shot('03b_village_walk_shop');
     await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(150);
-    // 記念像
+    // マスターヤナイの像：建てる前は広場に無い（話しかけられない・当たりも無い）。村の発展で建てると現れて話しかけられる
+    assert(await p.evaluate(() => !TS.UI.vview.hits.some((h) => h.kind === 'statue') && !TS.UI.vview.solid[11 * TS.Village.MW + 9]), 'no statue before building');
+    await p.evaluate(() => { const V = TS.UI.S.village; V.built.yanai_statue = true; TS.Game.applyFacilities(V); });
+    for (let i = 0; i < 20 && !(await p.evaluate(() => TS.UI.vview.hits.some((h) => h.kind === 'statue'))); i++) await p.waitForTimeout(80);
     await tapAt(hitPt('statue', 'statue'));
     for (let i = 0; i < 80 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.talk'), 'statue talk');
@@ -906,7 +909,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const mv = await p.evaluate(() => { const r = TS.UI.S.run; return { movie: !!document.querySelector('.movie'), intro: r.bossFight.intro, engaged: r.bossFight.engaged, inRoom: TS.Game.inArena(r, r.player.x, r.player.y), hold: TS.Audio.bgmHold }; });
     assert(mv.movie && mv.intro === 'pending' && !mv.engaged && mv.inRoom && mv.hold, 'crocodine intro movie on entering the room ' + JSON.stringify(mv));
     await shot('17m_boss_movie');
-    await p.tap('.movie-skip'); await p.waitForTimeout(100);
+    // このテストの Chromium は H.264 を再生できないので、ムービーは約1.2秒で「読み込めませんでした」から自動で戦いへ進む。まだ出ていればスキップ
+    await p.tap('.movie-skip', { timeout: 1000 }).catch(() => {}); await p.waitForTimeout(100);
+    assert(await p.evaluate(() => !document.querySelector('.movie')), 'movie closed');
     for (let i = 0; i < 30 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.talk'), 'boss intro talk on entering the room ' + await p.evaluate(() => { const r = TS.UI.S.run; return JSON.stringify({ p: [r.player.x, r.player.y], A: r.bossFight, dash: document.getElementById('b-dash').getAttribute('aria-pressed'), modal: document.querySelector('#modal-root').textContent.slice(0, 80), log: r.log ? r.log.slice(-3) : null }); }));
     assert(await p.isVisible('.who:has-text("クロコダイン")'), 'boss speaks');

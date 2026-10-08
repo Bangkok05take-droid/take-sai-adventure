@@ -121,6 +121,17 @@
       data.village = V;
       data.version = 6;
     }
+    /* v6 → v7（2026年10月）：村の発展「黄金の門」（gate）を「マスターヤナイの像」（yanai_statue）に変更。
+     * 黄金の門を買っていれば、像を建てた扱いにする（追加の支払いなし）。買っていなければ像は無い（以前は最初から広場に像があったが、それは購入扱いにしない）。
+     * 資金・ほかの施設・進行はそのまま */
+    if (data.version === 6) {
+      const V = data.village || {}, b = V.built || {};
+      if (b.gate) b.yanai_statue = true;
+      delete b.gate;
+      if (V.decor) delete V.decor.gate;
+      V.built = b; data.village = V;
+      data.version = 7;
+    }
     const def = G.newState();
     fill(data, def);
     fill(data.village, def.village);
