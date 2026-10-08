@@ -59,7 +59,10 @@
         // 一覧・装備・報酬の画面は assets/items-boss/（icons-128、128×128）、床は assets/items-boss/floor/（icons-64）。描き直しはしていない
         croc_axe: 'assets/items-boss/crocodine-axe', iceflame_shield: 'assets/items-boss/icefire-shield',
         phantom_shield: 'assets/items-boss/phantom-shield', phantom_mask: 'assets/items-boss/phantom-mask',
-        shinma_sword: 'assets/items-boss/shinma-goryuken', dragon_crest: 'assets/items-boss/dragon-emblem', demon_robe: 'assets/items-boss/great-demon-robe',
+        shinma_sword: 'assets/items-boss/shinma-goryuken', demon_robe: 'assets/items-boss/great-demon-robe',
+        // アクセサリーの竜の紋章（2026年10月 v3）：金のペンダントに青い竜の紋章（ZIP take-sai-dragon-pendant-v3 の 128・64）。
+        // 以前の青い紋章だけの絵（dragon-emblem.png）は、お宝の紋章用に残している（お宝の紋章はまだゲームに無い）
+        dragon_crest: 'assets/items-boss/dragon-pendant',
         // アクセサリー（assets/accessories/。値に「/」があるときはフォルダ付きのパス。床用は同じフォルダの floor/）
         poison_ring: 'assets/accessories/poison_ring', purse_charm: 'assets/accessories/money_guard',
         full_bangle: 'assets/accessories/hunger_bracelet', life_necklace: 'assets/accessories/revival_necklace',

@@ -4,9 +4,14 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 7;
+  D.SAVE_VERSION = 8;
   /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
   D.BOSS_INTROS = { croc: 'crocodine' };
+  /* 村で拾える品（2026年10月）。拾った記録は story.found[id]（セーブに残る。お宝の記録・ボスの撃破記録とは別）。
+   * at：拾うマス。need：拾えるようになる条件（村の発展の飾りの建設済み。ムービーを見たかどうかは関係しない）
+   * 竜の紋章：赤い橋の向こう岸 (4,25)＝橋の下り口 (3,25) のすぐ右。向こう岸の25行は木 (5,25)・(1,25) で区切られていて、
+   * 橋から歩いて行けるのは (2,25)・(3,25)・(4,25) だけ。橋が無いと25行へは渡れない */
+  D.VILLAGE_PICKUPS = { dragon_crest: { item: 'dragon_crest', at: [4, 25], need: 'bridge' } };
   D.SAVE_KEY = 'takeSaiAdventure.save';
 
   // マップ（3x3 の区画にランダムな部屋を置く）
@@ -186,8 +191,10 @@
     // ボスの報酬のアクセサリー。atk・def：装備している間だけ攻撃力・防御力に足す
     phantom_mask:  { name: 'ファントムマスク', type: 'accessory', acc: 'hunger', def: 5, sell: 900, icon: 'mask',
       desc: '装備している間、歩いても休んでも満腹度が減らない（今の満腹度は回復しない）。防御力+5。第3章の報酬。' },
+    // 2026年10月（v3）：アクセサリーの竜の紋章は、赤い橋の向こう岸で拾う品（D.VILLAGE_PICKUPS）。バランの報酬ではなくなった。
+    // お宝の紋章とは別の品（お宝の紋章は、まだゲームに無い）
     dragon_crest:  { name: '竜の紋章', type: 'accessory', acc: 'revive', atk: 5, sell: 1000, icon: 'crest',
-      desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（紋章はなくなる）。攻撃力+5。第4章の報酬。' },
+      desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（紋章はなくなる）。攻撃力+5。金のペンダントに青い竜の紋章。' },
     demon_robe:    { name: '大魔王のローブ', type: 'accessory', acc: 'deep', sell: 1500, icon: 'robe',
       desc: '装備して出発すると、21階から探索を始められる（1階からも選べる）。大魔王バーンを倒した証。' },
     wish_orb:      { name: '願いの宝珠', type: 'orb', sell: 0, noSell: true, noStore: true, icon: 'orb',

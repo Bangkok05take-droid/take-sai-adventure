@@ -400,6 +400,9 @@
     if (w.moving && now - w.t0 < w.dur) return;
     w.moving = false;
     if (UI.modals.length) { w.path = []; w.goal = null; return; }
+    // 村で拾える品のマスに着いた（通り道でも）：拾う
+    const pk = UI.vview && UI.vview.pickups && UI.vview.pickups.find((p) => p.x === w.x && p.y === w.y);
+    if (pk && villagePickup(pk.key)) { w.path = []; w.goal = null; w.onArrive = null; return; }
     if (w.path && w.path.length) {
       const n = w.path.shift(), dx = n.x - w.x, dy = n.y - w.y;
       w.from = { x: w.x, y: w.y }; w.x = n.x; w.y = n.y; w.steps = (w.steps || 0) + 1;
@@ -410,6 +413,17 @@
     w.goal = null;
     if (w.face) { w.dir = w.face; w.face = null; }
     if (w.onArrive) { const f = w.onArrive; w.onArrive = null; f(); }
+  }
+  /* 村で拾える品を拾う（竜の紋章）。持ち物がいっぱいなら倉庫へ。拾った記録はすぐ保存（読み込み直しても戻らない） */
+  function villagePickup(key) {
+    const r = G.takeVillagePickup(UI.S, key);
+    if (!r.ok) return false;
+    save(); AU.sfx('pickup'); villageChanged();
+    const d = G.def(r.item);
+    info('見つけた！', `<div class="detail-head"><img src="${SP.iconURL(d)}" alt=""><div><b>${esc(d.name)}</b></div></div>
+      <p>川の向こう岸に、金のペンダントが落ちていた。</p>
+      <p>${r.to === 'bag' ? '<b>持ち物</b>に入れた。' : '持ち物がいっぱいなので、<b>倉庫</b>に送った。'}</p>`);
+    return true;
   }
   // キー操作：1マス歩く。行き止まりが施設の入口なら入る
   function villageStep(dir) {
@@ -840,6 +854,8 @@
     let html = `<p><b>持ち物 ${V.bag.length}/${D.BAG_SIZE}</b>　武器：${w ? esc(G.itemName(w)) : 'なし'}　盾：${s ? esc(G.itemName(s)) : 'なし'}${ac ? '　アクセサリー：' + esc(G.itemName(ac)) : ''}　食料：${food}個</p>`;
     html += `<div class="warnbox">⚠ 倒れると、<b>持ち物すべて</b>と<b>探索中に拾ったお金</b>を失います。<br>村の資金・倉庫・施設は失いません。</div>`;
     html += `<div class="okbox">帰還の巻物を1枚無料で持っていきます。使えばいつでも持ち物を持って帰れます。</div>`;
+    // ティウのヒント（赤い橋ができてから、向こう岸の竜の紋章を拾うまで）
+    if (G.villagePickups(V).includes('dragon_crest')) html += `<p class="note">ティウ「${esc(D.STORY.tiwHint)}」</p>`;
     if (V.meal) html += `<div class="okbox">🍛 ${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）</div>`;
     else if (V.diner) html += '<p class="note">サイの食堂で料理を注文すると、この探索が少し楽になります。</p>';
     if (!w) html += '<p class="note">武器がありません（素手で戦います）。武器は遺跡で拾えるほか、サイの店でも買えます。</p>';

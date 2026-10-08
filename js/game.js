@@ -41,6 +41,7 @@
       pending: null,              // 村で見せる章のできごと（帰還イベント・エンディング）
       introDone: false,
       introSeen: {},              // 見終わった（またはスキップした）ボスの登場ムービー（ボスID → true）。一度だけ流す
+      found: {},                  // 村で拾った品（D.VILLAGE_PICKUPS の名前 → true）。一度だけ
     };
   };
   // 探索のルール（章）。更新前から続いている探索は 'legacy'（以前の版のルールのまま村へ帰る）
@@ -116,6 +117,23 @@
     const meal = run.meal && D.MEALS[run.meal];
     const ac = G.equipped(run.bag, 'accessory');
     return (s ? G.def(s).def + (s.plus || 0) : 0) + (meal && meal.def || 0) + (ac && G.def(ac).def || 0);
+  };
+
+  // ---------- 村で拾える品 ----------
+  /* 今拾える品の名前の一覧（条件を満たし、まだ拾っていないもの） */
+  G.villagePickups = function (V) {
+    const st = V.story || {}, found = st.found || {};
+    return Object.keys(D.VILLAGE_PICKUPS || {}).filter((k) => !found[k] && (V.built || {})[D.VILLAGE_PICKUPS[k].need]);
+  };
+  /* 拾う。持ち物がいっぱいなら倉庫へ（倉庫がいっぱいでも届ける）。記録して二度と出さない。戻り値：{ ok, to: 'bag'|'storage', item } */
+  G.takeVillagePickup = function (S, key) {
+    const V = S.village, P = D.VILLAGE_PICKUPS[key];
+    if (!P || !G.villagePickups(V).includes(key)) return { ok: false };
+    const it = G.makeItem(S, P.item);
+    let to = 'bag';
+    if (V.bag.length < D.BAG_SIZE) V.bag.push(it); else { V.storage = V.storage || []; V.storage.push(it); to = 'storage'; }
+    V.story.found = V.story.found || {}; V.story.found[key] = true;
+    return { ok: true, to, item: it };
   };
 
   // ---------- 探索の開始 ----------

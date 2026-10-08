@@ -43,7 +43,7 @@
       reward: { items: ['phantom_shield', 'phantom_mask'], funds: 2000 }, tip: '分身には影がない。影のある本物を狙おう。罠は数字が0で破裂する。' },
     4: { name: '第4章', title: '竜の騎士', boss: 'baran', goal: 30, color: '#3a7ac8',
       bias: { statue: 2, guard: 1.6, golem: 1.2 }, prep: [['bolt_charm', 1], ['sleep_incense', 1]], shop: ['bolt_charm'],
-      reward: { items: ['shinma_sword', 'dragon_crest'], funds: 2500 }, tip: '大技のあとは2ターンの隙。雷の印は3×3。早めに外へ出よう。' },
+      reward: { items: ['shinma_sword'], funds: 2500 }, tip: '大技のあとは2ターンの隙。雷の印は3×3。早めに外へ出よう。' },
     5: { name: '第5章', title: '影の衣', boss: 'mist', goal: 30, color: '#6a4aa0',
       bias: { shaman: 1.8, wisp: 1.5, bat: 1.4 }, prep: [['clear_incense', 1.2], ['elixir', 0.6]], shop: ['clear_incense'],
       reward: { items: ['hero_sword', 'hero_shield'], funds: 3000 }, tip: '霧の中でも赤い印は見える。きりばらいの香で霧と拘束を払える。' },
@@ -149,6 +149,8 @@
     noMoney: 'おっと、お代が少し足りないようですね。',
     bagFull: '荷物がいっぱいのようです。何か置いてからまたどうぞ。',
   };
+  // ティウのヒント（2026年10月、ユーザー指定の台詞）。赤い橋ができてから、向こう岸の竜の紋章を拾うまで、出発の画面で話す
+  D.STORY.tiwHint = 'そういえば昔、マスターヤナイが川の向こうで何かなくしたらしいよ。';
   /* 広場の記念像に話しかけると思い出すヤナイの言葉（家族・仲間・人を大切にする人柄） */
   D.STORY.yanaiMemories = [
     ['yanai', '疲れたら帰ってこい。お前の席は、いつだって空けてある。'],

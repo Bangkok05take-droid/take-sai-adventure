@@ -47,7 +47,7 @@ const IDS = ['croc_axe', 'iceflame_shield', 'phantom_shield', 'phantom_mask', 's
     for (let i = 0; i < 40 && await p.$('.talk'); i++) { await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(60); }
     await p.waitForTimeout(300);
     const rw = await p.evaluate(() => [...document.querySelectorAll('.reward')].map((r) => r.dataset.id + ':' + r.textContent));
-    chk(rw.length === 2 && rw[0].startsWith('shinma_sword:真魔剛竜剣武器') && rw[1].startsWith('dragon_crest:竜の紋章アクセサリー'), `${w} 第4章クリア：報酬2点の絵と名前 ${JSON.stringify(rw)}`);
+    chk(rw.length === 1 && rw[0].startsWith('shinma_sword:真魔剛竜剣武器'), `${w} 第4章クリア：報酬（真魔剛竜剣。竜の紋章は赤い橋の向こう岸で拾う）の絵と名前 ${JSON.stringify(rw)}`);
     await p.screenshot({ path: path.join(OUT, `chapter4_rewards_${w}.png`) });
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.S.village.story.pending = null; TS.UI.S.village.rewardNotice = ['phantom_shield', 'phantom_mask']; });
     await p.waitForTimeout(400); await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.S.village.rewardNotice = ['phantom_shield', 'phantom_mask']; TS.UI.debug.showStoryPending(); });

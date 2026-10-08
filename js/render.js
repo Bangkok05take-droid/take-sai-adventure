@@ -539,6 +539,7 @@
       diner: !!V.diner, museum: !!V.museum, decor: Object.assign({}, V.decor || {}),
       donated: Object.keys(V.donated || {}).length, cleared: !!V.cleared, legacy: !!V.legacyClear10,
       chapter: (V.story && V.story.chapter) || 1, ending: !!(V.story && V.story.endingDone), legacy30: !!V.legacyClear30,
+      pickups: TS.Game.villagePickups ? TS.Game.villagePickups(V) : [],   // 村で拾える品（拾うと消える）
     };
   };
 
@@ -737,7 +738,7 @@
     for (const f of vc.fac) { const up = f.dock ? 0 : 30; rect(f.id, f.fp[0] * T, f.fp[1] * T - up, f.fp[2] * T, f.fp[3] * T + up, 'fac'); }   // 船着き場は桟橋と舟だけ（岸の道は含めない）
     if (vc.yanai) rect('statue', 9 * T, 11 * T - 60, 2 * T, 2 * T + 60, 'statue');   // マスターヤナイの像は、建てたあとだけ話しかけられる
     rect('site', 1 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site'); rect('site', 14 * T, 1 * T - 10, 5 * T, 3 * T + 10, 'site');
-    return { hits, tile: (cx, cy) => ({ x: Math.floor((cx * cw - ox) / (T * k)), y: Math.floor((cy * cw - oy) / (T * k)) }), fac: vc.fac, solid: vc.solid };
+    return { hits, tile: (cx, cy) => ({ x: Math.floor((cx * cw - ox) / (T * k)), y: Math.floor((cy * cw - oy) / (T * k)) }), fac: vc.fac, solid: vc.solid, pickups: vc.pickups || [] };
   };
   /* 猫の今の姿勢と位置（時間だけで決める。タイマーを使わないので、村の画面を離れたり裏に回ったりすると止まる）。
    * 黒猫：座る（4秒）→ 右へ歩く（1.6秒）→ 座る（4秒）→ 左へ歩く。茶白：ふだんは座り、ときどき丸くなって眠る。三毛：眠る */

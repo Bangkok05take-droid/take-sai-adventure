@@ -15,7 +15,7 @@
   // v6 でなくした装備（旧 → まとめた先）。能力値は、まとめた先が引き継いだ
   S_.RENAME_V6 = { moon_shield: 'phantom_shield', dragon_sword: 'shinma_sword' };
   // v6 で増えたボスの報酬（すでに倒していたボス → 倉庫へ届ける品）
-  S_.GIFTS_V6 = [['croc', 'croc_axe'], ['flame', 'iceflame_shield'], ['kill', 'phantom_mask'], ['baran', 'dragon_crest'], ['truevearn', 'demon_robe']];
+  S_.GIFTS_V6 = [['croc', 'croc_axe'], ['flame', 'iceflame_shield'], ['kill', 'phantom_mask'], ['truevearn', 'demon_robe']];
 
   // 足りない項目を既定値で補う（将来の項目追加に備える）
   function fill(target, defaults) {
@@ -131,6 +131,18 @@
       if (V.decor) delete V.decor.gate;
       V.built = b; data.village = V;
       data.version = 7;
+    }
+    /* v7 → v8（2026年10月）：アクセサリーの竜の紋章は、赤い橋の向こう岸で拾う品になった（バランの報酬ではなくなった）。
+     * すでに持っている（持ち物・倉庫・探索中・床）なら「拾った」記録にして、もう一つは出さない。持っている品は消さない。
+     * 持っていなければ、橋が完成していれば（これからでも）拾える */
+    if (data.version === 7) {
+      const V = data.village || {}, st = V.story = V.story || {};
+      const list = (V.bag || []).concat(V.storage || []);
+      if (data.run) list.push(...(data.run.bag || []), ...(data.run.floorItems || []).map((f) => f.item).filter(Boolean));
+      st.found = st.found || {};
+      if (list.some((it) => it && it.id === 'dragon_crest')) st.found.dragon_crest = true;
+      data.village = V;
+      data.version = 8;
     }
     const def = G.newState();
     fill(data, def);

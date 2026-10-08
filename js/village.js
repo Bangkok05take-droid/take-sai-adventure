@@ -938,6 +938,14 @@
     boat.outline(0.7);
     add({ cv: boat.canvas(), x: 8 * T + 32, y: 24 * T - 2, boat: true });
     }
+    // 村で拾える品（竜の紋章：赤い橋の向こう岸）。床の絵（道具の床用の絵）を、地面に少し光らせて置く。拾うマスは通れる（踏むと拾う）
+    const pickups = [];
+    for (const key of lv.pickups || []) {
+      const P = TS.Data.VILLAGE_PICKUPS[key], def = TS.Data.ITEMS[P.item], img = SP.iconFor(def), [px, py] = P.at, s = 20;
+      add({ img, x: px * T + 16 - s / 2, y: py * T + 26 - s, w: s, h: s, sortY: (py + 1) * T + 1, pickup: key });   // となりの木の葉より手前に
+      lights.push([px * T + 16, py * T + 18, 10]);
+      pickups.push({ key, x: px, y: py });
+    }
     // 人
     const npcs = [];
     for (const f of Lo.fac) if (f.npc) { npcs.push({ who: f.npc, x: f.npcAt[0], y: f.npcAt[1], fac: f.id }); solid[f.npcAt[1] * MW + f.npcAt[0]] = 1; }
@@ -954,7 +962,7 @@
     // 素材の木・像・ベンチの足元に、控えめな影（光は左上から。影は右下へ少しずらす）
     gg.fillStyle = 'rgba(30,20,40,0.2)';
     for (const o of objs) if (o.img) { const cx = o.x + o.w / 2 + 3, cy = o.sortY + 1; gg.beginPath(); gg.ellipse(cx, cy, o.w * 0.36, 4, 0, 0, Math.PI * 2); gg.fill(); }
-    return { ground: gcv, objs, solid, fac: Lo.fac, npcs, kids, cats, lights, smoke, steam, labels, statue: st.statueAt, yanai: !!lv.decor.yanai_statue, W: MW * T, H: MH * T };
+    return { ground: gcv, objs, solid, fac: Lo.fac, npcs, kids, cats, lights, smoke, steam, labels, statue: st.statueAt, yanai: !!lv.decor.yanai_statue, pickups, W: MW * T, H: MH * T };
   };
 
   /* 歩ける道をさがす（8方向。壁の角をななめに抜けない）。戻り値はマスの並び（出発点は含まない）。行けなければ null */

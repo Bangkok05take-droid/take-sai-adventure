@@ -1662,7 +1662,7 @@ function bossRewardRun(ch, seed, S0) {
 test('各ボスの報酬（2026年10月の見直し）：クロコダイン＝涙・斧、フレイザード＝氷炎の盾・氷炎結晶、キルバーン＝ファントムシールド・マスク、バラン＝真魔剛竜剣・竜の紋章、ミストバーン＝勇者の剣・盾', () => {
   const want = {
     1: ['croc_tear', 'croc_axe'], 2: ['iceflame_shield', 'iceflame_crystal'],
-    3: ['phantom_shield', 'phantom_mask'], 4: ['shinma_sword', 'dragon_crest'], 5: ['hero_sword', 'hero_shield'],
+    3: ['phantom_shield', 'phantom_mask'], 4: ['shinma_sword'], 5: ['hero_sword', 'hero_shield'],   // 竜の紋章は赤い橋の向こう岸で拾う（v3）
   };
   eq(JSON.stringify(D.CHAPTERS[6].reward.items), JSON.stringify(['demon_robe']));
   for (const ch of [1, 2, 3, 4, 5]) {
@@ -2277,7 +2277,7 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
   eq(sh.id, 'phantom_shield'); eq(sh.plus, 2); assert(sh.eq); eq(sw.id, 'shinma_sword'); eq(sw.plus, 5); assert(sw.eq);
   eq(G.itemName(sw), '真魔剛竜剣+5');
   // マスクは持っているので届けない。ほかは1つずつ
-  eq(JSON.stringify(LV.giftNotice), JSON.stringify(['croc_axe', 'iceflame_shield', 'dragon_crest', 'demon_robe']));
+  eq(JSON.stringify(LV.giftNotice), JSON.stringify(['croc_axe', 'iceflame_shield', 'demon_robe']));   // 竜の紋章はバランの報酬ではなくなった
   eq(LV.storage.filter((i) => i.id === 'phantom_mask').length, 1);
   eq(new Set(LV.storage.map((i) => i.uid)).size, LV.storage.length); assert(LV.nextUid > 300);
   eq(LV.funds, 1234);
@@ -2328,14 +2328,15 @@ console.log('ボスの報酬の装備7種（2026年10月・絵 v2）');
 test('ボスの報酬の装備7種：既存のIDのまま（重複なし）・分類・絵（128と床用64）・ボスとの対応・能力値はそのまま', () => {
   require('../js/assets.js'); const A = TS.ASSETS, fs_ = require('fs'), path = require('path'), root = path.join(__dirname, '..');
   const want = { croc_axe: ['weapon', 'crocodine-axe', 1], iceflame_shield: ['shield', 'icefire-shield', 2], phantom_shield: ['shield', 'phantom-shield', 3], phantom_mask: ['accessory', 'phantom-mask', 3],
-    shinma_sword: ['weapon', 'shinma-goryuken', 4], dragon_crest: ['accessory', 'dragon-emblem', 4], demon_robe: ['accessory', 'great-demon-robe', 6] };
+    shinma_sword: ['weapon', 'shinma-goryuken', 4], dragon_crest: ['accessory', 'dragon-pendant', 0], demon_robe: ['accessory', 'great-demon-robe', 6] };
   const png = (f) => { const b = fs_.readFileSync(path.join(root, f)); return [b.readUInt32BE(16), b.readUInt32BE(20), b[25]]; };
   for (const [id, [type, file, ch]] of Object.entries(want)) {
     eq(D.ITEMS[id].type, type, id);
     eq(A.items.byId[id], 'assets/items-boss/' + file, id + ' art');
     eq(JSON.stringify(png('assets/items-boss/' + file + '.png')), JSON.stringify([128, 128, 6]), id + ' 128 RGBA');
     eq(JSON.stringify(png('assets/items-boss/floor/' + file + '.png')), JSON.stringify([64, 64, 6]), id + ' 64 RGBA');
-    assert(D.CHAPTERS[ch].reward.items.includes(id), id + ' reward of chapter ' + ch);
+    if (ch) assert(D.CHAPTERS[ch].reward.items.includes(id), id + ' reward of chapter ' + ch);
+    else assert(!Object.values(D.CHAPTERS).some((C) => C.reward.items.includes(id)) && D.VILLAGE_PICKUPS[id], id + ' is a village pickup, not a boss reward');
   }
   // 同じ名前の道具は1つだけ（竜の紋章・龍の紋章も1つ）
   const names = Object.values(D.ITEMS).map((d) => d.name);
@@ -2349,7 +2350,7 @@ test('ボスの報酬の装備7種：既存のIDのまま（重複なし）・�
   for (const id of Object.keys(want)) { const it = G.makeItem(S, id); S.run.bag.push(it); G.act(S, { type: 'equip', uid: it.uid }); eq(G.equipped(S.run.bag, want[id][0]).id, id, 'equip ' + id); }
 });
 test('ボスの報酬：同じ撃破で1回だけ。持ち物がいっぱいで拾えずに帰っても、倒れても、倉庫へ1回だけ届ける（知らせは一度）', () => {
-  for (const [ch, ids] of [[3, ['phantom_shield', 'phantom_mask']], [4, ['shinma_sword', 'dragon_crest']]]) {
+  for (const [ch, ids] of [[3, ['phantom_shield', 'phantom_mask']], [2, ['iceflame_shield', 'iceflame_crystal']]]) {
     const S = toBossFloor(ch, 1510 + ch), run = S.run;
     while (run.bag.length < D.BAG_SIZE) run.bag.push(G.makeItem(S, 'herb'));
     const st0 = S.village.storage.length;
@@ -2390,7 +2391,7 @@ test('マスターヤナイの像：黄金の門の値段・解放条件を引�
   // 旧セーブ（v6）：黄金の門を購入済み
   const S = G.newState(); S.version = 6; S.village.built.gate = true; S.village.built.lanterns = true; S.village.funds = 777; G.applyFacilities(S.village);
   const L = SV.deserialize(JSON.stringify(S));
-  eq(L.version, 7); assert(L.village.built.yanai_statue && L.village.decor.yanai_statue, 'statue built'); assert(!('gate' in L.village.built) && !('gate' in L.village.decor));
+  assert(L.version >= 7); assert(L.village.built.yanai_statue && L.village.decor.yanai_statue, 'statue built'); assert(!('gate' in L.village.built) && !('gate' in L.village.decor));
   eq(L.village.funds, 777); assert(L.village.built.lanterns && L.village.decor.lanterns, 'other decor kept');
   eq(G.facilityStatus(L, 'yanai_statue').built, true);
   // 未購入：像は無い（以前は最初から広場に像があったが、購入扱いにしない）
@@ -2402,6 +2403,41 @@ test('マスターヤナイの像：黄金の門の値段・解放条件を引�
   const r = G.buildFacility(B, 'yanai_statue'); assert(r.ok, r.msg); eq(B.village.funds, 500); assert(B.village.decor.yanai_statue);
   // 読み込み直しても変わらない
   const t = SV.serialize(L); eq(SV.serialize(SV.deserialize(t)), t);
+});
+
+console.log('竜の紋章（アクセサリー）：赤い橋の向こう岸で拾う（2026年10月 v3、セーブ v8）');
+test('竜の紋章（アクセサリー）：赤い橋が完成していれば向こう岸で1回だけ拾える。橋が無いと拾えない・届かない。いっぱいなら倉庫。記録は保存', () => {
+  const P = D.VILLAGE_PICKUPS.dragon_crest; eq(P.item, 'dragon_crest'); eq(P.need, 'bridge');
+  assert(!Object.values(D.CHAPTERS).some((C) => C.reward.items.includes('dragon_crest')), 'not a boss reward');
+  const S = G.newState(), V = S.village;
+  eq(G.villagePickups(V).length, 0, 'no bridge, no pickup'); assert(!G.takeVillagePickup(S, 'dragon_crest').ok);
+  // 橋が無いと向こう岸（25行）へ歩いて行けないことは、村の地図を使うのでブラウザで確かめる（tools/pendant-check.js）
+  V.built.bridge = true; G.applyFacilities(V);
+  eq(JSON.stringify(G.villagePickups(V)), JSON.stringify(['dragon_crest']));
+  const r = G.takeVillagePickup(S, 'dragon_crest'); assert(r.ok && r.to === 'bag'); eq(V.bag.filter((i) => i.id === 'dragon_crest').length, 1);
+  assert(V.story.found.dragon_crest); eq(G.villagePickups(V).length, 0); assert(!G.takeVillagePickup(S, 'dragon_crest').ok, 'only once');
+  // 保存・読み込み直しでも戻らない
+  const L = SV.deserialize(SV.serialize(S)); assert(L.village.story.found.dragon_crest); eq(G.villagePickups(L.village).length, 0);
+  // 持ち物がいっぱい → 倉庫へ
+  const F = G.newState(); F.village.built.bridge = true; G.applyFacilities(F.village);
+  while (F.village.bag.length < D.BAG_SIZE) F.village.bag.push(G.makeItem(F, 'herb'));
+  const r2 = G.takeVillagePickup(F, 'dragon_crest'); assert(r2.ok && r2.to === 'storage'); eq(F.village.storage.filter((i) => i.id === 'dragon_crest').length, 1); eq(F.village.bag.length, D.BAG_SIZE);
+  // 竜の紋章を拾っても、ほかの記録（撃破・寄贈・お宝）は変わらない
+  assert(!F.village.story.defeated.baran && !Object.keys(F.village.donated).length);
+});
+test('セーブ v7→v8：竜の紋章をすでに持っていれば拾った扱い（消さない・増やさない）。持っていなければ橋の完成後に拾える', () => {
+  const mk = (setup) => { const S = G.newState(); S.version = 7; setup(S); return SV.deserialize(JSON.stringify(S)); };
+  // 倉庫に持っている（旧バランの報酬）＋ 橋あり
+  let L = mk((S) => { S.village.storage.push({ uid: 77, id: 'dragon_crest', plus: 0 }); S.village.built.bridge = true; S.village.story.defeated.baran = true; });
+  eq(L.version, D.SAVE_VERSION); assert(L.village.story.found.dragon_crest); eq(G.villagePickups(L.village).length, 0); eq(L.village.storage.filter((i) => i.id === 'dragon_crest').length, 1);
+  // 装備中（持ち物）
+  L = mk((S) => { S.village.bag.push({ uid: 78, id: 'dragon_crest', plus: 0, eq: true }); });
+  assert(L.village.story.found.dragon_crest && L.village.bag.find((i) => i.uid === 78).eq);
+  // 持っていない・橋あり → 拾える
+  L = mk((S) => { S.village.built.bridge = true; S.village.story.defeated.baran = true; });
+  assert(!L.village.story.found.dragon_crest); G.applyFacilities(L.village); eq(JSON.stringify(G.villagePickups(L.village)), JSON.stringify(['dragon_crest']));
+  // 持っていない・橋なし → まだ拾えない（橋を建てたら拾える）
+  L = mk(() => {}); eq(G.villagePickups(L.village).length, 0); L.village.built.bridge = true; eq(G.villagePickups(L.village).length, 1);
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
