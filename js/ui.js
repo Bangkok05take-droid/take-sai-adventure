@@ -818,6 +818,8 @@
     let kv = `<span>種類</span><span>${typeName}</span>`;
     if (d.type === 'weapon') kv += `<span>攻撃力</span><span>+${d.atk + (it.plus || 0)}${it.plus ? `（強化+${it.plus}）` : ''}</span>`;
     if (d.type === 'shield') kv += `<span>防御力</span><span>+${d.def + (it.plus || 0)}${it.plus ? `（強化+${it.plus}）` : ''}</span>`;
+    if (d.type === 'accessory' && d.atk) kv += `<span>攻撃力</span><span>+${d.atk}</span>`;
+    if (d.type === 'accessory' && d.def) kv += `<span>防御力</span><span>+${d.def}</span>`;
     if (d.type === 'staff') kv += `<span>残り回数</span><span>${it.charges || 0}回</span>`;
     kv += `<span>売値</span><span>${G.canSell(it) ? G.sellPrice(it) + 'G' : '売れない'}</span>`;
     kv += `<span>倉庫</span><span>${G.canStore(it) ? '預けられる' : '預けられない'}</span>`;
@@ -845,11 +847,16 @@
       AU.sfx('pickup'); villageChanged();
       setTimeout(openDepart, 0);
     } });
+    // 大魔王のローブを装備していれば、21階からも出発できる（1階からも選べる）
+    if (G.canDeepStart(UI.S)) {
+      html += `<div class="okbox">大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。</div>`;
+      buttons.push({ label: G.DEEP_START + '階から出発', disabled: !chk.ok, onClick: () => depart({ deep: true }) });
+    }
     buttons.push({ label: '出発する', cls: 'primary', disabled: !chk.ok, onClick: () => depart() });
     modal({ title: '遺跡へ出発', html, buttons });
   }
-  function depart() {
-    const res = G.depart(UI.S);
+  function depart(opts) {
+    const res = G.depart(UI.S, undefined, opts);
     if (!res.ok) { info('出発', res.msg); return; }
     RD.fx = [];
     save();
@@ -1326,7 +1333,7 @@
         case 'revive':
           stopAllInput(); UI.lockUntil = performance.now() + 700;
           RD.addFx({ t: 'healrise', x: e.x, y: e.y, dur: 900 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8aa0', dur: 1100 });
-          flash(); toast('命つなぎの首飾りが光った！ 立ち上がった！', 'levelup'); AU.sfx('levelup');
+          flash(); toast((e.name || '命つなぎの首飾り') + 'が光った！ 立ち上がった！', 'levelup'); AU.sfx('levelup');
           break;
         case 'hit': {
           const d = e.target === 'enemy' && atkTile(e) ? ATK_HIT : (e.target === 'enemy' ? throwD : 0);
@@ -1798,8 +1805,9 @@
     if (!pend && V.giftNotice && !UI.modals.length) {
       // 報酬の入れ替え（2026年10月）の前にボスを倒していた人へ、新しいお宝を倉庫に届けたお知らせ（一度だけ）
       const names = V.giftNotice.filter((id) => D.ITEMS[id]).map((id) => '<b>' + esc(D.ITEMS[id].name) + '</b>');
+      const V_hasTreasure = V.giftNotice.some((id) => D.ITEMS[id] && D.ITEMS[id].type === 'treasure');
       V.giftNotice = null; save();
-      if (names.length) { info('村からのお知らせ', `<p>ボスを倒した記念のお宝${names.join('と')}が見つかったので、<b>倉庫</b>に届けました。</p><p class="note">お宝展示室に寄贈することもできます。</p>`); return true; }
+      if (names.length) { info('村からのお知らせ', `<p>ボスを倒した記念の品${names.join('と')}が見つかったので、<b>倉庫</b>に届けました。</p>${V_hasTreasure ? '<p class="note">お宝は展示室に寄贈することもできます。</p>' : ''}`); return true; }
     }
     if (!pend || UI.modals.length) return false;
     const finish = () => { st.pending = null; save(); updateVillageHud(); };

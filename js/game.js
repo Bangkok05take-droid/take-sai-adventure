@@ -107,12 +107,14 @@
   G.playerAtk = function (run) {
     const w = G.equipped(run.bag, 'weapon');
     const meal = run.meal && D.MEALS[run.meal];
-    return D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (run.player.lvl - 1) + (w ? G.def(w).atk + (w.plus || 0) : 0) + (meal && meal.atk || 0);
+    const ac = G.equipped(run.bag, 'accessory');   // ボスの報酬のアクセサリーは攻撃力・防御力も上がる（竜の紋章・ファントムマスク）
+    return D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (run.player.lvl - 1) + (w ? G.def(w).atk + (w.plus || 0) : 0) + (meal && meal.atk || 0) + (ac && G.def(ac).atk || 0);
   };
   G.playerDef = function (run) {
     const s = G.equipped(run.bag, 'shield');
     const meal = run.meal && D.MEALS[run.meal];
-    return (s ? G.def(s).def + (s.plus || 0) : 0) + (meal && meal.def || 0);
+    const ac = G.equipped(run.bag, 'accessory');
+    return (s ? G.def(s).def + (s.plus || 0) : 0) + (meal && meal.def || 0) + (ac && G.def(ac).def || 0);
   };
 
   // ---------- 探索の開始 ----------
@@ -122,9 +124,16 @@
     return { ok: true };
   };
 
-  G.depart = function (S, seed) {
+  /* 大魔王のローブ（装備して出発）：21階から始められる。今の章のボスの階が21階より深いときだけ（ボスの階を飛ばさない） */
+  G.DEEP_START = 21;
+  G.canDeepStart = function (S) {
+    const ac = G.equipped(S.village.bag, 'accessory');
+    return !!(ac && G.def(ac).acc === 'deep' && D.bossFloorOf(S.village.story.chapter) > G.DEEP_START);
+  };
+  G.depart = function (S, seed, opts) {
     const chk = G.canDepart(S);
     if (!chk.ok) return chk;
+    const deep = !!(opts && opts.deep && G.canDeepStart(S));
     const V = S.village;
     V.runs++;
     if (seed === undefined) seed = (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
@@ -149,7 +158,8 @@
       p.maxhp = p.hp = G.maxHpFor(1, S.run);
     }
     G.log(S.run, 'たけは遺跡へ出発した！' + (S.run.meal ? '（' + D.MEALS[S.run.meal].name + 'で元気いっぱい）' : ''));
-    enterFloor(S, 1);
+    if (deep) G.log(S.run, '大魔王のローブの力で、' + G.DEEP_START + '階へ降り立った！');
+    enterFloor(S, deep ? G.DEEP_START : 1);
     return { ok: true };
   };
 
@@ -432,7 +442,7 @@
       default: break;
     }
     if (consumed && !run.over) endTurn(S, ev);
-    if (run.revived) { run.revived = false; ev.push({ t: 'revive', x: run.player.x, y: run.player.y }); }
+    if (run.revived) { ev.push({ t: 'revive', x: run.player.x, y: run.player.y, name: typeof run.revived === 'string' ? run.revived : '命つなぎの首飾り' }); run.revived = false; }
     return { consumed, events: ev };
   };
 
@@ -589,10 +599,11 @@
       return;
     }
     if (e.type === 'truevearn') {
+      const firstFinal = !st.defeated.truevearn;   // 大魔王のローブは初めて倒したときだけ。2回目からは黄金の象
       st.defeated.truevearn = true;
       if (run.final) run.final.stage = 'won';
       st.finalStage = 'won';
-      for (const id of D.CHAPTERS[D.FINAL_CHAPTER].reward.items) drop(id);
+      for (const id of firstFinal ? D.CHAPTERS[D.FINAL_CHAPTER].reward.items : ['golden_elephant']) drop(id);
       openPortal();
       G.log(run, '真大魔王バーンを倒した！ 光る帰還口が開いた。');
       ev.push({ t: 'finalWin' });
@@ -1597,8 +1608,8 @@
       p.poison = 0; p.bound = 0; p.starveAcc = 0;
       p.reviveTurn = run.turn;
       p.lowWarned = false;
-      run.revived = true;
-      G.log(run, '命つなぎの首飾りが光った！ たけは立ち上がった！（首飾りはくだけた）');
+      run.revived = G.def(neck).name;
+      G.log(run, G.def(neck).name + 'が光った！ たけは立ち上がった！（' + G.def(neck).name + 'はなくなった）');
       return false;
     }
     run.player.hp = 0;

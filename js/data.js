@@ -4,7 +4,7 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 5;
+  D.SAVE_VERSION = 6;
   D.SAVE_KEY = 'takeSaiAdventure.save';
 
   // マップ（3x3 の区画にランダムな部屋を置く）
@@ -89,13 +89,13 @@
       desc: '苔の庭園に眠っていた、ひすい色に光る剣。' },
     crystal_blade: { name: 'すいしょうのつるぎ', type: 'weapon', atk: 15, sell: 520, icon: 'sword', tint: 'crystal',
       desc: 'すいしょうを削り出した、軽くて鋭い剣。' },
-    golden_sword:  { name: 'おうごんのつるぎ', type: 'weapon', atk: 18, sell: 760, icon: 'sword', tint: 'gold',
+    golden_sword:  { name: 'おうごんのつるぎ', type: 'weapon', atk: 18, sell: 1760, icon: 'sword', tint: 'gold',
       desc: '深部の神殿の宝剣。王の力が宿るという。' },
     moss_shield:   { name: 'ひすいの盾', type: 'shield', def: 9, sell: 330, icon: 'shield', tint: 'jade',
       desc: 'ひすいをはめこんだ、苔の庭園の盾。' },
     crystal_shield:{ name: 'すいしょうの盾', type: 'shield', def: 11, sell: 500, icon: 'shield', tint: 'crystal',
       desc: '光を通すすいしょうの盾。' },
-    golden_shield: { name: 'おうごんの盾', type: 'shield', def: 13, sell: 740, icon: 'shield', tint: 'gold',
+    golden_shield: { name: 'おうごんの盾', type: 'shield', def: 13, sell: 1740, icon: 'shield', tint: 'gold',
       desc: '神殿の守り手の黄金の盾。' },
     big_herb:      { name: '上やくそう', type: 'heal', heal: 90, price: 90, sell: 30, icon: 'herb', tint: 'big',
       desc: 'HPを90回復し、毒も治す。' },
@@ -110,19 +110,19 @@
     return_scroll: { name: '帰還の巻物', type: 'return', sell: 0, noSell: true, noStore: true, icon: 'scroll', tint: 'return',
       desc: 'その場で探索を終え、持ち物と探索中のお金を村へ持ち帰る。出発時に1枚無料支給。帰還・敗北で消える。' },
     // ---- 章の報酬（ボスを倒すと現れる装備） ----
-    // 2026年10月：旧「りゅうりんの盾」（dragon_shield・第1章）→ ファントムシールド（第3章）、
-    // 旧「ひょうえんの剣」（frost_sword・第2章）→ 真魔剛竜剣（第4章）。能力値・売値は以前のまま
-    phantom_shield: { name: 'ファントムシールド', type: 'shield', def: 15, sell: 520, icon: 'shield', tint: 'moon',
+    // 2026年10月（報酬の見直し）：げっこうの盾（moon_shield）→ ファントムシールド、りゅうきしの剣（dragon_sword）→ 真魔剛竜剣 にまとめた（save.js の RENAME_V6）。
+    // 新しい報酬の絵は後で届く予定。それまではコードで描いた絵（icon・tint）
+    croc_axe:      { name: 'クロコダインの斧', type: 'weapon', atk: 16, sell: 560, icon: 'axe', tint: 'iron',
+      desc: '獣王クロコダインの大きな斧。重い一撃が魅力。第1章の報酬。' },
+    iceflame_shield: { name: '氷炎の盾', type: 'shield', def: 15, sell: 560, icon: 'shield', tint: 'iceflame',
+      desc: '半分が氷、半分が炎でできた盾。第2章の報酬。' },
+    phantom_shield: { name: 'ファントムシールド', type: 'shield', def: 17, sell: 620, icon: 'shield', tint: 'moon',
       desc: '漆黒の盾。銀の縁と紫の宝石に、幻影の意匠が刻まれている。第3章の報酬。' },
-    shinma_sword:  { name: '真魔剛竜剣', type: 'weapon', atk: 21, sell: 640, icon: 'sword', tint: 'dragon',
+    shinma_sword:  { name: '真魔剛竜剣', type: 'weapon', atk: 24, sell: 760, icon: 'sword', tint: 'dragon',
       desc: '竜をかたどった金色の鍔と赤い宝石の剣。第4章の報酬。' },
-    moon_shield:   { name: 'げっこうの盾', type: 'shield', def: 17, sell: 620, icon: 'shield', tint: 'moon',
-      desc: '月の光を映す盾。幻にまどわされない心をくれる。第3章の報酬。' },
-    dragon_sword:  { name: 'りゅうきしの剣', type: 'weapon', atk: 24, sell: 760, icon: 'sword', tint: 'dragon',
-      desc: '竜の騎士が認めた者に渡る剣。第4章の報酬。' },
-    hero_sword:    { name: 'ゆうしゃの剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',
+    hero_sword:    { name: '勇者の剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',
       desc: '師匠ヤナイが遺した、勇者の剣。第5章の報酬。' },
-    hero_shield:   { name: 'ゆうしゃの盾', type: 'shield', def: 19, sell: 860, icon: 'shield', tint: 'hero',
+    hero_shield:   { name: '勇者の盾', type: 'shield', def: 19, sell: 860, icon: 'shield', tint: 'hero',
       desc: '師匠ヤナイが遺した、勇者の盾。第5章の報酬。' },
     // ---- ボスに備える道具（持っているだけで効く護符・お香） ----
     water_charm:   { name: 'みずがみの護符', type: 'charm', effect: 'fireice', price: 300, sell: 100, icon: 'charm', tint: 'water',
@@ -143,8 +143,8 @@
       desc: '小さなひすいの置物。高く売れる。' },
     golden_lotus:  { name: '黄金の蓮', type: 'treasure', sell: 260, icon: 'lotus',
       desc: '金でできた蓮の花。とても高く売れる。' },
-    // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダイルの涙。売値は以前のまま
-    croc_tear:     { name: 'クロコダイルの涙', type: 'treasure', sell: 350, icon: 'gem', tint: 'crystal',
+    // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダインの涙。売値は以前のまま
+    croc_tear:     { name: 'クロコダインの涙', type: 'treasure', sell: 350, icon: 'gem', tint: 'crystal',
       desc: '獣王クロコダインの涙が固まったという、青緑の大きなしずく形の宝石。第1章の報酬。' },
     amber_pendant: { name: '琥珀の首飾り', type: 'treasure', sell: 300, icon: 'pendant', depth: 11,
       desc: '地下庭園で見つかった琥珀の首飾り。' },
@@ -180,6 +180,13 @@
       desc: '装備している間、歩いても休んでも満腹度が減らない。今の満腹度は回復しない。' },
     life_necklace: { name: '命つなぎの首飾り', type: 'accessory', acc: 'revive', sell: 800, icon: 'lifeneck',
       desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（首飾りはなくなる）。' },
+    // ボスの報酬のアクセサリー。atk・def：装備している間だけ攻撃力・防御力に足す
+    phantom_mask:  { name: 'ファントムマスク', type: 'accessory', acc: 'hunger', def: 5, sell: 900, icon: 'mask',
+      desc: '装備している間、歩いても休んでも満腹度が減らない（今の満腹度は回復しない）。防御力+5。第3章の報酬。' },
+    dragon_crest:  { name: '竜の紋章', type: 'accessory', acc: 'revive', atk: 5, sell: 1000, icon: 'crest',
+      desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（紋章はなくなる）。攻撃力+5。第4章の報酬。' },
+    demon_robe:    { name: '大魔王のローブ', type: 'accessory', acc: 'deep', sell: 1500, icon: 'robe',
+      desc: '装備して出発すると、21階から探索を始められる（1階からも選べる）。大魔王バーンを倒した証。' },
     wish_orb:      { name: '願いの宝珠', type: 'orb', sell: 0, noSell: true, noStore: true, icon: 'orb',
       desc: '遺跡の奥に眠っていた宝珠。村へ持ち帰ろう！' },
   };

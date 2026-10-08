@@ -1658,25 +1658,31 @@ function bossRewardRun(ch, seed, S0) {
   const res = G.finishRun(S);
   return { S, got, res };
 }
-test('各ボスの報酬：クロコダイン＝クロコダイルの涙、フレイザード＝氷炎結晶、キルバーン＝ファントムシールド（＋既存）、バラン＝真魔剛竜剣（＋既存）', () => {
+test('各ボスの報酬（2026年10月の見直し）：クロコダイン＝涙・斧、フレイザード＝氷炎の盾・氷炎結晶、キルバーン＝ファントムシールド・マスク、バラン＝真魔剛竜剣・竜の紋章、ミストバーン＝勇者の剣・盾', () => {
   const want = {
-    1: ['croc_tear', 'golden_elephant'], 2: ['iceflame_crystal', 'dream_crown'],
-    3: ['phantom_shield', 'moon_shield', 'giant_crystal'], 4: ['shinma_sword', 'dragon_sword', 'golden_elephant'],
+    1: ['croc_tear', 'croc_axe'], 2: ['iceflame_shield', 'iceflame_crystal'],
+    3: ['phantom_shield', 'phantom_mask'], 4: ['shinma_sword', 'dragon_crest'], 5: ['hero_sword', 'hero_shield'],
   };
-  for (const ch of [1, 2, 3, 4]) {
+  eq(JSON.stringify(D.CHAPTERS[6].reward.items), JSON.stringify(['demon_robe']));
+  for (const ch of [1, 2, 3, 4, 5]) {
     const { S, got, res } = bossRewardRun(ch, 700 + ch);
     eq(JSON.stringify(got.slice().sort()), JSON.stringify(want[ch].slice().sort()), 'reward ch' + ch);
     eq(res.chapterClear, ch);
     for (const id of want[ch]) assert(S.village.bag.some((i) => i.id === id), id + ' brought home');
   }
-  // 元のボスから盾・剣は出ない
-  for (const id of D.CHAPTERS[1].reward.items) assert(D.ITEMS[id].type !== 'shield', 'croc: no shield');
-  for (const id of D.CHAPTERS[2].reward.items) assert(D.ITEMS[id].type !== 'weapon', 'flame: no sword');
-  // 能力値・売値は以前の盾・剣のまま
-  eq(D.ITEMS.phantom_shield.name, 'ファントムシールド'); eq(D.ITEMS.phantom_shield.def, 15); eq(D.ITEMS.phantom_shield.sell, 520);
-  eq(D.ITEMS.shinma_sword.name, '真魔剛竜剣'); eq(D.ITEMS.shinma_sword.atk, 21); eq(D.ITEMS.shinma_sword.sell, 640);
-  // 旧IDは定義から消え、どこからも出ない
-  for (const id of Object.keys(SV.RENAME_V4)) assert(!D.ITEMS[id], 'old id removed: ' + id);
+  // 名前・能力値
+  const I = D.ITEMS;
+  eq(I.croc_tear.name, 'クロコダインの涙'); eq(I.croc_tear.type, 'treasure');
+  eq(I.croc_axe.name, 'クロコダインの斧'); eq(I.croc_axe.type, 'weapon'); eq(I.croc_axe.atk, 16);
+  eq(I.iceflame_shield.name, '氷炎の盾'); eq(I.iceflame_shield.type, 'shield'); eq(I.iceflame_shield.def, 15); eq(I.iceflame_crystal.type, 'treasure');
+  eq(I.phantom_shield.def, 17); eq(I.phantom_mask.type, 'accessory'); eq(I.phantom_mask.acc, 'hunger'); eq(I.phantom_mask.def, 5);
+  eq(I.shinma_sword.atk, 24); eq(I.dragon_crest.type, 'accessory'); eq(I.dragon_crest.acc, 'revive'); eq(I.dragon_crest.atk, 5);
+  eq(I.hero_sword.name, '勇者の剣'); eq(I.hero_shield.name, '勇者の盾');
+  eq(I.demon_robe.type, 'accessory'); eq(I.demon_robe.acc, 'deep');
+  eq(I.golden_sword.sell, 1760); eq(I.golden_shield.sell, 1740);
+  // 旧IDは定義から消え、どこからも出ない（りゅうきしの剣・げっこうの盾も）
+  for (const id of Object.keys(SV.RENAME_V4).concat(Object.keys(SV.RENAME_V6))) assert(!D.ITEMS[id], 'old id removed: ' + id);
+  for (let ch = 1; ch <= 6; ch++) for (let f = 1; f <= D.bossFloorOf(ch); f++) for (const [id] of D.floorFor(ch, f).items) assert(D.ITEMS[id], 'floor item defined ' + id);
   for (const C of Object.values(D.CHAPTERS)) for (const id of C.reward.items) assert(D.ITEMS[id], 'reward defined ' + id);
   for (const E of Object.values(D.ENEMIES)) { if (E.drop && E.drop !== 'wish_orb') assert(D.ITEMS[E.drop], 'drop defined ' + E.drop); if (E.repeatDrop) assert(D.ITEMS[E.repeatDrop]); }
 });
@@ -1728,9 +1734,9 @@ test('旧セーブの移行（v3→v4）：旧お宝・旧装備を新しいID�
   // 寄贈：獅子の守り石の記録はクロコダイルの涙へ。数・お金・称号は変わらない
   assert(V.donated.croc_tear && !V.donated.guardian_gem);
   eq(G.donatedCount(V), before.count); eq(V.funds, before.funds); eq(G.title(V), '見習い収集家');
-  // 持っている・飾ってあるので、届け物はない
-  assert(!V.giftNotice, 'no gift');
-  eq(V.storage.length, 2); eq(V.bag.length, 2);
+  // 持っている・飾ってあるので、涙・結晶の届け物はない（v6 で増えた斧・氷炎の盾だけ届く）
+  eq(JSON.stringify(V.giftNotice), JSON.stringify(['croc_axe', 'iceflame_shield']));
+  eq(V.storage.length, 4); eq(V.bag.length, 2);
   // 寄贈済みのクロコダイルの涙は2回目の寄贈ができない。氷炎結晶は寄贈できる
   assert(!G.canDonate(V, V.bag.find((i) => i.uid === 102)));
   assert(G.canDonate(V, V.storage.find((i) => i.uid === 104)));
@@ -1762,7 +1768,7 @@ test('旧セーブの移行：入れ替え前にクロコダイン・フレイ�
   const raw = v3Save((S) => { const V = S.village; V.story.defeated.croc = true; V.story.defeated.flame = true; V.story.chapter = 3; V.nextUid = 50; });
   const L = SV.deserialize(JSON.stringify(raw));
   const V = L.village;
-  eq(JSON.stringify(V.giftNotice), JSON.stringify(['croc_tear', 'iceflame_crystal']));
+  eq(JSON.stringify(V.giftNotice), JSON.stringify(['croc_tear', 'iceflame_crystal', 'croc_axe', 'iceflame_shield']));
   eq(V.storage.filter((i) => i.id === 'croc_tear').length, 1); eq(V.storage.filter((i) => i.id === 'iceflame_crystal').length, 1);
   eq(new Set(V.storage.map((i) => i.uid)).size, V.storage.length); assert(V.nextUid > 50);
   // 読み込み直しても増えない
@@ -1770,7 +1776,7 @@ test('旧セーブの移行：入れ替え前にクロコダイン・フレイ�
   eq(L2.village.storage.filter((i) => i.id === 'croc_tear').length, 1);
   // 第1章だけ倒していた場合はクロコダイルの涙だけ。倒していなければ何も届けない
   const r1 = SV.deserialize(JSON.stringify(v3Save((S) => { S.village.story.defeated.croc = true; S.village.story.chapter = 2; })));
-  eq(JSON.stringify(r1.village.giftNotice), JSON.stringify(['croc_tear']));
+  eq(JSON.stringify(r1.village.giftNotice), JSON.stringify(['croc_tear', 'croc_axe']));
   const r0 = SV.deserialize(JSON.stringify(v3Save(() => {})));
   assert(!r0.village.giftNotice); eq(r0.village.storage.length, 0);
 });
@@ -1879,9 +1885,10 @@ test('最終章：大魔王バーン→準備→真大魔王バーンの間は�
   for (let i = 0; i < 40 && run.enemies.includes(tv); i++) { G.act(S, { type: 'wait' }); run.player.hp = run.player.maxhp; assert(insideAll(run)); }
   defeatBoss(S);
   assert(run.bossFight.won); eq(G.dungeonBgm(run), 'dungeon');
-  const n = run.floorItems.filter((f) => f.item && f.item.id === 'dream_crown').length;
+  const n = run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length;
+  eq(n, 1, 'demon robe once');
   const L = SV.deserialize(SV.serialize(S));
-  eq(L.run.floorItems.filter((f) => f.item && f.item.id === 'dream_crown').length, n, 'no duplicate reward after reload');
+  eq(L.run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, n, 'no duplicate reward after reload');
 });
 test('以前のセーブ（ボス戦の途中・ボスが通路にいる）：HPと戦いの状態を引き継ぎ、ボスを部屋の中（たけと重ならない所）へ戻す', () => {
   // 戦いの途中（HPが減っている・ボスが通路）
@@ -2211,11 +2218,72 @@ test('アクセサリーの入手：中盤以降の道具の表にまれに入�
   }
   assert(has(6, 33, 'life_necklace'), 'demon floors');
   const acc = Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === 'accessory');
-  eq(acc.length, 4);
+  eq(acc.length, 7);
+  // ボスの報酬のアクセサリー（マスク・紋章・ローブ）は床には出ない
+  eq(D.ACCESSORY_DROPS.length, 4);
+  for (const id of ['phantom_mask', 'dragon_crest', 'demon_robe']) for (const ch of [1, 3, 6]) for (const f of [11, 21, 33]) if (f <= D.bossFloorOf(ch)) assert(!has(ch, f, id), 'no floor ' + id);
   for (const st of Object.values(D.SHOP_STOCK)) assert(!st.some((id) => acc.includes(id)), 'shop');
   for (const c of Object.values(D.CHAPTERS)) assert(!(c.shop || []).some((id) => acc.includes(id)), 'chapter shop');
   assert(!D.MERCHANT.goods.some((g) => acc.includes(g.id)), 'merchant');
   const S = newRun(320); assert(!S.run.bag.some((i) => acc.includes(i.id)), 'no start item');
+});
+
+console.log('ボスの報酬の見直し（2026年10月・セーブ v6）');
+test('ボスのアクセサリー：ファントムマスク＝満腹度が減らない・防御+5、竜の紋章＝一度だけ立ち上がる・攻撃+5（紋章はなくなる）', () => {
+  const S = newRun(1301); bigRoomFloor(S);
+  const atk0 = G.playerAtk(S.run), def0 = G.playerDef(S.run);
+  const mk = giveItem(S, 'phantom_mask'); G.act(S, { type: 'equip', uid: mk.uid });
+  assert(G.hasAcc(S.run, 'hunger')); eq(G.playerDef(S.run), def0 + 5); eq(G.playerAtk(S.run), atk0);
+  const p = S.run.player; p.hunger = 50; for (let i = 0; i < 100; i++) G.act(S, { type: 'wait' }); eq(p.hunger, 50, 'no hunger loss');
+  const cr = giveItem(S, 'dragon_crest'); G.act(S, { type: 'equip', uid: cr.uid });
+  assert(!mk.eq && cr.eq, 'one accessory slot'); eq(G.playerAtk(S.run), atk0 + 5); eq(G.playerDef(S.run), def0);
+  const e = addEnemy(S, 'frog', p.x + 1, p.y); e.atk = 9999;
+  let r; for (let i = 0; i < 30 && !r?.events.some((x) => x.t === 'revive'); i++) { p.hp = Math.min(p.hp, 1); r = G.act(S, { type: 'wait' }); }
+  const ev = r.events.find((x) => x.t === 'revive'); assert(ev, 'revive'); eq(ev.name, '竜の紋章');
+  assert(!S.run.over && !S.run.bag.includes(cr), 'crest consumed'); eq(G.playerAtk(S.run), atk0);
+  assert(S.run.log.some((m) => m.includes('竜の紋章が光った')));
+});
+test('大魔王のローブ：装備して出発すると21階から（1階からも選べる）。装備していない・ボスの階が21階以下の章では1階から', () => {
+  const mk = (ch) => { const S = G.newState(); S.village.story.chapter = ch; S.village.story.introDone = true; return S; };
+  let S = mk(6); const robe = G.makeItem(S, 'demon_robe'); S.village.bag.push(robe);
+  assert(!G.canDeepStart(S), 'not equipped');
+  G.toggleEquipInBag(S.village.bag, robe.uid); assert(G.canDeepStart(S));
+  assert(G.depart(S, 77, { deep: true }).ok); eq(S.run.floor, 21); eq(S.run.player.lvl, 1);
+  assert(S.run.bag.some((i) => i.id === 'demon_robe' && i.eq), 'robe stays equipped');
+  S = mk(6); const r2 = G.makeItem(S, 'demon_robe'); r2.eq = true; S.village.bag.push(r2);
+  assert(G.depart(S, 78).ok); eq(S.run.floor, 1, 'normal departure from 1F');
+  S = mk(2); const r3 = G.makeItem(S, 'demon_robe'); r3.eq = true; S.village.bag.push(r3);
+  assert(!G.canDeepStart(S), 'chapter 2 boss is on 20F'); assert(G.depart(S, 79, { deep: true }).ok); eq(S.run.floor, 1);
+  S = mk(4); const r4 = G.makeItem(S, 'demon_robe'); r4.eq = true; S.village.bag.push(r4);
+  assert(G.depart(S, 80, { deep: true }).ok); eq(S.run.floor, 21);
+});
+test('旧セーブの移行（v5→v6）：げっこうの盾→ファントムシールド、りゅうきしの剣→真魔剛竜剣（番号・強化値・装備中を保持）。倒したボスの新しい報酬は倉庫へ一度だけ', () => {
+  const S = G.newState(); S.version = 5;
+  const V = S.village; V.nextUid = 300; V.funds = 1234;
+  V.bag.push({ uid: 201, id: 'moon_shield', plus: 2, eq: true }, { uid: 202, id: 'dragon_sword', plus: 5, eq: true });
+  V.storage.push({ uid: 203, id: 'phantom_mask', plus: 0 });
+  Object.assign(V.story.defeated, { croc: true, flame: true, kill: true, baran: true, mist: true, vearn: true, truevearn: true });
+  V.story.endingDone = true; V.story.chapter = 6;
+  const L = SV.deserialize(JSON.stringify(S)), LV = L.village;
+  eq(L.version, D.SAVE_VERSION); eq(D.SAVE_VERSION, 6);
+  const sh = LV.bag.find((i) => i.uid === 201), sw = LV.bag.find((i) => i.uid === 202);
+  eq(sh.id, 'phantom_shield'); eq(sh.plus, 2); assert(sh.eq); eq(sw.id, 'shinma_sword'); eq(sw.plus, 5); assert(sw.eq);
+  eq(G.itemName(sw), '真魔剛竜剣+5');
+  // マスクは持っているので届けない。ほかは1つずつ
+  eq(JSON.stringify(LV.giftNotice), JSON.stringify(['croc_axe', 'iceflame_shield', 'dragon_crest', 'demon_robe']));
+  eq(LV.storage.filter((i) => i.id === 'phantom_mask').length, 1);
+  eq(new Set(LV.storage.map((i) => i.uid)).size, LV.storage.length); assert(LV.nextUid > 300);
+  eq(LV.funds, 1234);
+  for (const it of LV.bag.concat(LV.storage)) assert(D.ITEMS[it.id], 'defined ' + it.id);
+  // 読み込み直しても増えない
+  const L2 = SV.deserialize(SV.serialize(L)); eq(L2.village.storage.length, LV.storage.length);
+  // 探索途中のセーブ：装備中の旧装備も続けられる
+  const R = newRun(1302); R.run.bag.push({ uid: 9101, id: 'dragon_sword', plus: 1, eq: true });
+  for (const it of R.run.bag) if (it.uid !== 9101 && G.def(it).type === 'weapon') it.eq = false;
+  const raw = JSON.parse(SV.serialize(R)); raw.version = 5;
+  const RL = SV.deserialize(JSON.stringify(raw)); eq(G.equipped(RL.run.bag, 'weapon').id, 'shinma_sword');
+  // 何も倒していなければ届け物なし
+  const N = G.newState(); N.version = 5; const NL = SV.deserialize(JSON.stringify(N)); assert(!NL.village.giftNotice); eq(NL.village.storage.length, 0);
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

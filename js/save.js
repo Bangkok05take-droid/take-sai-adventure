@@ -12,6 +12,10 @@
 
   // v4 で変わった道具の内部ID（旧 → 新）
   S_.RENAME_V4 = { guardian_gem: 'croc_tear', river_pearl: 'iceflame_crystal', dragon_shield: 'phantom_shield', frost_sword: 'shinma_sword' };
+  // v6 でなくした装備（旧 → まとめた先）。能力値は、まとめた先が引き継いだ
+  S_.RENAME_V6 = { moon_shield: 'phantom_shield', dragon_sword: 'shinma_sword' };
+  // v6 で増えたボスの報酬（すでに倒していたボス → 倉庫へ届ける品）
+  S_.GIFTS_V6 = [['croc', 'croc_axe'], ['flame', 'iceflame_shield'], ['kill', 'phantom_mask'], ['baran', 'dragon_crest'], ['truevearn', 'demon_robe']];
 
   // 足りない項目を既定値で補う（将来の項目追加に備える）
   function fill(target, defaults) {
@@ -59,7 +63,7 @@
       data.version = 3;
     }
     /* v3 → v4（2026年10月）：ボスの報酬の入れ替え。
-     * お宝：獅子の守り石 → クロコダイルの涙、大ナマズの大真珠 → 氷炎結晶（展示室の4番目・8番目の枠）。
+     * お宝：獅子の守り石 → クロコダインの涙（当時の名前はクロコダイルの涙）、大ナマズの大真珠 → 氷炎結晶（展示室の4番目・8番目の枠）。
      * 装備：りゅうりんの盾 → ファントムシールド、ひょうえんの剣 → 真魔剛竜剣（強化値・装備中・番号はそのまま）。
      * 寄贈済みの記録も新しいお宝へ移す（数は増やさない・お礼は払わない）。
      * 新しい報酬になる前にクロコダイン・フレイザードを倒していた場合、そのお宝はもう手に入らないので、
@@ -94,6 +98,29 @@
     }
     // v4 → v5（2026年10月）：ボス部屋の戦いの状態（run.bossFight）を、探索途中のセーブから安全に作る（下の fixBossFight）
     if (data.version === 4) data.version = 5;
+    /* v5 → v6（2026年10月）：ボスの報酬の見直し。
+     * げっこうの盾 → ファントムシールド、りゅうきしの剣 → 真魔剛竜剣（番号・強化値・装備中はそのまま。能力値は同じ）。
+     * すでに倒していたボスの新しい報酬は、持っていなければ1つずつ倉庫へ届ける（村で一度だけお知らせする） */
+    if (data.version === 5) {
+      const V = data.village || {};
+      const all = () => {
+        const list = (V.bag || []).concat(V.storage || []);
+        if (data.run) list.push(...(data.run.bag || []), ...(data.run.floorItems || []).map((f) => f.item).filter(Boolean));
+        return list;
+      };
+      all().forEach((it) => { if (it && S_.RENAME_V6[it.id]) it.id = S_.RENAME_V6[it.id]; });
+      const defeated = (V.story && V.story.defeated) || {}, gifts = [];
+      for (const [boss, id] of S_.GIFTS_V6) {
+        if (!(defeated[boss] || (boss === 'truevearn' && V.story && V.story.endingDone)) || all().some((it) => it && it.id === id)) continue;
+        V.storage = V.storage || [];
+        V.nextUid = V.nextUid || 1;
+        V.storage.push({ uid: V.nextUid++, id, plus: 0 });
+        gifts.push(id);
+      }
+      if (gifts.length) V.giftNotice = (V.giftNotice || []).concat(gifts);
+      data.village = V;
+      data.version = 6;
+    }
     const def = G.newState();
     fill(data, def);
     fill(data.village, def.village);

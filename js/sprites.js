@@ -876,6 +876,10 @@
     } else if (t === 'iron') {
       P.poly([[2, 2], [14, 2], [14, 8], [8, 15], [2, 8]], (x, y) => R[P.idx(0.6 + (x - 2) / 8 + (y - 2) / 14, x, y)]);
       P.ball(8, 7, 2.5, 2.2, ramp('#f2c440')); P.set(6, 9, '#f2c440');
+    } else if (t === 'iceflame') {   // 氷炎の盾：左が氷・右が炎
+      const Ri = ramp('#8ad8ff'), Rf = ramp('#ff7a3a');
+      P.poly([[2, 2], [14, 2], [13, 9], [8, 15], [3, 9]], (x, y) => (x < 8 ? Ri : Rf)[P.idx(0.4 + (y - 2) / 16, x, y)]);
+      P.rect(3, 3, 10, 1, '#ffffff'); P.line(8, 2, 8, 14, '#e8e8f0');
     } else {
       P.poly([[2, 2], [14, 2], [13, 9], [8, 15], [3, 9]], (x, y) => R[P.idx(0.4 + (x - 2) / 9 + (y - 2) / 16, x, y)]);
       P.rect(3, 3, 10, 1, R[0]);
@@ -985,6 +989,20 @@
   I.bangle = () => { const P = new Pix(16, 16); const G = ramp('#e8b030');
     for (let a = 0; a < 60; a++) { const t = a / 60 * Math.PI * 2; for (let r = 4; r <= 6; r++) P.set(Math.round(8 + Math.cos(t) * r), Math.round(8 + Math.sin(t) * (r - 1)), G[r === 6 ? 3 : r === 4 ? 1 : 2]); }
     P.poly([[8, 1], [12, 7], [4, 7]], '#ffffff'); P.rect(6, 5, 4, 2, '#2a3a2a'); return P.outline(); };
+  // ボスの報酬（仮の絵。新しい絵が届いたら差し替える）
+  // クロコダインの斧：木の柄に大きな刃
+  I.axe = (t) => { const P = new Pix(16, 16); const R = ramp(TINT[t] || '#aab4c0');
+    P.line(3, 14, 11, 4, '#7a4a24'); P.line(4, 14, 12, 4, '#5a3a20');
+    P.poly([[9, 1], [15, 4], [14, 9], [10, 6]], (x, y) => R[P.idx(0.3 + (x - 9) / 8, x, y)]); P.line(10, 2, 14, 4, R[0]); return P.outline(); };
+  // ファントムマスク：白い仮面に紫の目
+  I.mask = () => { const P = new Pix(16, 16); P.ball(8, 8, 6, 6.5, ramp('#e8e4f0')); P.rect(4, 6, 3, 2, '#5a2a8a'); P.rect(9, 6, 3, 2, '#5a2a8a');
+    P.line(6, 12, 10, 12, '#8a6aa8'); P.set(8, 3, '#c8a0ff'); return P.outline(); };
+  // 竜の紋章：赤い宝石を囲む金の紋
+  I.crest = () => { const P = new Pix(16, 16); P.poly([[8, 1], [15, 8], [8, 15], [1, 8]], ramp('#ffd84a')[2]); P.poly([[8, 3], [13, 8], [8, 13], [3, 8]], ramp('#e8b030')[1]);
+    P.ball(8, 8, 2.5, 2.5, ramp('#ff3a3a')); P.set(7, 7, '#ffe0e0'); return P.outline(); };
+  // 大魔王のローブ：黒紫の衣に金の縁
+  I.robe = () => { const P = new Pix(16, 16); const R = ramp('#5a3a8a');
+    P.poly([[5, 1], [11, 1], [14, 15], [2, 15]], (x, y) => R[P.idx(0.5 + (x - 2) / 14, x, y)]); P.line(8, 2, 8, 15, '#ffd84a'); P.rect(5, 1, 6, 1, '#ffd84a'); P.rect(2, 14, 13, 1, '#ffd84a'); return P.outline(); };
   // 命つなぎの首飾り：金の鎖に赤いハートの石
   I.lifeneck = () => { const P = new Pix(16, 16); P.line(2, 1, 8, 7, '#e8c040'); P.line(14, 1, 8, 7, '#e8c040');
     const H = ramp('#ff3a5a'); P.ball(6, 9, 2.5, 2.5, H); P.ball(10, 9, 2.5, 2.5, H); P.poly([[3, 10], [13, 10], [8, 15]], H[2]); P.set(5, 8, '#ffe0e8'); return P.outline(); };

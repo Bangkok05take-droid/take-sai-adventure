@@ -34,22 +34,22 @@
   D.CHAPTERS = {
     1: { name: '第1章', title: '沼地の獣王', boss: 'croc', goal: 15, color: '#4f9a5a',
       bias: { frog: 2, lizard: 1.6, turtle: 1.5, jelly: 1.3 }, prep: [['slow_powder', 1.5], ['sleep_incense', 1]], shop: ['slow_powder'],
-      reward: { items: ['croc_tear', 'golden_elephant'], funds: 1000 }, tip: '突進は一直線。予告の赤い列から横へずれてかわし、隙に反撃しよう。' },
+      reward: { items: ['croc_tear', 'croc_axe'], funds: 1000 }, tip: '突進は一直線。予告の赤い列から横へずれてかわし、隙に反撃しよう。' },
     2: { name: '第2章', title: '炎と氷の将', boss: 'flame', goal: 20, color: '#d8603a',
       bias: { wisp: 1.8, golem: 1.4, bat: 1.3 }, prep: [['water_charm', 1], ['big_herb', 1]], shop: ['water_charm'],
-      reward: { items: ['iceflame_crystal', 'dream_crown'], funds: 1500 }, tip: '炎と氷の床は交互に入れかわる。数字が0になる前に、印のない床へ。' },
+      reward: { items: ['iceflame_shield', 'iceflame_crystal'], funds: 1500 }, tip: '炎と氷の床は交互に入れかわる。数字が0になる前に、印のない床へ。' },
     3: { name: '第3章', title: '笑う死神', boss: 'kill', goal: 25, color: '#9a3a5a',
       bias: { thief: 2, bat: 1.5, monkey: 1.5 }, prep: [['truth_mirror', 1], ['sight_scroll', 1]], shop: ['truth_mirror'],
-      reward: { items: ['phantom_shield', 'moon_shield', 'giant_crystal'], funds: 2000 }, tip: '分身には影がない。影のある本物を狙おう。罠は数字が0で破裂する。' },
+      reward: { items: ['phantom_shield', 'phantom_mask'], funds: 2000 }, tip: '分身には影がない。影のある本物を狙おう。罠は数字が0で破裂する。' },
     4: { name: '第4章', title: '竜の騎士', boss: 'baran', goal: 30, color: '#3a7ac8',
       bias: { statue: 2, guard: 1.6, golem: 1.2 }, prep: [['bolt_charm', 1], ['sleep_incense', 1]], shop: ['bolt_charm'],
-      reward: { items: ['shinma_sword', 'dragon_sword', 'golden_elephant'], funds: 2500 }, tip: '大技のあとは2ターンの隙。雷の印は3×3。早めに外へ出よう。' },
+      reward: { items: ['shinma_sword', 'dragon_crest'], funds: 2500 }, tip: '大技のあとは2ターンの隙。雷の印は3×3。早めに外へ出よう。' },
     5: { name: '第5章', title: '影の衣', boss: 'mist', goal: 30, color: '#6a4aa0',
       bias: { shaman: 1.8, wisp: 1.5, bat: 1.4 }, prep: [['clear_incense', 1.2], ['elixir', 0.6]], shop: ['clear_incense'],
       reward: { items: ['hero_sword', 'hero_shield'], funds: 3000 }, tip: '霧の中でも赤い印は見える。きりばらいの香で霧と拘束を払える。' },
     6: { name: '最終章', title: '大魔王の封印', boss: 'vearn', goal: 35, final: true, color: '#c8a040',
       bias: { guard: 1.4, golem: 1.2 }, prep: [['elixir', 1], ['big_herb', 1.5]], shop: [],
-      reward: { items: ['dream_crown'], funds: 5000 }, tip: '35階の大魔王を倒しても、まだ終わりではない…。' },
+      reward: { items: ['demon_robe'], funds: 5000 }, tip: '35階の大魔王を倒しても、まだ終わりではない…。' },
   };
   D.FINAL_CHAPTER = 6;
   D.LAST_FLOOR = 35;
