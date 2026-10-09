@@ -351,6 +351,9 @@
         // 登場ムービーの途中で読み込み直した：ボス戦の状態（HP・位置）はそのままで、ムービーを最初から流し直す（スキップできる）
         const A = UI.S.run.bossFight, ib = A && A.intro === 'pending' && UI.S.run.enemies.find((e) => e.boss);
         if (A && A.intro === 'pending') setTimeout(() => playBossIntro(ib ? ib.type : null), 300);
+        // 撃破後ムービーの途中で読み込み直した：最初から流し直し、そのあと撃破後の会話へ
+        if (UI.S.run.postMovie) { AU.holdBgm(true); const pk = UI.S.run.postMovie, pb = Object.keys(D.BOSS_OUTROS).find((k) => D.BOSS_OUTROS[k] === pk);
+          setTimeout(() => playPostMovie(() => { if (pb && D.STORY.bossPost[pb]) storyTalk('post_' + pb, D.STORY.bossPost[pb]); }), 300); }
         // 30階の救援の途中で読み込み直した：ムービーを見ていなければ流し、救援の画面を開き直す
         if (G.canRescue(UI.S.run)) setTimeout(() => { const st = UI.S.village.story; if (st.moviesSeen && st.moviesSeen.vearnTaken) openRescue(); else playStoryMovie('vearnTaken', () => openRescue()); }, 300);
       }
@@ -1177,7 +1180,7 @@
     const tick = (first) => {
       if (UI.hold !== st || st.stopped) return;
       const t0 = performance.now();
-      if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden || !UI.S.run || UI.S.run.over) { stopHold(); return; }
+      if (UI.modals.length || UI.screen !== 'dungeon' || document.hidden || !UI.S.run || UI.S.run.over || UI.S.run.postMovie) { stopHold(); return; }   // 撃破後ムービーの間も止める
       let stop;
       if (dash) stop = doDashStep(dir, st.ctx);
       else {
@@ -1212,6 +1215,7 @@
   UI.stopDash = stopHold; UI.stopHold = stopAllInput;
   function faceDir(dir) {
     const run = UI.S.run;
+    if (run.postMovie) return;   // 撃破後ムービーの間（流すまでの間も）は向きも変えない
     run.player.dir = dir;
     G.act(UI.S, { type: 'face', dir });
     AU.sfx('tap');
@@ -1274,7 +1278,7 @@
   /* 行動の実行。入力ロック中（直前の行動の直後）は無視して予約しない。 */
   function doAct(action) {
     const S = UI.S;
-    if (!S.run || S.run.over || UI.modals.length) return null;
+    if (!S.run || S.run.over || UI.modals.length || S.run.postMovie) return null;   // 撃破後ムービーの間（流すまでの間も）は受けつけない
     const now = performance.now();
     if (now < UI.lockUntil) return null;
     UI.lockUntil = now + INPUT_LOCK_MS;
@@ -1328,7 +1332,7 @@
     const fin = () => { if (fired) return; fired = true; UI.movie = null; st.moviesSeen = st.moviesSeen || {}; st.moviesSeen[key] = true; save(); AU.holdBgm(false); if (done) done(); };
     if (UI.movie) { fin(); return; }
     stopAllInput();
-    if (m) { movieOverlay(m, key, fin); return; }
+    if (m) { movieOverlay(m, key, fin, 'ムービーを読み込めませんでした。続きへ進みます。'); return; }
     const lines = D.STORY.movieFallback && D.STORY.movieFallback[key];
     if (!lines) { fin(); return; }
     UI.movie = { id: key, fallback: true };
@@ -1336,7 +1340,7 @@
     talk(lines, fin, { skip: true });
   }
   // 動画を画面いっぱいに流す（縦の動画は切らない）。終わり・スキップ・失敗で onEnd(理由) を1回だけ
-  function movieOverlay(m, id, onEnd) {
+  function movieOverlay(m, id, onEnd, errMsg) {
     AU.holdBgm(true);
     const root = document.createElement('div');
     root.className = 'movie';
@@ -1372,7 +1376,7 @@
     }
     function onError() {
       if (done) return;
-      playBtn.hidden = true; say('ムービーを読み込めませんでした。戦いを始めます。');
+      playBtn.hidden = true; say(errMsg || 'ムービーを読み込めませんでした。戦いを始めます。');
       setTimeout(() => finish('error'), 1200);
     }
     function onVis() { if (done) return; if (document.hidden) v.pause(); else if (v.paused && !v.ended) ask('▶ タップして再開'); }
@@ -1392,6 +1396,24 @@
     UI.modals.push(handle);
     UI.movie = { id, video: v, finish };
     tryPlay();
+  }
+  /* 撃破後ムービー（run.postMovie。いまは通常のバランの「ミストバーンが連れ去る」）。
+   * 撃破の演出のあとに流し、終わり・スキップ・読み込み失敗のどれでも G.finishPostMovie を1回だけ呼んで then へ（撃破後の会話）。
+   * 流している間・流すまでの間は doAct が行動を受けつけない（ターン・敵は進まない）。報酬・帰還口はゲーム側で撃破のときに1回だけ済んでいる。
+   * 途中で読み込み直したら、「つづきから」で最初から流し直す。二重には流さない（UI.postMoviePlaying） */
+  function playPostMovie(then) {
+    const run = UI.S.run, key = run && run.postMovie;
+    if (!key || UI.postMoviePlaying) { AU.holdBgm(false); return; }
+    UI.postMoviePlaying = true;
+    playStoryMovie(key, () => {
+      UI.postMoviePlaying = false;
+      if (UI.S.run) G.finishPostMovie(UI.S);
+      save();
+      AU.playBgm(UI.S.run ? G.dungeonBgm(UI.S.run) : 'dungeon');
+      UI.lockUntil = performance.now() + 300;   // スキップのタップが、そのまま方向ボタンの入力にならないように
+      updateHud();
+      if (then) then();
+    });
   }
   UI.playBossIntro = playBossIntro;
   UI.playStoryMovie = (k, d) => playStoryMovie(k, d);
@@ -1468,15 +1490,16 @@
     }
     if (res.events.some((e) => e.t === 'bossDown')) {
       const b = res.events.find((e) => e.t === 'bossDown').boss;
+      // 撃破後ムービー（通常のバラン）があるときは、ムービーが終わるまで曲を止めておく（曲名だけ覚えておき、終わったら流す）
+      const outro = res.events.find((e) => e.t === 'bossOutro');
+      if (outro) { stopAllInput(); AU.holdBgm(true); }
       stopHold(); AU.playBgm(G.dungeonBgm(S.run));   // 撃破：探索の曲へ（大魔王バーンの1戦目のあとは続けてボス戦の曲）
-      // 撃破のあと：会話 → （通常のバラン）ミストバーンが連れ去るムービー／（版3の30階・大魔王バーン）連れ去るムービー → ティウの救援
+      // 撃破のあと：（通常のバラン）撃破の演出 → 連れ去るムービー → 会話／（版3の30階・大魔王バーン）会話 → 連れ去るムービー → ティウの救援
       const fall = res.events.some((e) => e.t === 'vearnFall');
-      const chapterRun = G.chapterOf(S.run) !== 'legacy';
-      const after = () => {
-        if (fall) playStoryMovie('vearnTaken', () => openRescue());
-        else if (b === 'baran' && chapterRun) playStoryMovie('baranTaken');
-      };
-      setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b], after); else after(); }, 500);
+      const after = () => { if (fall) playStoryMovie('vearnTaken', () => openRescue()); };
+      const post = () => { if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b], after); else after(); };
+      // 撃破後ムービー（通常のバラン）：撃破の演出 → ムービー → いつもの撃破後の会話。ムービーまでの間も曲と操作は止めておく
+      setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (outro) setTimeout(() => playPostMovie(post), 1100); else post(); }, 500);
       return;
     }
     if (res.events.some((e) => e.t === 'finalTransform')) { stopHold(); setTimeout(() => finalCutscene(), 500); return; }

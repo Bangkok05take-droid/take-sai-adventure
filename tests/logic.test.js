@@ -63,6 +63,7 @@ function defeatBoss(S) {
     const x = b.x - dx, y = b.y - dy;
     if (G.canStep(run.map, x, y, dx, dy) && !G.enemyAt(run, x, y)) { run.player.x = x; run.player.y = y; G.updateVision(run);
       for (let i = 0; i < 60 && run.enemies.includes(b); i++) G.act(S, { type: 'move', dir });
+      G.finishPostMovie(S);   // 撃破後ムービー（通常のバラン）は画面側で流す。ここでは見終えた扱い
       return; }
   }
   throw new Error('cannot reach boss');
@@ -1392,6 +1393,35 @@ function chapterRun(ch, seed, floor) {
   goToFloor(S, floor);
   return S;
 }
+test('撃破後ムービー（通常のバラン）：撃破で1回だけ予約。報酬・撃破の記録・帰還口は撃破のときに1回だけ。ムービー中の行動はせずターンも進まない。ほかのボス・以前の探索には無い', () => {
+  eq(Object.keys(D.BOSS_OUTROS).join(), 'baran');
+  const S = chapterRun(4, 240, D.CHAPTERS[4].goal), run = S.run;
+  engage(S);
+  const b = run.enemies.find((e) => e.boss); b.hp = 1; b.sleep = 99; run.player.hp = run.player.maxhp = 9999;
+  let res = null;
+  for (const [dir, [dx, dy]] of Object.entries(G.DIRS)) { const x = b.x - dx, y = b.y - dy;
+    if (G.canStep(run.map, x, y, dx, dy) && !G.enemyAt(run, x, y)) { run.player.x = x; run.player.y = y; G.updateVision(run);
+      for (let i = 0; i < 60 && run.enemies.includes(b); i++) res = G.act(S, { type: 'move', dir }); break; } }
+  assert(!run.enemies.includes(b), 'baran down');
+  const outro = res.events.filter((e) => e.t === 'bossOutro');
+  eq(outro.length, 1); eq(outro[0].movie, 'baranTaken'); eq(run.postMovie, 'baranTaken');
+  assert(res.events.findIndex((e) => e.t === 'bossDown') < res.events.findIndex((e) => e.t === 'bossOutro'), 'after defeat effect');
+  const rewards = () => run.floorItems.filter((f) => f.item && f.item.bossReward).map((f) => f.item.id).sort().join();
+  eq(rewards(), 'baran_emblem,shinma_sword'); assert(run.portal && S.village.story.defeated.baran && S.village.bossKills.baran === 1);
+  // ムービー中に行動が届いても：行動しない・ターンは進まない・ムービーを終えた扱い（固まらない）
+  const t0 = run.turn, pos = run.player.x + ',' + run.player.y;
+  const r2 = G.act(S, { type: 'wait' });
+  assert(!r2.consumed && run.turn === t0 && run.player.x + ',' + run.player.y === pos && !run.postMovie, 'no action during movie');
+  eq(G.finishPostMovie(S), null, 'only once');
+  // 終わったあと：報酬・帰還口は増えない、バランは戻らない
+  G.act(S, { type: 'wait' }); eq(rewards(), 'baran_emblem,shinma_sword'); assert(!run.enemies.some((e) => e.type === 'baran'), 'baran not shown again');
+  eq(S.village.bossKills.baran, 1);
+  // 保存・読み込みでムービーの予約は残る（途中で読み込み直したら流し直す）
+  run.postMovie = 'baranTaken'; eq(TS.Save.deserialize(TS.Save.serialize(S)).run.postMovie, 'baranTaken', 'kept in save');
+  run.postMovie = null;
+  // ほかのボス（クロコダイン）・以前の探索のバランには無い
+  const C = chapterRun(1, 241, D.CHAPTERS[1].goal); defeatBoss(C); assert(!C.run.postMovie, 'no outro for croc');
+});
 // ボス部屋の中で、ボスから見て (dx,dy) の位置にたけを置く
 function placeNear(S, dx, dy) {
   engage(S);

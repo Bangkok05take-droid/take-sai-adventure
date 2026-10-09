@@ -483,6 +483,8 @@
     /* ボスの登場ムービーの途中（ふつうは画面の動画が入力を止めている）：動画を出せずに行動が来たときの安全策として、
      * ムービーを終えた扱いにして戦いを始める（行動はしない・ターンは進まない）。固まったままにしない */
     if (run.bossFight && run.bossFight.intro === 'pending') return { consumed: false, events: G.finishBossIntro(S) };
+    // 撃破後ムービーの途中も同じ：行動はせず、ターンも進めずに、ムービーを終えた扱いにする（固まらない）
+    if (run.postMovie) { G.finishPostMovie(S); return { consumed: false, events: ev }; }
     // すでにボス部屋の中にいる（読み込み直し・移動以外で入った）なら、行動の前に戦いを始める
     if (run.bossFight && !run.bossFight.engaged) { checkBossRoom(S, ev); if (run.bossFight.intro === 'pending') return { consumed: false, events: ev }; }
     switch (a.type) {
@@ -723,7 +725,18 @@
     G.log(run, E.name + 'を倒した！ ' + items.map((id) => D.ITEMS[id].name).join('と') + 'が現れた。');
     G.log(run, '光る帰還口が開いた。村へ帰ろう。');
     ev.push({ t: 'bossDown', boss: e.type });
+    /* 撃破後ムービー（通常のバラン：ミストバーンが連れ去る）。報酬・撃破の記録・帰還口は上で1回だけ済んでいる。
+     * run.postMovie の間は行動を受けつけない（画面がムービーを流し、終わり・スキップ・失敗のどれでも G.finishPostMovie） */
+    const outro = D.BOSS_OUTROS && D.BOSS_OUTROS[e.type];
+    if (outro) { run.postMovie = outro; ev.push({ t: 'bossOutro', boss: e.type, movie: outro }); }
   }
+  /* 撃破後ムービーの終わり（何度呼んでも1回だけ）。ターンは進めない。戻り値：終えたムービーの名前（無ければ null） */
+  G.finishPostMovie = function (S) {
+    const run = S.run, key = run && run.postMovie;
+    if (!key) return null;
+    run.postMovie = null;
+    return key;
+  };
 
   // 準備画面で「最終決戦へ」：真大魔王バーンが現れる（ターンは進めない）
   G.startFinalBattle = function (S) {

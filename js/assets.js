@@ -81,7 +81,9 @@
      * poster：読み込み中に出す最初の1コマ */
     movies: { crocodine: { video: 'assets/movies/crocodine-intro.mp4', poster: 'assets/movies/crocodine-poster.jpg' },
       // バランの登場ムービー（2026年10月、採用済みの完成動画。720×1280・約10秒・H.264＋AAC。再エンコードなし）。poster は動画の最初の1コマ
-      baran: { video: 'assets/movies/baran-intro.mp4', poster: 'assets/movies/baran-poster.jpg' } },
+      baran: { video: 'assets/movies/baran-intro.mp4', poster: 'assets/movies/baran-poster.jpg' },
+      // 通常のバランの撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の霧でバランを連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
+      baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' } },
     /* 村の素材（assets/village/、2026年10月「サイの店〜ヤナイ像の広場」）。寸法と足元の位置は assets/village/manifest.json。
      * 建物・小物（店・像・木・花壇・屋台・ベンチ）は、見本の細かさが村のマスより細かいので 2/3 の大きさで描く（1マス32ドット）。
      *   2/3 にすると店の幅が今までの店（4マス＋余白）とほぼ同じになる。スマホ（1ドット＝3ピクセル）ではちょうど2ピクセルずつになる。
