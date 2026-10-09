@@ -65,7 +65,7 @@
     const V = {
       funds: D.START_FUNDS, stage: 1, bag: [], storage: [], nextUid: 1,
       cleared: false, clears: 0, runs: 0, returns: 0, defeats: 0, bestFloor: 0,
-      legacyClear10: false, bossKills: {}, materials: {},
+      legacyClear10: false, bossKills: {}, materials: {}, scrollTaken: false,
       storageLv: 1, smithLv: 0, built: {}, decor: {}, diner: false, museum: false, meal: null, donated: {},
       lastResult: null, seenIntro: false, seenEnding: false,
       story: G.newStory(),
@@ -228,8 +228,25 @@
   // ---------- 探索の開始 ----------
   G.canDepart = function (S) {
     if (S.run) return { ok: false, msg: '探索中です。' };
-    if (S.village.bag.length >= D.BAG_SIZE) return { ok: false, msg: '帰還の巻物を入れるため、バッグに1枠空けてください。' };
-    return { ok: true };
+    return { ok: true };   // 帰還の巻物は出発画面で借りる（任意）。持ち物がいっぱいでも出発できる
+  };
+  /* 帰還の巻物の無料の貸し出し：1回の冒険（出発から村へ戻るまで）につき1枚まで。受け取りは任意。
+   * V.scrollTaken：今度の冒険の分を受け取ったか。閉じる・開き直す・読み込み直しでは戻らず、
+   * 巻物を手放しても（倉庫・売却・破棄）同じ準備中は再び出さない。冒険を終えて村へ戻ったら（帰還でも敗北でも）戻す（G.finishRun）。
+   * 持ち物がいっぱいで受け取れなかったときは受取済みにしない */
+  G.scrollStatus = function (S) {
+    const V = S.village;
+    if (V.scrollTaken) return { can: false, taken: true, msg: '今度の冒険の分は受取済みです。' };
+    if (V.bag.length >= D.BAG_SIZE) return { can: false, taken: false, full: true, msg: '持ち物がいっぱいです。1枠空けると受け取れます。' };
+    return { can: true, taken: false };
+  };
+  G.takeReturnScroll = function (S) {
+    if (S.run) return { ok: false, msg: '探索中です。' };
+    const st = G.scrollStatus(S);
+    if (!st.can) return { ok: false, msg: st.msg };
+    S.village.bag.push(G.makeItem(S, 'return_scroll'));
+    S.village.scrollTaken = true;
+    return { ok: true, msg: '帰還の巻物を借りた。' };
   };
 
   /* 大魔王のローブ（装備して出発）：21階から始められる。今の章のボスの階が21階より深いときだけ（ボスの階を飛ばさない） */
@@ -247,8 +264,7 @@
     if (seed === undefined) seed = (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
     const bag = V.bag;
     V.bag = [];
-    // 帰還の巻物は出発ごとに1枚だけ（古いものは持ち込めない仕組み：帰還・敗北で必ず消える）
-    bag.push(G.makeItem(S, 'return_scroll'));
+    // 帰還の巻物は自動では配らない（出発画面で借りる。G.takeReturnScroll）。帰還・敗北で必ず消える
     S.run = {
       seed, rng: R.create(seed), floor: 0, turn: 0, runGold: 0, bag,
       player: { x: 0, y: 0, lvl: 1, exp: 0, hp: G.maxHpFor(1), maxhp: G.maxHpFor(1), hunger: D.PLAYER.maxHunger,
@@ -1907,6 +1923,7 @@
       // （以前の版の「願いの宝珠」によるクリアは廃止。エンディングは最終章で迎える）
     }
     applyStoryOnReturn(S, run, res);
+    V.scrollTaken = false;   // 冒険を終えたので、次の冒険の帰還の巻物を1枚受け取れる
     // 貸出品が重複しないよう念のため1つずつに
     dedupeLoans(V);
     V.lastResult = res;

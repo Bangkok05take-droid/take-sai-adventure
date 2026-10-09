@@ -348,3 +348,51 @@ details summary { cursor: pointer; margin: 4px 0; }
 .reward img { width: 48px; height: 48px; object-fit: contain; flex: none; }
 .reward span { display: flex; flex-direction: column; line-height: 1.25; }
 .reward small { opacity: 0.75; font-size: 12px; }
+
+/* ===== 遺跡へ出発（革・古紙・金属のデザイン。ChatGPT のデザイン案に合わせる） =====
+ * 見出し：濃い緑の革に金の文字と羅針盤。本文：古紙。枠：金属のふち。
+ * ボタンは2列に固定（左上 ティウと話す／右上 帰還の巻物／左下 やめる／右下 出発する）。横長の追加ボタンはその上 */
+.modal.depart-modal { background: linear-gradient(#f3e9cf, #e8dab6); border: 3px solid #8a7550; border-radius: 10px; color: #3a2a18;
+  box-shadow: 0 0 0 1px #2a2216, inset 0 0 0 2px #c9b386, inset 0 0 22px rgba(120, 90, 40, 0.35), 0 12px 30px rgba(0, 0, 0, 0.6); }
+.depart-modal h2 { justify-content: center; padding: 10px 14px; background: radial-gradient(ellipse at 30% 20%, #4a5a4c, #2c3a31 70%), #2c3a31; color: #f3e5c0;
+  border-bottom: 3px solid #8a7550; box-shadow: inset 0 -2px 0 #c9b386, inset 0 2px 0 rgba(255, 255, 255, 0.08); font-size: 24px; letter-spacing: 3px; text-shadow: 0 2px 0 #1a120a; }
+.depart-modal .dp-title { display: flex; align-items: center; gap: 10px; }
+.depart-modal .dp-title svg { width: 38px; height: 38px; color: #d8b26a; flex: none; }
+.depart-modal .modal-body { font-size: 15.5px; line-height: 1.45; padding: 10px 12px; }
+.dp-panel { border: 1.5px solid #b9a37a; border-radius: 6px; background: rgba(255, 250, 235, 0.55); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35); margin: 0 0 9px; padding: 8px 10px; }
+.dp-panel img, .dp-panel svg, .dp-notes svg { flex: none; }
+.dp-info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.dp-cell { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: bold; }
+.dp-cell span { min-width: 0; overflow-wrap: anywhere; }
+.dp-cell img, .dp-cell svg { width: 34px; height: 34px; object-fit: contain; }
+.dp-cell.dp-wide { grid-column: 1 / -1; }
+.dp-warn { display: flex; align-items: center; gap: 10px; background: linear-gradient(90deg, rgba(240, 200, 150, 0.7), rgba(250, 225, 190, 0.6)); border-color: #c98a50; border-left: 5px solid #c0562a; }
+.dp-warn svg { width: 40px; height: 40px; }
+.dp-warn b { color: #7a2412; display: block; }
+.dp-panel small { display: block; color: #5a4630; font-size: 13.5px; margin-top: 3px; }
+.dp-scroll { display: flex; align-items: center; gap: 10px; background: rgba(215, 228, 200, 0.75); border-color: #98ad86; }
+.dp-scroll img { width: 42px; height: 42px; object-fit: contain; }
+.dp-scroll b { color: #24451f; display: block; }
+.dp-scroll.taken { background: rgba(225, 220, 205, 0.7); border-color: #b2a68c; }
+.dp-scroll.taken b { color: #4a4030; }
+.dp-rule { height: 1px; background: linear-gradient(90deg, transparent, #9a8460, transparent); margin: 4px 0 8px; position: relative; }
+.dp-rule i { position: absolute; left: 50%; top: -4px; width: 8px; height: 8px; background: #8a7550; transform: translateX(-50%) rotate(45deg); }
+.dp-notes p { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+.dp-notes svg { width: 26px; height: 26px; color: #2f2618; }
+.depart-modal .warnbox { color: #fff; }
+.depart-modal .modal-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: transparent; border-top: 1px solid #c9b386; padding: 9px 10px 11px; }
+.depart-modal .dp-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 6px 8px; border-radius: 6px; font-size: 16.5px; line-height: 1.2; font-weight: bold;
+  border: 2px solid #8a7550; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25), 0 2px 0 #3a2c18; text-shadow: none; }
+.depart-modal .dp-btn img, .dp-btn svg { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.depart-modal .dp-btn.dp-wide { grid-column: 1 / -1; min-height: 48px; }
+.depart-modal .dp-teal { background: linear-gradient(#2c6f70, #1b4f52); color: #f6ecd0; border-color: #c9a85e; }
+.depart-modal .dp-paper, .depart-modal .dp-light { background: linear-gradient(#f6ecd2, #e2d3ae); color: #3a2a18; }
+.depart-modal .dp-light { background: linear-gradient(#f3efe4, #ddd5c2); }
+.depart-modal .dp-light svg { color: #2f2618; width: 24px; height: 24px; }
+.depart-modal .dp-gold { background: linear-gradient(#f2d27e, #cf9f45); color: #3a2410; border-color: #7a5a24; }
+.depart-modal .dp-gold svg { color: #3a2410; }
+.depart-modal .dp-btn:disabled { opacity: 0.55; filter: grayscale(0.4); }
+.depart-modal .dp-btn.dp-done:disabled { opacity: 0.75; }
+@media (max-width: 380px) { .depart-modal .modal-body { font-size: 14.5px; } .dp-btn { font-size: 15px; gap: 5px; } .dp-btn img, .dp-btn svg { width: 26px; height: 26px; } .depart-modal h2 { font-size: 21px; } }
+.depart-modal .dp-btn span { white-space: nowrap; }
+@media (max-width: 380px) { .depart-modal .dp-btn { padding: 6px 4px; } .depart-modal .dp-teal svg { width: 24px; height: 24px; } }

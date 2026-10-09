@@ -90,6 +90,7 @@ function sim(opt, n) {
     // 木刀の貸し出しは廃止：装備の指定がなければ素手で出発
     G.takeLoan(S, 'food');
     for (const id of opt.extra || []) S.village.bag.push(G.makeItem(S, id));
+    G.takeReturnScroll(S);   // 出発画面で帰還の巻物を借りる
     G.depart(S, 5000 + s);
     let r;
     while (!S.run.over && S.run.turn < 6000) {

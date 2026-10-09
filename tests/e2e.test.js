@@ -280,6 +280,11 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('.fac.depart'); await p.waitForTimeout(150);
     assert(await p.isVisible('text=倒れると'), 'risk text');
     await shot('05_depart');
+    // 帰還の巻物は自動では配らない。借りると「受取済み」（押せない）
+    const sc0 = await p.evaluate(() => TS.UI.S.village.bag.filter((i) => i.id === 'return_scroll').length);
+    await p.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p.waitForTimeout(250);
+    const sc1 = await p.evaluate(() => ({ n: TS.UI.S.village.bag.filter((i) => i.id === 'return_scroll').length, dis: [...document.querySelectorAll('.depart-modal .modal-buttons button')].find((b) => b.textContent.includes('受取済み')).disabled }));
+    assert(sc0 === 0 && sc1.n === 1 && sc1.dis, 'scroll borrowed once ' + JSON.stringify(sc1));
     await p.click('text=出発する'); await p.waitForTimeout(150);
     await closeTalk();
     assert(await p.isVisible('#screen-dungeon'));
@@ -848,7 +853,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
 
   await test('倒れると原因と到達階を表示し、すぐ再挑戦できる', async () => {
     await p.tap('.fac.depart'); await p.waitForTimeout(150);
-    await p.click('text=出発する'); await p.waitForTimeout(150);
+    await p.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p.waitForTimeout(200); await p.click('text=出発する'); await p.waitForTimeout(150);
     await closeTalk();
     await p.evaluate(() => {
       const r = TS.UI.S.run, pl = r.player;
@@ -878,7 +883,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(v.funds === funds && v.bag === 0 && v.run === null, JSON.stringify(v));
     assert(!(await p.evaluate(() => document.querySelector('.modal').textContent.includes('木刀'))), 'no sword hint on retry');
     await p.tap('.modal-buttons button >> text=おにぎりを借りる'); await p.waitForTimeout(150);
-    await p.click('text=出発する'); await p.waitForTimeout(150);
+    await p.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p.waitForTimeout(200); await p.click('text=出発する'); await p.waitForTimeout(150);
     await closeTalk();
     assert(await p.isVisible('#screen-dungeon'), 'retried');
     assert(await p.evaluate(() => !TS.UI.S.run.bag.some((i) => i.id === 'wood_sword') && !TS.UI.S.run.bag.some((i) => i.eq && TS.Game.def(i).type === 'weapon')), 'retry without sword');
@@ -959,7 +964,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       const S = TS.UI.S, G = TS.Game;
       S.village.story.chapter = 6; S.village.bag = [];
       S.village.storage = [G.makeItem(S, 'herb'), G.makeItem(S, 'banana')];
-      G.depart(S, 777);
+      G.takeReturnScroll(S); G.depart(S, 777);
       S.run.player.hp = S.run.player.maxhp = 9999;
       while (S.run.floor < 30) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
@@ -1056,7 +1061,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
       let S = null;
       for (let s = 7700; s < 8200 && !S; s++) {
-        const T = G.newState(); T.village.story.chapter = 3; G.depart(T, s);
+        const T = G.newState(); T.village.story.chapter = 3; G.takeReturnScroll(T); G.depart(T, s);
         while (T.run.floor < 29 && !(T.run.merchant && T.run.floor >= 13)) { T.run.player.x = T.run.stairs.x; T.run.player.y = T.run.stairs.y; G.act(T, { type: 'descend' }); }
         if (T.run.merchant && T.run.floor >= 13) S = T;
       }
@@ -1156,7 +1161,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p2.screenshot({ path: path.join(OUT, `22_${name}_village.png`) });
       await p2.click('.fac.depart'); await p2.waitForTimeout(100);
       await p2.click('text=おにぎりを借りる'); await p2.waitForTimeout(100);
-      await p2.click('text=出発する'); await p2.waitForTimeout(100);
+      await p2.click('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p2.waitForTimeout(200); await p2.click('text=出発する'); await p2.waitForTimeout(100);
       for (let i = 0; i < 4 && await p2.$('.modal'); i++) { await p2.click('.modal-buttons button.primary'); await p2.waitForTimeout(60); }
       await p2.keyboard.press('ArrowRight'); await p2.waitForTimeout(150);
       await p2.screenshot({ path: path.join(OUT, `23_${name}_dungeon.png`) });
@@ -1177,7 +1182,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.evaluate(() => {
       const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S;
       while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
-      G.depart(S, 5150); const r = S.run;
+      G.takeReturnScroll(S); G.depart(S, 5150); const r = S.run;
       while (r.floor < 3) { r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const room = r.map.rooms.find((q) => q.w >= 4 && q.h >= 3);
       r.enemies = []; r.floorItems = []; r.player.x = room.x + 1; r.player.y = room.y + 1; r.player.hp = r.player.maxhp = 500;
@@ -1233,7 +1238,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; S.settings.dash = true;
       while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
       for (let seed = 1; seed < 2000; seed++) {
-        G.depart(S, seed); const r = S.run, room = r.map.rooms.find((q) => q.w >= 8);
+        G.takeReturnScroll(S); G.depart(S, seed); const r = S.run, room = r.map.rooms.find((q) => q.w >= 8);
         if (!room) continue;
         r.enemies = []; r.floorItems = []; r.stairs = { x: -5, y: -5 }; r.returnPoint = null;
         r.player.x = room.x; r.player.y = room.y + (room.h >> 1); G.updateVision(r); break;
@@ -1260,7 +1265,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const setup = (o) => p.evaluate((o) => {
       const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; S.settings.dash = !!o.dash;
       while (UI.modals.length) UI.modals[UI.modals.length - 1].close();
-      G.depart(S, 6161); const r = S.run;
+      G.takeReturnScroll(S); G.depart(S, 6161); const r = S.run;
       while (r.floor < 4) { r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const room = r.map.rooms.find((q) => q.w >= 5 && q.h >= 4);
       r.enemies = r.enemies.filter((e) => !TS.Dungeon.roomAt(r.map, e.x, e.y) || TS.Dungeon.roomAt(r.map, e.x, e.y).id !== room.id);
@@ -1332,7 +1337,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
 
   await test('音楽試聴：2曲の再生・停止・連打・切り替え・ループ・最後まで再生・音量の保存・ミュート・閉じると元のBGM・裏に回すと停止（ターンは進まない）', async () => {
     try {
-      await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.depart(S, 5151); S.run.enemies = [];
+      await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.takeReturnScroll(S); G.depart(S, 5151); S.run.enemies = [];
         document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; UI.lockUntil = 0; UI.started = true; UI.debug.save();
         TS.Audio.unlock(); TS.Audio.playBgm('dungeon', true);
         const M = TS.Music, orig = M.play; window.__plays = 0; M.play = function () { window.__plays++; return orig.apply(M, arguments); }; });
@@ -1411,7 +1416,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   });
 
   await test('履歴は右の「履歴」ボタンだけで開く（本文・余白・操作キーからのはみ出しでは開かない。ターンは進まない）', async () => {
-    await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.depart(S, 4242);
+    await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.takeReturnScroll(S); G.depart(S, 4242);
       const r = S.run; r.enemies = []; for (let i = 0; i < 4; i++) G.log(r, 'テストのメッセージ' + i + '：とても長い文章で欄の幅いっぱいまで表示される');
       document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; UI.lockUntil = 0; UI.started = true; UI.debug.save(); });
     await p.waitForTimeout(200);
@@ -1517,7 +1522,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   await test('操作画面の寸法（幅360〜430）：方向キー・向き・右のコマンドは44px以上、メッセージは16px以上で操作キーの上、村の章の欄は1行', async () => {
     for (const w of [360, 390, 430]) {
       await p.setViewportSize({ width: w, height: w === 360 ? 740 : 860 });
-      await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.depart(S, 77); document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; TS.UI.debug.save(); });
+      await p.evaluate(() => { const UI = TS.UI, G = TS.Game, S = G.newState(); UI.S = S; while (UI.modals.length) UI.modals[UI.modals.length - 1].close(); G.takeReturnScroll(S); G.depart(S, 77); document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.id === 'screen-dungeon')); UI.screen = 'dungeon'; TS.UI.debug.save(); });
       await p.waitForTimeout(200);
       const m = await p.evaluate(() => {
         const r = (sel) => document.querySelector(sel).getBoundingClientRect();
@@ -1545,7 +1550,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       const out = [], G = TS.Game, RD = TS.Render, UI = TS.UI, keep = UI.S, keepScreen = UI.screen;
       const themes = ['brick', 'roots', 'water', 'orb', 'garden', 'sunken', 'crystal', 'gold', 'shrine', 'demon', 'throne', 'arena_croc', 'arena_flame', 'arena_kill', 'arena_baran', 'arena_mist'];
       const feats = ['plain', 'pillars', 'mural', 'statue', 'mosaic', 'overgrown', 'crystals', 'goldtrim', 'inlay', 'braziers', 'seal'];
-      const S = G.newState(); G.depart(S, 4242);
+      const S = G.newState(); G.takeReturnScroll(S); G.depart(S, 4242);
       const run = S.run, c = document.createElement('canvas'); c.style.cssText = 'position:fixed;left:0;top:0;width:200px;height:200px;opacity:0';
       document.body.appendChild(c); UI.screen = 'none';
       for (let i = 0; i < run.explored.length; i++) run.explored[i] = 1;
@@ -1597,7 +1602,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await talkThrough(); await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'village', 'back to village after statue ' + JSON.stringify(c));
       // 出発 → ダンジョンの曲
-      await q.tap('.fac.depart'); await q.waitForTimeout(200); await q.click('text=出発する'); await q.waitForTimeout(300); await talkThrough();
+      await q.tap('.fac.depart'); await q.waitForTimeout(200); await q.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await q.waitForTimeout(200); await q.click('text=出発する'); await q.waitForTimeout(300); await talkThrough();
       while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
       await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer, 'dungeon music ' + JSON.stringify(c));

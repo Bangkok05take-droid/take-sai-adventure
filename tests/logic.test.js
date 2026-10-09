@@ -10,10 +10,15 @@ function test(name, fn) {
 function assert(c, msg) { if (!c) throw new Error(msg || 'assertion failed'); }
 function eq(a, b, msg) { if (a !== b) throw new Error((msg || '') + ` expected ${String(JSON.stringify(b)).slice(0, 200)} got ${String(JSON.stringify(a)).slice(0, 200)}`); }
 
+// 出発画面で帰還の巻物を借りてから出発する（いつもの遊び方。持ち物がいっぱいなら借りない）
+function departWithScroll(S, seed, opts) {
+  if (!S.run && S.village.bag.length < D.BAG_SIZE) G.takeReturnScroll(S);
+  return G.depart(S, seed, opts);
+}
 function newRun(seed = 1, setup) {
   const S = G.newState();
   if (setup) setup(S);
-  const r = G.depart(S, seed);
+  const r = departWithScroll(S, seed);
   assert(r.ok, 'depart failed: ' + r.msg);
   return S;
 }
@@ -689,7 +694,7 @@ test('木刀なしの新規開始と再出発：木刀は渡されず自動装�
   assert(!G.loanStatus(S).weapon && !G.takeLoan(S, 'weapon').ok, 'no sword loan');
   G.takeLoan(S, 'food');
   for (let k = 0; k < 3; k++) {
-    G.depart(S, 600 + k);
+    assert(G.takeReturnScroll(S).ok); departWithScroll(S, 600 + k);
     assert(!S.run.bag.some((i) => i.id === 'wood_sword'), 'no sword in run');
     eq(G.equipped(S.run.bag, 'weapon'), null);
     assert(S.run.bag.some((i) => i.id === 'return_scroll'), 'return scroll kept');
@@ -699,7 +704,7 @@ test('木刀なしの新規開始と再出発：木刀は渡されず自動装�
   // 素手でも1階の敵を倒せる（攻撃して倒れるまでの往復）
   let wins = 0;
   for (let s = 0; s < 20; s++) {
-    const T = G.newState(); G.depart(T, 900 + s);
+    const T = G.newState(); departWithScroll(T, 900 + s);
     const r = T.run, e = r.enemies.find((q) => !q.boss);
     if (!e) continue;
     let guard = 0;
@@ -726,7 +731,7 @@ test('無料の貸出品・帰還の巻物では資金を増やせない', () =>
   eq(S.village.funds, funds);
   // 出発→すぐ帰還を繰り返しても巻物はたまらず、お金も増えない
   for (let i = 0; i < 5; i++) {
-    G.depart(S, 100 + i);
+    G.takeReturnScroll(S); assert(!G.takeReturnScroll(S).ok, 'once'); departWithScroll(S, 100 + i);
     eq(S.run.bag.filter((x) => x.id === 'return_scroll').length, 1);
     const scroll = S.run.bag.find((x) => x.id === 'return_scroll');
     S.run.bag.forEach((x) => assert(x.id !== 'return_scroll' || !G.canSell(x)));
@@ -739,10 +744,34 @@ test('無料の貸出品・帰還の巻物では資金を増やせない', () =>
   eq(S.village.bag.filter((x) => x.id === 'wood_sword').length, 0);
   eq(S.village.bag.filter((x) => x.id === 'return_scroll').length, 0);
 });
-test('バッグが満杯だと出発できない（巻物が消えない）', () => {
-  const S = G.newState();
-  while (S.village.bag.length < D.BAG_SIZE) S.village.bag.push(G.makeItem(S, 'herb'));
-  assert(!G.depart(S, 1).ok); eq(S.run, null);
+test('帰還の巻物の無料の貸し出し：1回の冒険につき1枚・受け取りは任意・持ち物がいっぱいなら受取済みにしない・手放しても再支給しない・読み込み直しでも戻らない・村へ戻ると次の1枚', () => {
+  const S = G.newState(), V = S.village;
+  const scrolls = () => V.bag.filter((i) => i.id === 'return_scroll').length;
+  assert(G.scrollStatus(S).can);
+  // 持ち物がいっぱい：受け取れず、受取済みにもならない
+  while (V.bag.length < D.BAG_SIZE) V.bag.push(G.makeItem(S, 'herb'));
+  const f = G.takeReturnScroll(S); assert(!f.ok && /いっぱい/.test(f.msg)); assert(!V.scrollTaken); eq(scrolls(), 0);
+  assert(G.canDepart(S).ok, 'full bag can still depart');
+  V.bag.pop();
+  // 受け取り：1枚だけ。2回目・連打は失敗
+  assert(G.takeReturnScroll(S).ok); eq(scrolls(), 1); assert(V.scrollTaken);
+  assert(!G.takeReturnScroll(S).ok); assert(!G.takeReturnScroll(S).ok); eq(scrolls(), 1);
+  // 読み込み直しても受取済みのまま
+  let L = SV.deserialize(SV.serialize(S)); assert(L.village.scrollTaken && !G.takeReturnScroll(L).ok);
+  // 手放しても（ここでは持ち物から取り除く）同じ準備中は再支給しない。倉庫・売却はもともとできない
+  const sc = V.bag.find((i) => i.id === 'return_scroll'); assert(!G.deposit(S, sc.uid).ok && !G.sell(S, sc.uid).ok);
+  V.bag = V.bag.filter((i) => i !== sc); assert(!G.takeReturnScroll(S).ok, 'no reissue after discarding'); eq(scrolls(), 0);
+  // 出発しても自動では配らない（二重にならない）
+  G.depart(S, 5); eq(S.run.bag.filter((i) => i.id === 'return_scroll').length, 0, 'no auto scroll');
+  assert(!G.takeReturnScroll(S).ok, 'not during a run');
+  // 帰還の祠・帰還口で戻る代わりに、ここでは敗北で村へ戻る → 次の冒険の1枚を受け取れる
+  S.run.over = true; S.run.result = { type: 'dead', floor: 1 }; G.finishRun(S);
+  assert(!V.scrollTaken && G.takeReturnScroll(S).ok); eq(scrolls(), 1);
+  // 借りて出発 → 巻物で帰る → また1枚
+  G.depart(S, 6); eq(S.run.bag.filter((i) => i.id === 'return_scroll').length, 1); G.useReturnScroll(S); G.finishRun(S);
+  eq(scrolls(), 0); assert(G.takeReturnScroll(S).ok);
+  // 借りずに出発してもよい
+  const S2 = G.newState(); assert(G.depart(S2, 7).ok); eq(S2.run.bag.filter((i) => i.id === 'return_scroll').length, 0);
 });
 
 console.log('お金の使い道（施設・鍛冶屋・食堂・展示室）');
@@ -791,19 +820,19 @@ test('食堂：料理は次の探索だけ有効、重ねがけ不可、帰還�
   assert(G.buyMeal(S, 'gapao').ok); eq(V.meal, 'gapao');
   assert(G.buyMeal(S, 'tomyum').ok); eq(V.meal, 'tomyum', 'replaced, not stacked');
   const funds = V.funds;
-  G.depart(S, 3);
+  departWithScroll(S, 3);
   eq(S.run.meal, 'tomyum'); eq(V.meal, null);
   const atk = G.playerAtk(S.run);
   G.useReturnScroll(S); G.finishRun(S);
-  G.depart(S, 4); assert(!S.run.meal, 'meal ended'); eq(G.playerAtk(S.run), atk - 3);
+  departWithScroll(S, 4); assert(!S.run.meal, 'meal ended'); eq(G.playerAtk(S.run), atk - 3);
   G.useReturnScroll(S); G.finishRun(S);
-  G.buyMeal(S, 'gapao'); G.depart(S, 5); eq(S.run.player.maxhp, 50); eq(S.run.player.hp, 50);
+  G.buyMeal(S, 'gapao'); departWithScroll(S, 5); eq(S.run.player.maxhp, 50); eq(S.run.player.hp, 50);
   eq(V.funds, funds - 150);
 });
 test('食堂：カオマンガイで満腹度が減りにくい', () => {
   const S = G.newState(); const V = S.village; V.funds = 5000;
   G.buildFacility(S, 'storage2'); G.buildFacility(S, 'diner'); G.buyMeal(S, 'kaomangai');
-  G.depart(S, 6); bigRoomFloor(S);
+  departWithScroll(S, 6); bigRoomFloor(S);
   for (let i = 0; i < 120; i++) G.act(S, { type: 'wait' });
   eq(S.run.player.hunger, 100 - Math.floor(120 / G.hungerTurns(S.run)));
   assert(G.hungerTurns(S.run) > D.PLAYER.hungerTurns);
@@ -891,7 +920,7 @@ test('旧セーブ（v1・10階クリア済み）を移行：旧記録として�
   const ren = (list) => JSON.stringify(list.map((i) => Object.assign({}, i, { id: SV.RENAME_V4[i.id] || i.id })));
   eq(JSON.stringify(L.village.bag), ren(raw.village.bag));
   eq(JSON.stringify(L.village.storage), ren(raw.village.storage));
-  assert(G.depart(L, 5).ok, 'can depart');
+  assert(departWithScroll(L, 5).ok, 'can depart');
 });
 test('旧セーブの探索途中に旧・宝珠があれば守護の輝石に置き換え、旧記録にする（新エンディング扱いにしない）', () => {
   const data = JSON.parse(fixture('save-v1-midrun.json'));
@@ -930,7 +959,7 @@ test('次の章も1階から。第2章の20階はフレイザード。章の報�
   const S = newRun(44);
   goToFloor(S, 15); defeatBoss(S); S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' }); G.finishRun(S);
   const funds = S.village.funds;
-  G.depart(S, 45); eq(S.run.floor, 1); eq(S.run.chapter, 2);
+  departWithScroll(S, 45); eq(S.run.floor, 1); eq(S.run.chapter, 2);
   goToFloor(S, 20); eq(S.run.enemies.find((e) => e.boss).type, 'flame');
   G.useReturnScroll(S); const r = G.finishRun(S);
   assert(!r.chapterClear && !r.rewardFunds, 'no reward without the boss'); eq(S.village.story.chapter, 2);
@@ -940,7 +969,7 @@ test('帰還して再出発すると1階から', () => {
   const S = newRun(43, (S0) => { S0.village.story.chapter = 4; }); goToFloor(S, 25);
   S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
   G.act(S, { type: 'returnHome' }); G.finishRun(S);
-  G.depart(S, 44); eq(S.run.floor, 1);
+  departWithScroll(S, 44); eq(S.run.floor, 1);
 });
 test('素材は持ち帰ると素材箱に入り、売却・預入できない。倒れると失う', () => {
   const S = newRun(45); bigRoomFloor(S);
@@ -949,7 +978,7 @@ test('素材は持ち帰ると素材箱に入り、売却・預入できない�
   eq(S.village.materials.amber_shard, 2); eq(S.village.materials.crystal_shard, 1); eq(res.materials.amber_shard, 2);
   assert(!S.village.bag.some((i) => G.def(i).type === 'material'));
   const it = G.makeItem(S, 'gold_leaf'); assert(!G.canSell(it));
-  G.depart(S, 46); S.run.bag.push(G.makeItem(S, 'gold_leaf')); S.run.player.hp = 1;
+  departWithScroll(S, 46); S.run.bag.push(G.makeItem(S, 'gold_leaf')); S.run.player.hp = 1;
   bigRoomFloor(S); const e = addEnemy(S, 'frog', 6, 5); e.atk = 99;
   for (let i = 0; i < 30 && !S.run.over; i++) G.act(S, { type: 'wait' });
   G.finishRun(S); assert(!S.village.materials.gold_leaf, 'lost on defeat');
@@ -1217,7 +1246,7 @@ test('村の発展の一覧：完成した項目は出さず、段階式の拡�
 function findMerchant(seed0, ch, minF) {
   for (let s = seed0; s < seed0 + 400; s++) {
     const S = G.newState(); S.village.story.chapter = ch || 3;
-    G.depart(S, s);
+    departWithScroll(S, s);
     const r = S.run;
     while (r.floor < G.maxFloor(r) - 1) {
       r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' });
@@ -1229,7 +1258,7 @@ function findMerchant(seed0, ch, minF) {
 test('謎の旅商人：8階以降の約14%の階に、ふつうの部屋の角（入口・階段・道具・敵の上ではない）に出る。ボスの階・モンスターハウスには出ない', () => {
   let floors = 0, n = 0;
   for (let s = 0; s < 120; s++) {
-    const S = G.newState(); S.village.story.chapter = 2; G.depart(S, 3000 + s); const r = S.run;
+    const S = G.newState(); S.village.story.chapter = 2; departWithScroll(S, 3000 + s); const r = S.run;
     while (true) {
       if (r.merchant) {
         const m = r.merchant, room = TS.Dungeon.roomAt(r.map, m.x, m.y);
@@ -1258,7 +1287,7 @@ test('謎の旅商人：同じ階を保存・再読み込みしても出現・�
   const S = findMerchant(8100, 3, 13), r = S.run;
   const before = JSON.stringify(r.merchant);
   // 同じシード・同じ階なら同じ商人
-  const S2 = G.newState(); S2.village.story.chapter = 3; G.depart(S2, r.seed);
+  const S2 = G.newState(); S2.village.story.chapter = 3; departWithScroll(S2, r.seed);
   while (S2.run.floor < r.floor) { S2.run.player.x = S2.run.stairs.x; S2.run.player.y = S2.run.stairs.y; G.act(S2, { type: 'descend' }); }
   eq(JSON.stringify(S2.run.merchant), before, 'deterministic');
   S.village.funds = 99999;
@@ -1365,8 +1394,8 @@ test('バッグは15枠：14→15で拾える、15で拾えず消えない。購
   assert(!G.takeLoan(S2, 'weapon').ok);
   V.bag.pop();
   assert(G.buy(S2, 'herb').ok); eq(V.bag.length, 15); eq(V.funds, 1000 - D.ITEMS.herb.price);
-  // 出発には帰還の巻物の1枠が要る
-  assert(!G.canDepart(S2).ok);
+  // 持ち物がいっぱいでも出発できる（帰還の巻物は借りられない）
+  assert(G.canDepart(S2).ok); assert(!G.takeReturnScroll(S2).ok);
 });
 test('旧セーブ（12枠時代）の所持品はそのまま読み込める', () => {
   const fs = require('fs');
@@ -1578,7 +1607,7 @@ test('最終決戦：バーンを倒すと準備（回復は1回だけ・時間�
   assert(res.finalClear && res.firstEnding); assert(L2.village.story.endingDone && L2.village.cleared); eq(L2.village.story.pending.type, 'ending');
   eq(L2.village.story.records, D.STORY.records.length);
   // クリア後も探索・村の発展を続けられる（新しい探索は版3。どちらのボスも出ない）
-  assert(G.depart(L2, 271).ok); eq(L2.run.chapter, 6); assert(L2.run.final.skip.vearn && L2.run.final.skip.truevearn);
+  assert(departWithScroll(L2, 271).ok); eq(L2.run.chapter, 6); assert(L2.run.final.skip.vearn && L2.run.final.skip.truevearn);
 });
 test('最終決戦で敗北（版2の探索）：通常の敗北ルールで村へ。最終章は未クリアのまま、次は（版3で）30階の大魔王バーンから', () => {
   const S = chapterRunV2(6, 280, 35), run = S.run;
@@ -1590,16 +1619,16 @@ test('最終決戦で敗北（版2の探索）：通常の敗北ルールで村�
   const res = G.finishRun(S);
   eq(res.type, 'dead'); assert(!S.village.story.endingDone && !S.village.cleared); eq(S.village.story.chapter, 6);
   eq(S.village.story.finalStage, 'none'); eq(S.village.story.defeated.vearn, false, 'retry from battle 1');
-  G.depart(S, 281); goToFloor(S, 30); eq(S.run.final.v, 3); eq(S.run.enemies.find((e) => e.boss).type, 'vearn');
+  departWithScroll(S, 281); goToFloor(S, 30); eq(S.run.final.v, 3); eq(S.run.enemies.find((e) => e.boss).type, 'vearn');
 });
 test('章のボスを倒したあとに倒れても、その章はクリア扱い（やり直させない）。倒す前の敗北・途中帰還では章はそのまま', () => {
   const S = chapterRun(2, 290, 20);
   G.useReturnScroll(S); G.finishRun(S); eq(S.village.story.chapter, 2, 'mid return keeps chapter');
-  G.depart(S, 291); goToFloor(S, 20); S.run.player.hp = 0;
+  departWithScroll(S, 291); goToFloor(S, 20); S.run.player.hp = 0;
   const r0 = G.act(S, { type: 'wait' });
   S.run.over = true; S.run.result = { type: 'dead', cause: 'test', floor: 20, lostGold: 0, lostItems: 0 };
   G.finishRun(S); eq(S.village.story.chapter, 2, 'death before boss keeps chapter');
-  G.depart(S, 292); goToFloor(S, 20); defeatBoss(S);
+  departWithScroll(S, 292); goToFloor(S, 20); defeatBoss(S);
   S.run.over = true; S.run.result = { type: 'dead', cause: 'test', floor: 20, lostGold: 0, lostItems: 0 };
   const res = G.finishRun(S);
   eq(res.chapterClear, 2); eq(S.village.story.chapter, 3);
@@ -1608,7 +1637,7 @@ test('全章を順に進める：第1章→第5章→最終章→エンディン
   const S = newRun(300);
   let funds0 = S.village.funds;
   for (let ch = 1; ch <= 5; ch++) {
-    if (ch > 1) G.depart(S, 300 + ch);
+    if (ch > 1) departWithScroll(S, 300 + ch);
     eq(S.run.chapter, ch);
     goToFloor(S, D.CHAPTERS[ch].goal); eq(S.run.enemies.filter((e) => e.boss).length, 1); defeatBoss(S);
     assert(!S.run.stairs, 'cannot go deeper after the chapter boss');
@@ -1617,7 +1646,7 @@ test('全章を順に進める：第1章→第5章→最終章→エンディン
     eq(res.chapterClear, ch); eq(res.rewardFunds, D.CHAPTERS[ch].reward.funds);
   }
   eq(S.village.story.chapter, 6);
-  G.depart(S, 310); goToFloor(S, 30); defeatBoss(S); assert(!S.run.portal && S.run.stairs, '30F: stairs, no portal'); assert(G.commitRescue(S).ok);
+  departWithScroll(S, 310); goToFloor(S, 30); defeatBoss(S); assert(!S.run.portal && S.run.stairs, '30F: stairs, no portal'); assert(G.commitRescue(S).ok);
   goToFloor(S, 35); defeatBoss(S);
   S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' });
   const res = G.finishRun(S);
@@ -1655,7 +1684,7 @@ test('旧セーブ（v2・探索途中）：今の冒険と地形はそのまま
   goToFloor(L, 10); eq(L.run.enemies.find((e) => e.boss).type, 'lion', 'old rules for this run');
   G.useReturnScroll(L); const res = G.finishRun(L);
   assert(!res.chapterClear && !L.village.cleared); eq(L.village.story.chapter, 1);
-  G.depart(L, 322); eq(L.run.chapter, 1);
+  departWithScroll(L, 322); eq(L.run.chapter, 1);
 });
 
 test('ボス階の変更前に始めた探索（layout なし）：その探索は以前の配置（第1章のボスは30階）のまま終え、次の探索から新しい配置', () => {
@@ -1670,7 +1699,7 @@ test('ボス階の変更前に始めた探索（layout なし）：その探索�
   defeatBoss(L); L.run.player.x = L.run.portal.x; L.run.player.y = L.run.portal.y; G.act(L, { type: 'returnHome' });
   const res = G.finishRun(L); eq(res.chapterClear, 1); eq(L.village.story.chapter, 2);
   // 次の探索は新しい配置：第2章は20階でフレイザード
-  G.depart(L, 331); eq(L.run.layout, D.LAYOUT); eq(G.maxFloor(L.run), 20);
+  departWithScroll(L, 331); eq(L.run.layout, D.LAYOUT); eq(G.maxFloor(L.run), 20);
   goToFloor(L, 20); eq(L.run.enemies.find((e) => e.boss).type, 'flame');
   // 第1章の報酬は二重に出ない
   defeatBoss(L); assert(!L.run.floorItems.some((f) => f.item && f.item.id === 'croc_tear'), 'no duplicate chapter-1 reward');
@@ -1680,14 +1709,14 @@ test('ボス階の変更前に始めた探索（layout なし）で、新しい�
   const L = SV.deserialize(SV.serialize(S));
   goToFloor(L, 16); assert(!L.run.enemies.some((e) => e.boss) && L.run.stairs, '15-16F are normal floors in the old run');
   G.useReturnScroll(L); G.finishRun(L); eq(L.village.story.chapter, 1, 'chapter unchanged without the boss');
-  G.depart(L, 333); eq(L.run.layout, D.LAYOUT); goToFloor(L, 15); eq(L.run.enemies.find((e) => e.boss).type, 'croc');
+  departWithScroll(L, 333); eq(L.run.layout, D.LAYOUT); goToFloor(L, 15); eq(L.run.enemies.find((e) => e.boss).type, 'croc');
 });
 
 console.log('ボスの報酬・展示室・宝箱（2026年10月）');
 // ボスを倒して、現れた報酬をすべて拾い、帰還口から村へ帰る
 function bossRewardRun(ch, seed, S0) {
   const S = S0 || newRun(seed, (s) => { s.village.story.chapter = ch; });
-  if (S0) { const r = G.depart(S, seed); assert(r.ok, r.msg); }
+  if (S0) { const r = departWithScroll(S, seed); assert(r.ok, r.msg); }
   goToFloor(S, D.CHAPTERS[ch].goal);
   const run = S.run, had = new Set(run.floorItems);
   defeatBoss(S);
@@ -1960,7 +1989,7 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   R.player.x = R.portal.x; R.player.y = R.portal.y; G.act(L, { type: 'returnHome' });
   const res = G.finishRun(L); assert(res.finalClear && L.village.story.endingDone);
   // クリア後：30階・35階にボスは出ない。35階は下への階段が無く、帰還の祠
-  G.depart(L, 942); assert(L.run.final.skip.vearn && L.run.final.skip.truevearn);
+  departWithScroll(L, 942); assert(L.run.final.skip.vearn && L.run.final.skip.truevearn);
   goToFloor(L, 30); assert(!L.run.enemies.some((e) => e.boss) && L.run.stairs && L.run.map.boss, '30F: throne room without boss');
   assert(DG.same(L.run.stairs, G.throneBack(L.run.map)), 'stairs behind the throne'); assert(!G.canRescue(L.run), 'no rescue after clear');
   goToFloor(L, 35); assert(!L.run.enemies.some((e) => e.boss) && !L.run.stairs && L.run.returnPoint && L.run.crack, '35F: no boss, crack, return point');
@@ -1973,7 +2002,7 @@ test('最終章（版3）：30階で大魔王バーンを倒したあと倒れ�
   G.finishRun(S);
   assert(S.village.story.defeated.vearn && !S.village.story.endingDone); eq(S.village.story.chapter, 6);
   eq(S.village.storage.filter((i) => i.id === 'demon_robe').length, 1, 'robe kept in storage');
-  G.depart(S, 951); goToFloor(S, 30); assert(!S.run.enemies.some((e) => e.boss), 'vearn does not return');
+  departWithScroll(S, 951); goToFloor(S, 30); assert(!S.run.enemies.some((e) => e.boss), 'vearn does not return');
   goToFloor(S, 35); eq(S.run.enemies.find((e) => e.boss).type, 'truevearn');
 });
 test('ティウの救援：回復は1回だけ（HP・満腹度を今の最大まで・状態異常を治す。最大は増えない）', () => {
@@ -2061,7 +2090,7 @@ test('簡易AIで初回装備のまま遊んだ結果（参考値）', () => {
   for (let s = 0; s < N; s++) {
     const S = G.newState();
     G.takeLoan(S, 'food');
-    G.depart(S, 1000 + s);
+    departWithScroll(S, 1000 + s);
     const out = bot(S, 4000);
     best.push(S.run.floor); turns.push(S.run.turn);
     if (out === 'clear') clears++;
@@ -2384,14 +2413,14 @@ test('大魔王のローブ：装備して出発すると21階から（1階か�
   let S = mk(6); const robe = G.makeItem(S, 'demon_robe'); S.village.bag.push(robe);
   assert(!G.canDeepStart(S), 'not equipped');
   G.toggleEquipInBag(S.village.bag, robe.uid); assert(G.canDeepStart(S));
-  assert(G.depart(S, 77, { deep: true }).ok); eq(S.run.floor, 21); eq(S.run.player.lvl, 1);
+  assert(departWithScroll(S, 77, { deep: true }).ok); eq(S.run.floor, 21); eq(S.run.player.lvl, 1);
   assert(S.run.bag.some((i) => i.id === 'demon_robe' && i.eq), 'robe stays equipped');
   S = mk(6); const r2 = G.makeItem(S, 'demon_robe'); r2.eq = true; S.village.bag.push(r2);
-  assert(G.depart(S, 78).ok); eq(S.run.floor, 1, 'normal departure from 1F');
+  assert(departWithScroll(S, 78).ok); eq(S.run.floor, 1, 'normal departure from 1F');
   S = mk(2); const r3 = G.makeItem(S, 'demon_robe'); r3.eq = true; S.village.bag.push(r3);
-  assert(!G.canDeepStart(S), 'chapter 2 boss is on 20F'); assert(G.depart(S, 79, { deep: true }).ok); eq(S.run.floor, 1);
+  assert(!G.canDeepStart(S), 'chapter 2 boss is on 20F'); assert(departWithScroll(S, 79, { deep: true }).ok); eq(S.run.floor, 1);
   S = mk(4); const r4 = G.makeItem(S, 'demon_robe'); r4.eq = true; S.village.bag.push(r4);
-  assert(G.depart(S, 80, { deep: true }).ok); eq(S.run.floor, 21);
+  assert(departWithScroll(S, 80, { deep: true }).ok); eq(S.run.floor, 21);
 });
 test('旧セーブの移行（v5→v6）：げっこうの盾→ファントムシールド、りゅうきしの剣→真魔剛竜剣（番号・強化値・装備中を保持）。倒したボスの新しい報酬は倉庫へ一度だけ', () => {
   const S = G.newState(); S.version = 5;
@@ -2442,7 +2471,7 @@ test('登場ムービー：クロコダインだけ。初めての入室で pend
   // ボスはムービーのあと、次のターンから動ける（待たせるターンは足さない）
   assert(!(L.run.enemies.find((e) => e.boss).hold > 0));
   // 次の探索：入室ですぐ戦い（ムービーなし）
-  L.run = null; G.depart(L, 1402); goToFloor(L, 15);
+  L.run = null; departWithScroll(L, 1402); goToFloor(L, 15);
   const c = G.arenaCenter(L.run, L.run.enemies); L.run.player.x = c.x; L.run.player.y = c.y;
   const r3 = G.act(L, { type: 'wait' }); assert(!r3.events.some((e) => e.t === 'bossIntro') && r3.events.some((e) => e.t === 'bossStart'));
   // 以前のセーブ（introSeen なし）は読み込みで空の記録が足される

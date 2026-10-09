@@ -92,7 +92,7 @@
     const back = document.createElement('div');
     back.className = 'back';
     const m = document.createElement('div');
-    m.className = 'modal';
+    m.className = 'modal' + (opts.cls ? ' ' + opts.cls : '');
     m.innerHTML = (opts.title ? `<h2>${opts.title}${opts.right ? `<span class="right">${opts.right}</span>` : ''}</h2>` : '') +
       (opts.tabs ? '<div class="tabs"></div>' : '') + '<div class="modal-body"></div><div class="modal-buttons"></div>';
     back.appendChild(m);
@@ -113,11 +113,11 @@
     if (!buttons.length) btns.remove();
     for (const b of buttons) {
       const el = document.createElement('button');
-      el.textContent = b.label;
+      if (b.html) el.innerHTML = b.html; else el.textContent = b.label;   // html：アイコンつきのボタン（文字は label と同じにする）
       if (b.cls) el.className = b.cls;
       if (b.disabled) el.disabled = true;
       el.addEventListener('click', (e) => {
-        if (!handle.accept(e)) return;
+        if (!handle.accept(e) || UI.modals.indexOf(handle) < 0) return;   // 閉じたあとの連打は受けない
         AU.sfx('tap');
         if (b.onClick) { const r = b.onClick(handle); if (r === false || b.keep) return; }
         close();
@@ -857,35 +857,68 @@
   }
 
   // ---- 出発 ----
+  /* 遺跡へ出発（革・古紙・金属のデザイン。ボタンの並びは固定：左上 ティウと話す／右上 帰還の巻物を借りる・受取済み／左下 やめる／右下 出発する）。
+   * おにぎりの貸し出し・21階からの出発があるときは、その上に横長のボタンで出す。
+   * 帰還の巻物：1回の冒険につき無料で1枚（G.takeReturnScroll）。受け取りは任意。受け取ったら「受取済み」で押せない（閉じる・開き直す・読み込み直しでも戻らない）。
+   * 持ち物がいっぱいのときは押せるが受け取れず、受取済みにもしない（空きを作れば受け取れる） */
+  const DP_ICON = {
+    compass: '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="24" r="14" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".7"/><path d="M24 4 28 20 44 24 28 28 24 44 20 28 4 24 20 20Z" fill="currentColor"/><circle cx="24" cy="24" r="3" fill="#2b2418"/></svg>',
+    warn: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5 45 42H3Z" fill="#c0502a" stroke="#7a2c14" stroke-width="2" stroke-linejoin="round"/><rect x="21.5" y="17" width="5" height="14" rx="2" fill="#fff4e0"/><circle cx="24" cy="36" r="2.8" fill="#fff4e0"/></svg>',
+    bag: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M17 14a7 7 0 0 1 14 0" fill="none" stroke="#5a4a2e" stroke-width="3"/><rect x="9" y="14" width="30" height="28" rx="7" fill="#8a7a52" stroke="#4e4128" stroke-width="2"/><rect x="15" y="26" width="18" height="11" rx="3" fill="#a8976a" stroke="#4e4128" stroke-width="2"/><rect x="22" y="23" width="4" height="7" rx="1" fill="#c9a24a"/></svg>',
+    chat: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 10h32a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H22l-9 8v-8H8a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4Z" fill="#f3ead2" stroke="#2b2418" stroke-width="2"/><circle cx="16" cy="22" r="2.6" fill="#2b2418"/><circle cx="24" cy="22" r="2.6" fill="#2b2418"/><circle cx="32" cy="22" r="2.6" fill="#2b2418"/></svg>',
+    close: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 13 35 35M35 13 13 35" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg>',
+    fork: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 5v14a5 5 0 0 0 4 5v19h4V24a5 5 0 0 0 4-5V5h-3v12h-2V5h-3v12h-2V5Z M31 5c5 2 7 9 7 16v4h-4v18h-4V5Z" fill="currentColor"/></svg>',
+    fist: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 20a4 4 0 0 1 8 0v-3a4 4 0 0 1 8 0v1a4 4 0 0 1 8 0v4a4 4 0 0 1 4 4v6c0 7-5 12-12 12h-4c-7 0-12-5-12-12Z" fill="currentColor"/></svg>',
+  };
   function openDepart() {
     const V = UI.S.village;
     const chk = G.canDepart(UI.S);
     const w = G.equipped(V.bag, 'weapon'), s = G.equipped(V.bag, 'shield'), ac = G.equipped(V.bag, 'accessory');
-    const ls = G.loanStatus(UI.S);
+    const ls = G.loanStatus(UI.S), sc = G.scrollStatus(UI.S);
     const food = V.bag.filter((i) => G.def(i).type === 'food').length;
-    let html = `<p><b>持ち物 ${V.bag.length}/${D.BAG_SIZE}</b>　武器：${w ? esc(G.itemName(w)) : 'なし'}　盾：${s ? esc(G.itemName(s)) : 'なし'}${ac ? '　アクセサリー：' + esc(G.itemName(ac)) : ''}　食料：${food}個</p>`;
-    html += `<div class="warnbox">⚠ 倒れると、<b>持ち物すべて</b>と<b>探索中に拾ったお金</b>を失います。<br>村の資金・倉庫・施設は失いません。</div>`;
-    html += `<div class="okbox">帰還の巻物を1枚無料で持っていきます。使えばいつでも持ち物を持って帰れます。</div>`;
-
-    if (V.meal) html += `<div class="okbox">🍛 ${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）</div>`;
-    else if (V.diner) html += '<p class="note">サイの食堂で料理を注文すると、この探索が少し楽になります。</p>';
-    if (!w) html += '<p class="note">武器がありません（素手で戦います）。武器は遺跡で拾えるほか、サイの店でも買えます。</p>';
+    const ic = (id) => `<img src="${SP.iconURL(D.ITEMS[id])}" alt="">`;
+    let html = `<div class="dp-panel dp-info">
+      <div class="dp-cell">${DP_ICON.bag}<span>持ち物 <b>${V.bag.length}/${D.BAG_SIZE}</b></span></div>
+      <div class="dp-cell">${ic('loan_rice')}<span>食料 <b>${food}個</b></span></div>
+      <div class="dp-cell">${w ? `<img src="${SP.iconURL(G.def(w))}" alt="">` : ic('wood_sword')}<span>武器：${w ? esc(G.itemName(w)) : 'なし'}</span></div>
+      <div class="dp-cell">${s ? `<img src="${SP.iconURL(G.def(s))}" alt="">` : ic('bronze_shield')}<span>盾：${s ? esc(G.itemName(s)) : 'なし'}</span></div>
+      ${ac ? `<div class="dp-cell dp-wide"><img src="${SP.iconURL(G.def(ac))}" alt=""><span>アクセサリー：${esc(G.itemName(ac))}</span></div>` : ''}
+    </div>`;
+    html += `<div class="dp-panel dp-warn">${DP_ICON.warn}<div><b>倒れると、持ち物と探索中のお金を失います。</b><small>村の資金・倉庫・施設は残ります。</small></div></div>`;
+    html += `<div class="dp-panel dp-scroll${sc.taken ? ' taken' : ''}">${ic('return_scroll')}<div>` + (sc.taken
+      ? '<b>帰還の巻物は受取済みです。</b><small>冒険1回につき1枚。村へ戻ると、次の冒険の1枚を受け取れます。</small>'
+      : `<b>帰還の巻物を無料で1枚借りられます。</b><small>${sc.full ? '持ち物がいっぱいです。1枠空けると受け取れます。' : '冒険1回につき1枚。下のボタンで受け取れます。'}</small>`) + '</div></div>';
+    const notes = [];
+    if (V.meal) notes.push([DP_ICON.fork, `${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）`]);
+    else if (V.diner) notes.push([DP_ICON.fork, '食堂の料理で、冒険の準備を。']);
+    if (!w) notes.push([DP_ICON.fist, '武器なし：素手で出発します。']);
+    if (G.canDeepStart(UI.S)) notes.push([DP_ICON.compass, `大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。`]);
+    if (notes.length) html += '<div class="dp-rule"><i></i></div><div class="dp-notes">' + notes.map(([i, t]) => `<p>${i}<span>${t}</span></p>`).join('') + '</div>';
     if (!chk.ok) html += `<p class="warnbox">${esc(chk.msg)}</p>`;
-    const buttons = [{ label: 'やめる' }];
-    if (ls.food) buttons.push({ label: 'おにぎりを借りる', onClick: () => {
+    const reopen = () => setTimeout(openDepart, 0);
+    const buttons = [];
+    if (ls.food) buttons.push({ label: 'おにぎりを借りる', cls: 'dp-btn dp-paper dp-wide', html: `${ic('loan_rice')}<span>おにぎりを借りる</span>`, onClick: () => {
       G.takeLoan(UI.S, 'food');
       AU.sfx('pickup'); villageChanged();
-      setTimeout(openDepart, 0);
+      reopen();
     } });
-    // 大魔王のローブを装備していれば、21階からも出発できる（1階からも選べる）
-    if (G.canDeepStart(UI.S)) {
-      html += `<div class="okbox">大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。</div>`;
-      buttons.push({ label: G.DEEP_START + '階から出発', disabled: !chk.ok, onClick: () => depart({ deep: true }) });
-    }
-    // ティウと話す（竜の紋章のヒント。橋ができる前から、紋章を拾うまで）
-    if (!(V.story.found && V.story.found.dragon_crest)) buttons.push({ label: 'ティウと話す', onClick: () => { setTimeout(() => talk([['tiw', D.STORY.tiwHint]], () => setTimeout(openDepart, 0)), 0); } });
-    buttons.push({ label: '出発する', cls: 'primary', disabled: !chk.ok, onClick: () => depart() });
-    modal({ title: '遺跡へ出発', html, buttons });
+    if (G.canDeepStart(UI.S)) buttons.push({ label: G.DEEP_START + '階から出発', cls: 'dp-btn dp-paper dp-wide', disabled: !chk.ok, onClick: () => depart({ deep: true }) });
+    // 左上：ティウと話す（竜の紋章を拾うまではヒント。拾ったあとは見送りのことば）
+    buttons.push({ label: 'ティウと話す', cls: 'dp-btn dp-teal', html: `${DP_ICON.chat}<span>ティウと話す</span>`, onClick: () => {
+      const line = V.story.found && V.story.found.dragon_crest ? D.STORY.tiwDepart : D.STORY.tiwHint;
+      setTimeout(() => talk([['tiw', line]], reopen), 0);
+    } });
+    // 右上：帰還の巻物を借りる／受取済み
+    buttons.push({ label: sc.taken ? '受取済み' : '帰還の巻物を借りる', cls: 'dp-btn dp-paper' + (sc.taken ? ' dp-done' : ''), disabled: sc.taken,
+      html: `${ic('return_scroll')}<span>${sc.taken ? '受取済み' : '帰還の巻物を<br>借りる'}</span>`, onClick: () => {
+        const r = G.takeReturnScroll(UI.S);
+        if (!r.ok) { setTimeout(() => info('帰還の巻物', `<p>${esc(r.msg)}</p>`, reopen), 0); return; }
+        AU.sfx('pickup'); villageChanged(); toast('帰還の巻物を借りた！');
+        reopen();
+      } });
+    buttons.push({ label: 'やめる', cls: 'dp-btn dp-light', html: `${DP_ICON.close}<span>やめる</span>` });
+    buttons.push({ label: '出発する', cls: 'dp-btn dp-gold primary', disabled: !chk.ok, html: `${DP_ICON.compass}<span>出発する</span>`, onClick: () => depart() });
+    modal({ title: `<span class="dp-title">${DP_ICON.compass}<span>遺跡へ出発</span></span>`, cls: 'depart-modal', html, buttons });
   }
   function depart(opts) {
     const res = G.depart(UI.S, undefined, opts);
