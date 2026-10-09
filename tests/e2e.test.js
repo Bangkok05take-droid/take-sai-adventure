@@ -49,7 +49,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await shot('01_title');
   });
 
-  await test('追加の道具の絵29種（assets/items-v2・assets/accessories・assets/items-boss。ボスの報酬の装備7種は128／床64）が読み込まれ、一覧・床の表示で使われる', async () => {
+  await test('追加の道具の絵31種（assets/items-v2・assets/accessories・assets/items-boss。ボスの報酬の装備・お宝9種は128／床64）が読み込まれ、一覧・床の表示で使われる', async () => {
     await p.waitForFunction(() => TS.Sprites.art.ready, null, { timeout: 5000 });
     const r = await p.evaluate(() => {
       const SP = TS.Sprites, D = TS.Data, ids = Object.keys(TS.ASSETS.items.byId);
@@ -57,7 +57,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
         const boss = /^assets\/items-boss\//.test(TS.ASSETS.items.byId[id]), lw = boss ? 128 : 48, fw = boss ? 64 : 32;
         return !D.ITEMS[id] || !e.list || e.list.width !== lw || !e.floor || e.floor.width !== fw || SP.iconFor(D.ITEMS[id]) !== e.floor || !/^data:image\/png/.test(SP.iconURL(D.ITEMS[id])); }) };
     });
-    eq2(r.n, 29, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
+    eq2(r.n, 31, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
     // 床のお金（G）：32px用・48px用の金貨の絵（お宝の古金貨とは別）。描く大きさに合うほうを使う
     const gold = await p.evaluate(() => { const SP = TS.Sprites; return { w32: SP.art.gold[32] && SP.art.gold[32].width, w48: SP.art.gold[48] && SP.art.gold[48].width,
       small: SP.goldIcon(22) === SP.art.gold[32], big: SP.goldIcon(44) === SP.art.gold[48], notCoin: SP.goldIcon(44) !== SP.iconFor(TS.Data.ITEMS.old_coin) }; });
@@ -954,46 +954,66 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.evaluate(() => !TS.UI.modals.length), 'notice closed');
   });
 
-  await test('最終章：35階で大魔王バーン→静寂と変身の演出→準備画面（時間停止）→「最終決戦へ」→真大魔王バーン→帰還口→エンディング', async () => {
+  await test('最終章（版3）：30階で大魔王バーン→会話→連れ去る場面（動画が無いので仮の会話）→ティウの救援（荷物の交換・再読み込み）→31〜34階→35階で体が戻る場面→祈りで全回復→真大魔王バーン→帰還口→エンディング', async () => {
     await p.evaluate(() => {
       const S = TS.UI.S, G = TS.Game;
       S.village.story.chapter = 6; S.village.bag = [];
+      S.village.storage = [G.makeItem(S, 'herb'), G.makeItem(S, 'banana')];
       G.depart(S, 777);
       S.run.player.hp = S.run.player.maxhp = 9999;
-      while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+      while (S.run.floor < 30) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
       b.hp = 5; b.cds = { circle: 9, bird: 9, summon: 9 };
       r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 600; r.player.maxhp = 900;
       G.updateVision(r);
-      G.checkBossRoom(S, []); b.hold = 0;   // 部屋の中から始める（入室の流れは第1章のテストで確認）
+      G.checkBossRoom(S, []); b.hold = 0;
       document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-dungeon')); TS.UI.screen = 'dungeon';
     });
-    await p.waitForTimeout(200);
-    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.final.stage === 'battle1'); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
+    eq2(await p.evaluate(() => TS.UI.S.run.enemies.find((e) => e.boss).type), 'vearn', '30F boss');
+    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
     await p.waitForTimeout(700);
-    assert(await p.isVisible('.talk'), 'silence / transform talk');
-    await closeTalk(); await p.waitForTimeout(150); await closeTalk();
-    assert(await p.isVisible('.modal h2:has-text("最終決戦の準備")'), 'prep screen');
-    await shot('19_final_prep');
-    const prep = await p.evaluate(() => ({ hp: TS.UI.S.run.player.hp, max: TS.UI.S.run.player.maxhp, turn: TS.UI.S.run.turn, seen: TS.UI.S.run.final.cutsceneSeen }));
-    assert(prep.hp === prep.max && prep.seen, 'healed once ' + JSON.stringify(prep));
-    // 準備中に再読み込みしても、回復や演出は繰り返さず、準備画面に戻る
-    await p.evaluate(() => { TS.UI.S.run.player.hp = 321; TS.UI.debug.save(); });
+    // 撃破の会話 → 連れ去る場面（仮の会話） → ティウの会話 → 救援の画面
+    for (let i = 0; i < 6 && !(await p.$('.modal h2:has-text("ティウの救援")')); i++) { await closeTalk(); await p.waitForTimeout(400); }
+    assert(await p.isVisible('.modal h2:has-text("ティウの救援")'), 'rescue screen');
+    const a0 = await p.evaluate(() => { const S = TS.UI.S, r = S.run; return { robe: r.bag.concat(r.floorItems.map((f) => f.item).filter(Boolean)).some((i) => i.id === 'demon_robe'),
+      portal: !!r.portal, stairs: !!r.stairs, rescue: r.final.rescue, seen: !!S.village.story.moviesSeen.vearnTaken, bag: r.bag.length, st: S.village.storage.length }; });
+    assert(a0.robe && !a0.portal && a0.stairs && a0.rescue === 'pending' && a0.seen, 'after vearn ' + JSON.stringify(a0));
+    await shot('19_rescue');
+    // 倉庫のやくそうを受け取る（持ち物の最初の1個は送る）
+    const pick = await p.evaluate(() => { const S = TS.UI.S; const h = S.village.storage.find((i) => i.id === 'herb'); const o = S.run.bag.find((i) => !i.eq && TS.Game.canStore(i) && TS.Game.def(i).type !== 'material');
+      return { inn: h.uid, out: o ? o.uid : null }; });
+    await p.check(`.list[data-side="in"] .row[data-uid="${pick.inn}"] input`);
+    if (pick.out) await p.check(`.list[data-side="out"] .row[data-uid="${pick.out}"] input`);
+    await p.tap('.modal-buttons button.primary >> text=決定'); await p.waitForTimeout(300);
+    assert(await p.isVisible('.modal h2:has-text("オオカミが来た")'), 'wolf info');
+    const a1 = await p.evaluate((pk) => { const S = TS.UI.S; return { inBag: S.run.bag.some((i) => i.uid === pk.inn), outSt: pk.out == null || S.village.storage.some((i) => i.uid === pk.out),
+      total: S.run.bag.length + S.village.storage.length }; }, pick);
+    assert(a1.inBag && a1.outSt && a1.total === a0.bag + a0.st, 'moved without loss ' + JSON.stringify(a1));
+    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(200);
+    // 救援の途中で読み込み直しても、動いた品はそのまま・救援画面に戻る
     await p.reload(); await p.waitForTimeout(400);
-    await p.tap('#btn-continue'); await p.waitForTimeout(400);
-    for (let i = 0; i < 10 && !(await p.$('.modal h2:has-text("最終決戦の準備")')); i++) await p.waitForTimeout(100);
-    assert(await p.isVisible('.modal h2:has-text("最終決戦の準備")'), 'prep restored');
-    assert(await p.evaluate(() => TS.UI.S.run.player.hp === 321 && TS.UI.S.run.final.stage === 'prep'), 'no second heal');
-    // 「道具を確認」→ 閉じると準備画面に戻る（ターンは進まない）
-    const t0 = await p.evaluate(() => TS.UI.S.run.turn);
-    await p.tap('.modal-buttons button >> text=道具を確認'); await p.waitForTimeout(250);
-    assert(await p.isVisible('.modal h2:has-text("道具")'), 'items from prep');
-    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(300);
-    assert(await p.isVisible('.modal h2:has-text("最終決戦の準備")'), 'prep back after items');
-    assert(await p.evaluate((t0) => TS.UI.S.run.turn === t0 && TS.UI.S.run.final.stage === 'prep', t0), 'no turn in prep');
-    await p.tap('.modal-buttons button >> text=最終決戦へ'); await p.waitForTimeout(250);
-    assert(await p.evaluate(() => TS.UI.S.run.final.stage === 'battle2' && TS.UI.S.run.enemies.some((e) => e.type === 'truevearn')), 'final battle');
-    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 5; b.hold = 3; b.cds = { ring: 9, palm: 9, flame: 9 }; r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 900; G.updateVision(r); });
+    await p.tap('#btn-continue'); await p.waitForTimeout(500);
+    for (let i = 0; i < 6 && !(await p.$('.modal h2:has-text("ティウの救援")')); i++) { await closeTalk(); await p.waitForTimeout(300); }
+    assert(await p.isVisible('.modal h2:has-text("ティウの救援")'), 'rescue resumed');
+    eq2(await p.evaluate(() => TS.UI.S.run.bag.length + TS.UI.S.village.storage.length), a0.bag + a0.st, 'no loss after reload');
+    await p.tap('.modal-buttons button >> text=終わる'); await p.waitForTimeout(200);
+    eq2(await p.evaluate(() => TS.UI.S.run.final.rescue), 'done', 'rescue done');
+    // 31〜34階（自動では飛ばさない）→ 35階
+    const floors = await p.evaluate(() => { const S = TS.UI.S, G = TS.Game, seen = [];
+      while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); seen.push(S.run.floor); }
+      const r = S.run, b = r.enemies.find((e) => e.boss);
+      b.hp = 5; b.hold = 3; b.cds = { ring: 9, palm: 9, flame: 9 };
+      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 100; r.player.poison = 5; G.updateVision(r);
+      const ev = []; G.checkBossRoom(S, ev);
+      return { seen, boss: b.type, intro: ev.some((e) => e.t === 'bossIntro') }; });
+    assert(floors.seen.join() === '31,32,33,34,35' && floors.boss === 'truevearn' && floors.intro, 'to 35F ' + JSON.stringify(floors));
+    await p.evaluate(() => TS.UI.playBossIntro('truevearn'));
+    await p.waitForTimeout(200);
+    assert(await p.isVisible('.talk'), 'body return (placeholder talk)');
+    await closeTalk(); await p.waitForTimeout(500); await closeTalk();
+    const pr = await p.evaluate(() => { const r = TS.UI.S.run; return { hp: r.player.hp, max: r.player.maxhp, poison: r.player.poison, stage: r.final.stage }; });
+    assert(pr.hp === pr.max && pr.poison === 0 && pr.stage === 'battle2', 'prayer ' + JSON.stringify(pr));
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 5; b.hold = 3; r.player.x = b.x - 1; r.player.y = b.y; G.updateVision(r); });
     await p.waitForTimeout(200);
     await shot('20_truevearn');
     for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }

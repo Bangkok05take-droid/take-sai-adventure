@@ -327,8 +327,10 @@
       if (set.art && set.idle) img = atkFx ? RD.attackFrame(set, (now - atkFx.t0) / atkFx.dur) : RD.walkFrame(set, moving, moving ? (now - pa.t0) / pa.dur : 0, RD.stepCount || 0);
       else img = attacking ? set.atk : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
       const hurt = hitFx(p.x, p.y, 'player', now);
-      const sx = Math.round(ox + pp.x * ts + l[0] + (hurt ? Math.sin(now / 18) * k * 2 : 0)), sy = Math.round(oy + pp.y * ts + l[1]);
-      shadow(sx + ts / 2, sy + ts * 0.92, ts * 0.3);
+      // 3点セット：飛ぶ見た目（仮。絵はChatGPT側で用意する予定）。影は床に残し、体を少し浮かせてゆっくり上下させる
+      const fly = G.sets(run).all3 ? Math.round((5 + Math.sin(now / 420) * 1.5) * k) : 0;
+      const sx = Math.round(ox + pp.x * ts + l[0] + (hurt ? Math.sin(now / 18) * k * 2 : 0)), sy = Math.round(oy + pp.y * ts + l[1]) - fly;
+      shadow(sx + ts / 2, sy + fly + ts * 0.92, ts * (fly ? 0.24 : 0.3));
       // 見本から作った絵（52×64、足元そろえ）は1マスより背が高いので、足元をマスの下端に合わせて描く
       const drawP = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, 0) : g.drawImage(img, sx, sy, ts, ts);
       drawP();

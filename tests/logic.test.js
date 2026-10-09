@@ -1199,6 +1199,7 @@ test('足元の道具をその場で使う：バッグ満杯でも使え、バ�
 });
 test('村の発展の一覧：完成した項目は出さず、段階式の拡張は次の1段階だけ。完成しても効果と記録は残る', () => {
   const S = G.newState(), V = S.village; V.funds = 1e6; V.materials = { amber_shard: 9, bronze_shard: 9, crystal_shard: 9, gold_leaf: 9 }; V.bestFloor = 30;
+  V.story.defeated.baran = true;   // 赤い橋はバランを倒した後
   let ids = G.unbuiltFacilities(V).map((f) => f.id);
   assert(ids.includes('storage2') && !ids.includes('storage3') && !ids.includes('storage4'), ids.join());
   assert(G.buildFacility(S, 'storage2').ok);
@@ -1378,6 +1379,13 @@ test('旧セーブ（12枠時代）の所持品はそのまま読み込める', 
 });
 
 console.log('章のボス（30階）と最終決戦（35階）');
+// 更新前から続いている最終章の探索（版2：35階で大魔王バーン→真大魔王バーンの連戦）。セーブに残っている探索だけがこの流れ
+function chapterRunV2(ch, seed, floor) {
+  const S = newRun(seed, (S0) => { S0.village.story.chapter = ch; });
+  S.run.layout = 2; S.run.final = { stage: 'none', healed: false, cutsceneSeen: false };
+  goToFloor(S, floor);
+  return S;
+}
 function chapterRun(ch, seed, floor) {
   const S = newRun(seed, (S0) => { S0.village.story.chapter = ch; });
   eq(S.run.chapter, ch);
@@ -1392,7 +1400,7 @@ function placeNear(S, dx, dy) {
   G.updateVision(run); return b;
 }
 const stepOk = (run, dir) => { const [dx, dy] = G.DIRS[dir]; return G.canStep(run.map, run.player.x, run.player.y, dx, dy) && !G.enemyAt(run, run.player.x + dx, run.player.y + dy); };
-test('章ごとのボスの階：第1章15階・第2章20階・第3章25階・第4章30階・第5章30階（別々の章）。最終章は30階が通常の階で、31〜35階へ進め、35階に大魔王バーン', () => {
+test('章ごとのボスの階：第1章15階・第2章20階・第3章25階・第4章30階・第5章30階（別々の章）。最終章（版3）は30階に大魔王バーン、31〜34階を探索、35階に真大魔王バーン', () => {
   const want = { 1: ['croc', 15], 2: ['flame', 20], 3: ['kill', 25], 4: ['baran', 30], 5: ['mist', 30] };
   for (const ch of [1, 2, 3, 4, 5]) {
     const [boss, fl] = want[ch];
@@ -1402,9 +1410,12 @@ test('章ごとのボスの階：第1章15階・第2章20階・第3章25階・�
     eq(S.run.map.monsterHouse, null, 'no monster house on boss floor');
   }
   const S = chapterRun(6, 210, 30);
-  assert(!S.run.enemies.some((e) => e.boss) && S.run.stairs, '30F normal in final');
-  goToFloor(S, 31); eq(G.F(S.run).theme, 'demon');
-  goToFloor(S, 35); eq(S.run.enemies.find((e) => e.boss).type, 'vearn'); eq(S.run.final.stage, 'battle1'); eq(G.maxFloor(S.run), 35);
+  eq(S.run.final.v, 3); eq(S.run.enemies.filter((e) => e.boss).map((e) => e.type).join(), 'vearn', '30F vearn'); assert(!S.run.stairs, 'no stairs before the fight');
+  for (let f = 1; f < 30; f++) assert(!G.F(S.run, f).boss, 'no boss above ' + f);
+  for (let f = 31; f < 35; f++) assert(!G.F(S.run, f).boss, 'no boss on ' + f);
+  eq(G.F(S.run, 35).boss, 'truevearn'); eq(G.maxFloor(S.run), 35);
+  // 版2（更新前から続く探索）は以前どおり35階で大魔王バーン
+  const O = chapterRunV2(6, 211, 35); eq(O.run.enemies.find((e) => e.boss).type, 'vearn'); eq(O.run.final.stage, 'battle1');
 });
 test('クロコダイン：一直線の突進を予告し、横へずれればかわせて、そのあと2ターンの隙。隣では縦一列の大斧', () => {
   const S = chapterRun(1, 220, 15), run = S.run;
@@ -1515,7 +1526,7 @@ test('ミストバーン：霧で見える範囲が2マスに（予告は残る�
   eq(run.fog, 0); eq(run.player.bound, 0); assert(run.player.bindGuard >= 10);
 });
 test('最終決戦：バーンを倒すと準備（回復は1回だけ・時間は止まる）→「最終決戦へ」で真大魔王バーン→勝利で帰還口→帰るとエンディング', () => {
-  const S = chapterRun(6, 270, 35), run = S.run;
+  const S = chapterRunV2(6, 270, 35), run = S.run;   // 版2（更新前から続く探索）の流れ
   run.player.hp = 10; run.player.maxhp = 300;
   defeatBoss(S); run.player.maxhp = 300;
   eq(run.final.stage, 'prep'); eq(S.village.story.finalStage, 'prep'); assert(run.final.healed);
@@ -1536,11 +1547,11 @@ test('最終決戦：バーンを倒すと準備（回復は1回だけ・時間�
   const res = G.finishRun(L2);
   assert(res.finalClear && res.firstEnding); assert(L2.village.story.endingDone && L2.village.cleared); eq(L2.village.story.pending.type, 'ending');
   eq(L2.village.story.records, D.STORY.records.length);
-  // クリア後も探索・村の発展を続けられる
-  assert(G.depart(L2, 271).ok); eq(L2.run.chapter, 6);
+  // クリア後も探索・村の発展を続けられる（新しい探索は版3。どちらのボスも出ない）
+  assert(G.depart(L2, 271).ok); eq(L2.run.chapter, 6); assert(L2.run.final.skip.vearn && L2.run.final.skip.truevearn);
 });
-test('最終決戦で敗北：通常の敗北ルールで村へ。最終章は未クリアのまま、次は第1戦から', () => {
-  const S = chapterRun(6, 280, 35), run = S.run;
+test('最終決戦で敗北（版2の探索）：通常の敗北ルールで村へ。最終章は未クリアのまま、次は（版3で）30階の大魔王バーンから', () => {
+  const S = chapterRunV2(6, 280, 35), run = S.run;
   defeatBoss(S); G.startFinalBattle(S);
   run.player.hp = 1; const b = run.enemies.find((e) => e.boss); b.cds = {}; b.rest = 0; b.hold = 0;
   run.player.x = b.x + 1; run.player.y = b.y; G.updateVision(run);
@@ -1549,7 +1560,7 @@ test('最終決戦で敗北：通常の敗北ルールで村へ。最終章は�
   const res = G.finishRun(S);
   eq(res.type, 'dead'); assert(!S.village.story.endingDone && !S.village.cleared); eq(S.village.story.chapter, 6);
   eq(S.village.story.finalStage, 'none'); eq(S.village.story.defeated.vearn, false, 'retry from battle 1');
-  G.depart(S, 281); goToFloor(S, 35); eq(S.run.final.stage, 'battle1'); eq(S.run.enemies.find((e) => e.boss).type, 'vearn');
+  G.depart(S, 281); goToFloor(S, 30); eq(S.run.final.v, 3); eq(S.run.enemies.find((e) => e.boss).type, 'vearn');
 });
 test('章のボスを倒したあとに倒れても、その章はクリア扱い（やり直させない）。倒す前の敗北・途中帰還では章はそのまま', () => {
   const S = chapterRun(2, 290, 20);
@@ -1576,7 +1587,8 @@ test('全章を順に進める：第1章→第5章→最終章→エンディン
     eq(res.chapterClear, ch); eq(res.rewardFunds, D.CHAPTERS[ch].reward.funds);
   }
   eq(S.village.story.chapter, 6);
-  G.depart(S, 310); goToFloor(S, 35); defeatBoss(S); G.startFinalBattle(S); defeatBoss(S);
+  G.depart(S, 310); goToFloor(S, 30); defeatBoss(S); assert(!S.run.portal && S.run.stairs, '30F: stairs, no portal'); G.endRescue(S);
+  goToFloor(S, 35); defeatBoss(S);
   S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' });
   const res = G.finishRun(S);
   assert(res.finalClear && S.village.story.endingDone);
@@ -1662,7 +1674,7 @@ function bossRewardRun(ch, seed, S0) {
 test('各ボスの報酬（2026年10月の見直し）：クロコダイン＝涙・斧、フレイザード＝氷炎の盾・氷炎結晶、キルバーン＝ファントムシールド・マスク、バラン＝真魔剛竜剣・竜の紋章、ミストバーン＝勇者の剣・盾', () => {
   const want = {
     1: ['croc_tear', 'croc_axe'], 2: ['iceflame_shield', 'iceflame_crystal'],
-    3: ['phantom_shield', 'phantom_mask'], 4: ['shinma_sword'], 5: ['hero_sword', 'hero_shield'],   // 竜の紋章は赤い橋の向こう岸で拾う（v3）
+    3: ['phantom_shield', 'phantom_mask'], 4: ['shinma_sword', 'baran_emblem'], 5: ['hero_sword', 'hero_shield'],   // 竜の紋章は赤い橋の向こう岸で拾う（v3）
   };
   eq(JSON.stringify(D.CHAPTERS[6].reward.items), JSON.stringify(['demon_robe']));
   for (const ch of [1, 2, 3, 4, 5]) {
@@ -1797,7 +1809,7 @@ console.log('ボス部屋：入室で戦闘開始・部屋の外へ出ない（2
 // ボスの階へ（ボスには触れない）。たけは前室（スタート）にいる
 function toBossFloor(ch, seed) {
   const S = newRun(seed, (s) => { s.village.story.chapter = ch; if (ch === 6) for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) s.village.story.defeated[k] = true; });
-  const goal = D.CHAPTERS[ch].goal;
+  const goal = ch === 6 ? D.FINAL_V3.vearn : D.CHAPTERS[ch].goal;   // 最終章（版3）は30階の大魔王バーン
   while (S.run.floor < goal) { const r = S.run; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
   S.run.player.hp = S.run.player.maxhp = 99999;
   return S;
@@ -1879,23 +1891,72 @@ test('戦いの前のボスには、投げる・杖・ねむり草・雷鳴の�
   r = G.act(S, { type: 'use', uid: staff.uid, dir: 'right' });
   assert(r.consumed && staff.charges === 2, 'staff works after the start');
 });
-test('最終章：大魔王バーン→準備→真大魔王バーンの間はボス戦の曲のまま。真大魔王バーンも部屋の中だけ。報酬は1回だけ', () => {
-  const S = toBossFloor(6, 941), run = S.run;
+test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部屋の中だけ）→ ローブ1回・階段・帰還口なし・ティウの救援 → 35階の真大魔王バーン（入室で肉体返還の場面→祈りで全回復→戦い）→ 帰還口。どちらも再登場しない', () => {
+  const S = toBossFloor(6, 941), run = S.run, st = S.village.story;
+  eq(run.floor, 30); eq(run.enemies.find((e) => e.boss).type, 'vearn');
   run.player.x = doorOutside(run).x; run.player.y = doorOutside(run).y; G.updateVision(run);
   G.act(S, { type: 'move', dir: 'right' });
-  assert(run.bossFight.engaged);
+  assert(run.bossFight.engaged); eq(G.dungeonBgm(run), 'boss');
+  for (let i = 0; i < 10; i++) { G.act(S, { type: 'wait' }); run.player.hp = run.player.maxhp; assert(insideAll(run)); }
   defeatBoss(S);
-  eq(run.final.stage, 'prep'); eq(G.dungeonBgm(run), 'boss', 'prep keeps the boss music');
-  G.markFinalCutscene(S); G.startFinalBattle(S);
-  const tv = run.enemies.find((e) => e.type === 'truevearn');
-  assert(tv && G.inArena(run, tv.x, tv.y) && run.bossFight.engaged);
-  for (let i = 0; i < 40 && run.enemies.includes(tv); i++) { G.act(S, { type: 'wait' }); run.player.hp = run.player.maxhp; assert(insideAll(run)); }
-  defeatBoss(S);
-  assert(run.bossFight.won); eq(G.dungeonBgm(run), 'dungeon');
-  const n = run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length;
-  eq(n, 1, 'demon robe once');
+  assert(run.bossFight.won); eq(G.dungeonBgm(run), 'dungeon'); assert(st.defeated.vearn);
+  eq(run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, 1, 'robe once');
+  assert(run.stairs && !run.portal, 'stairs, no portal'); eq(run.final.rescue, 'pending'); assert(G.canRescue(run));
   const L = SV.deserialize(SV.serialize(S));
-  eq(L.run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, n, 'no duplicate reward after reload');
+  eq(L.run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, 1, 'no duplicate after reload'); eq(L.run.final.rescue, 'pending');
+  G.endRescue(L); assert(!G.canRescue(L.run));
+  // 31〜34階を探索して35階へ（ワープしない）
+  const seen = []; while (L.run.floor < 35) { const r = L.run; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(L, { type: 'descend' }); seen.push(r.floor); }
+  eq(seen.join(), '31,32,33,34,35');
+  const R = L.run, tv = R.enemies.find((e) => e.boss); eq(tv.type, 'truevearn'); assert(!R.bossFight.engaged);
+  R.player.hp = 60; R.player.maxhp = 500; R.player.poison = 3; R.player.hunger = 40;
+  const d = doorOutside(R); R.player.x = d.x; R.player.y = d.y; G.updateVision(R);
+  const r1 = G.act(L, { type: 'move', dir: 'right' });
+  assert(r1.events.some((e) => e.t === 'bossIntro' && e.boss === 'truevearn') && R.bossFight.intro === 'pending', 'body-return scene first');
+  const ev = G.finishBossIntro(L);
+  assert(ev.some((e) => e.t === 'prayer') && ev.filter((e) => e.t === 'bossStart').length === 1);
+  eq(R.player.hp, 500, 'prayer full HP'); eq(R.player.poison, 0, 'status cleared'); eq(R.player.hunger, 40, 'hunger unchanged (undecided)');
+  defeatBoss(L);
+  eq(R.final.stage, 'won'); assert(R.portal && st.defeated.truevearn || L.village.story.defeated.truevearn);
+  assert(!R.floorItems.some((f) => f.item && f.item.bossReward), 'no item reward at 35F');
+  R.player.x = R.portal.x; R.player.y = R.portal.y; G.act(L, { type: 'returnHome' });
+  const res = G.finishRun(L); assert(res.finalClear && L.village.story.endingDone);
+  // クリア後：30階・35階にボスは出ない。35階は下への階段が無く、帰還の祠
+  G.depart(L, 942); assert(L.run.final.skip.vearn && L.run.final.skip.truevearn);
+  goToFloor(L, 30); assert(!L.run.enemies.some((e) => e.boss) && L.run.stairs, '30F normal after clear');
+  goToFloor(L, 35); assert(!L.run.enemies.some((e) => e.boss) && !L.run.stairs && L.run.returnPoint, '35F: no boss, return point');
+});
+test('最終章（版3）：30階で大魔王バーンを倒したあと倒れても、次は30階に出ない（ローブは倉庫へ）。35階は未撃破なら真大魔王バーン', () => {
+  const S = toBossFloor(6, 950), run = S.run;
+  while (run.bag.length < D.BAG_SIZE) run.bag.push(G.makeItem(S, 'herb'));
+  defeatBoss(S); run.over = true; run.result = { type: 'dead', floor: 30 };
+  G.finishRun(S);
+  assert(S.village.story.defeated.vearn && !S.village.story.endingDone); eq(S.village.story.chapter, 6);
+  eq(S.village.storage.filter((i) => i.id === 'demon_robe').length, 1, 'robe kept in storage');
+  G.depart(S, 951); goToFloor(S, 30); assert(!S.run.enemies.some((e) => e.boss), 'vearn does not return');
+  goToFloor(S, 35); eq(S.run.enemies.find((e) => e.boss).type, 'truevearn');
+});
+test('ティウの救援：オオカミが持ち物と倉庫の品を一度に入れかえる（消えない・増えない・上限を守る・送れない品は送れない）。救援を終えたら使えない', () => {
+  const S = toBossFloor(6, 960), run = S.run, V = S.village;
+  defeatBoss(S); assert(G.canRescue(run));
+  run.bag = run.bag.filter((i) => i.id === 'return_scroll');
+  const a = G.makeItem(S, 'herb'), b = G.makeItem(S, 'golden_sword'); b.eq = true; run.bag.push(a, b);
+  const c = G.makeItem(S, 'elixir'), d = G.makeItem(S, 'big_herb'); V.storage.push(c, d);
+  const before = run.bag.length + V.storage.length;
+  const scroll = run.bag.find((i) => i.id === 'return_scroll');
+  assert(!G.rescueExchange(S, [scroll.uid], []).ok, 'return scroll cannot be sent');
+  assert(!G.rescueExchange(S, [], [9999]).ok, 'unknown uid');
+  const r = G.rescueExchange(S, [a.uid, b.uid], [c.uid]); assert(r.ok, r.msg);
+  assert(V.storage.includes(a) && V.storage.includes(b) && !b.eq && run.bag.includes(c) && !V.storage.includes(c));
+  eq(run.bag.length + V.storage.length, before, 'no loss, no dup');
+  eq(new Set(run.bag.concat(V.storage).map((i) => i.uid)).size, before, 'unique');
+  // 持ち物の上限
+  while (run.bag.length < D.BAG_SIZE) run.bag.push(G.makeItem(S, 'herb'));
+  const n0 = run.bag.length + V.storage.length;
+  assert(!G.rescueExchange(S, [], [d.uid]).ok, 'bag full'); eq(run.bag.length + V.storage.length, n0, 'nothing moved on failure');
+  // 保存・読み込み直しても、動いたまま
+  const L = SV.deserialize(SV.serialize(S)); assert(L.village.storage.some((i) => i.uid === a.uid) && L.run.bag.some((i) => i.uid === c.uid));
+  G.endRescue(S); assert(!G.rescueExchange(S, [], [d.uid]).ok, 'closed after rescue');
 });
 test('以前のセーブ（ボス戦の途中・ボスが通路にいる）：HPと戦いの状態を引き継ぎ、ボスを部屋の中（たけと重ならない所）へ戻す', () => {
   // 戦いの途中（HPが減っている・ボスが通路）
@@ -2295,7 +2356,7 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
 
 console.log('クロコダインの登場ムービー（2026年10月）');
 test('登場ムービー：クロコダインだけ。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
-  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'baran']));
+  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'baran', 'truevearn']));
   const S = toBossFloor(1, 1401), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
   const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
   const t0 = run.turn, pos = [b.x, b.y, b.hp];
@@ -2340,7 +2401,7 @@ test('ボスの報酬の装備7種：既存のIDのまま（重複なし）・�
   }
   // 同じ名前の道具は1つだけ（竜の紋章・龍の紋章も1つ）
   const names = Object.values(D.ITEMS).map((d) => d.name);
-  for (const id of Object.keys(want)) eq(names.filter((n) => n === D.ITEMS[id].name).length, 1, 'unique ' + id);
+  for (const id of Object.keys(want)) eq(names.filter((n) => n === D.ITEMS[id].name).length, id === 'dragon_crest' ? 2 : 1, 'unique ' + id);   // 竜の紋章はお宝（baran_emblem）とアクセサリーの2つ
   eq(D.ITEMS.dragon_crest.name, '竜の紋章'); assert(!names.includes('龍の紋章'));
   // 能力値・効果は前回の見直しのまま
   eq(D.ITEMS.croc_axe.atk, 16); eq(D.ITEMS.iceflame_shield.def, 15); eq(D.ITEMS.phantom_shield.def, 17); eq(D.ITEMS.shinma_sword.atk, 24);
@@ -2457,6 +2518,106 @@ test('バランの登場ムービー：第4章30階の玉座の部屋に初め�
   // 同じ戦闘の中で部屋を出入りしても流れない
   run.player.x = door.x; run.player.y = door.y; G.act(S, { type: 'wait' });
   const r2 = G.act(S, { type: 'move', dir: 'right' }); assert(!r2.events.some((e) => e.t === 'bossIntro'));
+});
+
+console.log('装備のセット・竜の紋章・ローブ・2回行動（2026年10月）');
+function equipSet(S, ids) {
+  const run = S.run; run.bag = run.bag.filter((i) => !['weapon', 'shield', 'accessory'].includes(G.def(i).type));
+  const out = {}; for (const id of ids) { const it = G.makeItem(S, id); run.bag.push(it); G.toggleEquipInBag(run.bag, it.uid); out[id] = it; }
+  return out;
+}
+test('セットの数値：剣＋紋章で攻撃+5（装備由来34）、紋章＋盾で防御+5、盾は防御+22で鍛冶屋+8まで', () => {
+  const S = newRun(1601); bigRoomFloor(S); const run = S.run;
+  const base = D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (run.player.lvl - 1);
+  equipSet(S, ['shinma_sword']); eq(G.playerAtk(run), base + 24);
+  equipSet(S, ['shinma_sword', 'dragon_crest']); eq(G.playerAtk(run), base + 24 + 5 + 5, 'sword 24 + crest 5 + set 5 = 34');
+  equipSet(S, ['dragonic_shield']); eq(G.playerDef(run), 22);
+  equipSet(S, ['dragonic_shield', 'dragon_crest']); eq(G.playerDef(run), 27, 'crest+shield +5');
+  equipSet(S, ['shinma_sword', 'dragonic_shield', 'dragon_crest']); assert(G.sets(run).all3); eq(G.playerAtk(run), base + 34); eq(G.playerDef(run), 27);
+  const V = S.village; V.smithLv = 3; V.funds = 1e6; V.materials = { amber_shard: 9, bronze_shard: 9, crystal_shard: 9, gold_leaf: 9 };
+  const sh = G.makeItem(S, 'dragonic_shield'); V.bag.push(sh);
+  for (let i = 0; i < 10; i++) G.smith(S, sh.uid); eq(sh.plus, 8, 'smith up to +8');
+  assert(!G.canSell(sh), 'sell price undecided');
+});
+test('漆黒の盾＋ローブ：満腹度が減らない・総攻撃力×0.8（四捨五入）・真魔剛竜剣なら下がらない。ローブの自然回復は2倍（重ねない）。毒・空腹0では回復しない', () => {
+  const S = newRun(1602); bigRoomFloor(S); const run = S.run, p = run.player;
+  const base = D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (p.lvl - 1);
+  equipSet(S, ['golden_sword', 'phantom_shield', 'demon_robe']); assert(G.sets(run).shieldRobe);
+  eq(G.playerAtk(run), Math.round((base + 18) * 0.8));
+  equipSet(S, ['shinma_sword', 'phantom_shield', 'demon_robe']); eq(G.playerAtk(run), base + 24, 'shinma not reduced');
+  p.hunger = 50; for (let i = 0; i < 80; i++) G.act(S, { type: 'wait' }); eq(p.hunger, 50, 'no hunger loss');
+  // 自然回復：なし／ローブ単体／盾＋ローブ（どれも2倍まで）
+  const regen = (ids) => { equipSet(S, ids); p.maxhp = 1100; p.hp = 100; p.poison = 0; p.hunger = 100; p.regenAcc = 0; for (let i = 0; i < 20; i++) G.act(S, { type: 'wait' }); return p.hp - 100; };
+  const r0 = regen([]), r1 = regen(['demon_robe']), r2 = regen(['phantom_shield', 'demon_robe']);
+  eq(r0, 200); eq(r1, 400, 'robe 2x'); eq(r2, 400, 'set does not stack');
+  equipSet(S, ['demon_robe']); p.hp = 100; p.poison = 5; p.regenAcc = 0; const h0 = p.hp; G.act(S, { type: 'wait' }); assert(p.hp < h0, 'no regen while poisoned');
+});
+test('竜の紋章：HP0で最大HPの50%（四捨五入）で復活し、紋章はなくなり、セットも外れる。3点セット中なら全回復', () => {
+  for (const [ids, want] of [[['shinma_sword', 'dragon_crest'], 0.5], [['shinma_sword', 'dragonic_shield', 'dragon_crest'], 1]]) {
+    const S = newRun(1603); bigRoomFloor(S); const run = S.run, p = run.player;
+    equipSet(S, ids); p.maxhp = 301;
+    const e = addEnemy(S, 'frog', p.x + 1, p.y); e.atk = 99999;
+    let r; for (let i = 0; i < 40 && !r?.events.some((x) => x.t === 'revive'); i++) { p.hp = Math.min(p.hp, 1); r = G.act(S, { type: 'wait' }); }
+    assert(r.events.some((x) => x.t === 'revive'), 'revive'); assert(!S.run.over);
+    assert(!run.bag.some((i) => i.id === 'dragon_crest'), 'crest consumed');
+    const s = G.sets(run); assert(!s.swordCrest && !s.crestShield && !s.all3, 'sets recalculated');
+    if (want === 1) eq(p.hp, 301); else assert(p.hp === Math.round(301 * 0.5) || p.hp === Math.round(301 * 0.5) - 0, 'half hp ' + p.hp);
+  }
+});
+test('2マス攻撃（剣＋盾）：正面2マス目に届く・手前の敵を貫通して2体・壁越しは届かない・待っているボスには届かない', () => {
+  const S = newRun(1604); bigRoomFloor(S); const run = S.run, p = run.player;
+  equipSet(S, ['shinma_sword', 'dragonic_shield']); assert(G.sets(run).swordShield);
+  run.player.lvl = 30;
+  const far = addEnemy(S, 'frog', p.x + 2, p.y); far.hp = far.maxhp = 999;
+  let r = G.act(S, { type: 'move', dir: 'right' });
+  assert(r.consumed && p.x === 5 && far.hp < 999 && r.events.some((e) => e.t === 'reach'), 'reach attack instead of moving');
+  far.x = p.x + 2; far.y = p.y; far.sleep = 99; const near = addEnemy(S, 'frog', p.x + 1, p.y); near.hp = near.maxhp = 999; near.sleep = 99; const h = far.hp;
+  r = G.act(S, { type: 'move', dir: 'right' });
+  const hitOrMiss = (en) => r.events.some((x) => x.x === en.x && x.y === en.y && /dmg|hit|miss|num/.test(x.t)) || en.hp < 999 || (en === far && en.hp < h);
+  assert(r.events.some((x) => x.t === 'reach' && x.tiles.length === 2) && hitOrMiss(near) && hitOrMiss(far), 'pierce both');
+  // 壁越し
+  run.enemies = []; const m = run.map; m.tiles[p.y * m.w + p.x + 1] = DG.WALL; const w2 = addEnemy(S, 'frog', p.x + 2, p.y);
+  r = G.act(S, { type: 'move', dir: 'right' }); assert(!r.consumed && w2.hp === 999, 'no attack through walls');
+  // 剣だけ：届かない（歩く）
+  m.tiles[p.y * m.w + p.x + 1] = DG.FLOOR; run.enemies = []; equipSet(S, ['shinma_sword']); const e3 = addEnemy(S, 'frog', p.x + 2, p.y);
+  r = G.act(S, { type: 'move', dir: 'right' }); eq(p.x, 6, 'moved'); eq(e3.hp, 999);
+});
+test('2回行動（3点セット）：たけ2行動で敵1回・時間1ターン。付け替えで行動は増えない。紋章が消えても敵の手番は消えない。新しい毒・拘束・床の印を受けない', () => {
+  const S = newRun(1605); bigRoomFloor(S); const run = S.run, p = run.player;
+  const set = equipSet(S, ['shinma_sword', 'dragonic_shield', 'dragon_crest']);
+  const t0 = run.turn;
+  G.act(S, { type: 'wait' }); eq(run.turn, t0, 'first action: no time'); eq(p.half, 1);
+  G.act(S, { type: 'wait' }); eq(run.turn, t0 + 1, 'second action: one turn');
+  // 敵は2行動に1回だけ動く
+  const e = addEnemy(S, 'frog', p.x + 4, p.y); e.atk = 0; e.tx = p.x; e.ty = p.y;
+  const x0 = e.x; G.act(S, { type: 'wait' }); eq(e.x, x0, 'enemy waits'); G.act(S, { type: 'wait' }); assert(e.x !== x0, 'enemy moves once');
+  run.enemies = [];
+  // 付け替え：外す（3点の状態で行動→1回目）→ 次は3点ではないので時間が進む。付け直し→時間が進む（行動は増えない）
+  const tA = run.turn; G.act(S, { type: 'equip', uid: set.dragon_crest.uid }); eq(run.turn, tA, 'unequip as first action');
+  G.act(S, { type: 'wait' }); eq(run.turn, tA + 1, 'pending time resolves'); eq(p.half, 0);
+  G.act(S, { type: 'equip', uid: set.dragon_crest.uid }); eq(run.turn, tA + 2, 're-equip while not set: normal turn'); assert(G.sets(run).all3);
+  // 状態異常・床の印
+  run.hazards = [{ x: p.x, y: p.y, t: 1, dmg: 50, name: '床の炎', kind: 'fire' }]; const hp0 = p.hp;
+  G.act(S, { type: 'wait' }); G.act(S, { type: 'wait' }); eq(p.hp >= hp0 || p.hp === p.maxhp, true, 'hazard no damage');
+  const pe = addEnemy(S, 'frog', p.x + 1, p.y); pe.type = 'snake'; pe.atk = 1;
+  // 毒の敵の攻撃（毒にならない）
+  if (D.ENEMIES.snake && D.ENEMIES.snake.ai === 'poison') { for (let i = 0; i < 30; i++) G.act(S, { type: 'wait' }); eq(p.poison, 0, 'no poison'); }
+  // 紋章が消える（2回行動の途中ではなく、敵の手番の中で起きる）→ 次の行動は普通の1ターン
+  run.enemies = []; p.half = 0; const k = addEnemy(S, 'frog', p.x + 1, p.y); k.atk = 99999;
+  let r; for (let i = 0; i < 6 && !(r && r.events.some((x) => x.t === 'revive')); i++) { p.hp = 1; r = G.act(S, { type: 'wait' }); }
+  assert(r.events.some((x) => x.t === 'revive') && !G.sets(run).all3);
+  run.enemies = []; const tB = run.turn; G.act(S, { type: 'wait' }); eq(run.turn, tB + 1, 'normal turn after crest consumed'); eq(p.half, 0);
+});
+test('お宝の竜の紋章は通常のバランの報酬（アクセサリーとは別の品・別の記録）。赤い橋はバランを倒した後に建てられる', () => {
+  eq(D.ITEMS.baran_emblem.type, 'treasure'); eq(D.ITEMS.baran_emblem.name, '竜の紋章'); eq(D.ITEMS.dragon_crest.type, 'accessory');
+  assert(D.CHAPTERS[4].reward.items.includes('baran_emblem') && D.CHAPTERS[4].reward.items.includes('shinma_sword'));
+  const F = D.FACILITIES.find((f) => f.id === 'bridge'); eq(JSON.stringify(F.req), JSON.stringify(['baran'])); eq(F.price, 900);
+  const S = G.newState(), V = S.village; V.funds = 5000; V.bestFloor = 30;
+  assert(!G.facilityStatus(S, 'bridge').unlocked, 'locked before Baran');
+  V.story.defeated.baran = true; assert(G.facilityStatus(S, 'bridge').unlocked);
+  // お宝を持っていても、アクセサリーの拾得は別（拾える）
+  V.bag.push(G.makeItem(S, 'baran_emblem')); assert(G.buildFacility(S, 'bridge').ok);
+  eq(JSON.stringify(G.villagePickups(V)), JSON.stringify(['dragon_crest']));
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

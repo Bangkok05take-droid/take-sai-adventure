@@ -63,6 +63,8 @@
         // アクセサリーの竜の紋章（2026年10月 v3）：金のペンダントに青い竜の紋章（ZIP take-sai-dragon-pendant-v3 の 128・64）。
         // 以前の青い紋章だけの絵（dragon-emblem.png）は、お宝の紋章用に残している（お宝の紋章はまだゲームに無い）
         dragon_crest: 'assets/items-boss/dragon-pendant',
+        // お宝の竜の紋章（通常のバランの報酬）：以前の青い紋章の絵。ドラゴニックオーラの盾：受け取った絵を128／64に縮めたもの
+        baran_emblem: 'assets/items-boss/dragon-emblem', dragonic_shield: 'assets/items-boss/dragonic-aura-shield',
         // アクセサリー（assets/accessories/。値に「/」があるときはフォルダ付きのパス。床用は同じフォルダの floor/）
         poison_ring: 'assets/accessories/poison_ring', purse_charm: 'assets/accessories/money_guard',
         full_bangle: 'assets/accessories/hunger_bracelet', life_necklace: 'assets/accessories/revival_necklace',

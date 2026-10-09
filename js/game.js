@@ -48,7 +48,8 @@
   G.chapterOf = (run) => (run && run.chapter != null ? run.chapter : 'legacy');
   // 配置の版：新しい探索は D.LAYOUT。更新前から続いている探索（layout なし）は以前の配置（第1〜5章のボスは30階）
   G.layoutOf = (run) => (run && run.layout) || 1;
-  G.F = (run, f) => D.floorFor(G.chapterOf(run), f == null ? run.floor : f, G.layoutOf(run));
+  G.F = (run, f) => D.floorFor(G.chapterOf(run), f == null ? run.floor : f, G.layoutOf(run), run.final && run.final.v === 3 ? run.final.skip : null);
+  G.finalV3 = (run) => !!(run && run.final && run.final.v === 3);
   // その探索の最深階（＝ボスの階）
   G.maxFloor = (run) => (G.chapterOf(run) === 'legacy' ? D.MAX_FLOOR : D.bossFloorOf(G.chapterOf(run), G.layoutOf(run)));
   // 村に表示する「現在の章・次のボス・目標階」
@@ -106,18 +107,55 @@
   G.equipped = function (bag, type) {
     return bag.find((it) => it.eq && G.def(it).type === type) || null;
   };
+  /* 装備のセット（D.SETS）。装備はそれぞれ1つずつなので、今の装備から毎回計算する（紋章がなくなればすぐ外れる） */
+  G.setsOf = function (bag) {
+    const id = (t) => { const it = G.equipped(bag, t); return it ? it.id : null; };
+    const w = id('weapon'), s = id('shield'), a = id('accessory');
+    const sword = w === 'shinma_sword', crest = a === 'dragon_crest', aura = s === 'dragonic_shield';
+    return { swordCrest: sword && crest, swordShield: sword && aura, crestShield: crest && aura, all3: sword && crest && aura,
+      shieldRobe: s === 'phantom_shield' && a === 'demon_robe', robe: a === 'demon_robe' };
+  };
+  G.sets = (run) => G.setsOf(run.bag);
   G.playerAtk = function (run) {
     const w = G.equipped(run.bag, 'weapon');
     const meal = run.meal && D.MEALS[run.meal];
     const ac = G.equipped(run.bag, 'accessory');   // ボスの報酬のアクセサリーは攻撃力・防御力も上がる（竜の紋章・ファントムマスク）
-    return D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (run.player.lvl - 1) + (w ? G.def(w).atk + (w.plus || 0) : 0) + (meal && meal.atk || 0) + (ac && G.def(ac).atk || 0);
+    const st = G.sets(run);
+    const atk = D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * (run.player.lvl - 1) + (w ? G.def(w).atk + (w.plus || 0) : 0) + (meal && meal.atk || 0) + (ac && G.def(ac).atk || 0)
+      + (st.swordCrest ? D.SETS.swordCrestAtk : 0);
+    // 漆黒の盾＋大魔王のローブ：総攻撃力×0.8（四捨五入。ダメージの計算と同じ丸め方）。真魔剛竜剣なら下がらない
+    return st.shieldRobe && !(w && w.id === 'shinma_sword') ? Math.round(atk * D.SETS.shieldRobeAtkMul) : atk;
   };
   G.playerDef = function (run) {
     const s = G.equipped(run.bag, 'shield');
     const meal = run.meal && D.MEALS[run.meal];
     const ac = G.equipped(run.bag, 'accessory');
-    return (s ? G.def(s).def + (s.plus || 0) : 0) + (meal && meal.def || 0) + (ac && G.def(ac).def || 0);
+    return (s ? G.def(s).def + (s.plus || 0) : 0) + (meal && meal.def || 0) + (ac && G.def(ac).def || 0) + (G.sets(run).crestShield ? D.SETS.crestShieldDef : 0);
   };
+
+  // ---------- 地下30階：ティウの救援（オオカミが村の倉庫と荷物を運ぶ） ----------
+  /* 救援の間だけ使える（run.final.rescue が 'pending'）。利用回数・あとで再び使えるかは未決定なので、救援の画面を閉じるまで何度でも、閉じたら終わり。
+   * toStorage：探索中の持ち物から倉庫へ送る品（番号）、toBag：倉庫から持ち物へ受け取る品（番号）。
+   * 全部確かめてから一度にまとめて動かす（途中で止まって品が消えたり、増えたりしない）。動かしたあとに画面がオオカミの演出を見せる */
+  G.canRescue = (run) => !!(G.finalV3(run) && run.final.rescue === 'pending');
+  G.rescueExchange = function (S, toStorage, toBag) {
+    const run = S.run, V = S.village;
+    if (!G.canRescue(run)) return { ok: false, msg: '今は荷物を運べません。' };
+    const out = [...new Set(toStorage || [])].map((u) => run.bag.find((i) => i.uid === u));
+    const inn = [...new Set(toBag || [])].map((u) => V.storage.find((i) => i.uid === u));
+    if (out.some((x) => !x) || inn.some((x) => !x)) return { ok: false, msg: '見つからない品があります。' };
+    const bad = out.find((it) => !G.canStore(it) || G.def(it).type === 'material');
+    if (bad) return { ok: false, msg: G.itemName(bad) + 'は送れません。' };
+    if (run.bag.length - out.length + inn.length > D.BAG_SIZE) return { ok: false, msg: '持ち物が' + D.BAG_SIZE + '個をこえます。' };
+    if (V.storage.length - inn.length + out.length > G.storageSize(V)) return { ok: false, msg: '倉庫がいっぱいになります。' };
+    for (const it of out) { it.eq = false; run.bag.splice(run.bag.indexOf(it), 1); }
+    for (const it of inn) V.storage.splice(V.storage.indexOf(it), 1);
+    for (const it of out) V.storage.push(it);
+    for (const it of inn) { it.eq = false; run.bag.push(it); }
+    G.log(run, 'オオカミが荷物を運んだ。（送った ' + out.length + '個・受け取った ' + inn.length + '個）');
+    return { ok: true, sent: out.length, got: inn.length };
+  };
+  G.endRescue = function (S) { if (G.canRescue(S.run)) S.run.final.rescue = 'done'; };
 
   // ---------- 村で拾える品 ----------
   /* 今拾える品の名前の一覧（条件を満たし、まだ拾っていないもの） */
@@ -167,7 +205,9 @@
       enemies: [], floorItems: [], map: null, explored: null, stairs: null, returnPoint: null, portal: null,
       log: [], over: false, result: null, nextEnemyId: 1, killedBy: null, revealed: false,
       chapter: V.story.chapter, layout: D.LAYOUT, hazards: [], fog: 0,
-      final: V.story.chapter === D.FINAL_CHAPTER ? { stage: 'none', healed: false, cutsceneSeen: false } : null,
+      // 最終章：版3は v:3（30階で大魔王バーン、35階で真大魔王バーン）。skip：もう倒したボス（その階には出ない）。rescue：30階のティウの救援
+      final: V.story.chapter === D.FINAL_CHAPTER ? { v: 3, stage: 'none', healed: false, cutsceneSeen: false, rescue: null,
+        skip: { vearn: !!V.story.defeated.vearn, truevearn: !!V.story.defeated.truevearn } } : null,
     };
     // 食堂の料理（この探索だけ）
     if (V.meal && D.MEALS[V.meal]) {
@@ -196,9 +236,15 @@
     // 帰還の祠は25階に1回だけ。ただしボスの階には置かない（第3章は25階がボスの階なので出ない）
     const gen = DG.generate(floor, rng, { boss: !!Fdef.boss, returnPoint: !Fdef.boss && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
+    run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す
     run.map = gen.map;
     run.stairs = gen.stairs;
     run.returnPoint = gen.returnPoint;
+    // 版3の最終章で、最深の35階にボスがいない（真大魔王バーンを倒したあと）：下への階段は無く、帰還の祠を置く
+    if (G.finalV3(run) && floor >= G.maxFloor(run) && !Fdef.boss) {
+      run.stairs = null;
+      if (!run.returnPoint) run.returnPoint = DG.freeTile(run.map, rng, [gen.start], run.map.rooms[run.map.rooms.length - 1]);
+    }
     run.portal = null;
     run.revealed = false;
     run.enemies = [];
@@ -249,7 +295,7 @@
       const b = makeEnemy(run, F.boss, c.x, c.y);
       b.boss = true;
       run.enemies.push(b);
-      if (run.final && F.boss === 'vearn') { run.final.stage = 'battle1'; run.final.healed = false; run.final.cutsceneSeen = false; S.village.story.finalStage = 'battle1'; }
+      if (run.final && !G.finalV3(run) && F.boss === 'vearn') { run.final.stage = 'battle1'; run.final.healed = false; run.final.cutsceneSeen = false; S.village.story.finalStage = 'battle1'; }
     }
     G.log(run, '地下' + floor + '階　' + D.THEMES[F.theme].name);
     if (run.returnPoint) G.log(run, 'この階には村へ帰れる「帰還の祠」がある。');
@@ -427,6 +473,7 @@
     const ev = [];
     if (!run || run.over) return { consumed: false, events: ev };
     let consumed = false;
+    const dbl = G.sets(run).all3;   // この行動の前に3点セットか（2回行動）
     // 最終決戦の準備中は時間が止まっている（道具・装備の確認だけ。ターンは進まない）
     if (run.final && run.final.stage === 'prep') {
       if (a.type === 'equip') toggleEquip(S, a.uid, ev);
@@ -463,7 +510,12 @@
         return { consumed: false, events: ev };
       default: break;
     }
-    if (consumed && !run.over) endTurn(S, ev);
+    /* 3点セット：2回行動。行動の前に3点セットだったら、2回に1回だけ時間（敵・満腹度・回復・毒・状態・敵の出現）を進める。
+     * 装備の付け替えも1行動なので、付け替えで行動が増えたり、敵のターンが消えたりはしない（途中で外れたら、次の行動で残りの時間が進む） */
+    if (consumed && !run.over) {
+      if (dbl && !run.player.half) { run.player.half = 1; G.updateVision(run); ev.push({ t: 'extraAction' }); }
+      else { run.player.half = 0; endTurn(S, ev); }
+    }
     if (run.revived) { ev.push({ t: 'revive', x: run.player.x, y: run.player.y, name: typeof run.revived === 'string' ? run.revived : '命つなぎの首飾り' }); run.revived = false; }
     return { consumed, events: ev };
   };
@@ -479,7 +531,19 @@
     if (G.merchantAt(run, nx, ny)) { ev.push({ t: 'merchant' }); return false; }
     const e = G.enemyAt(run, nx, ny);
     if (e && G.bossWaiting(run, e)) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; }
-    if (e) { playerAttack(S, e, ev); return true; }
+    /* 真魔剛竜剣＋ドラゴニックオーラの盾：正面2マス目の敵にも届く（1マス目から2マス目へも壁・角を越えない）。
+     * 戦いの前で待っているボスと商人には届かない（ふつうに歩ける）。手前に敵がいれば貫通して奥の敵にも当たる（2体まで） */
+    const far = (() => {
+      if (!G.sets(run).swordShield || !G.canStep(run.map, nx, ny, d[0], d[1])) return null;
+      const e2 = G.enemyAt(run, nx + d[0], ny + d[1]);
+      return e2 && !G.bossWaiting(run, e2) && !G.merchantAt(run, nx + d[0], ny + d[1]) ? e2 : null;
+    })();
+    if (e) {
+      playerAttack(S, e, ev);
+      if (far && run.enemies.includes(far)) { playerAttack(S, far, ev); ev.push({ t: 'reach', tiles: [{ x: nx, y: ny }, { x: far.x, y: far.y }] }); }
+      return true;
+    }
+    if (far) { playerAttack(S, far, ev); ev.push({ t: 'reach', tiles: [{ x: far.x, y: far.y }] }); return true; }
     if (p.bound > 0) { // 拘束中は移動できない（攻撃・道具・足踏みはできる）。ターンは消費しない
       G.log(run, '体が動かない！（攻撃・道具・足踏みはできる。あと' + p.bound + 'ターン）');
       ev.push({ t: 'warn', msg: '拘束されている！' });
@@ -581,7 +645,7 @@
     const run = S.run, V = S.village, E = D.ENEMIES[e.type], st = V.story;
     V.bossKills[e.type] = (V.bossKills[e.type] || 0) + 1;
     // ボスがいなくなったら戦いは終わり（大魔王バーン1戦目のあとは、真大魔王バーンとの戦いが続く）
-    if (run.bossFight && !(e.type === 'vearn' && run.final)) run.bossFight.won = true;
+    if (run.bossFight && !(e.type === 'vearn' && run.final && !G.finalV3(run))) run.bossFight.won = true;
     // 分身・呼ばれた手下・床の危険は消える
     run.enemies = run.enemies.filter((o) => !o.clone && !o.summoned);
     run.hazards = []; run.fog = 0; run.player.bound = 0;
@@ -605,6 +669,21 @@
       ev.push({ t: 'bossDown', boss: e.type });
       return;
     }
+    if (e.type === 'vearn' && G.finalV3(run)) {
+      /* 版3：地下30階の大魔王バーン。一度倒したら二度と出ない。報酬は大魔王のローブ（初めて倒したとき）。
+       * 村への帰還口は出さず、下への階段を出す（31〜34階を探索して35階へ）。このあとミストバーンが連れ去る場面とティウの救援（画面側） */
+      const first = !st.defeated.vearn;
+      st.defeated.vearn = true;
+      run.final.skip.vearn = true;
+      if (first) for (const id of D.CHAPTERS[D.FINAL_CHAPTER].reward.items) drop(id);
+      run.stairs = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room);
+      run.final.rescue = 'pending';
+      G.updateVision(run);
+      G.log(run, '大魔王バーンを倒した！' + (first ? ' 大魔王のローブが残された。' : ''));
+      ev.push({ t: 'bossDown', boss: e.type });
+      ev.push({ t: 'vearnFall' });
+      return;
+    }
     if (e.type === 'vearn' && run.final) {
       // 1戦目の勝利 → 静寂 → ミストバーンの再出現と変身 → 準備（この時点の状態を保存する）
       st.defeated.vearn = true;
@@ -622,11 +701,13 @@
       return;
     }
     if (e.type === 'truevearn') {
-      const firstFinal = !st.defeated.truevearn;   // 大魔王のローブは初めて倒したときだけ。2回目からは黄金の象
+      const firstFinal = !st.defeated.truevearn;   // 版2：大魔王のローブは初めて倒したときだけ。2回目からは黄金の象
       st.defeated.truevearn = true;
       if (run.final) run.final.stage = 'won';
+      if (G.finalV3(run)) run.final.skip.truevearn = true;
       st.finalStage = 'won';
-      for (const id of firstFinal ? D.CHAPTERS[D.FINAL_CHAPTER].reward.items : ['golden_elephant']) drop(id);
+      // 版3：ローブは30階の大魔王バーンの報酬。真大魔王バーンの品の報酬は無い（再戦も無い）
+      if (!G.finalV3(run)) for (const id of firstFinal ? D.CHAPTERS[D.FINAL_CHAPTER].reward.items : ['golden_elephant']) drop(id);
       openPortal();
       G.log(run, '真大魔王バーンを倒した！ 光る帰還口が開いた。');
       ev.push({ t: 'finalWin' });
@@ -1155,7 +1236,7 @@
     checkBossRoom(S, ev);
     run.turn++;
     // 満腹度（満腹の腕輪を装備している間は減らない。今の満腹度はそのまま）
-    if (!G.hasAcc(run, 'hunger')) p.hungerAcc++;
+    if (!G.hasAcc(run, 'hunger') && !G.sets(run).shieldRobe) p.hungerAcc++;   // 満腹の腕輪・ファントムマスク・漆黒の盾＋ローブ
     if (p.hungerAcc >= G.hungerTurns(run)) {
       p.hungerAcc = 0;
       if (p.hunger > 0) {
@@ -1176,7 +1257,7 @@
     }
     if (p.hunger > 0 && !p.poison) {
       p.starveAcc = 0;
-      p.regenAcc += p.maxhp / D.PLAYER.regenTurns;
+      p.regenAcc += p.maxhp / D.PLAYER.regenTurns * (G.sets(run).robe ? D.SETS.robeRegen : 1);   // 大魔王のローブ：2倍（セットでも2倍まで）
       if (p.regenAcc >= 1) {
         const n = Math.floor(p.regenAcc);
         p.regenAcc -= n;
@@ -1206,7 +1287,8 @@
       run.hazards = run.hazards.filter((h) => h.t > 0);
       if (fire.length) {
         ev.push({ t: 'blast', tiles: fire.map((h) => ({ x: h.x, y: h.y, kind: h.kind, circle: h.name === '魔法陣の炎' })), kind: fire[0].kind });
-        const h = fire.find((o) => o.x === p.x && o.y === p.y);
+        const h0 = fire.find((o) => o.x === p.x && o.y === p.y), h = h0 && !G.sets(run).all3 ? h0 : null;   // 3点セット：飛んでいるので床の印のダメージを受けない
+        if (h0 && !h) G.log(run, '宙を舞って、' + h0.name + 'を受けなかった！');
         if (h) {
           let dmg = calcDamage(run.rng, h.dmg, G.playerDef(run));
           if (G.hasCharm(run, h.kind === 'bolt' ? 'bolt' : (h.kind === 'fire' || h.kind === 'ice') ? 'fireice' : '')) dmg = Math.ceil(dmg / 2);
@@ -1292,6 +1374,14 @@
     const run = S.run, A = run.bossFight;
     A.engaged = true;
     const bosses = run.enemies.filter((e) => e.boss);
+    // 版3の35階：決戦の前に、サイたちの祈りでHP全回復・状態異常（毒・拘束）も治る。満腹度は未決定なので変えない
+    if (G.finalV3(run) && bosses.some((b) => b.type === 'truevearn')) {
+      const p = run.player;
+      p.hp = p.maxhp; p.poison = 0; p.bound = 0; p.lowWarned = false;
+      run.final.stage = 'battle2'; S.village.story.finalStage = 'battle2';
+      G.log(run, 'サイたちの祈りが届いた！ HPが全回復し、体の不調も消えた。');
+      ev.push({ t: 'prayer' });
+    }
     // ムービーのあとは、入室のターンはもう終わっているので、待たせるターンは足さない（次のターンから動く＝今までと同じ間合い）
     for (const b of bosses) { if (!afterIntro) b.hold = Math.max(b.hold || 0, 1); b.awake = true; }
     const name = bosses.length ? D.ENEMIES[bosses[0].type].name : 'ボス';
@@ -1577,6 +1667,7 @@
     // 毒（治ったあとしばらくはかからない＝連続しない）
     if (E.ai === 'poison' && !p.poison && !p.poisonGuard && R.chance(run.rng, D.POISON.chance)) {
       if (G.hasAcc(run, 'poison')) { G.log(run, '毒よけの指輪が毒を防いだ！'); return; }
+      if (G.sets(run).all3) { G.log(run, '竜の気が毒をはねのけた！'); return; }   // 3点セット：新しい状態異常を受けない
       p.poison = D.POISON.turns;
       G.log(run, 'たけは毒におかされた！（やくそう・どくけしそうで治る）');
       ev.push({ t: 'warn', msg: '毒になった！' });
@@ -1652,8 +1743,11 @@
     if (p.reviveTurn === run.turn) { p.hp = Math.max(1, p.hp); return false; }
     const neck = G.equipped(run.bag, 'accessory');
     if (neck && G.def(neck).acc === 'revive') {
+      // 竜の紋章：最大HPの50%（四捨五入）、3点セット中なら全回復。命つなぎの首飾り：全回復。どちらも品はなくなる
+      // （紋章がなくなると、紋章を使うセットは装備から計算し直すので、すぐに外れる）
+      const crest = neck.id === 'dragon_crest', full = !crest || G.sets(run).all3;
       run.bag.splice(run.bag.indexOf(neck), 1);
-      p.hp = p.maxhp;
+      p.hp = full ? p.maxhp : Math.max(1, Math.round(p.maxhp * D.SETS.crestRevive));
       p.hunger = Math.max(p.hunger, Math.ceil(D.PLAYER.maxHunger * 0.3));
       p.poison = 0; p.bound = 0; p.starveAcc = 0;
       p.reviveTurn = run.turn;
@@ -1729,7 +1823,8 @@
   function applyStoryOnReturn(S, run, res) {
     const V = S.village, st = V.story, ch = G.chapterOf(run);
     if (ch === 'legacy') return;
-    if (run.final && run.final.stage !== 'won') { st.finalStage = 'none'; st.defeated.vearn = st.defeated.vearn && st.endingDone; }
+    // 版2（35階で連戦）だけ：勝たずに帰ったら、大魔王バーンは倒していない扱いに戻す。版3では30階で倒したらそのまま
+    if (run.final && !G.finalV3(run) && run.final.stage !== 'won') { st.finalStage = 'none'; st.defeated.vearn = st.defeated.vearn && st.endingDone; }
     const C = D.CHAPTERS[st.chapter];
     if (!C.final && ch === st.chapter && st.defeated[C.boss] && !st.returnDone[C.boss]) {
       if (!st.rewardClaimed[C.boss]) { st.rewardClaimed[C.boss] = true; V.funds += C.reward.funds; res.rewardFunds = C.reward.funds; }
@@ -1826,6 +1921,7 @@
   G.reqMet = function (V, r) {
     if (r.startsWith('floor')) return V.bestFloor >= +r.slice(5);
     if (r.startsWith('donate')) return G.donatedCount(V) >= +r.slice(6);
+    if (r === 'baran') return !!(V.story && V.story.defeated && V.story.defeated.baran);   // 通常のバランを倒した
     return G.hasFacility(V, r);
   };
   /* 購入前に確認できる状態：{ built, unlocked, missing:[未達の条件], affordable, lackMats } */

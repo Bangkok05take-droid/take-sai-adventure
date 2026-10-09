@@ -207,7 +207,7 @@
   // ================= 遊び方 =================
   const HELP_HTML = `<div class="help">
     <h3>目的</h3>
-    <p>師匠マスターヤナイが大魔王を封じた遺跡へ、勇者たけが挑む。第1〜5章は、1階からその章のボスの階（第1章15階・第2章20階・第3章25階・第4章と第5章30階）をめざし、そこで待つ魔王軍の将を倒す。倒すと報酬と帰還口が現れ、村へ帰ると次の章へ進む。第5章のあと、35階の大魔王に挑む最終章が始まる。</p>
+    <p>師匠マスターヤナイが大魔王を封じた遺跡へ、勇者たけが挑む。第1〜5章は、1階からその章のボスの階（第1章15階・第2章20階・第3章25階・第4章と第5章30階）をめざし、そこで待つ魔王軍の将を倒す。倒すと報酬と帰還口が現れ、村へ帰ると次の章へ進む。第5章のあと、30階の大魔王バーン、35階の真大魔王バーンに挑む最終章が始まる。</p>
     <p>途中で帰還しても、倒れても、章はそのまま（クリアした章をやり直すことはない）。拾ったお宝はサイの店で売って村を復興させ、次の挑戦の準備をしよう。</p>
     <h3>ボス戦</h3>
     <ul>
@@ -351,6 +351,8 @@
         // 登場ムービーの途中で読み込み直した：ボス戦の状態（HP・位置）はそのままで、ムービーを最初から流し直す（スキップできる）
         const A = UI.S.run.bossFight, ib = A && A.intro === 'pending' && UI.S.run.enemies.find((e) => e.boss);
         if (A && A.intro === 'pending') setTimeout(() => playBossIntro(ib ? ib.type : null), 300);
+        // 30階の救援の途中で読み込み直した：ムービーを見ていなければ流し、救援の画面を開き直す
+        if (G.canRescue(UI.S.run)) setTimeout(() => { const st = UI.S.village.story; if (st.moviesSeen && st.moviesSeen.vearnTaken) openRescue(); else playStoryMovie('vearnTaken', () => openRescue()); }, 300);
       }
     } else { showScreen('village'); showStoryPending(); }
   }
@@ -735,7 +737,12 @@
         if (!st.unlocked || st.lackMats.length || !st.affordable) { info(f.name, `<p>${esc(f.desc)}</p><p>価格：${f.price}G${f.mats ? '＋' + matsText(f.mats) : ''}</p><p class="warnbox">${!st.unlocked ? '解放条件：' + st.missing.map((x) => esc(D.REQ_TEXT[x])).join('・') : st.lackMats.length ? '素材が足りません' : '資金が足りません（あと' + (f.price - V.funds) + 'G）'}</p>`); return; }
         confirmBox(f.kind === 'decor' ? '村の飾り' : '施設', `<p><b>${esc(f.name)}</b>を <b>${f.price}G</b>${f.mats ? '＋' + matsText(f.mats) : ''} で作りますか？</p><p class="note">${esc(f.desc)}</p><p class="note">資金 ${V.funds}G → ${V.funds - f.price}G</p>`, '作る', () => {
           const res = G.buildFacility(UI.S, f.id);
-          if (res.ok) { AU.sfx('levelup'); villageChanged(); render(tab); talk(BUILD_TALK[f.id] || [['sai', res.msg]]); }
+          if (res.ok) {
+            AU.sfx('levelup'); villageChanged(); render(tab);
+            const say = () => talk(BUILD_TALK[f.id] || [['sai', res.msg]]);
+            // 赤い橋：完成のムービー（未受領なので仮の会話）。紋章を拾えるかは橋の完成だけで決まり、ムービーとは関係ない
+            if (f.id === 'bridge') { closeAllModals(); playStoryMovie('bridge', say); } else say();
+          }
           else info('村の発展', res.msg);
         });
       }));
@@ -854,8 +861,7 @@
     let html = `<p><b>持ち物 ${V.bag.length}/${D.BAG_SIZE}</b>　武器：${w ? esc(G.itemName(w)) : 'なし'}　盾：${s ? esc(G.itemName(s)) : 'なし'}${ac ? '　アクセサリー：' + esc(G.itemName(ac)) : ''}　食料：${food}個</p>`;
     html += `<div class="warnbox">⚠ 倒れると、<b>持ち物すべて</b>と<b>探索中に拾ったお金</b>を失います。<br>村の資金・倉庫・施設は失いません。</div>`;
     html += `<div class="okbox">帰還の巻物を1枚無料で持っていきます。使えばいつでも持ち物を持って帰れます。</div>`;
-    // ティウのヒント（赤い橋ができてから、向こう岸の竜の紋章を拾うまで）
-    if (G.villagePickups(V).includes('dragon_crest')) html += `<p class="note">ティウ「${esc(D.STORY.tiwHint)}」</p>`;
+
     if (V.meal) html += `<div class="okbox">🍛 ${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）</div>`;
     else if (V.diner) html += '<p class="note">サイの食堂で料理を注文すると、この探索が少し楽になります。</p>';
     if (!w) html += '<p class="note">武器がありません（素手で戦います）。武器は遺跡で拾えるほか、サイの店でも買えます。</p>';
@@ -871,6 +877,8 @@
       html += `<div class="okbox">大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。</div>`;
       buttons.push({ label: G.DEEP_START + '階から出発', disabled: !chk.ok, onClick: () => depart({ deep: true }) });
     }
+    // ティウと話す（竜の紋章のヒント。橋ができる前から、紋章を拾うまで）
+    if (!(V.story.found && V.story.found.dragon_crest)) buttons.push({ label: 'ティウと話す', onClick: () => { setTimeout(() => talk([['tiw', D.STORY.tiwHint]], () => setTimeout(openDepart, 0)), 0); } });
     buttons.push({ label: '出発する', cls: 'primary', disabled: !chk.ok, onClick: () => depart() });
     modal({ title: '遺跡へ出発', html, buttons });
   }
@@ -1293,6 +1301,7 @@
     if (UI.movie) return;
     const m = introMovie(id);
     const finishLogic = () => {   // 戦いの開始（1回だけ）。曲はボス戦へ
+      UI.movie = null;
       const S = UI.S, logLen = S.run ? S.run.log.length : 0;
       const ev = S.run ? G.finishBossIntro(S) : [];
       AU.playBgm(S.run ? G.dungeonBgm(S.run) : 'dungeon');
@@ -1301,7 +1310,33 @@
       afterAction({ events: ev, consumed: false }, null, logLen);
     };
     stopAllInput(); closeAllModals();
-    if (!m) { finishLogic(); return; }   // 動画の設定が無い：そのまま戦いへ
+    if (!m) {   // 動画がまだ無い：仮の会話（あれば）のあと戦いへ
+      const lines = D.STORY.movieFallback && D.STORY.movieFallback[D.BOSS_INTROS[id]];
+      if (!lines) { finishLogic(); return; }
+      UI.movie = { id, fallback: true };
+      AU.holdBgm(true);
+      talk(lines, finishLogic, { skip: true });
+      return;
+    }
+    movieOverlay(m, id, finishLogic);
+  }
+  /* 物語のムービー（D.STORY.movieFallback の名前）。動画（TS.ASSETS.movies[名前]）があれば動画、無ければ仮の会話。
+   * 終わり・スキップ・失敗のどれでも done を1回だけ呼ぶ。見た記録は story.moviesSeen（同じ場面で読み込み直したときは流し直さない） */
+  function playStoryMovie(key, done) {
+    const st = UI.S.village.story, M = TS.ASSETS && TS.ASSETS.movies, m = M && M[key];
+    let fired = false;
+    const fin = () => { if (fired) return; fired = true; UI.movie = null; st.moviesSeen = st.moviesSeen || {}; st.moviesSeen[key] = true; save(); AU.holdBgm(false); if (done) done(); };
+    if (UI.movie) { fin(); return; }
+    stopAllInput();
+    if (m) { movieOverlay(m, key, fin); return; }
+    const lines = D.STORY.movieFallback && D.STORY.movieFallback[key];
+    if (!lines) { fin(); return; }
+    UI.movie = { id: key, fallback: true };
+    AU.holdBgm(true);
+    talk(lines, fin, { skip: true });
+  }
+  // 動画を画面いっぱいに流す（縦の動画は切らない）。終わり・スキップ・失敗で onEnd(理由) を1回だけ
+  function movieOverlay(m, id, onEnd) {
     AU.holdBgm(true);
     const root = document.createElement('div');
     root.className = 'movie';
@@ -1327,7 +1362,7 @@
       try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* 片付けだけ */ }
       root.remove();
       const i = UI.modals.indexOf(handle); if (i >= 0) UI.modals.splice(i, 1);
-      finishLogic();
+      onEnd(reason);
     }
     function tryPlay() {
       if (done) return;
@@ -1359,6 +1394,46 @@
     tryPlay();
   }
   UI.playBossIntro = playBossIntro;
+  UI.playStoryMovie = (k, d) => playStoryMovie(k, d);
+
+  /* 地下30階：ティウの救援。オオカミが村の倉庫と荷物を運ぶ（G.rescueExchange）。
+   * 「決定」で品をまとめて動かし、すぐ保存してから、オオカミの演出（仮：文字だけ。絵はChatGPT側で用意する予定）を見せる。
+   * 演出の途中で閉じても読み込み直しても、品は動いたあと（消えない・増えない）。「終わる」で救援は終わり（G.endRescue） */
+  function openRescue() {
+    const run = UI.S.run;
+    if (!run || !G.canRescue(run) || UI.modals.length) return;
+    talk(D.STORY.tiwRescue, () => rescueScreen());
+  }
+  function rescueScreen() {
+    const run = UI.S.run, V = UI.S.village;
+    if (!run || !G.canRescue(run)) return;
+    const pickOut = new Set(), pickIn = new Set();
+    const row = (it, set, can) => `<label class="row${can ? '' : ' disabled'}" data-uid="${it.uid}"><input type="checkbox" ${can ? '' : 'disabled'} ${set.has(it.uid) ? 'checked' : ''}><img src="${SP.iconURL(G.def(it))}" alt=""><span>${esc(G.itemName(it))}${it.eq ? '（装備中）' : ''}</span></label>`;
+    const h = modal({ title: 'ティウの救援：荷物を運ぶ', html: '', noClose: true, buttons: [
+      { label: '決定（オオカミが運ぶ）', cls: 'primary', keep: true, onClick: () => {
+        if (!pickOut.size && !pickIn.size) { toast('運ぶ品を選んでね'); return; }
+        const r = G.rescueExchange(UI.S, [...pickOut], [...pickIn]);
+        if (!r.ok) { info('荷物を運ぶ', esc(r.msg)); return; }
+        save(); AU.sfx('pickup'); pickOut.clear(); pickIn.clear(); render();
+        info('オオカミが来た！', `<p>ティウのオオカミが、村の倉庫まで荷物を運んでくれた。</p><p>送った品：${r.sent}個　受け取った品：${r.got}個</p><p class="note">（オオカミの絵と演出は準備中）</p>`);
+        updateHud(); pushLog();
+      } },
+      { label: '終わる', onClick: () => { G.endRescue(UI.S); save(); updateHud(); } },
+    ] });
+    function render() {
+      const bag = run.bag, st = V.storage;
+      h.body.innerHTML = `<p class="note">チェックした品を、オオカミが運ぶ。上：持ち物から倉庫へ送る／下：倉庫から受け取る。持ち物は${D.BAG_SIZE}個まで、倉庫は${G.storageSize(V)}枠まで。</p>
+        <h3>持ち物 ${bag.length}/${D.BAG_SIZE}（倉庫へ送る）</h3><div class="list" data-side="out">${bag.map((it) => row(it, pickOut, G.canStore(it) && G.def(it).type !== 'material')).join('') || '<p>なし</p>'}</div>
+        <h3>倉庫 ${st.length}/${G.storageSize(V)}（受け取る）</h3><div class="list" data-side="in">${st.map((it) => row(it, pickIn, true)).join('') || '<p>なし</p>'}</div>`;
+      h.body.querySelectorAll('.list').forEach((list) => list.addEventListener('change', (e) => {
+        const lab = e.target.closest('.row'); if (!lab) return;
+        const set = list.dataset.side === 'out' ? pickOut : pickIn, uid = +lab.dataset.uid;
+        if (e.target.checked) set.add(uid); else set.delete(uid);
+      }));
+    }
+    render();
+  }
+  UI.openRescue = openRescue;
 
   function afterAction(res, action, logLen) {
     const S = UI.S;
@@ -1394,7 +1469,14 @@
     if (res.events.some((e) => e.t === 'bossDown')) {
       const b = res.events.find((e) => e.t === 'bossDown').boss;
       stopHold(); AU.playBgm(G.dungeonBgm(S.run));   // 撃破：探索の曲へ（大魔王バーンの1戦目のあとは続けてボス戦の曲）
-      setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b]); }, 500);
+      // 撃破のあと：会話 → （通常のバラン）ミストバーンが連れ去るムービー／（版3の30階・大魔王バーン）連れ去るムービー → ティウの救援
+      const fall = res.events.some((e) => e.t === 'vearnFall');
+      const chapterRun = G.chapterOf(S.run) !== 'legacy';
+      const after = () => {
+        if (fall) playStoryMovie('vearnTaken', () => openRescue());
+        else if (b === 'baran' && chapterRun) playStoryMovie('baranTaken');
+      };
+      setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b], after); else after(); }, 500);
       return;
     }
     if (res.events.some((e) => e.t === 'finalTransform')) { stopHold(); setTimeout(() => finalCutscene(), 500); return; }
@@ -1436,6 +1518,10 @@
         }
         case 'land': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '落ちた', color: '#d8d0c0', small: true, delay: throwD, dur: 600 }); break;
         // 命つなぎの首飾り：光って立ち上がる。ダッシュ・連続足踏み・長押しの入力を止め、直後の連打も少しのあいだ受け付けない
+        // 真魔剛竜剣＋ドラゴニックオーラの盾の2マス攻撃（仮の見た目：届いたマスに「バシュン！」。斬撃の絵はChatGPT側で用意する予定）
+        // 版3の35階：決戦の前のサイたちの祈り（HP全回復・毒と拘束が治る）
+        case 'prayer': { const p = UI.S.run.player; RD.addFx({ t: 'healrise', x: p.x, y: p.y, dur: 900 }); toast('サイたちの祈りで、HPが全回復した！', 'levelup'); break; }
+        case 'reach': for (const t of e.tiles) RD.addFx({ t: 'num', x: t.x, y: t.y, text: 'バシュン！', color: '#9ad8ff', small: true, dur: 600 }); break;
         case 'revive':
           stopAllInput(); UI.lockUntil = performance.now() + 700;
           RD.addFx({ t: 'healrise', x: e.x, y: e.y, dur: 900 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8aa0', dur: 1100 });
@@ -2023,7 +2109,7 @@
         <p>マスターヤナイの想いは、これからも村とともに。</p>
         <p>帰還 ${V.returns}回・敗北 ${V.defeats}回</p>
         <p class="big-t">THANK YOU FOR PLAYING!</p>
-        <p class="note">このあとも探索・収集・強化・村の発展を続けられます。最終章の35階には何度でも挑戦できます。</p></div>`,
+        <p class="note">このあとも探索・収集・強化・村の発展を続けられます。</p></div>`,
       onClose: done, buttons: [{ label: '村へ', cls: 'primary' }] });
     });
   }

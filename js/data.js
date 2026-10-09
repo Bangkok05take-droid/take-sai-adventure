@@ -7,7 +7,7 @@
   D.SAVE_VERSION = 8;
   /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
   // baran：第4章・地下30階の玉座のバラン（通常のバラン戦）だけ。地下40階の裏ボス「竜人王バラン」は別のボスなので、ここには入れない
-  D.BOSS_INTROS = { croc: 'crocodine', baran: 'baran' };
+  D.BOSS_INTROS = { croc: 'crocodine', baran: 'baran', truevearn: 'bodyReturn' };   // truevearn：版3の35階、肉体返還（動画は未受領。仮の会話）
   /* 村で拾える品（2026年10月）。拾った記録は story.found[id]（セーブに残る。お宝の記録・ボスの撃破記録とは別）。
    * at：拾うマス。need：拾えるようになる条件（村の発展の飾りの建設済み。ムービーを見たかどうかは関係しない）
    * 竜の紋章：赤い橋の向こう岸 (4,25)＝橋の下り口 (3,25) のすぐ右。向こう岸の25行は木 (5,25)・(1,25) で区切られていて、
@@ -26,7 +26,10 @@
    * 配置の版（run.layout）：2＝この配置。更新前に始めた探索（layout なし）は、以前の配置（第1〜5章のボスは30階）のまま終える。 */
   D.MAX_FLOOR = 30;          // 通常の階の最深（最終章はこの先31〜34階が大魔王の城、35階が玉座）
   D.BOSS_FLOOR = 30;         // 以前の配置（layout 1）での第1〜5章のボスの階
-  D.LAYOUT = 2;              // 新しく始める探索の配置の版
+  D.LAYOUT = 3;              // 新しく始める探索の配置の版
+  /* 版3（2026年10月）：最終章は地下30階に大魔王バーン、地下35階に真大魔王バーン（31〜34階は探索）。
+   * どちらも一度倒したら出ない（skip）。版2の探索（更新前から続いているもの）は、以前どおり35階で連戦 */
+  D.FINAL_V3 = { vearn: 30, truevearn: 35 };
   // 以前の版のボス配置（更新前から続いている探索だけが使う）
   D.LEGACY_BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
   D.BOSS_FLOORS = D.LEGACY_BOSS_FLOORS;   // 互換のため残す
@@ -36,6 +39,14 @@
   D.RETURN_POINT_FLOORS = [25];
   D.returnFloors = () => D.RETURN_POINT_FLOORS;
   D.BAG_SIZE = 15;
+  /* 装備のセット（2026年10月に確定した数値）。名前は js/game.js の G.setsOf。
+   * swordCrest：真魔剛竜剣＋竜の紋章で攻撃+5。crestShield：竜の紋章＋ドラゴニックオーラの盾で防御+5。
+   * swordShield：真魔剛竜剣＋ドラゴニックオーラの盾で、通常攻撃が正面2マス（手前の敵を貫通して2体）。壁越し・角越しは届かない。
+   * all3：3点すべて。上の効果に加えて2回行動（たけ2行動で敵1回・時間1ターン）、床の印のダメージを受けない、新しい毒・拘束を受けない、飛ぶ見た目。
+   * shieldRobe：漆黒の盾＋大魔王のローブで、満腹度が減らない・総攻撃力×0.8（四捨五入）。真魔剛竜剣を装備していれば下がらない。
+   * robeRegen：大魔王のローブを装備している間、自然回復が2倍（セットと重ねても2倍まで）。
+   * crestRevive：竜の紋章の復活は最大HPの50%（四捨五入）、3点セットのときは全回復。どちらも紋章はなくなる */
+  D.SETS = { swordCrestAtk: 5, crestShieldDef: 5, shieldRobeAtkMul: 0.8, robeRegen: 2, crestRevive: 0.5 };
 
   // プレイヤー
   D.PLAYER = {
@@ -131,6 +142,10 @@
       desc: '竜をかたどった金色の鍔と赤い宝石の剣。第4章の報酬。' },
     hero_sword:    { name: '勇者の剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',
       desc: '師匠ヤナイが遺した、勇者の剣。第5章の報酬。' },
+    // ドラゴニックオーラの盾（2026年10月）：防御+22。通常の鍛冶屋で+8まで強化できる。入手は地下40階の裏ボス（まだ無い）。
+    // 売値は未決定なので、決まるまで売れない（noSell）。絵は受け取った素材を縮めただけ（assets/items-boss/dragonic-aura-shield.png）
+    dragonic_shield: { name: 'ドラゴニックオーラの盾', type: 'shield', def: 22, sell: 0, noSell: true, icon: 'shield', tint: 'hero',
+      desc: '竜の気をまとう盾。' },
     hero_shield:   { name: '勇者の盾', type: 'shield', def: 19, sell: 860, icon: 'shield', tint: 'hero',
       desc: '師匠ヤナイが遺した、勇者の盾。第5章の報酬。' },
     // ---- ボスに備える道具（持っているだけで効く護符・お香） ----
@@ -152,6 +167,10 @@
       desc: '小さなひすいの置物。高く売れる。' },
     golden_lotus:  { name: '黄金の蓮', type: 'treasure', sell: 260, icon: 'lotus',
       desc: '金でできた蓮の花。とても高く売れる。' },
+    // お宝の竜の紋章（2026年10月）：通常のバラン（第4章）を倒すと手に入る展示用のお宝。アクセサリーの竜の紋章（dragon_crest）とは別の品・別の記録。
+    // 売値・展示室の枠は未決定なので、決まるまで売れない・寄贈の枠に無い（展示室は12枠のまま）
+    baran_emblem:  { name: '竜の紋章', type: 'treasure', sell: 0, noSell: true, icon: 'gem', tint: 'crystal',
+      desc: 'バランが持っていた竜の紋章。お宝として大切にしまっておこう（装備はできない）。' },
     // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダインの涙。売値は以前のまま
     croc_tear:     { name: 'クロコダインの涙', type: 'treasure', sell: 350, icon: 'gem', tint: 'crystal',
       desc: '獣王クロコダインの涙が固まったという、青緑の大きなしずく形の宝石。第1章の報酬。' },
@@ -321,10 +340,14 @@
     if (C.final) return D.LAST_FLOOR;
     return (layout || D.LAYOUT) >= 2 ? C.goal : D.BOSS_FLOOR;
   };
-  function floorDef(f, ch, layout) {
+  function floorDef(f, ch, layout, skip) {
     const legacy = ch === 'legacy' || ch == null;
     const C = legacy ? null : D.CHAPTERS && D.CHAPTERS[ch];
-    const bossId = legacy ? D.LEGACY_BOSS_FLOORS[f] : C ? (f === D.bossFloorOf(ch, layout) ? C.boss : null) : null;
+    let bossId = legacy ? D.LEGACY_BOSS_FLOORS[f] : C ? (f === D.bossFloorOf(ch, layout) ? C.boss : null) : null;
+    if (C && C.final && (layout || D.LAYOUT) >= 3) {   // 版3の最終章
+      bossId = Object.keys(D.FINAL_V3).find((b) => D.FINAL_V3[b] === f) || null;
+      if (bossId && skip && skip[bossId]) bossId = null;
+    }
     if (bossId) {
       return { theme: legacy ? D.themeOf(f) : D.ENEMIES[bossId].arena, boss: bossId, enemies: [], enemyCount: [0, 0], itemCount: [3, 3], goldCount: [0, 0],
         items: [['herb', 2], ['elixir', 1], ['khaoniao', 1]].concat(f >= 20 ? [['big_herb', 2]] : []) };
@@ -401,10 +424,11 @@
   }
   // 章・深さごとの階の定義（作った結果は覚えておく）
   const floorCache = {};
-  D.floorFor = function (ch, f, layout) {
+  // skip：最終章（版3）で、もう倒したボス { vearn, truevearn }（その階はボスのいない階になる）
+  D.floorFor = function (ch, f, layout, skip) {
     const L = layout || D.LAYOUT;
-    const k = (ch == null ? 'legacy' : ch) + ':' + f + ':' + L;
-    return floorCache[k] || (floorCache[k] = floorDef(f, ch == null ? 'legacy' : ch, L));
+    const k = (ch == null ? 'legacy' : ch) + ':' + f + ':' + L + (skip ? ':' + (skip.vearn ? 'v' : '') + (skip.truevearn ? 't' : '') : '');
+    return floorCache[k] || (floorCache[k] = floorDef(f, ch == null ? 'legacy' : ch, L, skip));
   };
   // 章による敵の強さ（深い階ほど差がつく。浅い階はほぼ同じ）
   D.chapterMul = (ch, f) => (typeof ch === 'number' ? 1 + 0.06 * (ch - 1) * Math.min(1, f / 18) : 1);
@@ -464,7 +488,8 @@
     { id: 'lanterns', kind: 'decor', name: '灯籠の並木', price: 300, desc: '道ぞいに灯籠が並び、夕暮れの村が明るくなる。', req: [] },
     { id: 'garden', kind: 'decor', name: '蓮の庭', price: 400, desc: '花壇と蓮が増える。', req: ['storage2'] },
     { id: 'stalls', kind: 'decor', name: '屋台通り', price: 700, desc: '水路ぞいに色とりどりの屋台が並ぶ。', req: ['smith1'] },
-    { id: 'bridge', kind: 'decor', name: '水路の赤い橋', price: 900, desc: '水路に赤い橋がかかる。', req: ['floor10'] },
+    // 2026年10月：解放は通常のバラン（第4章）を倒した後（以前は地下10階に到達）。値段は同じ。すでに建てた橋はそのまま
+    { id: 'bridge', kind: 'decor', name: '水路の赤い橋', price: 900, desc: '水路に赤い橋がかかる。', req: ['baran'] },
     { id: 'statue', kind: 'decor', name: '象の像', price: 500, desc: '白い象の像。', req: ['donate3'] },
     { id: 'fountain', kind: 'decor', name: '噴水', price: 900, desc: '村の真ん中に噴水。', req: ['donate6'] },
     // 2026年10月：「黄金の門」（gate）を「マスターヤナイの像」に変更。値段・解放条件は同じ。旧セーブの購入済みは save.js（v7）で引き継ぐ
@@ -472,7 +497,7 @@
   ];
   D.REQ_TEXT = {
     storage2: '「倉庫の拡張」の後', smith1: '「鍛冶屋と屋台」の後', smith2: '「鍛冶屋の大きな炉」の後', storage3: '「倉庫の増築」の後',
-    floor10: '地下10階に到達', floor20: '地下20階に到達', donate3: 'お宝を3種類寄贈', donate6: 'お宝を6種類寄贈', donate9: 'お宝を9種類寄贈',
+    floor10: '地下10階に到達', baran: 'バラン（第4章）を倒した後', floor20: '地下20階に到達', donate3: 'お宝を3種類寄贈', donate6: 'お宝を6種類寄贈', donate9: 'お宝を9種類寄贈',
   };
   // 食堂の料理（次の探索だけ有効・重ねがけ不可。帰還・敗北で終わる）
   D.MEALS = {

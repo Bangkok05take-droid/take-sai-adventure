@@ -208,9 +208,10 @@
     const run = S.run, p = run.player, E = D.ENEMIES[e.type];
     ev.push({ t: 'blast', id: e.id, tiles: c.tiles, fx: c.fx });
     if (c.tiles.some((t) => t.x === p.x && t.y === p.y) && !p.bindGuard) {
-      p.bound = 2;
+      if (!G.sets(run).all3) p.bound = 2;   // 3点セット：拘束（新しい状態異常）を受けない
       H.damagePlayer(S, e, H.calcDamage(run.rng, e.atk * c.mult, G.playerDef(run)), ev, E.name + 'の闇の糸', {});
-      if (!run.over) { G.log(run, 'たけは闇の糸にからめとられた！（2ターン移動できない。攻撃・道具・足踏みはできる）'); ev.push({ t: 'warn', msg: '拘束された！' }); }
+      if (!run.over && p.bound) { G.log(run, 'たけは闇の糸にからめとられた！（2ターン移動できない。攻撃・道具・足踏みはできる）'); ev.push({ t: 'warn', msg: '拘束された！' }); }
+      else if (!run.over) G.log(run, '竜の気が闇の糸をはねのけた！');
     } else { G.log(run, E.name + 'の闇の糸をかわした！'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
 
