@@ -882,7 +882,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const v = await p.evaluate(() => ({ funds: TS.UI.S.village.funds, bag: TS.UI.S.village.bag.length, run: TS.UI.S.run }));
     assert(v.funds === funds && v.bag === 0 && v.run === null, JSON.stringify(v));
     assert(!(await p.evaluate(() => document.querySelector('.modal').textContent.includes('木刀'))), 'no sword hint on retry');
-    await p.tap('.modal-buttons button >> text=おにぎりを借りる'); await p.waitForTimeout(150);
+    assert(!(await p.$('.depart-modal .modal-buttons button:has-text("おにぎり")')), 'no rice loan button on the depart screen');
     await p.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p.waitForTimeout(200); await p.click('text=出発する'); await p.waitForTimeout(150);
     await closeTalk();
     assert(await p.isVisible('#screen-dungeon'), 'retried');
@@ -1160,7 +1160,6 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       for (let i = 0; i < 24 && await p2.$('.modal'); i++) { await p2.click('.modal-buttons button >> nth=-1'); await p2.waitForTimeout(60); }
       await p2.screenshot({ path: path.join(OUT, `22_${name}_village.png`) });
       await p2.click('.fac.depart'); await p2.waitForTimeout(100);
-      await p2.click('text=おにぎりを借りる'); await p2.waitForTimeout(100);
       await p2.click('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p2.waitForTimeout(200); await p2.click('text=出発する'); await p2.waitForTimeout(100);
       for (let i = 0; i < 4 && await p2.$('.modal'); i++) { await p2.click('.modal-buttons button.primary'); await p2.waitForTimeout(60); }
       await p2.keyboard.press('ArrowRight'); await p2.waitForTimeout(150);

@@ -858,7 +858,7 @@
 
   // ---- 出発 ----
   /* 遺跡へ出発（革・古紙・金属のデザイン。ボタンの並びは固定：左上 ティウと話す／右上 帰還の巻物を借りる・受取済み／左下 やめる／右下 出発する）。
-   * おにぎりの貸し出し・21階からの出発があるときは、その上に横長のボタンで出す。
+   * 21階からの出発（大魔王のローブ）があるときは、その上に横長のボタンで出す。おにぎりの貸し出しはサイの店だけ（出発画面には出さない）。
    * 帰還の巻物：1回の冒険につき無料で1枚（G.takeReturnScroll）。受け取りは任意。受け取ったら「受取済み」で押せない（閉じる・開き直す・読み込み直しでも戻らない）。
    * 持ち物がいっぱいのときは押せるが受け取れず、受取済みにもしない（空きを作れば受け取れる） */
   const DP_ICON = {
@@ -874,7 +874,7 @@
     const V = UI.S.village;
     const chk = G.canDepart(UI.S);
     const w = G.equipped(V.bag, 'weapon'), s = G.equipped(V.bag, 'shield'), ac = G.equipped(V.bag, 'accessory');
-    const ls = G.loanStatus(UI.S), sc = G.scrollStatus(UI.S);
+    const sc = G.scrollStatus(UI.S);
     const food = V.bag.filter((i) => G.def(i).type === 'food').length;
     const ic = (id) => `<img src="${SP.iconURL(D.ITEMS[id])}" alt="">`;
     let html = `<div class="dp-panel dp-info">
@@ -897,11 +897,6 @@
     if (!chk.ok) html += `<p class="warnbox">${esc(chk.msg)}</p>`;
     const reopen = () => setTimeout(openDepart, 0);
     const buttons = [];
-    if (ls.food) buttons.push({ label: 'おにぎりを借りる', cls: 'dp-btn dp-paper dp-wide', html: `${ic('loan_rice')}<span>おにぎりを借りる</span>`, onClick: () => {
-      G.takeLoan(UI.S, 'food');
-      AU.sfx('pickup'); villageChanged();
-      reopen();
-    } });
     if (G.canDeepStart(UI.S)) buttons.push({ label: G.DEEP_START + '階から出発', cls: 'dp-btn dp-paper dp-wide', disabled: !chk.ok, onClick: () => depart({ deep: true }) });
     // 左上：ティウと話す（竜の紋章を拾うまではヒント。拾ったあとは見送りのことば）
     buttons.push({ label: 'ティウと話す', cls: 'dp-btn dp-teal', html: `${DP_ICON.chat}<span>ティウと話す</span>`, onClick: () => {
