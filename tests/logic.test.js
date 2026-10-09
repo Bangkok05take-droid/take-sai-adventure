@@ -1617,7 +1617,7 @@ test('全章を順に進める：第1章→第5章→最終章→エンディン
     eq(res.chapterClear, ch); eq(res.rewardFunds, D.CHAPTERS[ch].reward.funds);
   }
   eq(S.village.story.chapter, 6);
-  G.depart(S, 310); goToFloor(S, 30); defeatBoss(S); assert(!S.run.portal && S.run.stairs, '30F: stairs, no portal'); G.endRescue(S);
+  G.depart(S, 310); goToFloor(S, 30); defeatBoss(S); assert(!S.run.portal && S.run.stairs, '30F: stairs, no portal'); assert(G.commitRescue(S).ok);
   goToFloor(S, 35); defeatBoss(S);
   S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' });
   const res = G.finishRun(S);
@@ -1934,7 +1934,10 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   assert(run.stairs && !run.portal, 'stairs, no portal'); eq(run.final.rescue, 'pending'); assert(G.canRescue(run));
   const L = SV.deserialize(SV.serialize(S));
   eq(L.run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, 1, 'no duplicate after reload'); eq(L.run.final.rescue, 'pending');
-  G.endRescue(L); assert(!G.canRescue(L.run));
+  // 救援が終わるまでは玉座の後ろの階段を降りられない
+  eq(L.run.stairs.x + ',' + L.run.stairs.y, (() => { const t = G.throneBack(L.run.map); return t.x + ',' + t.y; })(), 'stairs behind the throne');
+  L.run.player.x = L.run.stairs.x; L.run.player.y = L.run.stairs.y; G.act(L, { type: 'descend' }); eq(L.run.floor, 30, 'no descend before rescue ends');
+  assert(G.commitRescue(L).ok); assert(!G.canRescue(L.run));
   // 31〜34階を探索して35階へ（ワープしない）
   const seen = []; while (L.run.floor < 35) { const r = L.run; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(L, { type: 'descend' }); seen.push(r.floor); }
   eq(seen.join(), '31,32,33,34,35');
@@ -1945,16 +1948,23 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   assert(r1.events.some((e) => e.t === 'bossIntro' && e.boss === 'truevearn') && R.bossFight.intro === 'pending', 'body-return scene first');
   const ev = G.finishBossIntro(L);
   assert(ev.some((e) => e.t === 'prayer') && ev.filter((e) => e.t === 'bossStart').length === 1);
-  eq(R.player.hp, 500, 'prayer full HP'); eq(R.player.poison, 0, 'status cleared'); eq(R.player.hunger, 40, 'hunger unchanged (undecided)');
+  eq(R.player.hp, 500, 'prayer full HP'); eq(R.player.poison, 0, 'status cleared'); eq(R.player.hunger, D.PLAYER.maxHunger, 'hunger full'); eq(R.player.maxhp, 500, 'max not raised');
+  eq(G.finishBossIntro(L).length, 0, 'prayer once');
   defeatBoss(L);
   eq(R.final.stage, 'won'); assert(R.portal && st.defeated.truevearn || L.village.story.defeated.truevearn);
   assert(!R.floorItems.some((f) => f.item && f.item.bossReward), 'no item reward at 35F');
+  // 時空の亀裂が玉座の後ろに残る。エンディングの前は入れない（判断待ち）
+  assert(R.crack && !DG.same(R.crack, R.portal)); eq(G.crackState(L), 'unstable');
+  R.player.x = R.crack.x; R.player.y = R.crack.y + 1; G.updateVision(R); R.enemies = [];
+  const rc = G.act(L, { type: 'move', dir: 'up' }); assert(rc.events.some((e) => e.t === 'onCrack' && e.state === 'unstable')); eq(R.floor, 35);
   R.player.x = R.portal.x; R.player.y = R.portal.y; G.act(L, { type: 'returnHome' });
   const res = G.finishRun(L); assert(res.finalClear && L.village.story.endingDone);
   // クリア後：30階・35階にボスは出ない。35階は下への階段が無く、帰還の祠
   G.depart(L, 942); assert(L.run.final.skip.vearn && L.run.final.skip.truevearn);
-  goToFloor(L, 30); assert(!L.run.enemies.some((e) => e.boss) && L.run.stairs, '30F normal after clear');
-  goToFloor(L, 35); assert(!L.run.enemies.some((e) => e.boss) && !L.run.stairs && L.run.returnPoint, '35F: no boss, return point');
+  goToFloor(L, 30); assert(!L.run.enemies.some((e) => e.boss) && L.run.stairs && L.run.map.boss, '30F: throne room without boss');
+  assert(DG.same(L.run.stairs, G.throneBack(L.run.map)), 'stairs behind the throne'); assert(!G.canRescue(L.run), 'no rescue after clear');
+  goToFloor(L, 35); assert(!L.run.enemies.some((e) => e.boss) && !L.run.stairs && L.run.returnPoint && L.run.crack, '35F: no boss, crack, return point');
+  eq(G.crackState(L), 'notReady', '36F not ready yet');
 });
 test('最終章（版3）：30階で大魔王バーンを倒したあと倒れても、次は30階に出ない（ローブは倉庫へ）。35階は未撃破なら真大魔王バーン', () => {
   const S = toBossFloor(6, 950), run = S.run;
@@ -1966,27 +1976,55 @@ test('最終章（版3）：30階で大魔王バーンを倒したあと倒れ�
   G.depart(S, 951); goToFloor(S, 30); assert(!S.run.enemies.some((e) => e.boss), 'vearn does not return');
   goToFloor(S, 35); eq(S.run.enemies.find((e) => e.boss).type, 'truevearn');
 });
-test('ティウの救援：オオカミが持ち物と倉庫の品を一度に入れかえる（消えない・増えない・上限を守る・送れない品は送れない）。救援を終えたら使えない', () => {
+test('ティウの救援：回復は1回だけ（HP・満腹度を今の最大まで・状態異常を治す。最大は増えない）', () => {
+  const S = toBossFloor(6, 959), run = S.run, p = run.player;
+  defeatBoss(S); p.maxhp = 300; p.hp = 20; p.hunger = 5; p.poison = 4; p.bound = 2;
+  assert(G.beginRescue(S)); eq(p.hp, 300); eq(p.hunger, D.PLAYER.maxHunger); eq(p.poison, 0); eq(p.bound, 0); eq(p.maxhp, 300);
+  p.hp = 20; p.hunger = 5;
+  assert(!G.beginRescue(S), 'once'); eq(p.hp, 20);
+  const L = SV.deserialize(SV.serialize(S)); assert(!G.beginRescue(L), 'not again after reload'); eq(L.run.player.hp, 20);
+});
+test('ティウの救援：選び直しは何度でも（予定は保存）→ 確定で一括交換（容量を確かめ直す・失敗なら何も動かない）。装備中の品・素材も。確定後は使えない', () => {
   const S = toBossFloor(6, 960), run = S.run, V = S.village;
   defeatBoss(S); assert(G.canRescue(run));
   run.bag = run.bag.filter((i) => i.id === 'return_scroll');
-  const a = G.makeItem(S, 'herb'), b = G.makeItem(S, 'golden_sword'); b.eq = true; run.bag.push(a, b);
+  const sw = G.makeItem(S, 'shinma_sword'), sh = G.makeItem(S, 'dragonic_shield'), cr = G.makeItem(S, 'dragon_crest');
+  for (const it of [sw, sh, cr]) { run.bag.push(it); G.act(S, { type: 'equip', uid: it.uid }); }
+  assert(G.sets(run).all3);
+  const herb = G.makeItem(S, 'herb'), mat = G.makeItem(S, 'amber_shard'), mat2 = G.makeItem(S, 'amber_shard'); run.bag.push(herb, mat, mat2);
   const c = G.makeItem(S, 'elixir'), d = G.makeItem(S, 'big_herb'); V.storage.push(c, d);
-  const before = run.bag.length + V.storage.length;
+  V.materials.crystal_shard = 3; V.materials.amber_shard = 1;
+  const count = () => run.bag.length + V.storage.length + Object.values(V.materials).reduce((a, n) => a + n, 0);
+  const before = count();
   const scroll = run.bag.find((i) => i.id === 'return_scroll');
-  assert(!G.rescueExchange(S, [scroll.uid], []).ok, 'return scroll cannot be sent');
-  assert(!G.rescueExchange(S, [], [9999]).ok, 'unknown uid');
-  const r = G.rescueExchange(S, [a.uid, b.uid], [c.uid]); assert(r.ok, r.msg);
-  assert(V.storage.includes(a) && V.storage.includes(b) && !b.eq && run.bag.includes(c) && !V.storage.includes(c));
-  eq(run.bag.length + V.storage.length, before, 'no loss, no dup');
-  eq(new Set(run.bag.concat(V.storage).map((i) => i.uid)).size, before, 'unique');
-  // 持ち物の上限
-  while (run.bag.length < D.BAG_SIZE) run.bag.push(G.makeItem(S, 'herb'));
-  const n0 = run.bag.length + V.storage.length;
-  assert(!G.rescueExchange(S, [], [d.uid]).ok, 'bag full'); eq(run.bag.length + V.storage.length, n0, 'nothing moved on failure');
-  // 保存・読み込み直しても、動いたまま
-  const L = SV.deserialize(SV.serialize(S)); assert(L.village.storage.some((i) => i.uid === a.uid) && L.run.bag.some((i) => i.uid === c.uid));
-  G.endRescue(S); assert(!G.rescueExchange(S, [], [d.uid]).ok, 'closed after rescue');
+  // 予定を作って保存（読み込み直しても残る）。選び直す
+  const plan = G.rescuePlan(run); plan.out = [herb.uid]; plan.in = [d.uid];
+  let L = SV.deserialize(SV.serialize(S)); eq(L.run.final.rescuePlan.out.join(), String(herb.uid));
+  plan.out = [cr.uid, mat.uid, mat2.uid]; plan.in = [c.uid]; plan.mats = { crystal_shard: 2 };
+  assert(!G.checkRescuePlan(S, { out: [scroll.uid], in: [], mats: {} }).ok, 'return scroll cannot be sent');
+  assert(!G.checkRescuePlan(S, { out: [], in: [9999], mats: {} }).ok, 'unknown uid');
+  assert(!G.checkRescuePlan(S, { out: [], in: [], mats: { crystal_shard: 4 } }).ok, 'not enough materials');
+  // 確定の前に持ち物が増えて容量をこえたら、確定は失敗して何も動かない（救援は続く）
+  const extra = []; while (run.bag.length < D.BAG_SIZE) { const h = G.makeItem(S, 'herb'); extra.push(h); run.bag.push(h); }
+  plan.mats = { crystal_shard: 3 };   // 15 - 3 + 1 + 3 = 16 個
+  const n0 = count(); const f = G.commitRescue(S); assert(!f.ok && /こえます/.test(f.msg), f.msg); eq(count(), n0, 'nothing moved'); assert(G.canRescue(run) && cr.eq);
+  run.bag = run.bag.filter((i) => !extra.includes(i)); plan.mats = { crystal_shard: 2 };
+  const r = G.commitRescue(S); assert(r.ok, r.msg);
+  // 紋章（装備中）は外れて倉庫へ・セットは解除。素材は素材箱へ。素材箱から2個取り出し（持ち物では1個1枠）
+  assert(V.storage.includes(cr) && !cr.eq && !G.sets(run).all3 && G.sets(run).swordShield, 'crest unequipped, sets recomputed');
+  eq(V.materials.amber_shard, 3); eq(V.materials.crystal_shard, 1); eq(run.bag.filter((i) => i.id === 'crystal_shard').length, 2);
+  assert(run.bag.includes(c) && !V.storage.includes(c) && !run.bag.includes(mat));
+  eq(count(), before, 'no loss, no dup');
+  eq(new Set(run.bag.concat(V.storage).map((i) => i.uid)).size, run.bag.length + V.storage.length, 'unique');
+  eq(run.final.rescue, 'done'); eq(run.final.rescuePlan, null); assert(run.final.wolf && run.final.wolf.sent === 3 && run.final.wolf.got === 3);
+  // 確定後：もう交換できない（二重実行しない）。読み込み直しても動いたまま
+  const n1 = count(); assert(!G.commitRescue(S, { out: [], in: [d.uid], mats: {} }).ok, 'closed after commit'); eq(count(), n1);
+  L = SV.deserialize(SV.serialize(S)); assert(L.village.storage.some((i) => i.uid === cr.uid) && L.run.bag.some((i) => i.uid === c.uid) && !G.canRescue(L.run));
+  G.wolfShown(S); eq(run.final.wolf, null);
+  // 31階へ降りられる
+  run.player.x = run.stairs.x; run.player.y = run.stairs.y; G.act(S, { type: 'descend' }); eq(run.floor, 31);
+  // 何も選ばずに終えてもよい
+  const S2 = toBossFloor(6, 961); defeatBoss(S2); const b2 = S2.run.bag.length; assert(G.commitRescue(S2).ok); eq(S2.run.bag.length, b2);
 });
 test('以前のセーブ（ボス戦の途中・ボスが通路にいる）：HPと戦いの状態を引き継ぎ、ボスを部屋の中（たけと重ならない所）へ戻す', () => {
   // 戦いの途中（HPが減っている・ボスが通路）
@@ -2594,23 +2632,36 @@ test('竜の紋章：HP0で最大HPの50%（四捨五入）で復活し、紋章
     if (want === 1) eq(p.hp, 301); else assert(p.hp === Math.round(301 * 0.5) || p.hp === Math.round(301 * 0.5) - 0, 'half hp ' + p.hp);
   }
 });
-test('2マス攻撃（剣＋盾）：正面2マス目に届く・手前の敵を貫通して2体・壁越しは届かない・待っているボスには届かない', () => {
-  const S = newRun(1604); bigRoomFloor(S); const run = S.run, p = run.player;
-  equipSet(S, ['shinma_sword', 'dragonic_shield']); assert(G.sets(run).swordShield);
-  run.player.lvl = 30;
-  const far = addEnemy(S, 'frog', p.x + 2, p.y); far.hp = far.maxhp = 999;
-  let r = G.act(S, { type: 'move', dir: 'right' });
-  assert(r.consumed && p.x === 5 && far.hp < 999 && r.events.some((e) => e.t === 'reach'), 'reach attack instead of moving');
-  far.x = p.x + 2; far.y = p.y; far.sleep = 99; const near = addEnemy(S, 'frog', p.x + 1, p.y); near.hp = near.maxhp = 999; near.sleep = 99; const h = far.hp;
-  r = G.act(S, { type: 'move', dir: 'right' });
-  const hitOrMiss = (en) => r.events.some((x) => x.x === en.x && x.y === en.y && /dmg|hit|miss|num/.test(x.t)) || en.hp < 999 || (en === far && en.hp < h);
-  assert(r.events.some((x) => x.t === 'reach' && x.tiles.length === 2) && hitOrMiss(near) && hitOrMiss(far), 'pierce both');
-  // 壁越し
-  run.enemies = []; const m = run.map; m.tiles[p.y * m.w + p.x + 1] = DG.WALL; const w2 = addEnemy(S, 'frog', p.x + 2, p.y);
-  r = G.act(S, { type: 'move', dir: 'right' }); assert(!r.consumed && w2.hp === 999, 'no attack through walls');
-  // 剣だけ：届かない（歩く）
-  m.tiles[p.y * m.w + p.x + 1] = DG.FLOOR; run.enemies = []; equipSet(S, ['shinma_sword']); const e3 = addEnemy(S, 'frog', p.x + 2, p.y);
-  r = G.act(S, { type: 'move', dir: 'right' }); eq(p.x, 6, 'moved'); eq(e3.hp, 999);
+test('2マス攻撃（剣＋盾）：命中を固定して、正面2マス目に届く・手前の敵を貫通して2体ともダメージ・壁や角の向こうには当たらない・待っているボスには届かない', () => {
+  const hit0 = D.PLAYER.hitRate; D.PLAYER.hitRate = 1;   // 命中の乱数を固定（外れなし）
+  try {
+    const S = newRun(1604); bigRoomFloor(S); const run = S.run, p = run.player, m = run.map;
+    equipSet(S, ['shinma_sword', 'dragonic_shield']); assert(G.sets(run).swordShield);
+    run.player.lvl = 30;
+    // 2マス目だけ：歩かずに届く
+    const far = addEnemy(S, 'frog', p.x + 2, p.y); far.hp = far.maxhp = 999; far.sleep = 99;
+    let r = G.act(S, { type: 'move', dir: 'right' });
+    assert(r.consumed && p.x === 5 && far.hp < 999 && r.events.some((e) => e.t === 'reach'), 'reach attack instead of moving');
+    // 手前と奥（別のマス。どちらも眠らせて動かさない）→ 1回の攻撃で2体ともダメージ
+    run.enemies = [];
+    const f2 = addEnemy(S, 'frog', p.x + 2, p.y), n2 = addEnemy(S, 'frog', p.x + 1, p.y);
+    for (const e of [f2, n2]) { e.hp = e.maxhp = 999; e.sleep = 99; }
+    r = G.act(S, { type: 'move', dir: 'right' });
+    assert(n2.hp < 999 && f2.hp < 999, 'both damaged ' + n2.hp + ' ' + f2.hp);
+    eq(r.events.filter((e) => e.t === 'hit' && e.target !== 'player').length, 2, 'two hits');
+    // 正面が壁：攻撃しない（ターンも使わない）
+    run.enemies = []; m.tiles[p.y * m.w + p.x + 1] = DG.WALL; const w2 = addEnemy(S, 'frog', p.x + 2, p.y); w2.hp = w2.maxhp = 999; w2.sleep = 99;
+    r = G.act(S, { type: 'move', dir: 'right' }); assert(!r.consumed && w2.hp === 999, 'no attack through walls');
+    m.tiles[p.y * m.w + p.x + 1] = DG.FLOOR;
+    // 1マス目と2マス目の間が角（ななめの2マス目）：角の向こうには当たらない
+    run.enemies = []; const wa = p.y * m.w + p.x + 2, wb = (p.y + 2) * m.w + p.x + 1; m.tiles[wa] = DG.WALL; m.tiles[wb] = DG.WALL;   // (x+1,y+1) から (x+2,y+2) へは角をこえる
+    const c2 = addEnemy(S, 'frog', p.x + 2, p.y + 2); c2.hp = c2.maxhp = 999; c2.sleep = 99;
+    r = G.act(S, { type: 'move', dir: 'downright' }); eq(c2.hp, 999, 'no attack around corners'); eq(p.x + ',' + p.y, '6,6', 'walked instead');
+    m.tiles[wa] = DG.FLOOR; m.tiles[wb] = DG.FLOOR;
+    // 剣だけ：届かない（歩く）
+    run.enemies = []; equipSet(S, ['shinma_sword']); const e3 = addEnemy(S, 'frog', p.x + 2, p.y); e3.sleep = 99;
+    r = G.act(S, { type: 'move', dir: 'right' }); eq(p.x, 7, 'moved'); eq(e3.hp, e3.maxhp);
+  } finally { D.PLAYER.hitRate = hit0; }
 });
 test('2回行動（3点セット）：たけ2行動で敵1回・時間1ターン。付け替えで行動は増えない。紋章が消えても敵の手番は消えない。新しい毒・拘束・床の印を受けない', () => {
   const S = newRun(1605); bigRoomFloor(S); const run = S.run, p = run.player;
@@ -2637,6 +2688,61 @@ test('2回行動（3点セット）：たけ2行動で敵1回・時間1ターン
   let r; for (let i = 0; i < 6 && !(r && r.events.some((x) => x.t === 'revive')); i++) { p.hp = 1; r = G.act(S, { type: 'wait' }); }
   assert(r.events.some((x) => x.t === 'revive') && !G.sets(run).all3);
   run.enemies = []; const tB = run.turn; G.act(S, { type: 'wait' }); eq(run.turn, tB + 1, 'normal turn after crest consumed'); eq(p.half, 0);
+});
+test('2回行動の行動順（記録）：セットができる・外れる（1回目／2回目）・付け直す・紋章で復活の前後で、敵の手番と時間が増えも減りもしない', () => {
+  const S = newRun(1606); bigRoomFloor(S); const run = S.run, p = run.player;
+  const set = equipSet(S, ['shinma_sword', 'dragonic_shield']); const crest = G.makeItem(S, 'dragon_crest'); run.bag.push(crest);
+  p.hp = p.maxhp = 999;
+  // 敵の手番を数える：遠くの敵が、たけへ1マスずつ近づく（攻撃しない）
+  let e = null;
+  const fresh = () => { run.enemies = []; e = addEnemy(S, 'frog', p.x + 12, p.y); e.atk = 0; e.awake = true; e.tx = p.x; e.ty = p.y; };
+  const log = [];
+  const step = (label, a) => { const t0 = run.turn, x0 = e.x, y0 = e.y; const r = G.act(S, a); e.tx = p.x; e.ty = p.y;
+    log.push(label + ':' + (run.turn - t0) + (e.x !== x0 || e.y !== y0 ? 'E' : '-') + (p.half ? 'h' : '')); return r; };
+  const crestEq = () => ({ type: 'equip', uid: crest.uid });
+  fresh();
+  step('待つ', { type: 'wait' });               // セットなし：1行動＝1ターン
+  step('紋章を着ける', crestEq());              // 行動の前はセットなし → この行動も1ターン（セットができても延期しない）
+  step('待つ1', { type: 'wait' });              // ここから2回行動：1回目は時間が進まない
+  step('待つ2', { type: 'wait' });              // 2回目で敵1回・時間1ターン
+  step('1回目に外す', crestEq());               // 行動の前は3点 → 1回目の扱い（時間は保留）
+  step('待つ', { type: 'wait' });               // もう3点ではない → 保留の1ターンが進む（消えない・二重にもならない）
+  step('待つ', { type: 'wait' });               // ふつうの1ターン
+  step('紋章を着ける', crestEq());              // セットなしの行動 → 1ターン
+  step('待つ1', { type: 'wait' });
+  step('2回目に外す', crestEq());               // 2回目 → 敵1回・1ターン
+  step('待つ', { type: 'wait' });               // ふつうの1ターン
+  step('紋章を着ける', crestEq());
+  step('待つ1', { type: 'wait' });
+  step('付け直し外す', crestEq());              // 2回目（外す）→ 1ターン
+  step('すぐ着ける', crestEq());                // セットなしの行動 → 1ターン（付け外しで行動は増えない）
+  eq(log.join(' '), '待つ:1E 紋章を着ける:1E 待つ1:0-h 待つ2:1E 1回目に外す:0-h 待つ:1E 待つ:1E 紋章を着ける:1E 待つ1:0-h 2回目に外す:1E 待つ:1E 紋章を着ける:1E 待つ1:0-h 付け直し外す:1E すぐ着ける:1E');
+  // 10行動で数える：3点のままなら敵5回・5ターン
+  fresh(); assert(G.sets(run).all3); let t0 = run.turn, moves = 0;
+  for (let i = 0; i < 10; i++) { const x0 = e.x; G.act(S, { type: 'wait' }); e.tx = p.x; e.ty = p.y; if (e.x !== x0) moves++; }
+  eq(run.turn - t0, 5); eq(moves, 5);
+  // 紋章で復活：倒されるのは敵の手番の中（2回目の行動のあと）。その手番は消えず、次からはセットなしで1行動＝1ターン
+  run.enemies = []; const k = addEnemy(S, 'frog', p.x + 1, p.y); k.atk = 99999; k.awake = true; p.hp = 1;
+  log.length = 0; e = k;
+  step('1回目', { type: 'wait' });
+  const r = step('2回目（敵の攻撃で倒れて復活）', { type: 'wait' });
+  assert(r.events.some((x) => x.t === 'revive') && !run.bag.includes(crest) && !G.sets(run).all3, 'crest consumed');
+  eq(p.hp, p.maxhp, '3点セットだったので全回復');
+  k.atk = 0;
+  const t1 = run.turn; G.act(S, { type: 'wait' }); eq(run.turn, t1 + 1, 'next action: normal turn'); eq(p.half, 0);
+  eq(log.join(' '), '1回目:0-h 2回目（敵の攻撃で倒れて復活）:1-');
+  void set;
+});
+test('漆黒の盾＋ローブの攻撃低下：真魔剛竜剣を「武器として装備」しているときだけ免除（持っているだけ・倉庫にあるだけでは免除しない）', () => {
+  const S = newRun(1607); const run = S.run;
+  const atkWith = (ids, extra) => { equipSet(S, ids); if (extra) run.bag.push(G.makeItem(S, extra)); return G.playerAtk(run); };
+  const base = atkWith(['golden_sword']);
+  eq(atkWith(['golden_sword', 'phantom_shield', 'demon_robe']), Math.round(base * D.SETS.shieldRobeAtkMul), 'reduced');
+  eq(atkWith(['golden_sword', 'phantom_shield', 'demon_robe'], 'shinma_sword'), Math.round(base * D.SETS.shieldRobeAtkMul), 'shinma only in bag: still reduced');
+  S.village.storage.push(G.makeItem(S, 'shinma_sword'));
+  eq(atkWith(['golden_sword', 'phantom_shield', 'demon_robe']), Math.round(base * D.SETS.shieldRobeAtkMul), 'shinma in storage: still reduced');
+  const shin = atkWith(['shinma_sword']);
+  eq(atkWith(['shinma_sword', 'phantom_shield', 'demon_robe']), shin, 'equipped shinma: not reduced');
 });
 test('お宝の竜の紋章は通常のバランの報酬（アクセサリーとは別の品・別の記録）。赤い橋はバランを倒した後に建てられる', () => {
   eq(D.ITEMS.baran_emblem.type, 'treasure'); eq(D.ITEMS.baran_emblem.name, '竜の紋章'); eq(D.ITEMS.dragon_crest.type, 'accessory');

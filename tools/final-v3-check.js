@@ -15,6 +15,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await p.goto('http://localhost:8804/'); await p.waitForTimeout(400);
     await p.evaluate(() => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true; V.story.chapter = 6;
       for (let i = 0; i < 8; i++) V.storage.push(G.makeItem(S, i % 2 ? 'herb' : 'banana'));
+      V.materials = { amber_shard: 3, crystal_shard: 1 };
       G.depart(S, 4242); while (S.run.floor < 30) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       for (const id of ['shinma_sword', 'dragonic_shield', 'dragon_crest']) { const it = G.makeItem(S, id); S.run.bag.push(it); G.act(S, { type: 'equip', uid: it.uid }); }
       S.run.player.half = 0; TS.Save.save(S); });
@@ -32,11 +33,23 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       return { ok: !!m && m.textContent.includes('ティウの救援'), sw: document.documentElement.scrollWidth, btns }; });
     chk(rs.ok && rs.sw <= w && rs.btns.every((x) => x.vis), `${w} 救援の画面（はみ出さない・ボタンが画面内） ${JSON.stringify(rs)} talks=${JSON.stringify(talks)}`);
     await p.screenshot({ path: path.join(OUT, `rescue_${w}.png`) });
-    await p.evaluate(() => { const l = document.querySelector('.list[data-side="in"] .row input'); l.click(); });
-    await p.tap('.modal-buttons button.primary >> text=決定'); await p.waitForTimeout(300);
+    await p.evaluate(() => { const l = document.querySelector('label.row[data-side="in"] input'); l.click(); });
+    await p.waitForTimeout(100);
+    await p.tap('.row.mat[data-mat="amber_shard"] button[data-d="1"]'); await p.waitForTimeout(100);
+    await p.tap('.row.mat[data-mat="amber_shard"] button[data-d="1"]'); await p.waitForTimeout(100);
+    const mt = await p.evaluate(() => ({ plan: TS.UI.S.run.final.rescuePlan, sw: document.documentElement.scrollWidth, box: document.querySelector('.modal .okbox').textContent,
+      btn: (() => { const r = document.querySelector('.row.mat button').getBoundingClientRect(); return [r.width, r.height, r.right <= innerWidth]; })() }));
+    chk(mt.plan.mats.amber_shard === 2 && mt.plan.in.length === 1 && mt.sw <= w && mt.btn[0] >= 44 && mt.btn[2], `${w} 選ぶ（素材の個数・はみ出さない・押しやすい） ${JSON.stringify(mt)}`);
+    await p.evaluate(() => { const b = document.querySelector('.modal-body'); b.scrollTop = b.scrollHeight; });
+    await p.screenshot({ path: path.join(OUT, `rescue_mats_${w}.png`) });
+    await p.tap('.modal-buttons button >> text=交換を終える'); await p.waitForTimeout(250);
+    await p.screenshot({ path: path.join(OUT, `confirm_${w}.png`) });
+    const before = await p.evaluate(() => TS.UI.S.run.bag.length);
+    await p.tap('.modal-buttons button.primary >> text=OK'); await p.waitForTimeout(300);
     await p.screenshot({ path: path.join(OUT, `wolf_${w}.png`) });
-    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(200);
-    await p.tap('.modal-buttons button >> text=終わる'); await p.waitForTimeout(200);
+    const af = await p.evaluate(() => ({ bag: TS.UI.S.run.bag.length, amber: TS.UI.S.village.materials.amber_shard }));
+    chk(af.bag === before + 3 && af.amber === 1, `${w} 確定で一括交換（倉庫1個＋素材2個） ${JSON.stringify(af)} before=${before}`);
+    await p.tap('.modal-buttons button >> text=進む'); await p.waitForTimeout(200);
     chk(await p.evaluate(() => TS.UI.S.run.final.rescue === 'done' && !TS.UI.modals.length), `${w} 救援を終える`);
     await p.evaluate(() => { const S = TS.UI.S, G = TS.Game; while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, b = r.enemies.find((e) => e.boss); r.player.x = b.x - 2; r.player.y = b.y; r.player.hp = 50; G.updateVision(r); const ev = []; G.checkBossRoom(S, ev); TS.UI.playBossIntro('truevearn'); });
@@ -47,6 +60,16 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await closeTalk();
     const pr = await p.evaluate(() => { const r = TS.UI.S.run; return { hp: r.player.hp, max: r.player.maxhp, stage: r.final.stage }; });
     chk(pr.hp === pr.max && pr.stage === 'battle2', `${w} 35階：体が戻る場面→祈り ${JSON.stringify(pr)}`);
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 1; b.hold = 3; r.player.x = b.x - 1; r.player.y = b.y; G.updateVision(r); });
+    for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
+    await p.waitForTimeout(700); await closeTalk();
+    const ck = await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game; r.explored.fill(1); r.enemies = []; r.player.x = r.crack.x; r.player.y = r.crack.y + 1; G.updateVision(r); return { crack: r.crack, portal: r.portal, state: G.crackState(TS.UI.S) }; });
+    await p.waitForTimeout(300);
+    if (w === 390) await p.screenshot({ path: path.join(OUT, `crack_${w}.png`) });
+    await p.tap('#dpad [data-dir="up"]'); await p.waitForTimeout(400);
+    const cm = await p.evaluate(() => document.querySelector('#modal-root').textContent);
+    chk(ck.state === 'unstable' && cm.includes('時空の亀裂') && (await p.evaluate(() => TS.UI.S.run.floor)) === 35, `${w} 35階：時空の亀裂（エンディング前は入れない） ${JSON.stringify(ck)}`);
+    if (w === 390) await p.screenshot({ path: path.join(OUT, `crack_msg_${w}.png`) });
     chk(!errs.length, `${w} エラーなし ${errs.join(' / ')}`);
     await ctx.close();
   }

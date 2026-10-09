@@ -156,6 +156,18 @@
     special(run.stairs, SP.tiles.stairs);
     special(run.returnPoint, SP.tiles.returnPoint[fr(600, 2)]);
     if (run.portal) special(run.portal, SP.tiles.portal[fr(180, 3)]);
+    // 35階の時空の亀裂（仮の絵：黒紫の裂け目がゆらぐ。完成の絵はChatGPT側）
+    if (run.crack && run.explored[run.crack.y * m.w + run.crack.x]) {
+      const cx = ox + (run.crack.x + 0.5) * ts, cy = oy + (run.crack.y + 0.5) * ts, wob = Math.sin(now / 260) * 0.06;
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, ts * 0.6);
+      gr.addColorStop(0, 'rgba(255,170,255,0.55)'); gr.addColorStop(0.5, 'rgba(120,40,170,0.45)'); gr.addColorStop(1, 'rgba(40,0,60,0)');
+      g.fillStyle = gr; g.fillRect(cx - ts, cy - ts, ts * 2, ts * 2);
+      g.fillStyle = '#12001c'; g.strokeStyle = '#d27bff'; g.lineWidth = Math.max(1, ts / 16);
+      g.beginPath();
+      const pts = [[0, -0.45], [0.12, -0.2], [0.04, -0.05], [0.16 + wob, 0.12], [0.02, 0.45], [-0.1, 0.15], [-0.03, 0.0], [-0.15 - wob, -0.18]];
+      pts.forEach(([x, y], i) => { const px = cx + x * ts, py = cy + y * ts; if (i) g.lineTo(px, py); else g.moveTo(px, py); });
+      g.closePath(); g.fill(); g.stroke();
+    }
     // 道具（お宝は宝箱、ほかはアイコン。少し浮かせて背景から目立たせる）
     for (const f of run.floorItems) {
       if (!run.explored[f.y * m.w + f.x]) continue;
@@ -518,6 +530,7 @@
     const dot = (pos, col, s) => { if (!pos) return; g.fillStyle = col; g.fillRect(x0 + pos.x * c - (s - 1) * c / 2, y0 + pos.y * c - (s - 1) * c / 2, c * s, c * s); };
     if (run.stairs && run.explored[run.stairs.y * m.w + run.stairs.x]) dot(run.stairs, '#ffffff', 1.6);
     if (run.returnPoint && run.explored[run.returnPoint.y * m.w + run.returnPoint.x]) dot(run.returnPoint, '#6ae0ff', 1.6);
+    if (run.crack && run.explored[run.crack.y * m.w + run.crack.x]) dot(run.crack, '#d27bff', 1.6);
     if (run.portal) dot(run.portal, '#ffd84a', 1.8);
     for (const f of run.floorItems) if (run.explored[f.y * m.w + f.x]) dot(f, '#7cff7c', 1);
     for (const e of run.enemies) if (G.isVisible(run, e.x, e.y)) dot(e, '#ff4a4a', 1.2);

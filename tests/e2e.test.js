@@ -964,7 +964,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       while (S.run.floor < 30) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
       b.hp = 5; b.cds = { circle: 9, bird: 9, summon: 9 };
-      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 600; r.player.maxhp = 900;
+      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 600; r.player.maxhp = 900; r.player.hunger = 20;
       G.updateVision(r);
       G.checkBossRoom(S, []); b.hold = 0;
       document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-dungeon')); TS.UI.screen = 'dungeon';
@@ -979,25 +979,43 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       portal: !!r.portal, stairs: !!r.stairs, rescue: r.final.rescue, seen: !!S.village.story.moviesSeen.vearnTaken, bag: r.bag.length, st: S.village.storage.length }; });
     assert(a0.robe && !a0.portal && a0.stairs && a0.rescue === 'pending' && a0.seen, 'after vearn ' + JSON.stringify(a0));
     await shot('19_rescue');
-    // 倉庫のやくそうを受け取る（持ち物の最初の1個は送る）
+    // 救援の回復：HPと満腹度が今の最大まで（1回だけ）
+    const hv = await p.evaluate(() => { const r = TS.UI.S.run; return { hp: r.player.hp, max: r.player.maxhp, hunger: r.player.hunger, maxHunger: TS.Data.PLAYER.maxHunger, healed: r.final.rescueHealed }; });
+    assert(hv.hp === hv.max && hv.hunger === hv.maxHunger && hv.healed, 'rescue heal ' + JSON.stringify(hv));
+    // 倉庫のやくそうを取り出し、持ち物の1個を預ける（まだ動かない：仮の交換予定）
     const pick = await p.evaluate(() => { const S = TS.UI.S; const h = S.village.storage.find((i) => i.id === 'herb'); const o = S.run.bag.find((i) => !i.eq && TS.Game.canStore(i) && TS.Game.def(i).type !== 'material');
       return { inn: h.uid, out: o ? o.uid : null }; });
-    await p.check(`.list[data-side="in"] .row[data-uid="${pick.inn}"] input`);
-    if (pick.out) await p.check(`.list[data-side="out"] .row[data-uid="${pick.out}"] input`);
-    await p.tap('.modal-buttons button.primary >> text=決定'); await p.waitForTimeout(300);
-    assert(await p.isVisible('.modal h2:has-text("オオカミが来た")'), 'wolf info');
-    const a1 = await p.evaluate((pk) => { const S = TS.UI.S; return { inBag: S.run.bag.some((i) => i.uid === pk.inn), outSt: pk.out == null || S.village.storage.some((i) => i.uid === pk.out),
-      total: S.run.bag.length + S.village.storage.length }; }, pick);
-    assert(a1.inBag && a1.outSt && a1.total === a0.bag + a0.st, 'moved without loss ' + JSON.stringify(a1));
-    await p.tap('.modal-buttons button >> text=閉じる'); await p.waitForTimeout(200);
-    // 救援の途中で読み込み直しても、動いた品はそのまま・救援画面に戻る
+    await p.check(`label.row[data-side="in"][data-uid="${pick.inn}"] input`); await p.waitForTimeout(100);
+    if (pick.out) { await p.check(`label.row[data-side="out"][data-uid="${pick.out}"] input`); await p.waitForTimeout(100); }
+    assert(await p.evaluate((pk) => TS.UI.S.village.storage.some((i) => i.uid === pk.inn), pick), 'not moved before confirm');
+    // 選んだ途中で読み込み直す：予定は残り、品は動いていない・回復は重ならない
+    await p.evaluate(() => { TS.UI.S.run.player.hp = 123; TS.UI.debug.save(); });
     await p.reload(); await p.waitForTimeout(400);
     await p.tap('#btn-continue'); await p.waitForTimeout(500);
     for (let i = 0; i < 6 && !(await p.$('.modal h2:has-text("ティウの救援")')); i++) { await closeTalk(); await p.waitForTimeout(300); }
     assert(await p.isVisible('.modal h2:has-text("ティウの救援")'), 'rescue resumed');
-    eq2(await p.evaluate(() => TS.UI.S.run.bag.length + TS.UI.S.village.storage.length), a0.bag + a0.st, 'no loss after reload');
-    await p.tap('.modal-buttons button >> text=終わる'); await p.waitForTimeout(200);
-    eq2(await p.evaluate(() => TS.UI.S.run.final.rescue), 'done', 'rescue done');
+    const rs = await p.evaluate((pk) => ({ hp: TS.UI.S.run.player.hp, checked: !!document.querySelector(`label.row[data-side="in"][data-uid="${pk.inn}"] input:checked`), total: TS.UI.S.run.bag.length + TS.UI.S.village.storage.length }), pick);
+    assert(rs.hp === 123 && rs.checked && rs.total === a0.bag + a0.st, 'plan kept, no second heal ' + JSON.stringify(rs));
+    // 交換を終える → 確認 → キャンセルで編集へ戻る
+    await p.tap('.modal-buttons button >> text=交換を終える'); await p.waitForTimeout(250);
+    assert(await p.isVisible('.modal:has-text("倉庫との交換を終えてよろしいですか？ この先へ進むと、今回の救援での交換はできなくなります。")'), 'confirm text');
+    await shot('19b_rescue_confirm');
+    await p.tap('.modal-buttons button >> text=キャンセル'); await p.waitForTimeout(200);
+    assert(await p.evaluate(() => TS.Game.canRescue(TS.UI.S.run)) && await p.isVisible('.modal h2:has-text("ティウの救援")'), 'back to edit');
+    // OK → 一括で交換 → オオカミ
+    await p.tap('.modal-buttons button >> text=交換を終える'); await p.waitForTimeout(250);
+    await p.tap('.modal-buttons button.primary >> text=OK'); await p.waitForTimeout(300);
+    assert(await p.isVisible('.modal h2:has-text("オオカミが来た")'), 'wolf');
+    const a1 = await p.evaluate((pk) => { const S = TS.UI.S; return { inBag: S.run.bag.some((i) => i.uid === pk.inn), outSt: pk.out == null || S.village.storage.some((i) => i.uid === pk.out),
+      total: S.run.bag.length + S.village.storage.length, rescue: S.run.final.rescue }; }, pick);
+    assert(a1.inBag && a1.outSt && a1.total === a0.bag + a0.st && a1.rescue === 'done', 'moved once without loss ' + JSON.stringify(a1));
+    // 演出の途中で読み込み直す：オオカミだけ出し直し、交換は二重にならない
+    await p.reload(); await p.waitForTimeout(400);
+    await p.tap('#btn-continue'); await p.waitForTimeout(600);
+    assert(await p.isVisible('.modal h2:has-text("オオカミが来た")'), 'wolf again after reload');
+    eq2(await p.evaluate(() => TS.UI.S.run.bag.length + TS.UI.S.village.storage.length), a0.bag + a0.st, 'no dup after reload');
+    await p.tap('.modal-buttons button >> text=進む'); await p.waitForTimeout(200);
+    eq2(await p.evaluate(() => TS.UI.S.run.final.rescue + '/' + TS.UI.S.run.final.wolf), 'done/null', 'rescue done');
     // 31〜34階（自動では飛ばさない）→ 35階
     const floors = await p.evaluate(() => { const S = TS.UI.S, G = TS.Game, seen = [];
       while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); seen.push(S.run.floor); }

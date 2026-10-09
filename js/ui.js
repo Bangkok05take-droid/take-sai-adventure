@@ -356,6 +356,8 @@
           setTimeout(() => playPostMovie(() => { if (pb && D.STORY.bossPost[pb]) storyTalk('post_' + pb, D.STORY.bossPost[pb]); }), 300); }
         // 30階の救援の途中で読み込み直した：ムービーを見ていなければ流し、救援の画面を開き直す
         if (G.canRescue(UI.S.run)) setTimeout(() => { const st = UI.S.village.story; if (st.moviesSeen && st.moviesSeen.vearnTaken) openRescue(); else playStoryMovie('vearnTaken', () => openRescue()); }, 300);
+        // オオカミの演出の途中で読み込み直した：交換は確定済み。演出だけ出し直す
+        else if (UI.S.run.final && UI.S.run.final.wolf) setTimeout(() => showWolf(), 300);
       }
     } else { showScreen('village'); showStoryPending(); }
   }
@@ -1418,42 +1420,76 @@
   UI.playBossIntro = playBossIntro;
   UI.playStoryMovie = (k, d) => playStoryMovie(k, d);
 
-  /* 地下30階：ティウの救援。オオカミが村の倉庫と荷物を運ぶ（G.rescueExchange）。
-   * 「決定」で品をまとめて動かし、すぐ保存してから、オオカミの演出（仮：文字だけ。絵はChatGPT側で用意する予定）を見せる。
-   * 演出の途中で閉じても読み込み直しても、品は動いたあと（消えない・増えない）。「終わる」で救援は終わり（G.endRescue） */
+  /* 地下30階：ティウの救援。町の倉庫と同じ感覚で、持ち物と村の倉庫（素材は素材箱）の間で出し入れする。
+   * ① 会話のあとに回復（G.beginRescue、1回だけ）② 預ける品・取り出す品を選ぶ（何度でも選び直せる。仮の交換予定として run.final.rescuePlan に保存）
+   * ③「交換を終える」→ 確認（キャンセルで編集へ）④ OK → G.commitRescue（容量を確かめ直して一括で交換）→ すぐ保存
+   * ⑤ オオカミが荷物を届ける演出（仮：文字だけ。絵はChatGPT側）→ 31階へ進める。
+   * 演出の途中で閉じても読み込み直しても、交換は確定済み（二重に動かない・消えない）。演出は run.final.wolf が残っていれば出し直す */
   function openRescue() {
     const run = UI.S.run;
     if (!run || !G.canRescue(run) || UI.modals.length) return;
-    talk(D.STORY.tiwRescue, () => rescueScreen());
+    talk(D.STORY.tiwRescue, () => {
+      if (!UI.S.run || !G.canRescue(UI.S.run)) return;
+      if (G.beginRescue(UI.S)) { const p = UI.S.run.player; RD.addFx({ t: 'healrise', x: p.x, y: p.y, dur: 900 }); toast('ティウの手当てで、HPと満腹度が回復した！', 'levelup'); AU.sfx('heal'); save(); updateHud(); pushLog(); }
+      rescueScreen();
+    });
   }
   function rescueScreen() {
     const run = UI.S.run, V = UI.S.village;
     if (!run || !G.canRescue(run)) return;
-    const pickOut = new Set(), pickIn = new Set();
-    const row = (it, set, can) => `<label class="row${can ? '' : ' disabled'}" data-uid="${it.uid}"><input type="checkbox" ${can ? '' : 'disabled'} ${set.has(it.uid) ? 'checked' : ''}><img src="${SP.iconURL(G.def(it))}" alt=""><span>${esc(G.itemName(it))}${it.eq ? '（装備中）' : ''}</span></label>`;
-    const h = modal({ title: 'ティウの救援：荷物を運ぶ', html: '', noClose: true, buttons: [
-      { label: '決定（オオカミが運ぶ）', cls: 'primary', keep: true, onClick: () => {
-        if (!pickOut.size && !pickIn.size) { toast('運ぶ品を選んでね'); return; }
-        const r = G.rescueExchange(UI.S, [...pickOut], [...pickIn]);
-        if (!r.ok) { info('荷物を運ぶ', esc(r.msg)); return; }
-        save(); AU.sfx('pickup'); pickOut.clear(); pickIn.clear(); render();
-        info('オオカミが来た！', `<p>ティウのオオカミが、村の倉庫まで荷物を運んでくれた。</p><p>送った品：${r.sent}個　受け取った品：${r.got}個</p><p class="note">（オオカミの絵と演出は準備中）</p>`);
-        updateHud(); pushLog();
-      } },
-      { label: '終わる', onClick: () => { G.endRescue(UI.S); save(); updateHud(); } },
+    const plan = G.rescuePlan(run);
+    const keep = () => { plan.out = plan.out.filter((u) => run.bag.some((i) => i.uid === u)); plan.in = plan.in.filter((u) => V.storage.some((i) => i.uid === u));
+      for (const k of Object.keys(plan.mats)) plan.mats[k] = Math.max(0, Math.min(plan.mats[k] | 0, V.materials[k] || 0)); };
+    keep();
+    const row = (it, side, on, can) => `<label class="row${can ? '' : ' disabled'}" data-side="${side}" data-uid="${it.uid}"><input type="checkbox" ${can ? '' : 'disabled'} ${on ? 'checked' : ''}><img src="${SP.iconURL(G.def(it))}" alt=""><span class="nm">${esc(G.itemName(it))}${it.eq ? '<small>装備中（預けると外れる）</small>' : G.def(it).type === 'material' ? '<small>素材（素材箱へ）</small>' : ''}</span></label>`;
+    const h = modal({ title: 'ティウの救援：倉庫との交換', html: '', noClose: true, buttons: [
+      { label: '交換を終える', cls: 'primary', keep: true, onClick: () => askFinish() },
     ] });
     function render() {
-      const bag = run.bag, st = V.storage;
-      h.body.innerHTML = `<p class="note">チェックした品を、オオカミが運ぶ。上：持ち物から倉庫へ送る／下：倉庫から受け取る。持ち物は${D.BAG_SIZE}個まで、倉庫は${G.storageSize(V)}枠まで。</p>
-        <h3>持ち物 ${bag.length}/${D.BAG_SIZE}（倉庫へ送る）</h3><div class="list" data-side="out">${bag.map((it) => row(it, pickOut, G.canStore(it) && G.def(it).type !== 'material')).join('') || '<p>なし</p>'}</div>
-        <h3>倉庫 ${st.length}/${G.storageSize(V)}（受け取る）</h3><div class="list" data-side="in">${st.map((it) => row(it, pickIn, true)).join('') || '<p>なし</p>'}</div>`;
-      h.body.querySelectorAll('.list').forEach((list) => list.addEventListener('change', (e) => {
-        const lab = e.target.closest('.row'); if (!lab) return;
-        const set = list.dataset.side === 'out' ? pickOut : pickIn, uid = +lab.dataset.uid;
-        if (e.target.checked) set.add(uid); else set.delete(uid);
+      const c = G.checkRescuePlan(UI.S, plan);
+      const mats = Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === 'material' && (V.materials[id] || 0) > 0);
+      h.body.innerHTML = `<p class="note">町の倉庫と同じように、預ける品（持ち物）と取り出す品（倉庫・素材箱）を選んでね。「交換を終える」までは何度でも選び直せる。</p>
+        ${c.ok ? `<div class="okbox">交換のあと：持ち物 ${c.bagAfter}/${D.BAG_SIZE}・倉庫 ${c.storageAfter}/${G.storageSize(V)}</div>` : `<div class="warnbox">${esc(c.msg)}</div>`}
+        <h3>持ち物 ${run.bag.length}/${D.BAG_SIZE}（預ける）</h3><div class="list">${run.bag.map((it) => row(it, 'out', plan.out.includes(it.uid), G.canRescueSend(it))).join('') || '<p>なし</p>'}</div>
+        <h3>倉庫 ${V.storage.length}/${G.storageSize(V)}（取り出す）</h3><div class="list">${V.storage.map((it) => row(it, 'in', plan.in.includes(it.uid), true)).join('') || '<p>なし</p>'}</div>
+        <h3>素材箱（取り出す。持ち物では1個1枠）</h3><div class="list">${mats.map((id) => `<div class="row mat" data-mat="${id}"><img src="${SP.iconURL(D.ITEMS[id])}" alt=""><span class="nm">${esc(D.ITEMS[id].name)}<small>素材箱に ${V.materials[id]}個</small></span>
+          <button class="small" data-d="-1" ${plan.mats[id] ? '' : 'disabled'}>−</button><b class="pr">${plan.mats[id] || 0}</b><button class="small" data-d="1" ${(plan.mats[id] || 0) < V.materials[id] ? '' : 'disabled'}>＋</button></div>`).join('') || '<p>なし</p>'}</div>`;
+      h.body.querySelectorAll('label.row input').forEach((inp) => inp.addEventListener('change', () => {
+        const lab = inp.closest('.row'), list = lab.dataset.side === 'out' ? plan.out : plan.in, uid = +lab.dataset.uid;
+        const i = list.indexOf(uid); if (inp.checked && i < 0) list.push(uid); else if (!inp.checked && i >= 0) list.splice(i, 1);
+        save(); const y = h.body.scrollTop; render(); h.body.scrollTop = y;
+      }));
+      h.body.querySelectorAll('.row.mat button').forEach((btn) => btn.addEventListener('click', () => {
+        const id = btn.closest('.row').dataset.mat; plan.mats[id] = Math.max(0, Math.min((plan.mats[id] || 0) + (+btn.dataset.d), V.materials[id] || 0));
+        if (!plan.mats[id]) delete plan.mats[id];
+        save(); const y = h.body.scrollTop; render(); h.body.scrollTop = y;
       }));
     }
+    function askFinish() {
+      const c = G.checkRescuePlan(UI.S, plan);
+      if (!c.ok) { info('交換を終える', `<div class="warnbox">${esc(c.msg)}</div><p>選び直してね。</p>`); return; }
+      const nm = Object.values(c.mats).reduce((a, n) => a + n, 0);
+      confirmBox('交換を終える', `<p>倉庫との交換を終えてよろしいですか？ この先へ進むと、今回の救援での交換はできなくなります。</p>
+        <div class="okbox">預ける：${c.out.length}個　取り出す：${c.inn.length + nm}個<br>交換のあと：持ち物 ${c.bagAfter}/${D.BAG_SIZE}・倉庫 ${c.storageAfter}/${G.storageSize(V)}</div>`, 'OK', () => {
+        if (UI.rescueBusy) return;   // 連打しても1回
+        UI.rescueBusy = true;
+        const r = G.commitRescue(UI.S, plan);
+        UI.rescueBusy = false;
+        if (!r.ok) { setTimeout(() => info('交換を終える', `<div class="warnbox">${esc(r.msg)}</div><p>選び直してね。</p>`), 0); render(); return; }
+        save(); AU.sfx('pickup');
+        h.close();
+        updateHud(); pushLog();
+        setTimeout(() => showWolf(), 0);
+      }, 'キャンセル');
+    }
     render();
+  }
+  // オオカミが荷物を届ける演出（仮：文字だけ。完成デザインはChatGPT側）。見終えたら印を消して保存 → 31階へ進める
+  function showWolf() {
+    const run = UI.S.run, w = run && run.final && run.final.wolf;
+    if (!w) return;
+    modal({ title: 'オオカミが来た！', html: `<p>ティウのオオカミが、村の倉庫まで荷物を運んでくれた。</p><div class="okbox">預けた品：${w.sent}個　受け取った品：${w.got}個</div><p class="note">（オオカミの絵と演出は準備中）</p><p>玉座の後ろの階段から、31階へ進もう。</p>`,
+      noClose: true, buttons: [{ label: '進む', cls: 'primary', onClick: () => { G.wolfShown(UI.S); save(); updateHud(); } }] });
   }
   UI.openRescue = openRescue;
 
@@ -1506,6 +1542,7 @@
     if (res.events.some((e) => e.t === 'finalWin')) { stopHold(); AU.playBgm(G.dungeonBgm(S.run)); setTimeout(() => { flash(); storyTalk('final_win', D.STORY.finalWin); }, 500); return; }
     // 階段などに乗ったら確認
     const ev = res.events;
+    if (ev.some((e) => e.t === 'onCrack')) { stopHold(); setTimeout(() => promptCrack(), 60); }
     if (ev.some((e) => e.t === 'onStairs')) { stopHold(); setTimeout(() => promptStairs(), 60); }
     else if (ev.some((e) => e.t === 'onReturnPoint' || e.t === 'onPortal')) { stopHold(); setTimeout(() => promptReturnPoint(), 60); }
   }
@@ -1721,7 +1758,7 @@
     $('h-atk').textContent = G.playerAtk(run);
     $('h-def').textContent = G.playerDef(run);
     $('h-gold').textContent = run.runGold;
-    const hot = G.onStairs(run) || G.onReturnPoint(run) || G.onPortal(run) || !!G.itemAt(run, p.x, p.y);
+    const hot = G.onStairs(run) || G.onReturnPoint(run) || G.onPortal(run) || G.onCrack(run) || !!G.itemAt(run, p.x, p.y);
     $('b-foot').classList.toggle('hot', hot);
   }
 
@@ -1778,6 +1815,7 @@
     const run = UI.S.run;
     if (!run || UI.modals.length) return;
     if (G.onStairs(run)) return promptStairs();
+    if (G.onCrack(run)) return promptCrack();
     if (G.onReturnPoint(run) || G.onPortal(run)) return promptReturnPoint();
     const f = G.itemAt(run, run.player.x, run.player.y);
     if (f) {
@@ -1884,7 +1922,15 @@
     h.body.querySelector('.primary').style.fontSize = '14px';
   }
 
-  function confirmReturnScroll(it) {
+  /* 35階の時空の亀裂（ミストが逃げた先）。入れるかは G.crackState。36階から先（竜人王バラン）はまだ無いので、今は入れない */
+  function promptCrack() {
+    if (!UI.S.run || UI.modals.length || !G.onCrack(UI.S.run)) return;
+    const stt = G.crackState(UI.S);
+    const msg = { unstable: '時空の亀裂が、玉座の後ろで渦を巻いている。……まだ揺らいでいて、入れそうにない。（いまは村へ帰って、物語を見届けよう）',
+      notReady: '時空の亀裂の奥から、竜の気配がする。……この先（36階〜）は準備中。', open: '時空の亀裂の奥から、竜の気配がする。' }[stt] || '';
+    if (msg) info('時空の亀裂', `<p>${msg}</p>`);
+  }
+    function confirmReturnScroll(it) {
     const run = UI.S.run;
     const items = run.bag.filter((i) => i.id !== 'return_scroll').length;
     confirmBox('帰還の巻物', `<p>帰還の巻物を使って村へ帰りますか？</p><div class="okbox">持ち物 ${items}個と探索中のお金 ${run.runGold}G を持ち帰れます。</div><p class="note">探索はここで終わります。巻物はなくなります。</p>`, '帰る', () => {

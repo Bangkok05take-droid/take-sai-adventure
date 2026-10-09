@@ -134,28 +134,79 @@
   };
 
   // ---------- 地下30階：ティウの救援（オオカミが村の倉庫と荷物を運ぶ） ----------
-  /* 救援の間だけ使える（run.final.rescue が 'pending'）。利用回数・あとで再び使えるかは未決定なので、救援の画面を閉じるまで何度でも、閉じたら終わり。
-   * toStorage：探索中の持ち物から倉庫へ送る品（番号）、toBag：倉庫から持ち物へ受け取る品（番号）。
-   * 全部確かめてから一度にまとめて動かす（途中で止まって品が消えたり、増えたりしない）。動かしたあとに画面がオオカミの演出を見せる */
+  /* 流れ：大魔王バーン撃破 → run.final.rescue = 'pending' → 救援の会話で G.beginRescue（回復は1回だけ）→
+   * 町の倉庫と同じように、預ける品・取り出す品を選ぶ（選び直しは何度でも。仮の交換予定 run.final.rescuePlan に保存）→
+   * 「終える」の確認でOK → G.commitRescue（容量を確かめ直して一括で交換・rescue = 'done'）→ オオカミの演出（run.final.wolf）→ 31階へ。
+   * 確定したあとは、同じ挑戦の中ではもう交換できない。
+   * 預ける：持ち物の品（装備中でもよい。外れて能力とセットは計算し直し）。素材は村の素材箱（V.materials、帰ったときと同じ。倉庫の枠を使わない）へ。
+   * 取り出す：倉庫の品、素材箱の素材（個数を選ぶ。持ち物では1個1枠、帰ったときと同じ扱い）。
+   * 送れないのは、倉庫に入れられない品（帰還の巻物・貸出品）だけ */
   G.canRescue = (run) => !!(G.finalV3(run) && run.final.rescue === 'pending');
-  G.rescueExchange = function (S, toStorage, toBag) {
+  /* 救援の回復（1回だけ）：HPと満腹度を今の最大まで・毒と拘束を治す（最大値は増やさない）。戻り値：回復したか */
+  G.beginRescue = function (S) {
+    const run = S.run;
+    if (!G.canRescue(run) || run.final.rescueHealed) return false;
+    run.final.rescueHealed = true;
+    G.fullRecover(run);
+    G.log(run, 'ティウが駆けつけた！ HPと満腹度が回復し、体の不調も消えた。');
+    return true;
+  };
+  // HP・満腹度を今の最大まで、毒・拘束を治す（救援・35階の祈り）
+  G.fullRecover = function (run) {
+    const p = run.player;
+    p.hp = p.maxhp; p.hunger = D.PLAYER.maxHunger; p.poison = 0; p.bound = 0; p.lowWarned = false; p.starveAcc = 0;
+  };
+  G.rescuePlan = (run) => (run.final.rescuePlan = run.final.rescuePlan || { out: [], in: [], mats: {} });
+  // 預けられる品か（倉庫に入れられない品だけ不可。装備中・素材はよい）
+  G.canRescueSend = (it) => G.canStore(it);
+  /* 交換予定を確かめる。戻り値：{ ok, msg, out, inn, mats, bagAfter, storageAfter } */
+  G.checkRescuePlan = function (S, plan) {
+    const run = S.run, V = S.village;
+    const out = [...new Set(plan.out || [])].map((u) => run.bag.find((i) => i.uid === u));
+    const inn = [...new Set(plan.in || [])].map((u) => V.storage.find((i) => i.uid === u));
+    if (out.some((x) => !x) || inn.some((x) => !x)) return { ok: false, msg: '見つからない品があります。' };
+    const bad = out.find((it) => !G.canRescueSend(it));
+    if (bad) return { ok: false, msg: G.itemName(bad) + 'は預けられません。' };
+    const mats = {};
+    for (const [id, n0] of Object.entries(plan.mats || {})) {
+      const n = Math.floor(n0);
+      if (!n) continue;
+      if (!D.ITEMS[id] || D.ITEMS[id].type !== 'material' || n < 0) return { ok: false, msg: '素材の数が正しくありません。' };
+      if (n > (V.materials[id] || 0)) return { ok: false, msg: D.ITEMS[id].name + 'が素材箱に足りません。' };
+      mats[id] = n;
+    }
+    const nMats = Object.values(mats).reduce((a, n) => a + n, 0);
+    const toStorage = out.filter((it) => G.def(it).type !== 'material').length;
+    const bagAfter = run.bag.length - out.length + inn.length + nMats;
+    const storageAfter = V.storage.length - inn.length + toStorage;
+    if (bagAfter > D.BAG_SIZE) return { ok: false, msg: '持ち物が' + D.BAG_SIZE + '個をこえます。（交換のあと ' + bagAfter + '個）' };
+    if (storageAfter > G.storageSize(V)) return { ok: false, msg: '倉庫がいっぱいになります。（交換のあと ' + storageAfter + '／' + G.storageSize(V) + '）' };
+    return { ok: true, out, inn, mats, bagAfter, storageAfter };
+  };
+  /* 交換を確定する（1回だけ）。容量を確かめ直してから一括で動かし、救援を終える。失敗したら何も動かさない（救援は続く）。
+   * 戻り値：{ ok, msg, sent, got, mats } */
+  G.commitRescue = function (S, plan) {
     const run = S.run, V = S.village;
     if (!G.canRescue(run)) return { ok: false, msg: '今は荷物を運べません。' };
-    const out = [...new Set(toStorage || [])].map((u) => run.bag.find((i) => i.uid === u));
-    const inn = [...new Set(toBag || [])].map((u) => V.storage.find((i) => i.uid === u));
-    if (out.some((x) => !x) || inn.some((x) => !x)) return { ok: false, msg: '見つからない品があります。' };
-    const bad = out.find((it) => !G.canStore(it) || G.def(it).type === 'material');
-    if (bad) return { ok: false, msg: G.itemName(bad) + 'は送れません。' };
-    if (run.bag.length - out.length + inn.length > D.BAG_SIZE) return { ok: false, msg: '持ち物が' + D.BAG_SIZE + '個をこえます。' };
-    if (V.storage.length - inn.length + out.length > G.storageSize(V)) return { ok: false, msg: '倉庫がいっぱいになります。' };
-    for (const it of out) { it.eq = false; run.bag.splice(run.bag.indexOf(it), 1); }
-    for (const it of inn) V.storage.splice(V.storage.indexOf(it), 1);
-    for (const it of out) V.storage.push(it);
-    for (const it of inn) { it.eq = false; run.bag.push(it); }
-    G.log(run, 'オオカミが荷物を運んだ。（送った ' + out.length + '個・受け取った ' + inn.length + '個）');
-    return { ok: true, sent: out.length, got: inn.length };
+    const c = G.checkRescuePlan(S, plan || G.rescuePlan(run));
+    if (!c.ok) return c;
+    for (const it of c.out) { it.eq = false; run.bag.splice(run.bag.indexOf(it), 1); }
+    for (const it of c.inn) V.storage.splice(V.storage.indexOf(it), 1);
+    for (const it of c.out) {
+      if (G.def(it).type === 'material') V.materials[it.id] = (V.materials[it.id] || 0) + 1;   // 素材は素材箱へ（帰ったときと同じ）
+      else { delete it.bossReward; V.storage.push(it); }
+    }
+    for (const it of c.inn) { it.eq = false; run.bag.push(it); }
+    let nm = 0;
+    for (const [id, n] of Object.entries(c.mats)) { V.materials[id] -= n; for (let i = 0; i < n; i++) run.bag.push(G.makeItem(S, id)); nm += n; }
+    run.final.rescue = 'done';
+    run.final.rescuePlan = null;
+    run.final.wolf = { sent: c.out.length, got: c.inn.length + nm };
+    G.log(run, 'オオカミが荷物を運んだ。（預けた ' + c.out.length + '個・受け取った ' + (c.inn.length + nm) + '個）');
+    return { ok: true, sent: c.out.length, got: c.inn.length + nm };
   };
-  G.endRescue = function (S) { if (G.canRescue(S.run)) S.run.final.rescue = 'done'; };
+  // オオカミの演出を見せ終えた（読み込み直したときに出し直すための印を消す）
+  G.wolfShown = function (S) { if (S.run && S.run.final) S.run.final.wolf = null; };
 
   // ---------- 村で拾える品 ----------
   /* 今拾える品の名前の一覧（条件を満たし、まだ拾っていないもの） */
@@ -234,16 +285,24 @@
     const Fdef = G.F(run), ch = G.chapterOf(run);
     const rpFloors = ch === 'legacy' ? D.RETURN_POINT_FLOORS : D.returnFloors(ch);
     // 帰還の祠は25階に1回だけ。ただしボスの階には置かない（第3章は25階がボスの階なので出ない）
-    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss, returnPoint: !Fdef.boss && rpFloors.includes(floor) });
+    // 版3の30階・35階は、ボスを倒したあとの再探索でも玉座の間（ボスの階の形）。30階は玉座の後ろの階段、35階は時空の亀裂
+    const throne = G.finalV3(run) && Object.values(D.FINAL_V3).includes(floor);
+    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, returnPoint: !Fdef.boss && !throne && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す
     run.map = gen.map;
     run.stairs = gen.stairs;
     run.returnPoint = gen.returnPoint;
-    // 版3の最終章で、最深の35階にボスがいない（真大魔王バーンを倒したあと）：下への階段は無く、帰還の祠を置く
-    if (G.finalV3(run) && floor >= G.maxFloor(run) && !Fdef.boss) {
-      run.stairs = null;
-      if (!run.returnPoint) run.returnPoint = DG.freeTile(run.map, rng, [gen.start], run.map.rooms[run.map.rooms.length - 1]);
+    run.crack = null;
+    if (throne && !Fdef.boss) {
+      if (floor === D.FINAL_V3.vearn) run.stairs = G.throneBack(run.map);   // 30階：玉座の後ろの下り階段（31階へ）
+      else {
+        /* 35階（真大魔王バーンを倒したあと）：ミストが逃げた時空の亀裂が残る（36階への道。G.crackState）。
+         * 下への階段は無い。36階から先はまだ無いので、帰れるように前室に帰還の祠を置く */
+        run.stairs = null;
+        run.crack = G.throneBack(run.map);
+        run.returnPoint = DG.freeTile(run.map, rng, [gen.start], run.map.rooms[0]);
+      }
     }
     run.portal = null;
     run.revealed = false;
@@ -465,6 +524,23 @@
   G.onStairs = (run) => !!run.stairs && DG.same(run.stairs, run.player);
   G.onReturnPoint = (run) => !!run.returnPoint && DG.same(run.returnPoint, run.player);
   G.onPortal = (run) => !!run.portal && DG.same(run.portal, run.player);
+  G.onCrack = (run) => !!run.crack && DG.same(run.crack, run.player);
+  /* 玉座の後ろ（玉座の間の奥の壁ぎわ、絨毯の先）。30階の下り階段・35階の時空の亀裂の場所（仮の位置） */
+  G.throneBack = function (map) {
+    const rm = map.rooms[1] || map.rooms[0];
+    return { x: rm.x + Math.floor(rm.w / 2), y: rm.y };
+  };
+  /* 35階の時空の亀裂：
+   *  'none'     … 亀裂が無い（真大魔王バーンを倒す前。36階へは進めない）
+   *  'unstable' … 真大魔王バーンを倒した直後、エンディングの前（入れない。判断待ち：エンディング前でも入れるか）
+   *  'notReady' … クリア後。36〜40階（竜人王バラン）がまだ無いので入れない
+   *  'open'     … 36階へ進める（D.POSTGAME_FLOORS が用意できたら） */
+  G.crackState = function (S) {
+    const run = S.run, st = S.village.story;
+    if (!run || !run.crack || !st.defeated.truevearn) return 'none';
+    if (!st.endingDone) return 'unstable';
+    return D.POSTGAME_FLOORS ? 'open' : 'notReady';
+  };
 
   /* 1回の入力を処理する。ターンを消費したら敵が1回ずつ行動する。
    * 戻り値 { consumed, events } */
@@ -498,6 +574,8 @@
       case 'throw': consumed = throwItem(S, a.uid, a.dir, ev, !!a.fromFloor); break;
       case 'face': if (DIRS[a.dir]) run.player.dir = a.dir; break;
       case 'descend':
+        // 30階：ティウの救援（倉庫との交換）が終わるまでは降りない
+        if (G.onStairs(run) && G.canRescue(run)) { G.log(run, 'ティウの救援が終わってから、先へ進もう。'); ev.push({ t: 'warn', msg: '先に救援を終えよう' }); return { consumed: false, events: ev }; }
         if (G.onStairs(run)) {
           G.log(run, 'たけは階段を降りた。');
           enterFloor(S, run.floor + 1);
@@ -560,6 +638,7 @@
     if (G.onStairs(run)) ev.push({ t: 'onStairs' });
     if (G.onReturnPoint(run)) ev.push({ t: 'onReturnPoint' });
     if (G.onPortal(run)) ev.push({ t: 'onPortal' });
+    if (G.onCrack(run)) ev.push({ t: 'onCrack', state: G.crackState(S) });
     return true;
   }
 
@@ -678,7 +757,9 @@
       st.defeated.vearn = true;
       run.final.skip.vearn = true;
       if (first) for (const id of D.CHAPTERS[D.FINAL_CHAPTER].reward.items) drop(id);
-      run.stairs = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room);
+      // ミストバーンが大魔王バーンを連れ去ったあと、玉座の後ろに下り階段が現れる（救援が終わるまでは降りない）
+      run.stairs = G.throneBack(run.map);
+      if (DG.same(run.stairs, run.player) || G.itemAt(run, run.stairs.x, run.stairs.y)) run.stairs = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room);
       run.final.rescue = 'pending';
       G.updateVision(run);
       G.log(run, '大魔王バーンを倒した！' + (first ? ' 大魔王のローブが残された。' : ''));
@@ -711,6 +792,8 @@
       // 版3：ローブは30階の大魔王バーンの報酬。真大魔王バーンの品の報酬は無い（再戦も無い）
       if (!G.finalV3(run)) for (const id of firstFinal ? D.CHAPTERS[D.FINAL_CHAPTER].reward.items : ['golden_elephant']) drop(id);
       openPortal();
+      // 版3：ミストが逃げた時空の亀裂が、玉座の後ろに残る（入れるかは G.crackState）
+      if (G.finalV3(run)) { run.crack = G.throneBack(run.map); if (DG.same(run.crack, run.portal) || DG.same(run.crack, run.player)) run.crack = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player, run.portal]), room); }
       G.log(run, '真大魔王バーンを倒した！ 光る帰還口が開いた。');
       ev.push({ t: 'finalWin' });
       return;
@@ -811,7 +894,7 @@
     if (G.visibleEnemies(run).some((e) => !ctx.seen.includes(e.id))) return 'enemy';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
     if (run.merchant && G.adjacent(run, p, run.merchant)) return 'merchant';
-    if (G.onStairs(run)) return 'stairs';
+    if (G.onStairs(run) || G.onCrack(run)) return 'stairs';
     if (G.onReturnPoint(run) || G.onPortal(run)) return 'returnPoint';
     if (G.itemAt(run, p.x, p.y) || ev.some((e) => e.t === 'pickup' || e.t === 'gold' || e.t === 'bagFull')) return 'item';
     const danger = p.hp <= p.maxhp * 0.3 || p.hunger <= 10;
@@ -847,7 +930,7 @@
     if (ev.some((e) => e.t === 'hit' && e.target === 'player')) return 'damage';
     if (run.enemies.some((e) => G.adjacent(run, p, e))) return 'near';
     if (run.merchant && G.adjacent(run, p, run.merchant)) return 'merchant';
-    if (G.onStairs(run)) return 'stairs';
+    if (G.onStairs(run) || G.onCrack(run)) return 'stairs';
     if (G.onReturnPoint(run) || G.onPortal(run)) return 'returnPoint';
     if (G.itemAt(run, p.x, p.y) || ev.some((e) => e.t === 'pickup' || e.t === 'gold' || e.t === 'bagFull')) return 'item';
     if (ev.some((e) => e.t === 'warn' || e.t === 'telegraph' || e.t === 'steal' || e.t === 'levelup')) return 'event';
@@ -1387,12 +1470,12 @@
     const run = S.run, A = run.bossFight;
     A.engaged = true;
     const bosses = run.enemies.filter((e) => e.boss);
-    // 版3の35階：決戦の前に、サイたちの祈りでHP全回復・状態異常（毒・拘束）も治る。満腹度は未決定なので変えない
+    // 版3の35階：決戦の前に、サイたちの祈りでHPと満腹度を今の最大まで・状態異常（毒・拘束）も治る。
+    // 戦いの開始（engaged）と同じ1回だけ。登場ムービーの途中で読み込み直しても、開始は1回なので重ならない
     if (G.finalV3(run) && bosses.some((b) => b.type === 'truevearn')) {
-      const p = run.player;
-      p.hp = p.maxhp; p.poison = 0; p.bound = 0; p.lowWarned = false;
+      G.fullRecover(run);
       run.final.stage = 'battle2'; S.village.story.finalStage = 'battle2';
-      G.log(run, 'サイたちの祈りが届いた！ HPが全回復し、体の不調も消えた。');
+      G.log(run, 'サイたちの祈りが届いた！ HPと満腹度が回復し、体の不調も消えた。');
       ev.push({ t: 'prayer' });
     }
     // ムービーのあとは、入室のターンはもう終わっているので、待たせるターンは足さない（次のターンから動く＝今までと同じ間合い）

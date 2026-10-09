@@ -309,6 +309,8 @@ details summary { cursor: pointer; margin: 4px 0; }
 
 /* 倉庫の素材一覧：名前は省略せず折り返す */
 .row.mat { cursor: default; }
+.row.mat button.small { min-width: 44px; min-height: 44px; padding: 0 8px; font-size: 20px; flex: none; }
+.row.mat .pr { min-width: 2ch; text-align: center; }
 .row .nm.wrap { white-space: normal; overflow: visible; text-overflow: clip; }
 .tabs button { font-size: 14px; }
 
