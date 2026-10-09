@@ -701,6 +701,9 @@
     { id: 'cat', x: 4, y: 19, face: 'left' },        // 家の右の鉢植えのわき（もっちゃんのほうを向く）
     { id: 'play', x: 5, y: 18, face: 'left' },       // 家の右の広場の端（家のほうを向く）
   ];
+  /* ティウの相棒のオオカミ（名前は未定）：ティウ (12,21) の右どなり。左（ティウのほう）を向く。
+   * 港への道は20〜21行の2行なので、20行はあいたまま。桟橋 (10,22)・ティウの左 (11,21)・上 (12,20) もあけておく */
+  VL.WOLF = { x: 13, y: 21 };
   VL.COMMUNITY_NAME = 'こもれびの家';   // 村の発展の建物の名前（地図の名札）
   VL.CATS = [
     { id: 'ginger', x: 2, y: 14, pose: 'sit' },      // サイの店先
@@ -953,6 +956,7 @@
     const kids = VL.KIDS.map((k, i) => Object.assign({}, k, { cv: hasArt('child_' + k.id + '_front') ? null : kid(i) }));
     const cats = VL.CATS.map((c, i) => Object.assign({}, c, { cv: hasArt('cat_' + c.id + '_sit') ? null : cat(i % 2) }));
     for (const k of kids) solid[k.y * MW + k.x] = 1;
+    solid[VL.WOLF.y * MW + VL.WOLF.x] = 1;   // オオカミの立つマス
     for (const c of cats) for (let x = c.x; x <= (c.walk ? c.walk[1] : c.x); x++) solid[c.y * MW + x] = 1;
     const ground = paintGround(lv, G, trees);
     // 建物の足元の影（地面に描く）

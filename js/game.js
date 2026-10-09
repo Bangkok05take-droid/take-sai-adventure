@@ -2181,5 +2181,48 @@
     return { ok: true, msg: D.ITEMS[id].name + 'を借りた。' };
   };
 
+  // ---------- ティウの冒険案内（村の会話。ターン・満腹度は進まない） ----------
+  /* 道具が床に出る階（実際の出現の表 D.floorFor から作る）。最終章の作り（版3）で、ボスを倒したあとの階として 1〜35階を調べる。
+   * 戻り値：[[最初の階, 最後の階], ...]（続いている階はまとめる）。出る「可能性がある」だけで、その階で必ず拾えるわけではない */
+  G.itemFloors = function (id) {
+    const out = [];
+    for (let f = 1; f <= D.LAST_FLOOR; f++) {
+      const F = D.floorFor(D.FINAL_CHAPTER, f, D.LAYOUT, { vearn: true, truevearn: true });
+      if (!F.items.some(([i, w]) => i === id && w > 0)) continue;
+      const last = out[out.length - 1];
+      if (last && last[1] === f - 1) last[1] = f; else out.push([f, f]);
+    }
+    return out;
+  };
+  /* 案内に使う、道具の入手方法と用途（実データだけ。推測で数字を足さない）。
+   * 章のボスの報酬は、そのボスを倒したあとだけ教える（まだ出会っていないボスの名前を先に明かさない。公開の時期は未決定のため控えめに） */
+  G.itemGuide = function (S, id) {
+    const V = S.village, st = V.story || {}, d = D.ITEMS[id];
+    const floors = G.itemFloors(id);
+    const reach = st.endingDone ? D.LAST_FLOOR : D.bossFloorOf(st.chapter || 1);
+    const bosses = [];
+    for (const [c, C] of Object.entries(D.CHAPTERS)) if (C.reward.items.includes(id)) bosses.push({ ch: +c, boss: C.boss, known: !!(st.defeated && st.defeated[C.boss]) });
+    // 版3：最終章の報酬（大魔王のローブ）は30階の大魔王バーン
+    const uses = [];
+    if (d.type === 'material') {
+      for (let plus = 0; plus < D.SMITH.maxPlus; plus++) { const m = D.SMITH.mats(plus); if (m[id]) uses.push({ kind: 'smith', to: plus + 1, n: m[id] }); }
+      for (const f of D.FACILITIES) if (f.mats && f.mats[id]) uses.push({ kind: 'facility', name: f.name, n: f.mats[id] });
+    }
+    return {
+      id, name: d.name, type: d.type, floors, reach,
+      enemyDrop: floors.length > 0 && D.ENEMY_DROP_RATE > 0,   // ふつうの敵は、その階の道具の表からまれに落とす
+      bosses,
+      shop: G.shopStock(V).includes(id),
+      uses,
+      sell: d.noSell ? 0 : d.sell,
+      museum: (D.MUSEUM_ITEMS || []).includes(id),
+    };
+  };
+  // 案内に出すお宝・素材（床で拾えるもの＋章の報酬。報酬だけのものは、そのボスを倒したあとだけ出す）
+  G.guideItems = function (S, type) {
+    return Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === type).map((id) => G.itemGuide(S, id))
+      .filter((g) => g.floors.length || g.bosses.some((b) => b.known));
+  };
+
   TS.Game = G;
 })(globalThis.TS = globalThis.TS || {});

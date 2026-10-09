@@ -25,7 +25,10 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       // 出発の画面の「ティウと話す」（橋ができる前から、紋章を拾うまで）
       await p.tap('.fac[data-fac="depart"]'); await p.waitForTimeout(300);
       await p.tap('.modal-buttons button >> text=ティウと話す'); await p.waitForTimeout(300);
-      const hint = await p.evaluate(() => !!document.querySelector('.talk') && document.querySelector('#modal-root').textContent.includes(TS.Data.STORY.tiwHint));
+      // ティウの冒険案内 → 町のうわさ → 川の向こう岸のこと
+      await p.tap('.tg-choice:has-text("町のうわさ")'); await p.waitForTimeout(150);
+      await p.tap('.tg-choice:has-text("川の向こう岸のこと")'); await p.waitForTimeout(150);
+      const hint = await p.evaluate(() => document.querySelector('#modal-root').textContent.includes(TS.Data.STORY.tiwGuide.rumorBefore));
       if (w === 390 && mode === 'bridge') await p.screenshot({ path: path.join(OUT, `tiw_hint_${w}.png`) });
       for (let k = 0; k < 2; k++) { await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await p.waitForTimeout(150); }   // 会話を閉じると出発の画面に戻るので2回
       if (mode === 'nobridge') { chk(!st.pickups.length && !st.reach && hint, `${w} 橋なし：紋章は無く、向こう岸へ行けない。ティウのヒントは聞ける ${JSON.stringify(st)}`); if (w === 390) await p.screenshot({ path: path.join(OUT, `nobridge_${w}.png`) }); await ctx.close(); continue; }

@@ -396,3 +396,22 @@ details summary { cursor: pointer; margin: 4px 0; }
 @media (max-width: 380px) { .depart-modal .modal-body { font-size: 14.5px; } .dp-btn { font-size: 15px; gap: 5px; } .dp-btn img, .dp-btn svg { width: 26px; height: 26px; } .depart-modal h2 { font-size: 21px; } }
 .depart-modal .dp-btn span { white-space: nowrap; }
 @media (max-width: 380px) { .depart-modal .dp-btn { padding: 6px 4px; } .depart-modal .dp-teal svg { width: 24px; height: 24px; } }
+
+/* ===== ティウの冒険案内（今までの画面と同じ濃い青緑・金の枠・明るい文字。選択肢は縦に大きく） ===== */
+.tiw-guide .modal-body { padding: 10px 12px; }
+.tg-wolf { display: block; width: 88px; height: 76px; image-rendering: pixelated; margin: 0 0 4px auto; }
+.tg-say { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 10px; }
+.tg-face { width: 56px; height: 56px; flex: none; border: 2px solid var(--line); border-radius: 10px; background: rgba(0, 0, 0, 0.3); image-rendering: pixelated; object-fit: contain; }
+.tg-bubble { flex: 1; min-width: 0; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line-soft); border-radius: 10px; padding: 7px 10px; }
+.tg-bubble .tg-name { display: block; color: #ffe8b0; font-size: 14px; margin-bottom: 2px; font-weight: bold; }
+.tg-bubble p b { color: #ffe8b0; }
+.tg-bubble p { margin: 0 0 6px; }
+.tg-bubble p:last-child { margin-bottom: 0; }
+.tg-choices { display: flex; flex-direction: column; gap: 7px; }
+.tg-choice { display: flex; align-items: center; gap: 10px; min-height: 52px; width: 100%; padding: 6px 12px; text-align: left; font-size: 17px; font-weight: bold; }
+.tg-choice img { width: 34px; height: 34px; object-fit: contain; flex: none; }
+.tg-choice span { flex: 1; min-width: 0; }
+.tg-choice i { font-style: normal; color: var(--accent); font-size: 22px; }
+.tg-item { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 18px; color: #ffe8b0; }
+.tg-item img { width: 44px; height: 44px; object-fit: contain; }
+.tiw-guide .modal-buttons button[hidden] { display: none; }

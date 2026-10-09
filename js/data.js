@@ -130,7 +130,7 @@
     antidote:      { name: 'どくけしそう', type: 'cure', price: 40, sell: 12, icon: 'herb', tint: 'cure',
       desc: '毒を治し、しばらく毒にかからなくなる。HPも20回復。' },
     return_scroll: { name: '帰還の巻物', type: 'return', sell: 0, noSell: true, noStore: true, icon: 'scroll', tint: 'return',
-      desc: 'その場で探索を終え、持ち物と探索中のお金を村へ持ち帰る。出発時に1枚無料支給。帰還・敗北で消える。' },
+      desc: 'その場で探索を終え、持ち物と探索中のお金を村へ持ち帰る。出発画面で1回の冒険につき1枚、無料で借りられる。帰還・敗北で消える。' },
     // ---- 章の報酬（ボスを倒すと現れる装備） ----
     // 2026年10月（報酬の見直し）：げっこうの盾（moon_shield）→ ファントムシールド、りゅうきしの剣（dragon_sword）→ 真魔剛竜剣 にまとめた（save.js の RENAME_V6）。
     // 新しい報酬の絵は後で届く予定。それまではコードで描いた絵（icon・tint）

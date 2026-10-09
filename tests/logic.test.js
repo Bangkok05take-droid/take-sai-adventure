@@ -2785,5 +2785,93 @@ test('お宝の竜の紋章は通常のバランの報酬（アクセサリー�
   eq(JSON.stringify(G.villagePickups(V)), JSON.stringify(['dragon_crest']));
 });
 
+console.log('ティウの案内（助言とゲームの動きが合っているか）');
+test('ティウの案内：どんそくの粉＋「隣に来たら一発、次は一歩下がる」をくり返すと、近づいて殴る敵には殴られない（15ターン・2ターンに1回）', () => {
+  for (const type of ['frog', 'bat', 'statue']) {   // 近づいて殴る・2歩動く（移動のあとは殴らない）・振りかぶる敵
+  const S = newRun(1701); bigRoomFloor(S); const run = S.run, p = run.player;
+  p.x = 14; p.y = 8; p.hp = p.maxhp = 500; G.updateVision(run);
+  const e = addEnemy(S, type, 10, 8); e.hp = e.maxhp = 9999; e.atk = 30; e.awake = true;
+  const powder = G.makeItem(S, 'slow_powder'); run.bag.push(powder);
+  G.act(S, { type: 'use', uid: powder.uid }); eq(e.slow, 15 - 1, 'slowed 15 turns (one already passed)');
+  // 敵が歩いてきて隣に来るまで待つ
+  for (let i = 0; i < 12 && !G.adjacent(run, p, e); i++) G.act(S, { type: 'wait' });
+  assert(G.adjacent(run, p, e), 'enemy came next to take');
+  const hp0 = p.hp; let cycles = 0;
+  for (let i = 0; i < 6 && e.slow > 1; i++) {
+    G.act(S, { type: 'move', dir: 'left' });        // 一発（敵の向き：左）
+    G.act(S, { type: 'move', dir: 'right' });       // 一歩下がる → 敵はその番を追いかけるのに使う
+    assert(G.adjacent(run, p, e), 'enemy followed'); cycles++;
+  }
+  assert(cycles >= 3, type + ' cycles ' + cycles); eq(p.hp, hp0, type + ': never hit while the powder lasts');
+  assert(e.hp < 9999, 'hits landed');
+  }
+  // 反対に、隣にいる敵が動ける番に殴ると殴り返される（「まず一歩下がる」の理由）
+  const S2 = newRun(1702); bigRoomFloor(S2); const r2 = S2.run, p2 = r2.player; p2.x = 14; p2.y = 8; p2.hp = p2.maxhp = 500; G.updateVision(r2);
+  const e2 = addEnemy(S2, 'frog', 13, 8); e2.hp = e2.maxhp = 9999; e2.atk = 30; e2.awake = true; e2.slow = 15;
+  const h0 = p2.hp; for (let i = 0; i < 4; i++) G.act(S2, { type: 'move', dir: 'left' });
+  assert(p2.hp < h0, 'standing and hitting gets hit back on its turn');
+});
+test('ティウの案内：離れて撃つ敵（吹き矢ザル）は、どんそくの粉でも下がると撃ってくることがある', () => {
+  const S = newRun(1703); bigRoomFloor(S); const run = S.run, p = run.player;
+  p.x = 14; p.y = 8; p.hp = p.maxhp = 500; G.updateVision(run);
+  const e = addEnemy(S, 'monkey', 11, 8); e.hp = e.maxhp = 9999; e.awake = true; e.slow = 15;
+  const hp0 = p.hp;
+  for (let i = 0; i < 10; i++) G.act(S, { type: i % 2 ? 'wait' : 'wait' });
+  assert(p.hp < hp0, 'ranged enemy still shoots while slowed');
+});
+test('ティウの案内：休息（足踏みの長押し）は1ターンずつ待つだけ。ダッシュは画面の速さだけで、1ターンの回復量は同じ。毒・満腹度0では回復しない。止まる条件', () => {
+  const S = newRun(1704); bigRoomFloor(S); const run = S.run, p = run.player;
+  run.enemies = []; p.hp = 10; p.maxhp = 200;
+  const t0 = run.turn, h0 = p.hp; const r = G.restStep(S); assert(r.res.consumed); eq(run.turn, t0 + 1, 'one turn per step');
+  const per = p.hp - h0; assert(per >= 0);
+  // ダッシュのオン・オフで、同じ状態からの回復は同じ（ダッシュは画面の待ち時間だけ）
+  const A = SV.deserialize(SV.serialize(S)), B = SV.deserialize(SV.serialize(S)); A.settings.dash = false; B.settings.dash = true;
+  for (let i = 0; i < 20; i++) { G.restStep(A); G.restStep(B); }
+  eq(A.run.player.hp, B.run.player.hp, 'same regen with dash'); eq(A.run.turn, B.run.turn);
+  // 止まる：満腹度10以下・毒・敵が見える・HP満タン
+  p.hunger = 10; eq(G.restBlock(S), 'hunger'); p.hunger = 80;
+  p.poison = 3; eq(G.restBlock(S), 'poison'); p.poison = 0;
+  p.hp = p.maxhp; eq(G.restBlock(S), 'full'); p.hp = 50;
+  addEnemy(S, 'frog', p.x + 2, p.y); eq(G.restBlock(S), 'enemy'); run.enemies = [];
+  // 毒のあいだ・満腹度0では自然回復しない
+  p.poison = 5; p.poisonGuard = 0; const hpP = p.hp; G.act(S, { type: 'wait' }); assert(p.hp <= hpP, 'no regen while poisoned'); p.poison = 0;
+  p.hunger = 0; p.regenAcc = 0; const hpH = p.hp; G.act(S, { type: 'wait' }); assert(p.hp <= hpH, 'no regen at hunger 0');
+  // 満腹度が減らない装備（満腹の腕輪・ファントムマスク）
+  eq(D.ITEMS.full_bangle.acc, 'hunger'); eq(D.ITEMS.phantom_mask.acc, 'hunger');
+});
+test('ティウの案内：みとおしの巻物は地形・階段・道具の場所がわかる（敵の居場所は出ない）。気配察知の巻物は敵の位置', () => {
+  const S = newRun(1705), run = S.run;
+  goDown(S); goDown(S); goDown(S);
+  const sc = G.makeItem(S, 'sight_scroll'); run.bag.push(sc);
+  const vis0 = G.visibleEnemies(run).length;
+  G.act(S, { type: 'use', uid: sc.uid });
+  const m = run.map; let ok = true;
+  for (let i = 0; i < m.tiles.length; i++) if (m.tiles[i] !== DG.WALL && !run.explored[i]) ok = false;
+  assert(ok, 'all floor tiles known'); assert(run.explored[run.stairs.y * m.w + run.stairs.x], 'stairs known');
+  assert(run.floorItems.every((f) => run.explored[f.y * m.w + f.x]), 'items known');
+  eq(G.visibleEnemies(run).length, vis0, 'enemies are not revealed');
+  eq(D.ITEMS.sight_scroll.name, 'みとおしの巻物'); eq(D.ITEMS.sense_scroll.type, 'sense');
+});
+test('ティウの案内：素材・お宝の入手の階は実際の出現の表と同じ。ボスの報酬は倒したあとだけ。2つの竜の紋章を区別。まだ無い品は出さない', () => {
+  const S = G.newState(), V = S.village;
+  for (const g of G.guideItems(S, 'material').concat(G.guideItems(S, 'treasure'))) {
+    for (const [a, b] of g.floors) for (let f = a; f <= b; f++) {
+      const F = D.floorFor(D.FINAL_CHAPTER, f, D.LAYOUT, { vearn: true, truevearn: true });
+      assert(F.items.some(([i]) => i === g.id), g.id + ' at ' + f);
+    }
+  }
+  eq(JSON.stringify(G.itemGuide(S, 'amber_shard').floors), '[[11,15]]');
+  eq(JSON.stringify(G.itemGuide(S, 'gold_leaf').floors), '[[26,35]]');
+  const ids = (t) => G.guideItems(S, t).map((g) => g.id);
+  assert(!ids('treasure').includes('croc_tear') && !ids('treasure').includes('baran_emblem'), 'boss rewards hidden before defeat');
+  V.story.defeated.baran = true; assert(ids('treasure').includes('baran_emblem'), 'shown after defeat');
+  const be = G.itemGuide(S, 'baran_emblem'); eq(be.bosses[0].ch, 4); eq(be.floors.length, 0); eq(be.sell, 0);
+  assert(!ids('treasure').includes('dragon_crest'), 'the accessory crest is not a treasure');
+  assert(!ids('material').length || ids('material').every((id) => D.ITEMS[id].type === 'material'));
+  eq(G.itemFloors('dragonic_shield').length, 0, 'not obtainable yet');
+  // 用途は鍛冶屋・施設のデータから
+  const am = G.itemGuide(S, 'amber_shard').uses; assert(am.some((u) => u.kind === 'smith' && u.to === 4) && am.some((u) => u.kind === 'facility'));
+});
+
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

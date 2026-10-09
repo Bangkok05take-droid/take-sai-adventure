@@ -129,6 +129,9 @@
       fx: { blacksmith: { light: [108, 150, 22], smoke: [176, 22] }, eatery: { steam: [128, 150], light: [128, 160, 14] } },
       kids: { play: 'child_play', book: 'child_book', cat: 'child_cat' }, kidAnchor: [32, 60],
       cats: { ginger: 'cat_ginger', calico: 'cat_calico', black: 'cat_black' }, catAnchor: [16, 28],
+      /* ティウの相棒のオオカミ（2026年10月、ChatGPT制作の完成画像。元は assets/reference/tiw-wolf-v1/wolf-original.png）。
+       * tools/make-wolf.py で縮めただけ（44×38、高さはティウの約8割）。左を向いた絵。anchor：足元の中央 [x, 足の裏の高さ] */
+      wolf: { name: 'wolf', anchor: [22, 37] },
     },
     portraits: { take: null, sai: null, yanai: null, villager: null },
     /* ボス（assets/bosses/）：見本 assets/reference/bosses.png から tools/extract-bosses.py で作った透過PNG。

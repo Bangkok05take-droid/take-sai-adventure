@@ -378,7 +378,9 @@
       AU.sfx('tap');
       if (h && h.kind === 'site') { toast('学校・図書館は建設予定地です（まだ使えません）'); return; }
       if (h && h.kind === 'statue') { walkTo(Math.abs(UI.walker.x - 9) <= Math.abs(UI.walker.x - 10) ? 9 : 10, 13, 'up', statueTalk); return; }
-      if (h && (h.kind === 'kid' || h.kind === 'cat')) { approach(h.kind, h.id); return; }
+      if (h && (h.kind === 'kid' || h.kind === 'cat' || h.kind === 'wolf')) { approach(h.kind, h.id); return; }
+      // ティウ本人：となりまで歩いて、冒険案内を開く（出発は桟橋・舟をタップ）
+      if (h && h.kind === 'npc' && h.id === 'depart') { approach('tiw', 'tiw'); return; }
       if (h) { const f = UI.vview.fac.find((f) => f.id === h.id); if (f) { walkTo(f.at[0], f.at[1], f.face, () => openFacility(f.id)); return; } }
       const t = UI.vview.tile(x, y);
       walkTo(t.x, t.y);
@@ -442,7 +444,10 @@
     const nx = w.x + dx, ny = w.y + dy;
     const f = v.fac.find((f) => f.at[0] === w.x && f.at[1] === w.y && (f.face === dir));
     if (f) { openFacility(f.id); return; }
-    // 子供・猫のマスへ進もうとしたら、話す／調べる
+    // ティウ・オオカミ・子供・猫のマスへ進もうとしたら、話す／調べる
+    const tw = tiwAt();
+    if (tw && nx === tw.x && ny === tw.y) { creatureTalk('tiw', 'tiw'); return; }
+    if (nx === TS.Village.WOLF.x && ny === TS.Village.WOLF.y) { creatureTalk('wolf', 'wolf'); return; }
     for (const [kind, list] of [['kid', TS.Village.KIDS], ['cat', TS.Village.CATS]]) {
       const c = list.find((c) => c.y === ny && (c.walk ? nx >= c.walk[0] && nx <= c.walk[1] : c.x === nx));
       if (c) { creatureTalk(kind, c.id); return; }
@@ -461,11 +466,17 @@
     calico: 'すうすう……気持ちよさそうに眠っている。',
     black: 'にゃっ。しっぽをぴんと立てた。',
   };
+  // ティウの立つマス（船着き場の案内人）
+  function tiwAt() { const f = UI.vview && UI.vview.fac.find((f) => f.npc === 'tiw'); return f ? { x: f.npcAt[0], y: f.npcAt[1] } : null; }
   function creatureTalk(kind, id) {
+    if (kind === 'tiw') { openTiwGuide(); return; }
+    if (kind === 'wolf') { talk([['narration', D.STORY.tiwGuide.wolf]]); return; }
     if (kind === 'kid') talk(KID_LINES[id] || [['villager', '……']]);
     else talk([['narration', CAT_LINES[id] || 'にゃー。']]);
   }
   function creatureAt(kind, id) {
+    if (kind === 'tiw') { const t = tiwAt(); return t && { x: t.x, y: t.y, tiles: [t.x, t.x] }; }
+    if (kind === 'wolf') return { x: TS.Village.WOLF.x, y: TS.Village.WOLF.y, tiles: [TS.Village.WOLF.x, TS.Village.WOLF.x] };
     const V = TS.Village, list = kind === 'kid' ? V.KIDS : V.CATS, c = list.find((c) => c.id === id);
     if (!c) return null;
     if (kind === 'cat' && c.walk) { const p = RD.catPose(c, performance.now()); return { x: Math.round(p.x), y: c.y, tiles: [c.walk[0], c.walk[1]] }; }
@@ -857,6 +868,76 @@
   }
 
   // ---- 出発 ----
+  /* ティウの冒険案内：一覧 → 質問 → 答え。「戻る」で一つ前の一覧へ、「閉じる」はいつも下に出す。
+   * 村の会話なので、ダンジョンのターン・満腹度は進まない（G.act を通さない）。開いている間は村の移動・タップを受けない（モーダル）。
+   * 入手の階・方法・用途は G.itemGuide（実際の出現の表・報酬・鍛冶屋・施設のデータ）から作る。onClose：閉じたあと（出発画面へ戻るなど） */
+  function openTiwGuide(onClose) {
+    if (UI.modals.length || !UI.S) return;
+    const TG = D.STORY.tiwGuide, V = UI.S.village;
+    const stack = [];
+    const port = SP.portraitURL('tiw', 72);
+    const wolfCv = SP.art && SP.art.village && TS.ASSETS.village && TS.ASSETS.village.wolf && SP.art.village[TS.ASSETS.village.wolf.name];
+    const wolfImg = wolfCv ? `<img class="tg-wolf" src="${wolfCv.toDataURL()}" alt="ティウの相棒のオオカミ">` : '';
+    const h = modal({ title: esc(TG.title), cls: 'tiw-guide', html: '', noClose: true, buttons: [
+      { label: '戻る', cls: 'tg-back', keep: true, onClick: () => { stack.pop(); show(); } },
+      { label: '閉じる', cls: 'primary', onClick: () => {} },
+    ], onClose });
+    const backBtn = h.el.querySelector('.tg-back');
+    const say = (lines) => `<div class="tg-say"><img class="tg-face" src="${port}" alt="ティウ"><div class="tg-bubble"><span class="tg-name">ティウ</span>${(Array.isArray(lines) ? lines : [lines]).map((t) => `<p>${t}</p>`).join('')}</div></div>`;
+    const choices = (list) => `<div class="tg-choices">${list.map((c, i) => `<button class="tg-choice" data-i="${i}">${c.icon ? `<img src="${c.icon}" alt="">` : ''}<span>${c.label}</span><i>›</i></button>`).join('')}</div>`;
+    const fl = (r) => r.map(([a, b]) => (a === b ? `地下${a}階` : `地下${a}〜${b}階`)).join('・');
+    function itemAnswer(g) {
+      const d = D.ITEMS[g.id], out = [];
+      if (g.floors.length) {
+        out.push(`<b>${fl(g.floors)}</b>の床に落ちていることがある。出ることがある、というだけで、その階で必ず拾えるわけじゃない。ボスの部屋がある階には出ないぞ。`);
+        if (g.enemyDrop) out.push(`その階の敵が倒れたとき、まれに（${Math.round(D.ENEMY_DROP_RATE * 100)}%）その階の道具を落とすことがある。これに混じることもあるな。`);
+        const deeper = g.floors[0][0] > g.reach;
+        if (deeper) out.push(`今の章で行けるのは地下${g.reach}階までだ。もっと先へ進めるようになってからだな。`);
+      }
+      for (const b of g.bosses.filter((b) => b.known)) out.push(`${D.CHAPTERS[b.ch].name}で${esc(D.ENEMIES[b.boss].name)}を初めて倒したときの報酬だ（1回だけ、必ず手に入る）。拾いそびれても、村へ帰れば倉庫に届くぞ。`);
+      if (g.shop) out.push('サイの店でも買えるぞ。');
+      if (g.type === 'material') {
+        const u = g.uses.map((x) => (x.kind === 'smith' ? `鍛冶屋で+${x.to}に強化するとき1個` : `「${esc(x.name)}」を建てるとき${x.n}個`));
+        if (u.length) out.push('使い道：' + u.join('、') + '。持ち帰ると素材箱に入る（倉庫の枠は使わない）。');
+      } else {
+        const u = [];
+        if (g.sell) u.push(`サイの店で${g.sell}Gで売れる`);
+        if (g.museum) u.push('展示室に寄贈できる');
+        out.push(u.length ? u.join('。') + '。' : '今のところ、売ったり展示したりはできない。大切にしまっておくお宝だな。');
+      }
+      if (g.id === 'baran_emblem') out.push('装備できる「竜の紋章」（アクセサリー）とは別の品だ。こっちは装備できないお宝のほうだぞ。');
+      return `<div class="tg-item"><img src="${SP.iconURL(d)}" alt=""><b>${esc(d.name)}</b></div>` + say(out);
+    }
+    const views = {
+      top: () => ({ html: say(TG.greet), list: [
+        { label: TG.menu.mats, go: 'mats' }, { label: TG.menu.treasure, go: 'treasure' }, { label: TG.menu.sets, go: 'sets' },
+        { label: TG.menu.tips, go: 'tips' }, { label: TG.menu.rumor, go: 'rumor' }, { label: '閉じる', close: true }] }),
+      mats: () => ({ html: say(TG.matsIntro), list: G.guideItems(UI.S, 'material').map((g) => ({ label: esc(g.name), icon: SP.iconURL(D.ITEMS[g.id]), answer: () => itemAnswer(g) })) }),
+      treasure: () => ({ html: say(TG.treasureIntro), list: G.guideItems(UI.S, 'treasure').map((g) => ({ label: esc(g.name), icon: SP.iconURL(D.ITEMS[g.id]), answer: () => itemAnswer(g) })) }),
+      sets: () => ({ html: say([TG.setsIntro, TG.setsNote]), list: TG.sets.map((x) => ({ label: esc(x.q), answer: () => say(x.a) })) }),
+      tips: () => ({ html: say(TG.tipsIntro), list: TG.tips.map((x) => ({ label: esc(x.q), answer: () => say(x.a) })) }),
+      rumor: () => ({ html: say(TG.rumorIntro), list: [{ label: esc(TG.rumorQ), answer: () => say(V.story.found && V.story.found.dragon_crest ? TG.rumorAfter : TG.rumorBefore) }] }),
+    };
+    function show() {
+      const top = stack[stack.length - 1] || { view: 'top' };
+      backBtn.hidden = !stack.length;
+      h.body.scrollTop = 0;
+      if (top.answer) { h.body.innerHTML = `<div class="tg-answer">${top.answer()}</div>`; return; }
+      const v = views[top.view]();
+      h.body.innerHTML = (top.view === 'top' ? wolfImg : '') + v.html + choices(v.list);
+      h.body.querySelectorAll('.tg-choice').forEach((b) => b.addEventListener('click', () => {
+        const c = v.list[+b.dataset.i];
+        AU.sfx('tap');
+        if (c.close) { h.close(); return; }
+        stack.push(c.go ? { view: c.go } : { answer: c.answer });
+        show();
+      }));
+    }
+    show();
+    UI.tiwGuide = h;
+  }
+  UI.openTiwGuide = openTiwGuide;
+
   /* 遺跡へ出発（革・古紙・金属のデザイン。ボタンの並びは固定：左上 ティウと話す／右上 帰還の巻物を借りる・受取済み／左下 やめる／右下 出発する）。
    * 21階からの出発（大魔王のローブ）があるときは、その上に横長のボタンで出す。おにぎりの貸し出しはサイの店だけ（出発画面には出さない）。
    * 帰還の巻物：1回の冒険につき無料で1枚（G.takeReturnScroll）。受け取りは任意。受け取ったら「受取済み」で押せない（閉じる・開き直す・読み込み直しでも戻らない）。
@@ -900,8 +981,7 @@
     if (G.canDeepStart(UI.S)) buttons.push({ label: G.DEEP_START + '階から出発', cls: 'dp-btn dp-paper dp-wide', disabled: !chk.ok, onClick: () => depart({ deep: true }) });
     // 左上：ティウと話す（竜の紋章を拾うまではヒント。拾ったあとは見送りのことば）
     buttons.push({ label: 'ティウと話す', cls: 'dp-btn dp-teal', html: `${DP_ICON.chat}<span>ティウと話す</span>`, onClick: () => {
-      const line = V.story.found && V.story.found.dragon_crest ? D.STORY.tiwDepart : D.STORY.tiwHint;
-      setTimeout(() => talk([['tiw', line]], reopen), 0);
+      setTimeout(() => openTiwGuide(reopen), 0);   // 村のティウ本人と同じ冒険案内。閉じると出発画面に戻る
     } });
     // 右上：帰還の巻物を借りる／受取済み
     buttons.push({ label: sc.taken ? '受取済み' : '帰還の巻物を借りる', cls: 'dp-btn dp-paper' + (sc.taken ? ' dp-done' : ''), disabled: sc.taken,
@@ -1516,7 +1596,10 @@
   function showWolf() {
     const run = UI.S.run, w = run && run.final && run.final.wolf;
     if (!w) return;
-    modal({ title: 'オオカミが来た！', html: `<p>ティウのオオカミが、村の倉庫まで荷物を運んでくれた。</p><div class="okbox">預けた品：${w.sent}個　受け取った品：${w.got}個</div><p class="note">（オオカミの絵と演出は準備中）</p><p>玉座の後ろの階段から、31階へ進もう。</p>`,
+    // 町でティウの隣にいる相棒のオオカミと同じ（同じ絵）
+    const wcv = SP.art && SP.art.village && TS.ASSETS.village.wolf && SP.art.village[TS.ASSETS.village.wolf.name];
+    const wimg = wcv ? `<img class="tg-wolf" src="${wcv.toDataURL()}" alt="ティウの相棒のオオカミ">` : '';
+    modal({ title: 'オオカミが来た！', html: `${wimg}<p>ティウの相棒のオオカミが、村の倉庫まで荷物を運んでくれた。</p><div class="okbox">預けた品：${w.sent}個　受け取った品：${w.got}個</div><p class="note">（運ぶ動きの演出は準備中）</p><p>玉座の後ろの階段から、31階へ進もう。</p>`,
       noClose: true, buttons: [{ label: '進む', cls: 'primary', onClick: () => { G.wolfShown(UI.S); save(); updateHud(); } }] });
   }
   UI.openRescue = openRescue;

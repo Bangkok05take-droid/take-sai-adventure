@@ -676,6 +676,12 @@
       else list.push({ y: (ct.y + 1) * T - 2, sprite: VART[VA.cats[ct.id] + '_' + p.pose], anchor: VA.catAnchor, fx: p.x, fy: ct.y, shadow: 6 });
       near.push({ kind: 'cat', id: ct.id, x: p.x, y: ct.y, w: 24, h: 22 });
     }
+    // ティウの相棒のオオカミ（素材の絵があるときだけ。読み込めなければ描かない）
+    if (VA && VA.wolf && VART[VA.wolf.name]) {
+      const wf = VLm.WOLF;
+      list.push({ y: (wf.y + 1) * T - 1.5, sprite: VART[VA.wolf.name], anchor: VA.wolf.anchor, fx: wf.x, fy: wf.y, shadow: 14 });
+      near.push({ kind: 'wolf', id: 'wolf', x: wf.x, y: wf.y, w: 44, h: 38 });
+    }
     // たけ
     {
       // 村でも同じ歩行コマ（左足・通過・右足・通過）。止まると待機。武器を装備していなければ剣のない絵

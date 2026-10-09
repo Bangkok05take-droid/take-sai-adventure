@@ -1328,6 +1328,7 @@
       const names = Object.keys(VA.props || {});
       for (const v of Object.values(VA.kids || {})) names.push(v + '_front', v + '_right', v + '_back');
       for (const v of Object.values(VA.cats || {})) names.push(v + '_sit', v + '_right', v + '_sleep');
+      if (VA.wolf) names.push(VA.wolf.name);
       for (const n of names) load(VA.dir + n + '.png', (img) => { const c = toCanvas(img); SP.art.village[n] = c; if (/_right$/.test(n)) SP.art.village[n.replace(/_right$/, '_left')] = flipCanvas(c); });
     }
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
