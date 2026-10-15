@@ -79,9 +79,12 @@
     /* ボスの登場ムービー（2026年10月、ZIP take-sai-crocodine-movie-v1）。どのボスで流すかは data.js の D.BOSS_INTROS（ボスID → 名前）。
      * 起動時には読み込まない（ボスの階に着いたときに準備し、部屋に入ったら流す）。720×1280・約10秒・H.264＋AAC（再エンコードなし）。
      * poster：読み込み中に出す最初の1コマ */
-    movies: { crocodine: { video: 'assets/movies/crocodine-intro.mp4', poster: 'assets/movies/crocodine-poster.jpg' },
-      // バランの登場ムービー（2026年10月、採用済みの完成動画。720×1280・約10秒・H.264＋AAC。再エンコードなし）。poster は動画の最初の1コマ
-      baran: { video: 'assets/movies/baran-intro.mp4', poster: 'assets/movies/baran-poster.jpg' },
+    /* 2026年10月：クロコダイン・フレイザード・バランの登場ムービーを「名前テロップ入り完成版」に差し替え（再エンコードなし）。
+     * 後半5秒に肩書きと名前のテロップが焼き込み済みなので、ゲーム側では動画の上に名前を重ねない。
+     * 古い動画がキャッシュで流れないよう、ファイル名を変えた（*-intro-titled.mp4／*-titled-poster.jpg）。poster は動画の最初の1コマ */
+    movies: { crocodine: { video: 'assets/movies/crocodine-intro-titled.mp4', poster: 'assets/movies/crocodine-titled-poster.jpg' },
+      flazzard: { video: 'assets/movies/flazzard-intro-titled.mp4', poster: 'assets/movies/flazzard-titled-poster.jpg' },
+      baran: { video: 'assets/movies/baran-intro-titled.mp4', poster: 'assets/movies/baran-titled-poster.jpg' },
       // 通常のバランの撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の霧でバランを連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
       baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' } },
     /* 村の素材（assets/village/、2026年10月「サイの店〜ヤナイ像の広場」）。寸法と足元の位置は assets/village/manifest.json。

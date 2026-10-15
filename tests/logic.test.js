@@ -2452,8 +2452,8 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
 });
 
 console.log('クロコダインの登場ムービー（2026年10月）');
-test('登場ムービー：クロコダインだけ。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
-  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'baran', 'truevearn']));
+test('登場ムービー：クロコダイン（フレイザード・バランも同じ仕組み）。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
+  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'baran', 'truevearn']));
   const S = toBossFloor(1, 1401), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
   const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
   const t0 = run.turn, pos = [b.x, b.y, b.hp];
@@ -2477,8 +2477,12 @@ test('登場ムービー：クロコダインだけ。初めての入室で pend
   // 以前のセーブ（introSeen なし）は読み込みで空の記録が足される
   const old = JSON.parse(SV.serialize(G.newState())); delete old.village.story.introSeen;
   eq(JSON.stringify(SV.deserialize(JSON.stringify(old)).village.story.introSeen), '{}');
-  // ほかのボスにはムービーがない
-  for (const ch of [2, 3, 5]) { const T = toBossFloor(ch, 1410 + ch), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
+  // フレイザード（第2章）も入室で登場ムービー
+  { const T = toBossFloor(2, 1412), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
+    const rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'flame') && !T.run.bossFight.engaged, 'flazzard intro');
+    const ev = G.finishBossIntro(T); eq(ev.filter((e) => e.t === 'bossStart').length, 1); assert(T.village.story.introSeen.flame); }
+  // ムービーの無いボス（キルバーン・ミストバーン）
+  for (const ch of [3, 5]) { const T = toBossFloor(ch, 1410 + ch), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
     const rr = G.act(T, { type: 'move', dir: 'right' }); assert(!rr.events.some((e) => e.t === 'bossIntro') && T.run.bossFight.engaged && !T.run.bossFight.intro, 'no intro ch' + ch); }
 });
 

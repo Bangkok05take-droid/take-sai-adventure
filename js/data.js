@@ -7,7 +7,8 @@
   D.SAVE_VERSION = 8;
   /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
   // baran：第4章・地下30階の玉座のバラン（通常のバラン戦）だけ。地下40階の裏ボス「竜人王バラン」は別のボスなので、ここには入れない
-  D.BOSS_INTROS = { croc: 'crocodine', baran: 'baran', truevearn: 'bodyReturn' };
+  // flame：第2章のフレイザード（2026年10月、名前テロップ入り完成版の動画で追加）
+  D.BOSS_INTROS = { croc: 'crocodine', flame: 'flazzard', baran: 'baran', truevearn: 'bodyReturn' };
   /* 撃破後ムービー（ボスID → 物語のムービーの名前）。章の探索でそのボスを倒したとき、撃破の演出のあとに流す。
    * 通常のバラン（baran）だけ。クリア後の竜人王バランは別のIDにするので、ここには入らない */
   D.BOSS_OUTROS = { baran: 'baranTaken' };   // truevearn：版3の35階、肉体返還（動画は未受領。仮の会話）

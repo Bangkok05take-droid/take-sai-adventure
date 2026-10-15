@@ -1,6 +1,6 @@
 // クロコダインの登場ムービーの確認：node tools/movie-check.js [リポジトリ] [出力フォルダ] [VP9のwebm] [full|cases|land]
 // このPCの Chromium（Playwright）は H.264 を再生できないので、同じ動画を VP9 にした webm を差し替えて流す（実際のスマホは mp4 をそのまま再生する）。
-// webm の作り方：ffmpeg -i assets/movies/crocodine-intro.mp4 -c:v libvpx-vp9 -b:v 1M -deadline realtime -cpu-used 8 -c:a libopus /tmp/croc-test.webm
+// webm の作り方：ffmpeg -i assets/movies/crocodine-intro-titled.mp4 -c:v libvpx-vp9 -b:v 1M -deadline realtime -cpu-used 8 -c:a libopus /tmp/croc-test.webm
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const ROOT = process.argv[2], OUT = process.argv[3], WEBM = process.argv[4]; fs.mkdirSync(OUT, { recursive: true });
@@ -13,7 +13,7 @@ const only = process.argv[5];
   async function setup(w, h, opts = {}) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
     const p = await ctx.newPage(); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
-    if (opts.route !== 'real') await p.route('**/crocodine-intro.mp4', async (route) => {
+    if (opts.route !== 'real') await p.route('**/crocodine-intro-titled.mp4', async (route) => {
       if (opts.route === '404') return route.fulfill({ status: 404, body: '' });
       if (opts.route === 'slow') await new Promise((r) => setTimeout(r, 9000));
       route.fulfill({ status: 200, contentType: 'video/webm', body: fs.readFileSync(WEBM) });

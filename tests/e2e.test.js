@@ -1665,12 +1665,14 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   await test('ブラウザのエラー・読み込み失敗がない', async () => {
     assert(errors.length === 0, errors.join('\n'));
   });
-  await test('登場ムービーの動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
-    const r = await p.evaluate(async () => { const M = TS.ASSETS.movies.crocodine, out = {};
-      for (const [k, u] of Object.entries(M)) { const res = await fetch(u); const b = await res.arrayBuffer(); out[k] = { url: res.url, status: res.status, size: b.byteLength, head: Array.from(new Uint8Array(b.slice(0, 12))).map((x) => String.fromCharCode(x)).join('') }; }
-      return out; });
-    assert(r.video.status === 200 && r.video.size > 1e6 && r.video.head.slice(4, 8) === 'ftyp' && /\/take-sai-adventure\/assets\/movies\//.test(r.video.url), 'video ' + JSON.stringify(r.video));
-    assert(r.poster.status === 200 && r.poster.size > 1e4, 'poster ' + JSON.stringify(r.poster));
+  await test('登場ムービー（名前テロップ入り：クロコダイン・フレイザード・バラン）の動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
+    for (const name of ['crocodine', 'flazzard', 'baran']) {
+      const r = await p.evaluate(async (name) => { const M = TS.ASSETS.movies[name], out = {};
+        for (const [k, u] of Object.entries(M)) { const res = await fetch(u); const b = await res.arrayBuffer(); out[k] = { url: res.url, status: res.status, size: b.byteLength, head: Array.from(new Uint8Array(b.slice(0, 12))).map((x) => String.fromCharCode(x)).join('') }; }
+        return out; }, name);
+      assert(r.video.status === 200 && r.video.size > 1e6 && r.video.head.slice(4, 8) === 'ftyp' && /\/take-sai-adventure\/assets\/movies\/[a-z]+-intro-titled\.mp4$/.test(r.video.url), name + ' video ' + JSON.stringify(r.video));
+      assert(r.poster.status === 200 && r.poster.size > 1e4, name + ' poster ' + JSON.stringify(r.poster));
+    }
   });
 
   await browser.close();
