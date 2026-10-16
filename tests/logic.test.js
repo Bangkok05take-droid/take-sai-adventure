@@ -2843,6 +2843,28 @@ test('覇者の剣・盾：前のセーブ（勇者の剣・盾を持ち物・�
   assert(L.village.story.rewardClaimed.mist);
 });
 
+console.log('旅商人の買い取り（2026年10月）');
+test('旅商人の買い取り：お宝の分類で町で売れる品だけ、町の売値の50%（切り捨て）。武器・盾・アクセサリー・素材・消耗品・売れないお宝は買い取らない。町の売値は変わらない', () => {
+  const S = findMerchant(8300, 3, 13), r = S.run;
+  r.bag = r.bag.filter((i) => i.id === 'return_scroll'); r.runGold = 100;
+  const mk = (id) => { const it = G.makeItem(S, id); r.bag.push(it); return it; };
+  const lotus = mk('golden_lotus'), crown = mk('dream_crown'), tear = mk('croc_tear');
+  const no = ['hero_sword', 'golden_shield', 'poison_ring', 'amber_shard', 'herb', 'banana', 'thunder_staff', 'baran_emblem', 'hero_sword_relic', 'hero_shield_relic', 'return_scroll'].map((id) => (id === 'return_scroll' ? r.bag[0] : mk(id)));
+  for (const it of no) { assert(!G.merchantBuysItem(it), it.id); eq(G.merchantSellPrice(it), 0); const n = r.bag.length, g = r.runGold; assert(!G.merchantSell(S, it.uid).ok, it.id + ' refused'); eq(r.bag.length, n); eq(r.runGold, g); }
+  // 町の売値の半額
+  eq(G.merchantSellPrice(lotus), 130); eq(G.merchantSellPrice(crown), 1000); eq(G.merchantSellPrice(tear), 175);
+  const t0 = r.turn, n0 = r.bag.length;
+  const res = G.merchantSell(S, lotus.uid); assert(res.ok && res.price === 130);
+  eq(r.runGold, 230); eq(r.bag.length, n0 - 1); assert(!r.bag.includes(lotus)); eq(r.turn, t0, 'no turn');
+  assert(!G.merchantSell(S, lotus.uid).ok, 'cannot sell twice');
+  // 端数は切り捨て（仮のお宝で確かめる）
+  D.ITEMS._odd = { name: 'テスト', type: 'treasure', sell: 75 }; eq(G.merchantSellPrice({ id: '_odd', uid: -1 }), 37); delete D.ITEMS._odd;
+  // 町の売値は今までどおり
+  eq(G.sellPrice(crown), 2000); assert(G.canSell(G.makeItem(S, 'hero_sword')), 'weapons still sell in town'); assert(!G.canSell(G.makeItem(S, 'baran_emblem')));
+  // 保存・読み込み直しでも売ったまま
+  const L = SV.deserialize(SV.serialize(S)); eq(L.run.runGold, 230); assert(!L.run.bag.some((i) => i.uid === lotus.uid));
+});
+
 console.log('ティウの案内（助言とゲームの動きが合っているか）');
 test('ティウの案内：どんそくの粉＋「隣に来たら一発、次は一歩下がる」をくり返すと、近づいて殴る敵には殴られない（15ターン・2ターンに1回）', () => {
   for (const type of ['frog', 'bat', 'statue']) {   // 近づいて殴る・2歩動く（移動のあとは殴らない）・振りかぶる敵

@@ -466,6 +466,9 @@
    * 支払いは探索中のお金から先に使い、足りない分は村の資金から（商人が村へ受け取りに行く「つけ払い」）。 */
   D.MERCHANT = {
     name: '謎の旅商人', minFloor: 8, chance: 0.14, maxKinds: 3, stock: [1, 2], priceSpread: 0.1,
+    /* 買い取り（2026年10月）：分類が「お宝」（type: 'treasure'）の品だけ。町の売値（G.sellPrice）の50%（端数は切り捨て。
+     * 展示室のお礼30%・使い切った杖の1/3と同じ Math.floor）。売れない品（noSell）は買い取らない。代金は探索中のお金に入る */
+    buyRate: 0.5,
     goods: [
       { id: 'amber_shard', from: 8, price: 600 },
       { id: 'bronze_shard', from: 13, price: 900 },

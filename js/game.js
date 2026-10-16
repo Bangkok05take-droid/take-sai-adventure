@@ -467,6 +467,24 @@
     return { ok: true, msg: D.ITEMS[g.id].name + 'を買った。', paidRun, paidVillage };
   };
 
+  /* 旅商人の買い取り：お宝の分類（type: 'treasure'）で、町で売れる品だけ。名前や見た目では判定しない。
+   * 武器・盾・アクセサリー・素材・消耗品・売れないお宝（noSell）は買い取らない。値段は町の売値の50%（切り捨て） */
+  G.merchantBuysItem = (it) => !!it && G.def(it).type === 'treasure' && G.canSell(it);
+  G.merchantSellPrice = (it) => (G.merchantBuysItem(it) ? Math.floor(G.sellPrice(it) * D.MERCHANT.buyRate) : 0);
+  /* 旅商人にお宝を1つ売る。ターンは進まない。代金は探索中のお金へ。戻り値 { ok, msg, price } */
+  G.merchantSell = function (S, uid) {
+    const run = S.run;
+    if (!run || run.over || !run.merchant) return { ok: false, msg: '商人がいない。' };
+    const it = run.bag.find((i) => i.uid === uid);
+    if (!it) return { ok: false, msg: 'その品は持っていない。' };
+    if (!G.merchantBuysItem(it)) return { ok: false, msg: G.itemName(it) + 'は買い取ってもらえない（お宝だけ）。' };
+    const price = G.merchantSellPrice(it);
+    run.bag.splice(run.bag.indexOf(it), 1);
+    run.runGold += price;
+    G.log(run, D.MERCHANT.name + 'に' + G.itemName(it) + 'を' + price + 'Gで売った。');
+    return { ok: true, msg: G.itemName(it) + 'を' + price + 'Gで売った。', price };
+  };
+
   // たけがモンスターハウスに初めて入ったか（入ったら敵が目を覚ます）
   function checkMonsterHouse(run, ev) {
     const m = run.map;

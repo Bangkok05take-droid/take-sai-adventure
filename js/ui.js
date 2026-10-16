@@ -2106,8 +2106,36 @@
         html += `<button class="row ${g.left > 0 ? '' : 'disabled'}" data-i="${i}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(d.name)}<small>${esc(materialUses(g.id))}</small></span><span class="pr">${right}</span></button>`;
       });
       html += '</div><p class="note">素材は持ち帰ると素材箱に入ります。倒れると、買った素材も持ち物と一緒に失います。</p>';
+      // お宝の買い取り（町の売値の半額。お宝の分類で、町で売れる品だけ）
+      const tre = run.bag.filter((it) => G.def(it).type === 'treasure');
+      html += `<h3>お宝の買い取り</h3><p class="note">持っている<b>お宝</b>を、<b>町の半額</b>で買い取ります（端数は切り捨て）。武器・盾・アクセサリー・素材・消耗品は買い取りません。代金は探索中のお金に入ります。</p><div class="list">`;
+      html += tre.map((it) => { const ok = G.merchantBuysItem(it), d = G.def(it);
+        return `<button class="row sellrow ${ok ? '' : 'disabled'}" data-uid="${it.uid}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(G.itemName(it))}<small>${ok ? '町の売値 ' + G.sellPrice(it) + 'G' : '売れないお宝'}</small></span><span class="pr">${ok ? G.merchantSellPrice(it) + 'G' : '買い取れない'}</span></button>`; }).join('') || '<p class="note">買い取れるお宝を持っていない。</p>';
+      html += '</div>';
       h.body.innerHTML = html;
-      h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); detail(+r.dataset.i); }));
+      h.body.querySelectorAll('.row:not(.sellrow)').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); detail(+r.dataset.i); }));
+      h.body.querySelectorAll('.row.sellrow').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); sellDetail(+r.dataset.uid); }));
+    }
+    function sellDetail(uid) {
+      const it = run.bag.find((i) => i.uid === uid);
+      if (!it) return;
+      const d = G.def(it), ok = G.merchantBuysItem(it), price = G.merchantSellPrice(it);
+      const html = `<div class="detail-head"><img src="${SP.iconURL(d)}" alt=""><div><b>${esc(G.itemName(it))}</b></div></div>
+        <div class="kv"><span>品物</span><span>${esc(G.itemName(it))}</span><span>個数</span><span>1個</span>
+        <span>町の売値</span><span>${ok ? G.sellPrice(it) + 'G' : '売れない'}</span><span>買い取り額</span><span>${ok ? price + 'G（町の半額）' : '買い取れない'}</span>
+        <span>売ったあと</span><span>探索中のお金 ${run.runGold + price}G／持ち物 ${run.bag.length - (ok ? 1 : 0)}/${D.BAG_SIZE}</span></div>
+        ${ok ? '<p class="note">ターンは進みません。</p>' : '<p class="warnbox">このお宝は売れません。</p>'}`;
+      let done = false;
+      modal({ title: 'お宝を売る', html, buttons: [
+        { label: 'やめる' },
+        { label: '売る', cls: 'primary', disabled: !ok, onClick: () => {
+          if (done) return false; done = true;   // 確定は1回だけ
+          const res = G.merchantSell(UI.S, uid);
+          if (res.ok) { AU.sfx('gold'); line = ML.thanks; toast(res.msg); } else info(D.MERCHANT.name, esc(res.msg));
+          save(); updateHud(); pushLog();
+          setTimeout(render, 0);
+        } },
+      ] });
     }
     function detail(i) {
       const g = m.stock[i], d = D.ITEMS[g.id], w = G.merchantWallet(UI.S);
