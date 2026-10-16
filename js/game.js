@@ -66,6 +66,7 @@
       funds: D.START_FUNDS, stage: 1, bag: [], storage: [], nextUid: 1,
       cleared: false, clears: 0, runs: 0, returns: 0, defeats: 0, bestFloor: 0,
       legacyClear10: false, bossKills: {}, materials: {}, scrollTaken: false,
+      bossObtained: {}, bossObtainedInit: true,   // ボスの報酬の品を一度でも手に入れたか（拾った・倉庫に届いた）。買い戻しの「入手履歴」
       storageLv: 1, smithLv: 0, built: {}, decor: {}, diner: false, museum: false, meal: null, donated: {},
       lastResult: null, seenIntro: false, seenEnding: false,
       story: G.newStory(),
@@ -436,9 +437,7 @@
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && DG.passable(m, x + dx, y + dy) && !roomTile(x + dx, y + dy)) nearDoor = true;
         if (nearDoor) continue;
         // 品ぞろえ：この階で並べられる素材のうち、貴重なものから最大3種類
-        const kinds = M.goods.filter((gd) => f >= gd.from).sort((a, b) => b.price - a.price).slice(0, M.maxKinds);
-        const stock = kinds.map((gd) => ({ id: gd.id, price: Math.round(gd.price * (1 + (R.next(mr) * 2 - 1) * M.priceSpread) / 10) * 10, left: R.int(mr, M.stock[0], M.stock[1]) }));
-        run.merchant = { x, y, stock, met: false };
+        run.merchant = { x, y, stock: merchantStock(f, mr), met: false };
         return;
       }
     }
@@ -483,6 +482,89 @@
     run.runGold += price;
     G.log(run, D.MERCHANT.name + 'に' + G.itemName(it) + 'を' + price + 'Gで売った。');
     return { ok: true, msg: G.itemName(it) + 'を' + price + 'Gで売った。', price };
+  };
+
+  // ---------- なくしたボスの報酬の買い戻し ----------
+  /* 対象の品と値段：章の報酬の品（D.CHAPTERS[c].reward.items）。値段は報酬をくれたボス（D.MERCHANT.buyback）。値段の決まっていないボスは対象外 */
+  G.buybackPrice = function (id) {
+    for (const C of Object.values(D.CHAPTERS)) if (C.reward.items.includes(id) && D.MERCHANT.buyback[C.boss]) return { boss: C.boss, price: D.MERCHANT.buyback[C.boss] };
+    return null;
+  };
+  G.markBossObtained = function (V, id) { if (G.buybackPrice(id)) { V.bossObtained = V.bossObtained || {}; V.bossObtained[id] = true; } };
+  /* 今その品を持っているか（なくしていないか）：持ち物（装備中を含む）・倉庫・探索中の持ち物・この階の床（未回収の報酬・落とした品）・
+   * 展示室に寄贈済み。ティウの交換予定は持ち物・倉庫の品の番号を指すだけなので、品はどちらかにある */
+  G.holdsItem = function (S, id) {
+    const V = S.village, run = S.run;
+    const has = (list) => (list || []).some((it) => it && it.id === id);
+    if (has(V.bag) || has(V.storage)) return true;
+    if (run && (has(run.bag) || (run.floorItems || []).some((f) => f.item && f.item.id === id))) return true;
+    if ((V.donated || {})[id]) return true;
+    return false;
+  };
+  /* 買い戻せる品：入手履歴があって、今は持っていない品。ボスを倒しただけで、まだ受け取っていない品は対象にしない */
+  G.buybackList = function (S) {
+    const V = S.village, out = [];
+    for (const C of Object.values(D.CHAPTERS)) for (const id of C.reward.items) {
+      const bp = G.buybackPrice(id);
+      if (!bp || out.some((x) => x.id === id) || !(V.bossObtained || {})[id] || G.holdsItem(S, id)) continue;
+      out.push({ id, boss: bp.boss, price: bp.price });
+    }
+    return out;
+  };
+  /* 1個買い戻す。ターンは進まない。買う直前に持っているかを確かめ直す。払い方は素材と同じ（探索中のお金から先に、足りない分は村の資金）。
+   * 強化値は付かない（+0の新しい品）。戻り値 { ok, msg, paidRun, paidVillage } */
+  G.merchantBuyback = function (S, id) {
+    const run = S.run, V = S.village;
+    if (!run || run.over || !run.merchant) return { ok: false, msg: '商人がいない。' };
+    const g = G.buybackList(S).find((x) => x.id === id);
+    if (!g) return { ok: false, msg: 'その品は買い戻せない（持っている・まだ手に入れていない）。' };
+    if (run.bag.length >= D.BAG_SIZE) return { ok: false, msg: '持ち物がいっぱいです（' + D.BAG_SIZE + '個まで）。' };
+    const w = G.merchantWallet(S);
+    if (w.total < g.price) return { ok: false, msg: 'お金が足りません（あと' + (g.price - w.total) + 'G）。' };
+    const paidRun = Math.min(run.runGold, g.price), paidVillage = g.price - paidRun;
+    run.runGold -= paidRun; V.funds -= paidVillage;
+    run.bag.push(G.makeItem(S, id));
+    G.log(run, D.MERCHANT.name + 'から' + D.ITEMS[id].name + 'を' + g.price + 'Gで買い戻した。');
+    return { ok: true, msg: D.ITEMS[id].name + 'を買い戻した。', paidRun, paidVillage };
+  };
+
+  // ---------- 商人の呼鈴 ----------
+  // 品ぞろえ（ふつうの旅商人と同じ：この階で並べられる素材のうち、貴重なものから最大3種類。値段は固定）
+  function merchantStock(f, mr) {
+    const M = D.MERCHANT;
+    return M.goods.filter((gd) => f >= gd.from).sort((a, b) => b.price - a.price).slice(0, M.maxKinds)
+      .map((gd) => ({ id: gd.id, price: Math.round(gd.price * (1 + (R.next(mr) * 2 - 1) * M.priceSpread) / 10) * 10, left: R.int(mr, M.stock[0], M.stock[1]) }));
+  }
+  /* 呼べるか。ボス戦中（ボス部屋の戦いが終わっていない階）・もう商人がいる階では呼べない。戻り値：理由の文（呼べるなら null） */
+  G.bellBlock = function (S) {
+    const run = S.run;
+    if (!run || run.over) return '探索中だけ使える。';
+    if (run.bossFight && !run.bossFight.won) return 'ボスのいる階では、呼鈴の音が届かない。';
+    if (run.merchant) return '旅商人はもうこの階にいる。';
+    return null;
+  };
+  /* 歩いて行ける安全な空きマス（部屋の中・たけから4マス以上・階段や道具や敵の上でない・モンスターハウスの部屋でない）に商人を置く。
+   * 置けたら true（呼鈴を使った扱い）。置けなければ false（呼鈴は減らない） */
+  G.summonMerchant = function (S) {
+    const run = S.run, m = run.map, p = run.player;
+    if (G.bellBlock(S)) return false;
+    const W = m.w, seen = new Uint8Array(W * m.h), q = [[p.x, p.y]]; seen[p.y * W + p.x] = 1;
+    const cand = [];
+    const taken = (x, y) => [run.stairs, run.returnPoint, run.portal, run.crack].some((o) => o && o.x === x && o.y === y) || G.itemAt(run, x, y) || G.enemyAt(run, x, y) || (x === p.x && y === p.y);
+    while (q.length) {
+      const [x, y] = q.shift();
+      const r = DG.roomAt(m, x, y);
+      if (r && r.id !== m.monsterHouse && Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) >= 4 && !taken(x, y)) cand.push({ x, y });
+      for (const [dx, dy] of Object.values(DIRS)) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= m.h || seen[ny * W + nx] || !G.canStep(m, x, y, dx, dy)) continue;
+        seen[ny * W + nx] = 1; q.push([nx, ny]);
+      }
+    }
+    if (!cand.length) return false;
+    const pos = cand[R.int(run.rng, 0, cand.length - 1)];
+    run.merchant = { x: pos.x, y: pos.y, stock: merchantStock(run.floor, run.rng), met: false, called: true };
+    return true;
   };
 
   // たけがモンスターハウスに初めて入ったか（入ったら敵が目を覚ます）
@@ -694,6 +776,7 @@
     }
     run.bag.push(f.item);
     run.floorItems.splice(run.floorItems.indexOf(f), 1);
+    if (f.item.bossReward) G.markBossObtained(S.village, f.item.id);   // ボスの報酬を手に入れた（買い戻しの入手履歴）
     G.log(run, G.itemName(f.item) + 'を拾った。');
     ev.push({ t: 'pickup', x: p.x, y: p.y, id: f.item.id });
     if (f.item.id === 'wish_orb') G.log(run, 'ついに願いの宝珠を手に入れた！帰還口から村へ帰ろう。');
@@ -1040,6 +1123,14 @@
     // 戦いの前のボスには、道具・杖の効果をかけない（使う前に止める。道具・杖の回数・ターンは減らない）
     if (G.bossWaiting(run) && waitingBossTargeted(run, d, dir)) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; }
     switch (d.type) {
+      case 'bell': {   // 商人の呼鈴：呼べたときだけ1個使う（ターンも1つ）。呼べないときは減らない・ターンも進まない
+        const why = G.bellBlock(S);
+        if (why || !G.summonMerchant(S)) { G.log(run, why || 'この階には、商人が来られる場所がない。'); ev.push({ t: 'warn', msg: why || '商人を呼べない' }); return false; }
+        remove();
+        G.log(run, d.name + 'を鳴らした。この階のどこかに旅商人が現れた！');
+        ev.push({ t: 'merchantCalled', x: run.merchant.x, y: run.merchant.y });
+        return true;
+      }
       case 'heal': {
         const before = p.hp;
         p.hp = Math.min(p.maxhp, p.hp + d.heal);
@@ -1918,7 +2009,7 @@
     for (const it of run.bag.concat(left)) delete it.bossReward;
     if (left.length) {
       V.storage = V.storage || [];
-      for (const it of left) V.storage.push(it);
+      for (const it of left) { V.storage.push(it); G.markBossObtained(V, it.id); }   // 拾わずに帰った報酬は倉庫に届く＝手に入れた
       run.floorItems = run.floorItems.filter((f) => !(f.item && left.includes(f.item)));
       V.rewardNotice = (V.rewardNotice || []).concat(left.map((it) => it.id));
       res.rewardToStorage = left.map((it) => it.id);
@@ -2240,6 +2331,20 @@
   G.guideItems = function (S, type) {
     return Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === type).map((id) => G.itemGuide(S, id))
       .filter((g) => g.floors.length || g.bosses.some((b) => b.known));
+  };
+
+  // ---------- こもれびの家への寄付（商人の呼鈴） ----------
+  // 街のイベントのコンプリート（D.BELL.unlock）。判定が決まるまでは寄付できない
+  G.bellDonationOpen = (S) => !!(D.BELL.unlock && D.BELL.unlock(S));
+  G.donateForBell = function (S) {
+    const V = S.village;
+    if (S.run) return { ok: false, msg: '探索中です。' };
+    if (!G.bellDonationOpen(S)) return { ok: false, msg: 'まだ寄付は受け付けていない。' };
+    if (V.funds < D.BELL.donation) return { ok: false, msg: '資金が足りません（あと' + (D.BELL.donation - V.funds) + 'G）。' };
+    if (V.bag.length >= D.BAG_SIZE) return { ok: false, msg: 'バッグがいっぱいです。' };
+    V.funds -= D.BELL.donation;
+    V.bag.push(G.makeItem(S, 'merchant_bell'));
+    return { ok: true, msg: '商人の呼鈴をもらった。' };
   };
 
   TS.Game = G;

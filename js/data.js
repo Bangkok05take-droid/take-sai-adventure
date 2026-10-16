@@ -133,6 +133,10 @@
       desc: '読むと雷が鳴り、見えている敵すべてに35ダメージ（防御無視）。' },
     antidote:      { name: 'どくけしそう', type: 'cure', price: 40, sell: 12, icon: 'herb', tint: 'cure',
       desc: '毒を治し、しばらく毒にかからなくなる。HPも20回復。' },
+    // 商人の呼鈴（2026年10月）：使うと、この階のどこか（歩いて行ける安全な空きマス）に旅商人が現れる。使い切り。
+    // 呼べなかったとき（ボス戦中・もう商人がいる・置ける所が無い）は減らない。売値は未決定なので売れない。絵は仮（コードの鐘の絵）
+    merchant_bell: { name: '商人の呼鈴', type: 'bell', sell: 0, noSell: true, icon: 'bell', tint: 'gold',
+      desc: '鳴らすと、この階のどこかに謎の旅商人が現れる（探して会いに行こう）。使い切り。ボス戦中は使えない。' },
     return_scroll: { name: '帰還の巻物', type: 'return', sell: 0, noSell: true, noStore: true, icon: 'scroll', tint: 'return',
       desc: 'その場で探索を終え、持ち物と探索中のお金を村へ持ち帰る。出発画面で1回の冒険につき1枚、無料で借りられる。帰還・敗北で消える。' },
     // ---- 章の報酬（ボスを倒すと現れる装備） ----
@@ -465,17 +469,25 @@
    * from：その素材を並べ始める階（拾える階より3階ほど手前から。深いほど貴重な素材が並ぶ）。
    * 支払いは探索中のお金から先に使い、足りない分は村の資金から（商人が村へ受け取りに行く「つけ払い」）。 */
   D.MERCHANT = {
-    name: '謎の旅商人', minFloor: 8, chance: 0.14, maxKinds: 3, stock: [1, 2], priceSpread: 0.1,
+    // 2026年10月：素材の値段は分かりやすい4段階に固定（ばらつき priceSpread は 0）
+    name: '謎の旅商人', minFloor: 8, chance: 0.14, maxKinds: 3, stock: [1, 2], priceSpread: 0,
     /* 買い取り（2026年10月）：分類が「お宝」（type: 'treasure'）の品だけ。町の売値（G.sellPrice）の50%（端数は切り捨て。
      * 展示室のお礼30%・使い切った杖の1/3と同じ Math.floor）。売れない品（noSell）は買い取らない。代金は探索中のお金に入る */
     buyRate: 0.5,
     goods: [
-      { id: 'amber_shard', from: 8, price: 600 },
-      { id: 'bronze_shard', from: 13, price: 900 },
-      { id: 'crystal_shard', from: 18, price: 1400 },
-      { id: 'gold_leaf', from: 23, price: 2200 },
+      { id: 'amber_shard', from: 8, price: 1000 },
+      { id: 'bronze_shard', from: 13, price: 2000 },
+      { id: 'crystal_shard', from: 18, price: 3000 },
+      { id: 'gold_leaf', from: 23, price: 4000 },
     ],
+    /* なくしたボスの報酬の買い戻し（2026年10月）：1個の値段は、報酬をくれたボスで決まる（同じボスの品は同じ値段）。
+     * 対象は章の報酬の品（D.CHAPTERS[c].reward.items、G.buybackPrice）。最終章の報酬（大魔王のローブ）は大魔王バーン。
+     * 竜人王バランの報酬・アクセサリーの竜の紋章（橋の向こうで拾う）・黄金の象などのくり返し出る品・素材は対象外（未指定） */
+    buyback: { croc: 1000, flame: 2000, kill: 3000, baran: 4000, mist: 5000, vearn: 6000 },
   };
+  /* 商人の呼鈴（2026年10月）：街のイベントをコンプリートしたあと、こもれびの家（村の発展）に寄付すると1個もらえる。
+   * 「街のイベントのコンプリート」の判定はまだ決まっていない → unlock が null のあいだは寄付できない（G.bellDonationOpen）。 */
+  D.BELL = { donation: 1000, unlock: null };
   // 床に落ちているお金（浅い階は控えめ、深いほど多い）
   D.goldAmount = (floor, r) => Math.round((8 + r * 12) * (1 + 0.28 * (floor - 1)));
 

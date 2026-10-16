@@ -144,12 +144,30 @@
       data.village = V;
       data.version = 8;
     }
+    const needObtained = !(data.village && data.village.bossObtainedInit);   // 買い戻しの入手履歴が無いセーブ（下で作る）
     const def = G.newState();
     fill(data, def);
     fill(data.village, def.village);
     const st = fill(data.village.story, G.newStory());
     for (const k of ['defeated', 'rewardClaimed', 'returnDone']) fill(st[k], G.newStory()[k]);
     fill(data.settings, def.settings);
+    /* ボスの報酬の入手履歴（2026年10月、買い戻し用）が無いセーブ：一度だけ、今わかる範囲で作る。
+     * ・今持っている品（持ち物・倉庫・探索中の持ち物・展示室）は手に入れた
+     * ・第1〜5章：章をクリアして村へ帰った（returnDone）なら、その章の報酬はどれも手に入れた（拾ったか、倉庫に届いている）
+     * ・大魔王のローブ：大魔王バーンを倒していて、今の探索の床に置いたまま（未回収）でなければ手に入れた */
+    if (needObtained) {
+      const V = data.village, st2 = V.story, ob = V.bossObtained = V.bossObtained || {};
+      const run = data.run;
+      const held = (V.bag || []).concat(V.storage || [], run ? run.bag || [] : []);
+      for (const C of Object.values(D.CHAPTERS)) for (const id of C.reward.items) {
+        if (!(D.MERCHANT.buyback || {})[C.boss]) continue;
+        const onFloor = run && (run.floorItems || []).some((f) => f.item && f.item.id === id);
+        if (held.some((it) => it && it.id === id) || (V.donated || {})[id]) ob[id] = true;
+        else if (!C.final && st2.returnDone && st2.returnDone[C.boss]) ob[id] = true;
+        else if (C.final && st2.defeated && (st2.defeated.vearn || st2.defeated.truevearn) && !onFloor) ob[id] = true;
+      }
+      V.bossObtainedInit = true;
+    }
     // 施設の段階（旧セーブの「村の発展」段階から倉庫・鍛冶屋の段階を引き継ぐ）
     G.applyFacilities(data.village);
     if (data.run) {

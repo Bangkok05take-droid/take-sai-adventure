@@ -744,7 +744,14 @@
       if (!left.length) html += '<div class="okbox">🏆 すべて完成しました！</div>';
       else if (!list.length) html += `<div class="okbox">${t === 'facility' ? '施設' : '村の飾り'}はすべて完成しました！</div>`;
       html += '<div class="list">' + list.map(facilityRow).join('') + '</div>';
+      // 街のイベントをコンプリートしたあと：1,000Gの寄付で商人の呼鈴（何度でも）
+      if (t === 'facility' && G.bellDonationOpen(UI.S)) html += `<h3>こもれびの家への寄付</h3><div class="list"><button class="row bell-donate"><img src="${SP.iconURL(D.ITEMS.merchant_bell)}" alt=""><span class="nm">寄付して商人の呼鈴をもらう<small>${esc(D.ITEMS.merchant_bell.desc)}</small></span><span class="pr">${D.BELL.donation}G</span></button></div>`;
       h.body.innerHTML = html;
+      const bd = h.body.querySelector('.bell-donate');
+      if (bd) bd.addEventListener('click', () => confirmBox('こもれびの家への寄付', `<p><b>${D.BELL.donation}G</b> を寄付して、商人の呼鈴を1個もらいますか？</p><p class="note">資金 ${V.funds}G → ${V.funds - D.BELL.donation}G／バッグ ${V.bag.length}/${D.BAG_SIZE}</p>`, '寄付する', () => {
+        const res = G.donateForBell(UI.S);
+        if (res.ok) { AU.sfx('pickup'); villageChanged(); toast(res.msg); render(tab); } else info('寄付', esc(res.msg));
+      }));
       const shownAt = performance.now();   // 一覧が変わった直後の連打で、次の項目を誤って選ばない
       h.body.querySelectorAll('.stage').forEach((r) => r.addEventListener('click', () => {
         if (performance.now() - shownAt < 350) return;
@@ -854,7 +861,7 @@
   function detailHtml(it) {
     const d = G.def(it);
     const typeName = { weapon: '武器', shield: '盾', accessory: 'アクセサリー（装備している間だけ効く）', heal: '回復', food: '食料', sleep: '道具', staff: '杖', return: '巻物', map: '巻物', sense: '巻物', fire: '巻物',
-      treasure: 'お宝', orb: '大切な物', material: '素材', charm: '護符（持っているだけで効く）', cure: '回復', slow: '道具', warp: '道具', clear: '道具' }[d.type] || '道具';
+      treasure: 'お宝', orb: '大切な物', material: '素材', charm: '護符（持っているだけで効く）', cure: '回復', slow: '道具', warp: '道具', clear: '道具', bell: '道具' }[d.type] || '道具';
     let kv = `<span>種類</span><span>${typeName}</span>`;
     if (d.type === 'weapon') kv += `<span>攻撃力</span><span>+${d.atk + (it.plus || 0)}${it.plus ? `（強化+${it.plus}）` : ''}</span>`;
     if (d.type === 'shield') kv += `<span>防御力</span><span>+${d.def + (it.plus || 0)}${it.plus ? `（強化+${it.plus}）` : ''}</span>`;
@@ -916,7 +923,8 @@
       treasure: () => ({ html: say(TG.treasureIntro), list: G.guideItems(UI.S, 'treasure').map((g) => ({ label: esc(g.name), icon: SP.iconURL(D.ITEMS[g.id]), answer: () => itemAnswer(g) })) }),
       sets: () => ({ html: say([TG.setsIntro, TG.setsNote]), list: TG.sets.map((x) => ({ label: esc(x.q), answer: () => say(x.a) })) }),
       tips: () => ({ html: say(TG.tipsIntro), list: TG.tips.map((x) => ({ label: esc(x.q), answer: () => say(x.a) })) }),
-      rumor: () => ({ html: say(TG.rumorIntro), list: [{ label: esc(TG.rumorQ), answer: () => say(V.story.found && V.story.found.dragon_crest ? TG.rumorAfter : TG.rumorBefore) }] }),
+      rumor: () => ({ html: say(TG.rumorIntro), list: [{ label: esc(TG.rumorQ), answer: () => say(V.story.found && V.story.found.dragon_crest ? TG.rumorAfter : TG.rumorBefore) },
+        { label: esc(TG.rumorLostQ), answer: () => say(TG.rumorLost) }] }),
     };
     function show() {
       const top = stack[stack.length - 1] || { view: 'top' };
@@ -1790,6 +1798,8 @@
         case 'reveal': RD.addFx({ t: 'reveal', x: p.x, y: p.y, dur: 700 }); AU.sfx('heal'); break;
         // 気配察知：たけから赤い輪が広がる（敵の印は地図に出る）
         case 'sense': RD.addFx({ t: 'reveal', x: p.x, y: p.y, dur: 700, color: '#ff8a6a' }); AU.sfx('warn'); toast('敵の気配が地図に出た（この階にいる間）'); break;
+        // 商人の呼鈴：この階のどこかに旅商人が現れた（すぐには取引画面を開かない。探して会いに行く）
+        case 'merchantCalled': AU.sfx('levelup'); toast('チリン…この階のどこかに旅商人が現れた！'); break;
         // 帰還（成立したときだけ）：足元に青緑の魔法陣と光の柱 → 村へ
         case 'return': RD.addFx({ t: 'circle', x: e.x !== undefined ? e.x : p.x, y: e.y !== undefined ? e.y : p.y, dur: 720 }); AU.sfx('return'); break;
         case 'portal': AU.sfx('levelup'); toast('帰還口が開いた！', 'levelup'); break;
@@ -1988,7 +1998,7 @@
 
   // 使える消耗品の種類と、そのボタンの表示（ここにない種類は「置く」だけ）
   const USE_LABEL = { heal: '使う（1ターン）', food: '食べる（1ターン）', sleep: 'たく（1ターン）', map: '読む（1ターン）', sense: '読む（1ターン）',
-    slow: 'まく（1ターン）', warp: '使って逃げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）', clear: 'たく（1ターン）' };
+    slow: 'まく（1ターン）', warp: '使って逃げる（1ターン）', fire: '読む（1ターン）', cure: '使う（1ターン）', clear: 'たく（1ターン）', bell: '鳴らす（1ターン）' };
   UI.USE_LABEL = USE_LABEL;
   function itemDetail(it, listModal) {
     const d = G.def(it);
@@ -2106,6 +2116,13 @@
         html += `<button class="row ${g.left > 0 ? '' : 'disabled'}" data-i="${i}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(d.name)}<small>${esc(materialUses(g.id))}</small></span><span class="pr">${right}</span></button>`;
       });
       html += '</div><p class="note">素材は持ち帰ると素材箱に入ります。倒れると、買った素材も持ち物と一緒に失います。</p>';
+      // なくしたボスの報酬の買い戻し（入手履歴があって、今は持っていない品だけ）
+      const lost = G.buybackList(UI.S);
+      if (lost.length) {
+        html += `<h3>なくした品</h3><p class="note">ボスの報酬で、一度手に入れたのに今は持っていない品を売ってくれます（強化は付いていない新しい品）。</p><div class="list">`;
+        html += lost.map((g) => { const d = D.ITEMS[g.id]; return `<button class="row buyback" data-id="${g.id}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(d.name)}<small>${esc(D.ENEMIES[g.boss].name)}の報酬</small></span><span class="pr">${g.price}G</span></button>`; }).join('');
+        html += '</div>';
+      }
       // お宝の買い取り（町の売値の半額。お宝の分類で、町で売れる品だけ）
       const tre = run.bag.filter((it) => G.def(it).type === 'treasure');
       html += `<h3>お宝の買い取り</h3><p class="note">持っている<b>お宝</b>を、<b>町の半額</b>で買い取ります（端数は切り捨て）。武器・盾・アクセサリー・素材・消耗品は買い取りません。代金は探索中のお金に入ります。</p><div class="list">`;
@@ -2113,8 +2130,34 @@
         return `<button class="row sellrow ${ok ? '' : 'disabled'}" data-uid="${it.uid}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(G.itemName(it))}<small>${ok ? '町の売値 ' + G.sellPrice(it) + 'G' : '売れないお宝'}</small></span><span class="pr">${ok ? G.merchantSellPrice(it) + 'G' : '買い取れない'}</span></button>`; }).join('') || '<p class="note">買い取れるお宝を持っていない。</p>';
       html += '</div>';
       h.body.innerHTML = html;
-      h.body.querySelectorAll('.row:not(.sellrow)').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); detail(+r.dataset.i); }));
+      h.body.querySelectorAll('.row:not(.sellrow):not(.buyback)').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); detail(+r.dataset.i); }));
+      h.body.querySelectorAll('.row.buyback').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); buybackDetail(r.dataset.id); }));
       h.body.querySelectorAll('.row.sellrow').forEach((r) => r.addEventListener('click', () => { AU.sfx('tap'); sellDetail(+r.dataset.uid); }));
+    }
+    function buybackDetail(id) {
+      const g = G.buybackList(UI.S).find((x) => x.id === id);
+      if (!g) { render(); return; }
+      const d = D.ITEMS[id], w = G.merchantWallet(UI.S);
+      let why = '';
+      if (run.bag.length >= D.BAG_SIZE) why = '持ち物がいっぱいです（' + D.BAG_SIZE + '個まで）。何か置いてから買えます。';
+      else if (w.total < g.price) why = 'お金が足りません（あと' + (g.price - w.total) + 'G）。';
+      const payRun = Math.min(w.run, g.price), payV = g.price - payRun;
+      const html = `<div class="detail-head"><img src="${SP.iconURL(d)}" alt=""><div><b>${esc(d.name)}</b></div></div><p>${esc(d.desc)}</p>
+        <div class="kv"><span>個数</span><span>1個（強化なし）</span><span>値段</span><span>${g.price}G（${esc(D.ENEMIES[g.boss].name)}の報酬）</span>
+        <span>支払い</span><span>探索中のお金 ${payRun}G${payV ? '＋村の資金 ' + payV + 'G' : ''}</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
+        ${why ? `<p class="warnbox">${esc(why)}</p>` : '<p class="note">ターンは進みません。</p>'}`;
+      let done = false;
+      modal({ title: 'なくした品を買い戻す', html, buttons: [
+        { label: 'やめる' },
+        { label: '買い戻す', cls: 'primary', disabled: !!why, onClick: () => {
+          if (done) return false; done = true;   // 確定は1回だけ（買う直前にも持っているかを確かめ直す）
+          const res = G.merchantBuyback(UI.S, id);
+          if (res.ok) { AU.sfx('buy'); line = ML.thanks; toast(res.msg + (res.paidVillage ? '（村の資金から' + res.paidVillage + 'G）' : '')); }
+          else info(D.MERCHANT.name, esc(res.msg));
+          save(); updateHud(); pushLog();
+          setTimeout(render, 0);
+        } },
+      ] });
     }
     function sellDetail(uid) {
       const it = run.bag.find((i) => i.uid === uid);

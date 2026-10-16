@@ -2865,6 +2865,95 @@ test('旅商人の買い取り：お宝の分類で町で売れる品だけ、�
   const L = SV.deserialize(SV.serialize(S)); eq(L.run.runGold, 230); assert(!L.run.bag.some((i) => i.uid === lotus.uid));
 });
 
+test('旅商人の素材：値段は4段階に固定（琥珀1000・青銅2000・すいしょう3000・金ぱく4000）。ばらつきなし', () => {
+  eq(JSON.stringify(D.MERCHANT.goods.map((g) => [g.id, g.price])), JSON.stringify([['amber_shard', 1000], ['bronze_shard', 2000], ['crystal_shard', 3000], ['gold_leaf', 4000]]));
+  eq(D.MERCHANT.priceSpread, 0);
+  for (let s = 8300; s < 8340; s++) { const S = findMerchant(s, 4, 23); if (!S) continue; for (const g of S.run.merchant.stock) eq(g.price, D.MERCHANT.goods.find((x) => x.id === g.id).price, g.id); }
+});
+test('なくしたボスの報酬の買い戻し：対象と値段（ボスごと）。入手履歴があって今は持っていない品だけ。持ち物・装備中・倉庫・床・展示室にあれば出ない', () => {
+  const want = { croc_tear: 1000, croc_axe: 1000, iceflame_shield: 2000, iceflame_crystal: 2000, phantom_shield: 3000, phantom_mask: 3000,
+    shinma_sword: 4000, baran_emblem: 4000, hero_sword: 5000, hero_shield: 5000, demon_robe: 6000 };
+  for (const [id, pr] of Object.entries(want)) eq(G.buybackPrice(id).price, pr, id);
+  for (const id of ['dragon_crest', 'golden_elephant', 'hero_sword_relic', 'hero_shield_relic', 'amber_shard', 'dragonic_shield', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
+  const S = findMerchant(8300, 3, 13), r = S.run, V = S.village;
+  const ids = () => G.buybackList(S).map((x) => x.id).sort().join();
+  // 倒しただけ・未入手：出ない
+  V.story.defeated.croc = true; eq(ids(), '', 'not obtained yet');
+  // 入手履歴あり・持ち物にある：出ない
+  const axe = G.makeItem(S, 'croc_axe', { plus: 3 }); axe.eq = true; r.bag.push(axe); G.markBossObtained(V, 'croc_axe'); eq(ids(), '', 'equipped in bag');
+  // なくした（持ち物から消えた）：出る
+  r.bag = r.bag.filter((i) => i !== axe); eq(ids(), 'croc_axe');
+  // 倉庫・床・展示室なら出ない
+  V.storage.push(G.makeItem(S, 'croc_axe')); eq(ids(), '', 'in storage'); V.storage = [];
+  r.floorItems.push({ x: 1, y: 1, item: G.makeItem(S, 'croc_axe') }); eq(ids(), '', 'on the floor'); r.floorItems.pop();
+  G.markBossObtained(V, 'croc_tear'); V.donated.croc_tear = true; eq(ids(), 'croc_axe', 'donated treasure is not lost');
+  // 買う：お金が足りない・持ち物がいっぱい → 何も変わらない
+  r.runGold = 0; V.funds = 999; const n0 = r.bag.length;
+  assert(!G.merchantBuyback(S, 'croc_axe').ok); eq(r.bag.length, n0); eq(V.funds, 999);
+  V.funds = 100000; const fill = []; while (r.bag.length < D.BAG_SIZE) { const h = G.makeItem(S, 'herb'); fill.push(h); r.bag.push(h); }
+  assert(!G.merchantBuyback(S, 'croc_axe').ok); eq(V.funds, 100000); r.bag = r.bag.filter((i) => !fill.includes(i));
+  // 買える：+0 の新しい品・村の資金から1000G・ターンは進まない。続けて押しても2つ目は買えない
+  r.runGold = 300; const t0 = r.turn;
+  const res = G.merchantBuyback(S, 'croc_axe'); assert(res.ok, res.msg); eq(res.paidRun, 300); eq(res.paidVillage, 700);
+  const got = r.bag.filter((i) => i.id === 'croc_axe'); eq(got.length, 1); eq(got[0].plus || 0, 0); eq(r.turn, t0);
+  assert(!G.merchantBuyback(S, 'croc_axe').ok, 'no second copy'); eq(r.bag.filter((i) => i.id === 'croc_axe').length, 1); eq(V.funds, 99300);
+  eq(ids(), '', 'removed from the list after buying');
+  // また失ったら、また買える
+  r.bag = r.bag.filter((i) => i.id !== 'croc_axe'); eq(ids(), 'croc_axe');
+});
+test('買い戻しの入手履歴：ボスの報酬を拾う・拾わずに帰って倉庫に届く で記録。前のセーブは章をクリアしていれば記録を作る', () => {
+  const S = newRun(1810, (S0) => { S0.village.story.chapter = 1; }); goToFloor(S, 15); defeatBoss(S);
+  const r = S.run, V = S.village;
+  assert(!V.bossObtained.croc_axe, 'not yet');
+  const f = r.floorItems.find((x) => x.item && x.item.id === 'croc_axe'); r.player.x = f.x; r.player.y = f.y; r.enemies = []; G.act(S, { type: 'pickup' });
+  assert(V.bossObtained.croc_axe && !V.bossObtained.croc_tear);
+  r.player.x = r.portal.x; r.player.y = r.portal.y; G.act(S, { type: 'returnHome' }); G.finishRun(S);
+  assert(V.bossObtained.croc_tear, 'delivered to storage = obtained');
+  // 前のセーブ：記録が無い。第1章はクリア済み、第2章は未クリア
+  const old = JSON.parse(SV.serialize(G.newState())); delete old.village.bossObtained; delete old.village.bossObtainedInit;
+  old.village.story.defeated.croc = true; old.village.story.returnDone.croc = true; old.village.story.defeated.flame = true;
+  const L = SV.deserialize(JSON.stringify(old));
+  assert(L.village.bossObtained.croc_axe && L.village.bossObtained.croc_tear && !L.village.bossObtained.iceflame_shield);
+});
+test('商人の呼鈴：歩いて行ける安全な空きマスに商人が現れ、1個使う。ボス戦中・もう商人がいる・置けないときは減らない。呼んだ商人も同じ品ぞろえと買い取り', () => {
+  const S = newRun(1811), run = S.run; goDown(S); goDown(S); goDown(S); goDown(S); goDown(S); goDown(S); goDown(S); goDown(S); goDown(S);
+  run.merchant = null; run.enemies = [];
+  const bell = G.makeItem(S, 'merchant_bell'), bell2 = G.makeItem(S, 'merchant_bell'); run.bag.push(bell, bell2);
+  const t0 = run.turn; const r1 = G.act(S, { type: 'use', uid: bell.uid });
+  assert(r1.consumed && run.merchant && run.merchant.called && !run.bag.includes(bell), 'summoned');
+  eq(run.turn, t0 + 1);
+  const m = run.merchant, p = run.player;
+  assert(DG.roomAt(run.map, m.x, m.y) && Math.max(Math.abs(m.x - p.x), Math.abs(m.y - p.y)) >= 4, 'in a room, not next to take');
+  assert(!DG.same(m, run.stairs) && !G.itemAt(run, m.x, m.y), 'not on stairs or items');
+  { // たけから歩いて商人のマスまで行ける（8方向・角は抜けない）
+    const W = run.map.w, seen = new Set([p.y * W + p.x]), q = [[p.x, p.y]]; let reach = false;
+    while (q.length && !reach) { const [x, y] = q.shift(); for (const [dx, dy] of Object.values(G.DIRS)) { const nx = x + dx, ny = y + dy, k = ny * W + nx;
+      if (seen.has(k) || !G.canStep(run.map, x, y, dx, dy)) continue; if (nx === m.x && ny === m.y) { reach = true; break; } seen.add(k); q.push([nx, ny]); } }
+    assert(reach, 'reachable on foot'); }
+  // もう商人がいる → 減らない・ターンも進まない
+  const t1 = run.turn; const r2 = G.act(S, { type: 'use', uid: bell2.uid }); assert(!r2.consumed && run.bag.includes(bell2)); eq(run.turn, t1);
+  // ボス戦中（ボスの階で戦いが終わっていない）→ 減らない
+  const B = toBossFloor(1, 1812), bb = G.makeItem(B, 'merchant_bell'); B.run.bag.push(bb); B.run.merchant = null;
+  assert(!G.act(B, { type: 'use', uid: bb.uid }).consumed && B.run.bag.includes(bb) && !B.run.merchant, 'not during a boss fight');
+  // 置ける所が無い（小さな部屋だけ）→ 減らない
+  bigRoomFloor(S); run.merchant = null; run.map.rooms = [{ id: 0, x: 2, y: 2, w: 3, h: 3 }]; run.map.tiles.fill(DG.WALL);
+  for (let y = 2; y < 5; y++) for (let x = 2; x < 5; x++) run.map.tiles[y * run.map.w + x] = DG.FLOOR; run.player.x = 3; run.player.y = 3;
+  assert(!G.act(S, { type: 'use', uid: bell2.uid }).consumed && run.bag.includes(bell2) && !run.merchant, 'no space: kept');
+  // 呼んだ商人もお宝の買い取りができる
+  run.merchant = { x: 4, y: 4, stock: [], met: false, called: true }; const lotus = G.makeItem(S, 'golden_lotus'); run.bag.push(lotus);
+  assert(G.merchantSell(S, lotus.uid).ok);
+});
+test('商人の呼鈴の寄付：街のイベントのコンプリートの判定が決まるまで寄付できない。開いたら1000Gで1個（何度でも）', () => {
+  const S = G.newState(), V = S.village; V.funds = 2500;
+  assert(!G.bellDonationOpen(S) && !G.donateForBell(S).ok, 'closed while the condition is undecided');
+  const keep = D.BELL.unlock; D.BELL.unlock = () => true;
+  try {
+    assert(G.donateForBell(S).ok && G.donateForBell(S).ok); eq(V.funds, 500); eq(V.bag.filter((i) => i.id === 'merchant_bell').length, 2);
+    assert(!G.donateForBell(S).ok, 'not enough money'); eq(V.funds, 500);
+  } finally { D.BELL.unlock = keep; }
+  assert(G.canStore(G.makeItem(S, 'merchant_bell')) && !G.canSell(G.makeItem(S, 'merchant_bell')));
+});
+
 console.log('ティウの案内（助言とゲームの動きが合っているか）');
 test('ティウの案内：どんそくの粉＋「隣に来たら一発、次は一歩下がる」をくり返すと、近づいて殴る敵には殴られない（15ターン・2ターンに1回）', () => {
   for (const type of ['frog', 'bat', 'statue']) {   // 近づいて殴る・2歩動く（移動のあとは殴らない）・振りかぶる敵
