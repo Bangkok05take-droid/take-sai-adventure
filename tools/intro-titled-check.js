@@ -1,5 +1,5 @@
-// 名前テロップ入りの登場ムービー3本（クロコダイン・フレイザード・バラン）の確認：
-// node tools/intro-titled-check.js [リポジトリ] [出力フォルダ] [webmのフォルダ]（webm：crocodine.webm・flazzard.webm・baran.webm）
+// 名前テロップ入りの登場ムービー4本（クロコダイン・フレイザード・キルバーン・バラン）の確認：
+// node tools/intro-titled-check.js [リポジトリ] [出力フォルダ] [webmのフォルダ]（webm：crocodine.webm・flazzard.webm・killvearn.webm・baran.webm）
 // このPCの Chromium（Playwright）は H.264 を再生できないので、同じ動画を VP9 にした webm を差し替えて流す（実際のスマホは mp4 をそのまま再生する）。
 // 確かめること：ボスごとに正しい動画・縦横比を保って画面に収まる（テロップの左右が切れない）・動画の上に名前を重ねない・ゲームの曲は止まる・
 // 最後まで／スキップ／読み込み失敗のどれでも戦いが1回だけ始まり、ボス戦の曲になり、操作が戻る
@@ -9,7 +9,7 @@ const ROOT = process.argv[2] || path.join(__dirname, '..'), OUT = process.argv[3
 const srv = http.createServer((q, r) => { let f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0])); if (f.endsWith('/')) f += 'index.html';
   fs.readFile(f, (e, d) => { if (e) { r.writeHead(404); r.end(); return; } r.writeHead(200, {'Content-Type': {'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.webp':'image/webp','.mp4':'video/mp4','.jpg':'image/jpeg'}[path.extname(f)]||'application/octet-stream'}); r.end(d); }); }).listen(8808);
 let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(c ? 'OK' : 'NG', m); };
-const BOSSES = [{ id: 'croc', ch: 1, floor: 15, movie: 'crocodine', name: 'クロコダイン' }, { id: 'flame', ch: 2, floor: 20, movie: 'flazzard', name: 'フレイザード' }, { id: 'baran', ch: 4, floor: 30, movie: 'baran', name: 'バラン' }];
+const BOSSES = [{ id: 'croc', ch: 1, floor: 15, movie: 'crocodine', name: 'クロコダイン' }, { id: 'flame', ch: 2, floor: 20, movie: 'flazzard', name: 'フレイザード' }, { id: 'kill', ch: 3, floor: 25, movie: 'killvearn', name: 'キルバーン' }, { id: 'baran', ch: 4, floor: 30, movie: 'baran', name: 'バラン' }];
 (async () => {
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   async function setup(B, w, h, mode) {
