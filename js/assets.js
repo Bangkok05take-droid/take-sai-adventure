@@ -65,6 +65,8 @@
         dragon_crest: 'assets/items-boss/dragon-pendant',
         // お宝の竜の紋章（通常のバランの報酬）：以前の青い紋章の絵。ドラゴニックオーラの盾：受け取った絵を128／64に縮めたもの
         baran_emblem: 'assets/items-boss/dragon-emblem', dragonic_shield: 'assets/items-boss/dragonic-aura-shield',
+        // 覇者の剣・覇者の盾（2026年10月、ChatGPT制作のドット絵。原画は assets/reference/hasha-v1/、tools/make-hasha-icons.py で縮めただけ）
+        hero_sword: 'assets/items-boss/hasha-sword', hero_shield: 'assets/items-boss/hasha-shield',
         // アクセサリー（assets/accessories/。値に「/」があるときはフォルダ付きのパス。床用は同じフォルダの floor/）
         poison_ring: 'assets/accessories/poison_ring', purse_charm: 'assets/accessories/money_guard',
         full_bangle: 'assets/accessories/hunger_bracelet', life_necklace: 'assets/accessories/revival_necklace',

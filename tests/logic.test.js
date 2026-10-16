@@ -1749,7 +1749,7 @@ test('各ボスの報酬（2026年10月の見直し）：クロコダイン＝�
   eq(I.iceflame_shield.name, '氷炎の盾'); eq(I.iceflame_shield.type, 'shield'); eq(I.iceflame_shield.def, 15); eq(I.iceflame_crystal.type, 'treasure');
   eq(I.phantom_shield.def, 17); eq(I.phantom_mask.type, 'accessory'); eq(I.phantom_mask.acc, 'hunger'); eq(I.phantom_mask.def, 5);
   eq(I.shinma_sword.atk, 24); eq(I.dragon_crest.type, 'accessory'); eq(I.dragon_crest.acc, 'revive'); eq(I.dragon_crest.atk, 5);
-  eq(I.hero_sword.name, '勇者の剣'); eq(I.hero_shield.name, '勇者の盾');
+  eq(I.hero_sword.name, '覇者の剣'); eq(I.hero_shield.name, '覇者の盾');
   eq(I.demon_robe.type, 'accessory'); eq(I.demon_robe.acc, 'deep');
   eq(I.golden_sword.sell, 1760); eq(I.golden_shield.sell, 1740);
   // 旧IDは定義から消え、どこからも出ない（りゅうきしの剣・げっこうの盾も）
@@ -2502,7 +2502,7 @@ test('ボスの報酬の装備7種：既存のIDのまま（重複なし）・�
   }
   // 同じ名前の道具は1つだけ（竜の紋章・龍の紋章も1つ）
   const names = Object.values(D.ITEMS).map((d) => d.name);
-  for (const id of Object.keys(want)) eq(names.filter((n) => n === D.ITEMS[id].name).length, id === 'dragon_crest' ? 2 : 1, 'unique ' + id);   // 竜の紋章はお宝（baran_emblem）とアクセサリーの2つ
+  for (const id of Object.keys(want)) eq(names.filter((n) => n === D.ITEMS[id].name).length, id === 'dragon_crest' ? 2 : 1, 'unique ' + id);   // 覇者の剣・盾は1つずつ（お宝は勇者の剣・盾）   // 竜の紋章はお宝（baran_emblem）とアクセサリーの2つ
   eq(D.ITEMS.dragon_crest.name, '竜の紋章'); assert(!names.includes('龍の紋章'));
   // 能力値・効果は前回の見直しのまま
   eq(D.ITEMS.croc_axe.atk, 16); eq(D.ITEMS.iceflame_shield.def, 15); eq(D.ITEMS.phantom_shield.def, 17); eq(D.ITEMS.shinma_sword.atk, 24);
@@ -2787,6 +2787,47 @@ test('お宝の竜の紋章は通常のバランの報酬（アクセサリー�
   // お宝を持っていても、アクセサリーの拾得は別（拾える）
   V.bag.push(G.makeItem(S, 'baran_emblem')); assert(G.buildFacility(S, 'bridge').ok);
   eq(JSON.stringify(G.villagePickups(V)), JSON.stringify(['dragon_crest']));
+});
+
+console.log('覇者の剣・覇者の盾と、お宝の勇者の剣・勇者の盾（2026年10月）');
+test('覇者の剣・盾：IDはそのまま（能力値・売値・強化・第5章の報酬も同じ）。勇者の剣・盾は別IDのお宝で、どこからも出ない', () => {
+  const I = D.ITEMS;
+  eq(I.hero_sword.name, '覇者の剣'); eq(I.hero_sword.type, 'weapon'); eq(I.hero_sword.atk, 27); eq(I.hero_sword.sell, 900);
+  eq(I.hero_shield.name, '覇者の盾'); eq(I.hero_shield.type, 'shield'); eq(I.hero_shield.def, 19); eq(I.hero_shield.sell, 860);
+  eq(JSON.stringify(D.CHAPTERS[5].reward.items), JSON.stringify(['hero_sword', 'hero_shield'])); eq(D.CHAPTERS[5].boss, 'mist');
+  eq(TS.ASSETS.items.byId.hero_sword, 'assets/items-boss/hasha-sword'); eq(TS.ASSETS.items.byId.hero_shield, 'assets/items-boss/hasha-shield');
+  // お宝：別ID・装備できない・売れない・展示室の枠に無い・絵は今までの勇者の剣・盾（コードの絵）
+  for (const [id, old] of [['hero_sword_relic', 'hero_sword'], ['hero_shield_relic', 'hero_shield']]) {
+    const d = I[id]; assert(id !== old && d.type === 'treasure' && d.noSell && !d.atk && !d.def, id);
+    eq(d.icon, I[old].icon); eq(d.tint, I[old].tint); assert(!TS.ASSETS.items.byId[id], 'old code-drawn art');
+    assert(!D.MUSEUM_ITEMS.includes(id));
+    // どこからも出ない：床・敵（同じ表）・店・旅商人・ボスの報酬
+    eq(G.itemFloors(id).length, 0, id + ' not on floors');
+    for (let ch = 1; ch <= 6; ch++) { assert(!D.CHAPTERS[ch].reward.items.includes(id)); for (let f = 1; f <= 35; f++) assert(!D.floorFor(ch, f).items.some(([i]) => i === id)); }
+    for (const st of Object.values(D.SHOP_STOCK)) assert(!st.includes(id));
+    assert(!D.MERCHANT.goods.some((g) => g.id === id));
+    for (const E of Object.values(D.ENEMIES)) assert(E.drop !== id && E.repeatDrop !== id);
+    const S = G.newState(); S.village.story.defeated.mist = true; assert(!G.guideItems(S, 'treasure').some((g) => g.id === id), 'not in Tiw guide');
+  }
+  eq(I.hero_sword_relic.name, '勇者の剣'); eq(I.hero_shield_relic.name, '勇者の盾');
+  // 覇者は新しいセットを持たない。ローブの攻撃低下の免除は真魔剛竜剣だけ
+  assert(!JSON.stringify(G.setsOf([Object.assign(G.makeItem(G.newState(), 'hero_sword'), { eq: true }), Object.assign(G.makeItem(G.newState(), 'hero_shield'), { eq: true })])).includes('true'), 'no hasha set');
+});
+test('覇者の剣・盾：前のセーブ（勇者の剣・盾を持ち物・装備中・倉庫に持っている）は、強化値・装備のまま覇者の剣・盾として読める。お宝には変えない', () => {
+  const S = G.newState(), V = S.village;
+  const sw = G.makeItem(S, 'hero_sword', { plus: 5 }); sw.eq = true; const sh = G.makeItem(S, 'hero_shield', { plus: 3 }); sh.eq = true;
+  V.bag.push(sw, sh); V.storage.push(G.makeItem(S, 'hero_sword', { plus: 8 }));
+  V.story.defeated.mist = true; V.story.rewardClaimed.mist = true;
+  const L = SV.deserialize(SV.serialize(S)), LV = L.village;
+  const b0 = LV.bag.find((i) => i.uid === sw.uid), b1 = LV.bag.find((i) => i.uid === sh.uid), st = LV.storage.find((i) => i.id === 'hero_sword');
+  assert(b0 && b0.eq && b0.plus === 5 && G.itemName(b0).startsWith('覇者の剣'), JSON.stringify(b0));
+  assert(b1 && b1.eq && b1.plus === 3 && G.itemName(b1).startsWith('覇者の盾'));
+  assert(st && st.plus === 8 && G.def(st).type === 'weapon');
+  assert(!LV.bag.concat(LV.storage).some((i) => /_relic$/.test(i.id)), 'no conversion to treasures');
+  // 装備の力はそのまま
+  L.village.bag = LV.bag; departWithScroll(L, 3); eq(G.playerAtk(L.run), D.PLAYER.baseAtk + 27 + 5);
+  // 報酬は二重に出ない（第5章の初回報酬は受取済み）
+  assert(L.village.story.rewardClaimed.mist);
 });
 
 console.log('ティウの案内（助言とゲームの動きが合っているか）');

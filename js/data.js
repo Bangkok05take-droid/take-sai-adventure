@@ -144,14 +144,17 @@
       desc: '銀の縁と紫の宝石に、幻影の意匠が刻まれた黒い盾。第3章の報酬。' },
     shinma_sword:  { name: '真魔剛竜剣', type: 'weapon', atk: 24, sell: 760, icon: 'sword', tint: 'dragon',
       desc: '竜をかたどった金色の鍔と赤い宝石の剣。第4章の報酬。' },
-    hero_sword:    { name: '勇者の剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',
-      desc: '師匠ヤナイが遺した、勇者の剣。第5章の報酬。' },
+    /* 2026年10月：装備の「勇者の剣・勇者の盾」を「覇者の剣・覇者の盾」へ（名前と絵だけ。IDは hero_sword・hero_shield のまま。
+     * 能力値・売値・強化・入手（第5章ミストバーンの初回報酬）は変えない）。絵は ChatGPT 制作のドット絵（assets/items-boss/hasha-*）。
+     * 「勇者の剣・勇者の盾」は別IDのお宝（hero_sword_relic・hero_shield_relic）になった */
+    hero_sword:    { name: '覇者の剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',
+      desc: '金の翼飾りと紫の宝石をあしらった剣。第5章の報酬。' },
     // ドラゴニックオーラの盾（2026年10月）：防御+22。通常の鍛冶屋で+8まで強化できる。入手は地下40階の裏ボス（まだ無い）。
     // 売値は未決定なので、決まるまで売れない（noSell）。絵は受け取った素材を縮めただけ（assets/items-boss/dragonic-aura-shield.png）
     dragonic_shield: { name: 'ドラゴニックオーラの盾', type: 'shield', def: 22, sell: 0, noSell: true, icon: 'shield', tint: 'hero',
       desc: '竜の気をまとう盾。' },
-    hero_shield:   { name: '勇者の盾', type: 'shield', def: 19, sell: 860, icon: 'shield', tint: 'hero',
-      desc: '師匠ヤナイが遺した、勇者の盾。第5章の報酬。' },
+    hero_shield:   { name: '覇者の盾', type: 'shield', def: 19, sell: 860, icon: 'shield', tint: 'hero',
+      desc: '金の翼飾りと紫の宝石をあしらった盾。第5章の報酬。' },
     // ---- ボスに備える道具（持っているだけで効く護符・お香） ----
     water_charm:   { name: 'みずがみの護符', type: 'charm', effect: 'fireice', price: 300, sell: 100, icon: 'charm', tint: 'water',
       desc: '持っているだけで、炎と氷の床から受けるダメージが半分になる。' },
@@ -171,6 +174,13 @@
       desc: '小さなひすいの置物。高く売れる。' },
     golden_lotus:  { name: '黄金の蓮', type: 'treasure', sell: 260, icon: 'lotus',
       desc: '金でできた蓮の花。とても高く売れる。' },
+    /* お宝の「勇者の剣・勇者の盾」（2026年10月）：装備の覇者の剣・盾とは別のIDのお宝。装備はできない。
+     * 絵は今までの勇者の剣・盾（コードで描いた絵：icon・tint）をそのまま使う。
+     * イベントで手に入る予定だが、イベント・条件・売値・展示室の枠は未決定 → 今はどこからも出ない（床・敵・店・商人・ボスの報酬に入れない）。売れない・寄贈の枠に無い */
+    hero_sword_relic:  { name: '勇者の剣', type: 'treasure', sell: 0, noSell: true, icon: 'sword', tint: 'hero',
+      desc: '師匠ヤナイが遺した、勇者の剣。お宝として大切にしまっておこう（装備はできない）。' },
+    hero_shield_relic: { name: '勇者の盾', type: 'treasure', sell: 0, noSell: true, icon: 'shield', tint: 'hero',
+      desc: '師匠ヤナイが遺した、勇者の盾。お宝として大切にしまっておこう（装備はできない）。' },
     // お宝の竜の紋章（2026年10月）：通常のバラン（第4章）を倒すと手に入る展示用のお宝。アクセサリーの竜の紋章（dragon_crest）とは別の品・別の記録。
     // 売値・展示室の枠は未決定なので、決まるまで売れない・寄贈の枠に無い（展示室は12枠のまま）
     baran_emblem:  { name: '竜の紋章', type: 'treasure', sell: 0, noSell: true, icon: 'gem', tint: 'crystal',
