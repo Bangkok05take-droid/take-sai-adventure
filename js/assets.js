@@ -88,6 +88,8 @@
       flazzard: { video: 'assets/movies/flazzard-intro-titled.mp4', poster: 'assets/movies/flazzard-titled-poster.jpg' },
       // 死神キルバーン（2026年10月、名前テロップ入り完成版。720×1280・10秒・H.264＋AAC。再エンコードなし）
       killvearn: { video: 'assets/movies/killvearn-intro-titled.mp4', poster: 'assets/movies/killvearn-titled-poster.jpg' },
+      // ミストバーン（2026年10月、名前テロップ入り完成版。720×1280・10秒・H.264＋AAC。再エンコードなし）
+      mistvearn: { video: 'assets/movies/mistvearn-intro-titled.mp4', poster: 'assets/movies/mistvearn-titled-poster.jpg' },
       baran: { video: 'assets/movies/baran-intro-titled.mp4', poster: 'assets/movies/baran-titled-poster.jpg' },
       // 通常のバランの撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の霧でバランを連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
       baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' } },

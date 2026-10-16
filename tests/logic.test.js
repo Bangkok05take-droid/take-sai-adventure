@@ -2453,7 +2453,7 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
 
 console.log('クロコダインの登場ムービー（2026年10月）');
 test('登場ムービー：クロコダイン（フレイザード・バランも同じ仕組み）。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
-  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'kill', 'baran', 'truevearn']));
+  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'kill', 'baran', 'mist', 'truevearn']));
   const S = toBossFloor(1, 1401), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
   const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
   const t0 = run.turn, pos = [b.x, b.y, b.hp];
@@ -2487,9 +2487,10 @@ test('登場ムービー：クロコダイン（フレイザード・バラン�
     eq(G.act(T, { type: 'wait' }).consumed, false, 'no action during the movie'); eq(T.run.player.hp, hp0, 'no damage during the movie');
     eq(G.finishBossIntro(T).length, 0, 'the safety path already started the fight once'); assert(T.run.bossFight.engaged && T.village.story.introSeen.kill);
     eq(T.run.log.filter((l) => l.includes('との戦いが始まった')).length, 1, 'battle starts once'); }
-  // ムービーの無いボス（ミストバーン）
-  for (const ch of [5]) { const T = toBossFloor(ch, 1410 + ch), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
-    const rr = G.act(T, { type: 'move', dir: 'right' }); assert(!rr.events.some((e) => e.t === 'bossIntro') && T.run.bossFight.engaged && !T.run.bossFight.intro, 'no intro ch' + ch); }
+  // ミストバーン（第5章）も入室で登場ムービー
+  { const T = toBossFloor(5, 1415), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
+    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'mist') && !T.run.bossFight.engaged, 'mistvearn intro');
+    eq(T.run.player.hp, hp0); const ev = G.finishBossIntro(T); eq(ev.filter((e) => e.t === 'bossStart').length, 1); eq(G.finishBossIntro(T).length, 0, 'once'); assert(T.village.story.introSeen.mist); }
 });
 
 console.log('ボスの報酬の装備7種（2026年10月・絵 v2）');

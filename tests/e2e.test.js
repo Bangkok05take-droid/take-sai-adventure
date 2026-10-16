@@ -1665,8 +1665,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   await test('ブラウザのエラー・読み込み失敗がない', async () => {
     assert(errors.length === 0, errors.join('\n'));
   });
-  await test('登場ムービー（名前テロップ入り：クロコダイン・フレイザード・キルバーン・バラン）の動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
-    for (const name of ['crocodine', 'flazzard', 'killvearn', 'baran']) {
+  await test('登場ムービー（名前テロップ入り：クロコダイン・フレイザード・キルバーン・バラン・ミストバーン）の動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
+    for (const name of ['crocodine', 'flazzard', 'killvearn', 'baran', 'mistvearn']) {
       const r = await p.evaluate(async (name) => { const M = TS.ASSETS.movies[name], out = {};
         for (const [k, u] of Object.entries(M)) { const res = await fetch(u); const b = await res.arrayBuffer(); out[k] = { url: res.url, status: res.status, size: b.byteLength, head: Array.from(new Uint8Array(b.slice(0, 12))).map((x) => String.fromCharCode(x)).join('') }; }
         return out; }, name);

@@ -9,7 +9,7 @@ const ROOT = process.argv[2] || path.join(__dirname, '..'), OUT = process.argv[3
 const srv = http.createServer((q, r) => { let f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0])); if (f.endsWith('/')) f += 'index.html';
   fs.readFile(f, (e, d) => { if (e) { r.writeHead(404); r.end(); return; } r.writeHead(200, {'Content-Type': {'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.webp':'image/webp','.mp4':'video/mp4','.jpg':'image/jpeg'}[path.extname(f)]||'application/octet-stream'}); r.end(d); }); }).listen(8808);
 let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(c ? 'OK' : 'NG', m); };
-const BOSSES = [{ id: 'croc', ch: 1, floor: 15, movie: 'crocodine', name: 'クロコダイン' }, { id: 'flame', ch: 2, floor: 20, movie: 'flazzard', name: 'フレイザード' }, { id: 'kill', ch: 3, floor: 25, movie: 'killvearn', name: 'キルバーン' }, { id: 'baran', ch: 4, floor: 30, movie: 'baran', name: 'バラン' }];
+const BOSSES = [{ id: 'croc', ch: 1, floor: 15, movie: 'crocodine', name: 'クロコダイン' }, { id: 'flame', ch: 2, floor: 20, movie: 'flazzard', name: 'フレイザード' }, { id: 'kill', ch: 3, floor: 25, movie: 'killvearn', name: 'キルバーン' }, { id: 'baran', ch: 4, floor: 30, movie: 'baran', name: 'バラン' }, { id: 'mist', ch: 5, floor: 30, movie: 'mistvearn', name: 'ミストバーン' }];
 (async () => {
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   async function setup(B, w, h, mode) {
