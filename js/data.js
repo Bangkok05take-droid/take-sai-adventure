@@ -10,7 +10,8 @@
   // flame：第2章のフレイザード（2026年10月、名前テロップ入り完成版の動画で追加）
   // kill：第3章のキルバーン（2026年10月、名前テロップ入り完成版の動画で追加）
   // mist：第5章のミストバーン（2026年10月、名前テロップ入り完成版の動画で追加）
-  D.BOSS_INTROS = { croc: 'crocodine', flame: 'flazzard', kill: 'killvearn', baran: 'baran', mist: 'mistvearn', truevearn: 'bodyReturn' };
+  // vearn：最終章30階の大魔王バーン（2026年10月、名前テロップ入り完成版の動画で追加）
+  D.BOSS_INTROS = { croc: 'crocodine', flame: 'flazzard', kill: 'killvearn', baran: 'baran', mist: 'mistvearn', vearn: 'vearn', truevearn: 'bodyReturn' };
   /* 撃破後ムービー（ボスID → 物語のムービーの名前）。章の探索でそのボスを倒したとき、撃破の演出のあとに流す。
    * 通常のバラン（baran）だけ。クリア後の竜人王バランは別のIDにするので、ここには入らない */
   D.BOSS_OUTROS = { baran: 'baranTaken' };   // truevearn：版3の35階、肉体返還（動画は未受領。仮の会話）

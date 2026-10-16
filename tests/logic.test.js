@@ -1954,7 +1954,9 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   const S = toBossFloor(6, 941), run = S.run, st = S.village.story;
   eq(run.floor, 30); eq(run.enemies.find((e) => e.boss).type, 'vearn');
   run.player.x = doorOutside(run).x; run.player.y = doorOutside(run).y; G.updateVision(run);
-  G.act(S, { type: 'move', dir: 'right' });
+  const r0 = G.act(S, { type: 'move', dir: 'right' });
+  assert(r0.events.some((e) => e.t === 'bossIntro' && e.boss === 'vearn') && !run.bossFight.engaged, 'vearn intro movie first');
+  G.finishBossIntro(S);   // 登場ムービーを終えた扱い
   assert(run.bossFight.engaged); eq(G.dungeonBgm(run), 'boss');
   for (let i = 0; i < 10; i++) { G.act(S, { type: 'wait' }); run.player.hp = run.player.maxhp; assert(insideAll(run)); }
   defeatBoss(S);
@@ -2453,7 +2455,7 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
 
 console.log('クロコダインの登場ムービー（2026年10月）');
 test('登場ムービー：クロコダイン（フレイザード・バランも同じ仕組み）。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
-  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'kill', 'baran', 'mist', 'truevearn']));
+  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'kill', 'baran', 'mist', 'vearn', 'truevearn']));
   const S = toBossFloor(1, 1401), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
   const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
   const t0 = run.turn, pos = [b.x, b.y, b.hp];
@@ -2487,6 +2489,10 @@ test('登場ムービー：クロコダイン（フレイザード・バラン�
     eq(G.act(T, { type: 'wait' }).consumed, false, 'no action during the movie'); eq(T.run.player.hp, hp0, 'no damage during the movie');
     eq(G.finishBossIntro(T).length, 0, 'the safety path already started the fight once'); assert(T.run.bossFight.engaged && T.village.story.introSeen.kill);
     eq(T.run.log.filter((l) => l.includes('との戦いが始まった')).length, 1, 'battle starts once'); }
+  // 大魔王バーン（最終章30階）も入室で登場ムービー
+  { const T = toBossFloor(6, 1416), dr = doorOutside(T.run); eq(T.run.floor, 30); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
+    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'vearn') && !T.run.bossFight.engaged, 'vearn intro');
+    eq(T.run.player.hp, hp0); const ev = G.finishBossIntro(T); eq(ev.filter((e) => e.t === 'bossStart').length, 1); eq(G.finishBossIntro(T).length, 0, 'once'); assert(T.village.story.introSeen.vearn); }
   // ミストバーン（第5章）も入室で登場ムービー
   { const T = toBossFloor(5, 1415), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
     const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'mist') && !T.run.bossFight.engaged, 'mistvearn intro');

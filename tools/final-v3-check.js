@@ -21,7 +21,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       S.run.player.half = 0; TS.Save.save(S); });
     await p.reload(); await p.waitForTimeout(500); await p.tap('#btn-continue'); await p.waitForTimeout(700); await closeTalk();
     await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 3; b.cds = { circle: 9, bird: 9, summon: 9 };
-      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 900; G.updateVision(r); G.checkBossRoom(S, []); b.hold = 0; });
+      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 900; G.updateVision(r); TS.UI.S.village.story.introSeen.vearn = true; G.checkBossRoom(S, []); b.hold = 0; });   // 登場ムービーは intro-titled-check.js で確かめる
     await p.waitForTimeout(300);
     await p.screenshot({ path: path.join(OUT, `flying_${w}.png`) });
     chk(await p.evaluate(() => TS.Game.sets(TS.UI.S.run).all3), `${w} 3点セット`);

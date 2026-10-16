@@ -971,6 +971,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       b.hp = 5; b.cds = { circle: 9, bird: 9, summon: 9 };
       r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 600; r.player.maxhp = 900; r.player.hunger = 20;
       G.updateVision(r);
+      S.village.story.introSeen.vearn = true;   // 大魔王バーンの登場ムービーは tools/intro-titled-check.js で確かめる。ここでは戦いから
       G.checkBossRoom(S, []); b.hold = 0;
       document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-dungeon')); TS.UI.screen = 'dungeon';
     });
@@ -1665,8 +1666,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   await test('ブラウザのエラー・読み込み失敗がない', async () => {
     assert(errors.length === 0, errors.join('\n'));
   });
-  await test('登場ムービー（名前テロップ入り：クロコダイン・フレイザード・キルバーン・バラン・ミストバーン）の動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
-    for (const name of ['crocodine', 'flazzard', 'killvearn', 'baran', 'mistvearn']) {
+  await test('登場ムービー（名前テロップ入り：クロコダイン・フレイザード・キルバーン・バラン・ミストバーン・大魔王バーン）の動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
+    for (const name of ['crocodine', 'flazzard', 'killvearn', 'baran', 'mistvearn', 'vearn']) {
       const r = await p.evaluate(async (name) => { const M = TS.ASSETS.movies[name], out = {};
         for (const [k, u] of Object.entries(M)) { const res = await fetch(u); const b = await res.arrayBuffer(); out[k] = { url: res.url, status: res.status, size: b.byteLength, head: Array.from(new Uint8Array(b.slice(0, 12))).map((x) => String.fromCharCode(x)).join('') }; }
         return out; }, name);
