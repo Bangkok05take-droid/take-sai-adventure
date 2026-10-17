@@ -664,14 +664,21 @@ test('売買：お宝を売ると村の資金が増え、買うと減る。買�
   for (const [id, d] of Object.entries(D.ITEMS)) if (d.price) assert(d.price > d.sell, 'price>sell ' + id);
   assert(!G.buy(S, 'elixir').ok, 'not in stage1 stock');
 });
-test('倉庫：預ける・取り出す、20枠の上限、拡張で40枠', () => {
+test('倉庫：預ける・取り出す、10枠の上限、拡張で15枠。上限より多い前のセーブは消さない（預けられないだけ・取り出せる）', () => {
+  eq(JSON.stringify(D.STORAGE_SIZE), JSON.stringify({ 1: 10, 2: 15, 3: 20, 4: 30 }));
   const S = G.newState();
-  for (let i = 0; i < 25; i++) S.village.storage.length < 20 && S.village.storage.push(G.makeItem(S, 'herb'));
+  for (let i = 0; i < 25; i++) S.village.storage.length < 10 && S.village.storage.push(G.makeItem(S, 'herb'));
   const it = G.makeItem(S, 'banana'); S.village.bag.push(it);
-  assert(!G.deposit(S, it.uid).ok, 'full at 20');
+  assert(!G.deposit(S, it.uid).ok, 'full at 10');
   S.village.funds = 1000; assert(G.upgradeVillage(S).ok); eq(S.village.stage, 2); eq(S.village.funds, 800);
-  assert(G.deposit(S, it.uid).ok); eq(S.village.storage.length, 21);
+  assert(G.deposit(S, it.uid).ok); eq(S.village.storage.length, 11);
   assert(G.withdraw(S, it.uid).ok); assert(S.village.bag.includes(it));
+  // 前のセーブ：80枠のころの倉庫に50個（今は大倉庫でも30枠）→ 読み込んでも50個のまま。預けられないが取り出せる
+  const T = G.newState(), V = T.village; V.built.storage2 = V.built.storage3 = V.built.storage4 = true; G.applyFacilities(V);
+  for (let i = 0; i < 50; i++) V.storage.push(G.makeItem(T, 'herb'));
+  const L = SV.deserialize(SV.serialize(T)), LV = L.village; eq(LV.storage.length, 50); eq(G.storageSize(LV), 30);
+  const b = G.makeItem(L, 'banana'); LV.bag.push(b); assert(!G.deposit(L, b.uid).ok, 'over the limit: cannot deposit');
+  assert(G.withdraw(L, LV.storage[0].uid).ok); eq(LV.storage.length, 49);
 });
 test('村の発展：費用を消費、資金不足では不可、3段階で鍛冶屋', () => {
   const S = G.newState();
@@ -781,9 +788,9 @@ test('施設：価格・解放条件・素材を確認でき、満たさない�
   let st = G.facilityStatus(S, 'storage3');
   assert(!st.unlocked && st.missing.includes('storage2') && st.missing.includes('floor10'), 'locked');
   assert(!G.buildFacility(S, 'storage3').ok);
-  assert(G.buildFacility(S, 'storage2').ok); eq(G.storageSize(V), 40); eq(V.funds, 100000 - 200);
-  V.bestFloor = 10; assert(G.buildFacility(S, 'storage3').ok); eq(G.storageSize(V), 60);
-  V.bestFloor = 20; assert(G.buildFacility(S, 'storage4').ok); eq(G.storageSize(V), 80);
+  assert(G.buildFacility(S, 'storage2').ok); eq(G.storageSize(V), 15); eq(V.funds, 100000 - 200);
+  V.bestFloor = 10; assert(G.buildFacility(S, 'storage3').ok); eq(G.storageSize(V), 20);
+  V.bestFloor = 20; assert(G.buildFacility(S, 'storage4').ok); eq(G.storageSize(V), 30);
   assert(!G.buildFacility(S, 'storage4').ok, 'no double build');
   assert(G.buildFacility(S, 'smith1').ok); eq(G.smithMax(V), 3); eq(V.stage, 3);
   const before = V.funds;
@@ -915,7 +922,7 @@ test('旧セーブ（v1・10階クリア済み）を移行：旧記録として�
   const L = SV.deserialize(fixture('save-v1-cleared.json'));
   eq(L.village.legacyClear10, true); eq(L.village.cleared, false); eq(L.village.legacyClears, 1);
   eq(L.village.funds, raw.village.funds); eq(L.village.stage, 3); eq(L.village.bestFloor, 10);
-  assert(L.village.built.storage2 && L.village.built.smith1, 'facilities from old stage'); eq(L.village.smithLv, 1); eq(L.village.storageLv, 2); eq(G.storageSize(L.village), 40);
+  assert(L.village.built.storage2 && L.village.built.smith1, 'facilities from old stage'); eq(L.village.smithLv, 1); eq(L.village.storageLv, 2); eq(G.storageSize(L.village), 15);
   // 道具はそのまま（2026年10月に内部IDが変わったお宝・装備だけ新しいIDへ）
   const ren = (list) => JSON.stringify(list.map((i) => Object.assign({}, i, { id: SV.RENAME_V4[i.id] || i.id })));
   eq(JSON.stringify(L.village.bag), ren(raw.village.bag));
@@ -1235,11 +1242,11 @@ test('村の発展の一覧：完成した項目は出さず、段階式の拡�
   assert(G.buildFacility(S, 'storage2').ok);
   ids = G.unbuiltFacilities(V).map((f) => f.id);
   assert(!ids.includes('storage2') && ids.includes('storage3'), ids.join());
-  eq(G.storageSize(V), 40, 'effect kept'); assert(G.hasFacility(V, 'storage2'), 'record kept');
+  eq(G.storageSize(V), 15, 'effect kept'); assert(G.hasFacility(V, 'storage2'), 'record kept');
   for (let k = 0; k < 40; k++) { const f = G.unbuiltFacilities(V).find((f) => G.facilityStatus(S, f.id).unlocked); if (!f) break; G.buildFacility(S, f.id); V.funds = 1e6; }
   V.donated = {}; for (const id of D.MUSEUM_ITEMS) V.donated[id] = true;
   for (let k = 0; k < 40; k++) { const f = G.unbuiltFacilities(V).find((f) => G.facilityStatus(S, f.id).unlocked); if (!f) break; G.buildFacility(S, f.id); V.funds = 1e6; }
-  eq(G.unbuiltFacilities(V).length, 0, 'all built'); eq(G.storageSize(V), 80); eq(G.smithMax(V), 8);
+  eq(G.unbuiltFacilities(V).length, 0, 'all built'); eq(G.storageSize(V), 30); eq(G.smithMax(V), 8);
 });
 
 // ---- 謎の旅商人 ----

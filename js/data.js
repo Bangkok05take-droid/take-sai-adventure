@@ -498,7 +498,9 @@
     { name: '倉庫のある店' },
     { name: '鍛冶屋と屋台の村' },
   ];
-  D.STORAGE_SIZE = { 1: 20, 2: 40, 3: 60, 4: 80 };
+  /* 倉庫の枠（2026年10月：20→40→60→80 から 10→15→20→30 へ。値段・解放条件・段階は同じ）。
+   * 前のセーブで倉庫が上限より多くても品は消さない（上限を下回るまで新しく預けられないだけ。取り出しはできる） */
+  D.STORAGE_SIZE = { 1: 10, 2: 15, 3: 20, 4: 30 };
   D.SHOP_STOCK = {
     1: ['herb', 'banana', 'bamboo_shield', 'bronze_sword'],
     2: ['herb', 'banana', 'sleep_incense', 'sight_scroll', 'sense_scroll', 'bamboo_shield', 'bronze_sword'],
@@ -509,13 +511,13 @@
    * 浅い階の収入（1回の帰還で約150〜550G）で最初の施設に届き、
    * 大きな施設や上位の強化は深い階での複数回の冒険が必要な価格にしている。 */
   D.FACILITIES = [
-    { id: 'storage2', kind: 'facility', name: '倉庫の拡張（40枠）', price: 200, desc: '倉庫が40枠に。お店にねむり草・みとおしの巻物が並ぶ。灯りが増える。', req: [] },
+    { id: 'storage2', kind: 'facility', name: '倉庫の拡張（15枠）', price: 200, desc: '倉庫が15枠に。お店にねむり草・みとおしの巻物が並ぶ。灯りが増える。', req: [] },
     { id: 'smith1', kind: 'facility', name: '鍛冶屋と屋台', price: 600, desc: '鍛冶屋で武器・盾を+3まで強化できる。屋台で特製お弁当・いのちの霊薬・けむり玉・どくけしそうが買える。', req: ['storage2'] },
     { id: 'diner', kind: 'facility', name: 'サイの食堂', price: 800, desc: '出発前に料理を1品えらべる。次の探索だけ能力が上がる。', req: ['storage2'] },
     { id: 'museum', kind: 'facility', name: 'お宝展示室', price: 1200, desc: '珍しいお宝を寄贈して飾れる。集めると称号と飾りが解放される。', req: ['smith1'] },
-    { id: 'storage3', kind: 'facility', name: '倉庫の増築（60枠）', price: 1500, desc: '倉庫が60枠に。', req: ['storage2', 'floor10'] },
+    { id: 'storage3', kind: 'facility', name: '倉庫の増築（20枠）', price: 1500, desc: '倉庫が20枠に。', req: ['storage2', 'floor10'] },
     { id: 'smith2', kind: 'facility', name: '鍛冶屋の大きな炉（+5）', price: 2500, mats: { amber_shard: 3, bronze_shard: 2 }, desc: '強化の上限が+5になる。', req: ['smith1'] },
-    { id: 'storage4', kind: 'facility', name: '大倉庫（80枠）', price: 4000, desc: '倉庫が80枠に。', req: ['storage3', 'floor20'] },
+    { id: 'storage4', kind: 'facility', name: '大倉庫（30枠）', price: 4000, desc: '倉庫が30枠に。', req: ['storage3', 'floor20'] },
     { id: 'smith3', kind: 'facility', name: '黄金の炉（+8）', price: 7000, mats: { crystal_shard: 3, gold_leaf: 2 }, desc: '強化の上限が+8になる。', req: ['smith2'] },
     { id: 'lanterns', kind: 'decor', name: '灯籠の並木', price: 300, desc: '道ぞいに灯籠が並び、夕暮れの村が明るくなる。', req: [] },
     { id: 'garden', kind: 'decor', name: '蓮の庭', price: 400, desc: '花壇と蓮が増える。', req: ['storage2'] },
