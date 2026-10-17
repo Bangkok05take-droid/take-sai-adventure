@@ -353,9 +353,10 @@
         if (A && A.intro === 'pending') setTimeout(() => playBossIntro(ib ? ib.type : null), 300);
         // 撃破後ムービーの途中で読み込み直した：最初から流し直し、そのあと撃破後の会話へ
         if (UI.S.run.postMovie) { AU.holdBgm(true); const pk = UI.S.run.postMovie, pb = Object.keys(D.BOSS_OUTROS).find((k) => D.BOSS_OUTROS[k] === pk);
-          setTimeout(() => playPostMovie(() => { if (pb && D.STORY.bossPost[pb]) storyTalk('post_' + pb, D.STORY.bossPost[pb]); }), 300); }
+          const resc = G.canRescue(UI.S.run);   // 版3の30階・大魔王バーン：ムービーのあとはティウの救援へ
+          setTimeout(() => playPostMovie(() => { if (resc) openRescue(); else if (pb && D.STORY.bossPost[pb]) storyTalk('post_' + pb, D.STORY.bossPost[pb]); }), 300); }
         // 30階の救援の途中で読み込み直した：ムービーを見ていなければ流し、救援の画面を開き直す
-        if (G.canRescue(UI.S.run)) setTimeout(() => { const st = UI.S.village.story; if (st.moviesSeen && st.moviesSeen.vearnTaken) openRescue(); else playStoryMovie('vearnTaken', () => openRescue()); }, 300);
+        if (G.canRescue(UI.S.run) && !UI.S.run.postMovie) setTimeout(() => { const st = UI.S.village.story; if (st.moviesSeen && st.moviesSeen.vearnTaken) openRescue(); else playStoryMovie('vearnTaken', () => openRescue()); }, 300);
         // オオカミの演出の途中で読み込み直した：交換は確定済み。演出だけ出し直す
         else if (UI.S.run.final && UI.S.run.final.wolf) setTimeout(() => showWolf(), 300);
       }
@@ -1651,7 +1652,7 @@
       stopHold(); AU.playBgm(G.dungeonBgm(S.run));   // 撃破：探索の曲へ（大魔王バーンの1戦目のあとは続けてボス戦の曲）
       // 撃破のあと：（通常のバラン）撃破の演出 → 連れ去るムービー → 会話／（版3の30階・大魔王バーン）会話 → 連れ去るムービー → ティウの救援
       const fall = res.events.some((e) => e.t === 'vearnFall');
-      const after = () => { if (fall) playStoryMovie('vearnTaken', () => openRescue()); };
+      const after = () => { if (fall) { if (outro) openRescue(); else playStoryMovie('vearnTaken', () => openRescue()); } };
       const post = () => { if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b], after); else after(); };
       // 撃破後ムービー（通常のバラン）：撃破の演出 → ムービー → いつもの撃破後の会話。ムービーまでの間も曲と操作は止めておく
       setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (outro) setTimeout(() => playPostMovie(post), 1100); else post(); }, 500);

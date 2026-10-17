@@ -94,7 +94,9 @@
       vearn: { video: 'assets/movies/vearn-intro-titled.mp4', poster: 'assets/movies/vearn-titled-poster.jpg' },
       baran: { video: 'assets/movies/baran-intro-titled.mp4', poster: 'assets/movies/baran-titled-poster.jpg' },
       // 通常のバランの撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の霧でバランを連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
-      baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' } },
+      baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' },
+      // 大魔王バーン（版3の30階）の撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の煙でバーンを包み、時の裂け目へ連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
+      vearnTaken: { video: 'assets/movies/vearn-taken.mp4', poster: 'assets/movies/vearn-taken-poster.jpg' } },
     /* 村の素材（assets/village/、2026年10月「サイの店〜ヤナイ像の広場」）。寸法と足元の位置は assets/village/manifest.json。
      * 建物・小物（店・像・木・花壇・屋台・ベンチ）は、見本の細かさが村のマスより細かいので 2/3 の大きさで描く（1マス32ドット）。
      *   2/3 にすると店の幅が今までの店（4マス＋余白）とほぼ同じになる。スマホ（1ドット＝3ピクセル）ではちょうど2ピクセルずつになる。

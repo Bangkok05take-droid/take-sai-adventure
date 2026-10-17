@@ -882,6 +882,10 @@
       G.log(run, '大魔王バーンを倒した！' + (first ? ' 大魔王のローブが残された。' : ''));
       ev.push({ t: 'bossDown', boss: e.type });
       ev.push({ t: 'vearnFall' });
+      /* 撃破後ムービー（ミストバーンが大魔王バーンを時の裂け目へ連れ去る）。通常のバランと同じ run.postMovie の仕組み：
+       * 撃破の演出のあとに流し、流すまでの間・流している間は行動を受けつけない。終わったらこの部屋のまま、ティウの救援へ */
+      run.postMovie = 'vearnTaken';
+      ev.push({ t: 'bossOutro', boss: e.type, movie: 'vearnTaken' });
       return;
     }
     if (e.type === 'vearn' && run.final) {
