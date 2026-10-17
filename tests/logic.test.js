@@ -2859,7 +2859,9 @@ test('旅商人の買い取り：お宝の分類で町で売れる品だけ、�
   const no = ['hero_sword', 'golden_shield', 'poison_ring', 'amber_shard', 'herb', 'banana', 'thunder_staff', 'baran_emblem', 'hero_sword_relic', 'hero_shield_relic', 'return_scroll'].map((id) => (id === 'return_scroll' ? r.bag[0] : mk(id)));
   for (const it of no) { assert(!G.merchantBuysItem(it), it.id); eq(G.merchantSellPrice(it), 0); const n = r.bag.length, g = r.runGold; assert(!G.merchantSell(S, it.uid).ok, it.id + ' refused'); eq(r.bag.length, n); eq(r.runGold, g); }
   // 町の売値の半額
-  eq(G.merchantSellPrice(lotus), 130); eq(G.merchantSellPrice(crown), 1000); eq(G.merchantSellPrice(tear), 175);
+  eq(G.merchantSellPrice(lotus), 130); eq(G.merchantSellPrice(crown), 1000);
+  // クロコダインの涙は売れない（2026年10月）：町でも旅商人でも
+  eq(G.merchantSellPrice(tear), 0); assert(!G.merchantBuysItem(tear) && !G.canSell(tear) && G.sellPrice(tear) === 0, 'croc_tear not sellable');
   const t0 = r.turn, n0 = r.bag.length;
   const res = G.merchantSell(S, lotus.uid); assert(res.ok && res.price === 130);
   eq(r.runGold, 230); eq(r.bag.length, n0 - 1); assert(!r.bag.includes(lotus)); eq(r.turn, t0, 'no turn');

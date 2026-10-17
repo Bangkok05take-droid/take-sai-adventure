@@ -40,7 +40,7 @@
      * もっちゃんは階段の左わきの縁側 (1,19)。港への道（20行）はあけておく。機能・名前（下のボタン・メニュー）は「村の発展」のまま。地図の名札は家の名前 */
     L.fac.push({ id: 'develop', name: '村の発展', fp: [1, 17, 4, 3], at: [2, 20], face: 'up', npc: 'mot', npcAt: [1, 19], built: true });
     // 食堂：v2の絵は入口が左寄り。入口の前の道 (15,20) から上を向いて入る。ワーンは入口の左わき (14,19)
-    L.fac.push({ id: 'diner', name: lv.diner ? '食堂' : '食堂（空き地）', fp: [15, 17, 4, 3], at: [15, 20], face: 'up', npc: 'waan', npcAt: [14, 19], built: lv.diner });
+    L.fac.push({ id: 'diner', name: lv.diner ? 'ワーンの食堂' : '食堂（空き地）', fp: [15, 17, 4, 3], at: [15, 20], face: 'up', npc: 'waan', npcAt: [14, 19], built: lv.diner });
     /* 船着き場（港 v1）：桟橋は x10 の1列（板の上の (10,22)・(10,23) だけ歩ける）。小舟は桟橋の先の右に横付け。
      * 出発は桟橋の先 (10,23) で舟（右）を向いて。案内人ティウは入口わきの陸 (12,21)。fp は桟橋と舟のタップ範囲 */
     L.fac.push({ id: 'depart', name: '出発（船着き場）', fp: [10, 22, 6, 3], at: [10, 23], face: 'right', npc: 'tiw', npcAt: [12, 21], built: true, dock: true });
@@ -951,7 +951,8 @@
     }
     // 人
     const npcs = [];
-    for (const f of Lo.fac) if (f.npc) { npcs.push({ who: f.npc, x: f.npcAt[0], y: f.npcAt[1], fac: f.id }); solid[f.npcAt[1] * MW + f.npcAt[0]] = 1; }
+    // 店の前の人は、その施設が建ってから出す（鍛冶屋の恋・食堂のワーン。空き地の間は出さない）
+    for (const f of Lo.fac) if (f.npc && f.built) { npcs.push({ who: f.npc, x: f.npcAt[0], y: f.npcAt[1], fac: f.id }); solid[f.npcAt[1] * MW + f.npcAt[0]] = 1; }
     // 子供と猫（村だけの人。戦わない）。素材の絵が無いときは今までのコードの絵で同じ場所に出す
     const kids = VL.KIDS.map((k, i) => Object.assign({}, k, { cv: hasArt('child_' + k.id + '_front') ? null : kid(i) }));
     const cats = VL.CATS.map((c, i) => Object.assign({}, c, { cv: hasArt('cat_' + c.id + '_sit') ? null : cat(i % 2) }));

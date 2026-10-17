@@ -192,8 +192,8 @@
     // 売値・展示室の枠は未決定なので、決まるまで売れない・寄贈の枠に無い（展示室は12枠のまま）
     baran_emblem:  { name: '竜の紋章', type: 'treasure', sell: 0, noSell: true, icon: 'gem', tint: 'crystal',
       desc: 'バランが持っていた竜の紋章。お宝として大切にしまっておこう（装備はできない）。' },
-    // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダインの涙。売値は以前のまま
-    croc_tear:     { name: 'クロコダインの涙', type: 'treasure', sell: 350, icon: 'gem', tint: 'crystal',
+    // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダインの涙。売れない（noSell。sell は以前の値を残しているだけ）
+    croc_tear:     { name: 'クロコダインの涙', type: 'treasure', sell: 350, noSell: true, icon: 'gem', tint: 'crystal',
       desc: '獣王クロコダインの涙が固まったという、青緑の大きなしずく形の宝石。第1章の報酬。' },
     amber_pendant: { name: '琥珀の首飾り', type: 'treasure', sell: 300, icon: 'pendant', depth: 11,
       desc: '地下庭園で見つかった琥珀の首飾り。' },
@@ -513,7 +513,7 @@
   D.FACILITIES = [
     { id: 'storage2', kind: 'facility', name: '倉庫の拡張（15枠）', price: 200, desc: '倉庫が15枠に。お店にねむり草・みとおしの巻物が並ぶ。灯りが増える。', req: [] },
     { id: 'smith1', kind: 'facility', name: '鍛冶屋と屋台', price: 600, desc: '鍛冶屋で武器・盾を+3まで強化できる。屋台で特製お弁当・いのちの霊薬・けむり玉・どくけしそうが買える。', req: ['storage2'] },
-    { id: 'diner', kind: 'facility', name: 'サイの食堂', price: 800, desc: '出発前に料理を1品えらべる。次の探索だけ能力が上がる。', req: ['storage2'] },
+    { id: 'diner', kind: 'facility', name: 'ワーンの食堂', price: 800, desc: '出発前に料理を1品えらべる。次の探索だけ能力が上がる。', req: ['storage2'] },
     { id: 'museum', kind: 'facility', name: 'お宝展示室', price: 1200, desc: '珍しいお宝を寄贈して飾れる。集めると称号と飾りが解放される。', req: ['smith1'] },
     { id: 'storage3', kind: 'facility', name: '倉庫の増築（20枠）', price: 1500, desc: '倉庫が20枠に。', req: ['storage2', 'floor10'] },
     { id: 'smith2', kind: 'facility', name: '鍛冶屋の大きな炉（+5）', price: 2500, mats: { amber_shard: 3, bronze_shard: 2 }, desc: '強化の上限が+5になる。', req: ['smith1'] },

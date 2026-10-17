@@ -255,7 +255,7 @@
       <li><b>倉庫</b>：大事な物を預けておけば、倒れても失わない（10→15→20→30枠）。</li>
       <li><b>村の発展</b>：施設と飾りの価格・効果・解放条件を見て建てる。画面上に「次の目標」が出る。</li>
       <li><b>鍛冶屋</b>：武器・盾を強化（設備しだいで+3→+5→+8。+4以降は深い階の素材が必要）。</li>
-      <li><b>サイの食堂</b>：出発前に料理を1品。次の探索だけ能力が上がる。</li>
+      <li><b>ワーンの食堂</b>：出発前に料理を1品。次の探索だけ能力が上がる。</li>
       <li><b>お宝展示室</b>：珍しいお宝を売らずに寄贈して飾れる。集めると称号と特別な飾りが解放。</li>
       <li>深い階ほど高価なお宝と素材が見つかる。素材は持ち帰ると素材箱へ。</li>
     </ul></div>`;
@@ -774,11 +774,11 @@
     render(tab || 'facility');
   }
 
-  // ---- サイの食堂 ----
+  // ---- ワーンの食堂 ----
   function openDiner() {
     const V = UI.S.village;
-    if (!V.diner) { const f = G.facility('diner'); info('サイの食堂', `<p>食堂はまだありません。</p><p>「村の発展」で<b>${esc(f.name)}</b>（${f.price}G）を建てると、出発前に料理を食べられます。</p>`); return; }
-    const h = modal({ title: 'サイの食堂', right: V.funds + 'G', buttons: [{ label: '閉じる' }] });
+    if (!V.diner) { const f = G.facility('diner'); info('ワーンの食堂', `<p>食堂はまだありません。</p><p>「村の発展」で<b>${esc(f.name)}</b>（${f.price}G）を建てると、出発前に料理を食べられます。</p>`); return; }
+    const h = modal({ title: 'ワーンの食堂', right: V.funds + 'G', buttons: [{ label: '閉じる' }] });
     function render() {
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
       let html = `<p class="note">料理は次の探索だけ効果があります。1品だけ選べて、重ねがけはできません（帰還・敗北で終わります）。</p>`;
@@ -791,7 +791,7 @@
         confirmBox('料理', `<p><b>${esc(m.name)}</b>を <b>${m.price}G</b> で注文しますか？</p><p class="note">${esc(m.desc)}</p>${V.meal ? `<p class="warnbox">今の注文（${esc(D.MEALS[V.meal].name)}）は取り消しになり、お金は戻りません。</p>` : ''}`, '注文する', () => {
           const res = G.buyMeal(UI.S, id);
           if (res.ok) { AU.sfx('buy'); villageChanged(); render(); talk([['sai', m.name + 'だね。出発前に用意しておくよ！']]); }
-          else info('サイの食堂', res.msg);
+          else info('ワーンの食堂', res.msg);
         });
       }));
     }

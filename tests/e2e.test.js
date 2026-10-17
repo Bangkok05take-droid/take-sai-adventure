@@ -115,8 +115,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.keyboard.press('ArrowDown'); await p.waitForTimeout(300);
     const k1 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));
     assert(k1.y === k0.y + 1, 'key step');
-    // 鍛冶屋（まだ空き地）：コイをタップすると、鍛冶屋の案内（解放条件のまま）
-    await tapAt(hitPt('smith', 'npc'));
+    // 鍛冶屋（まだ空き地）：店の前の恋も食堂のワーンもまだいない。空き地をタップすると、鍛冶屋の案内（解放条件のまま）
+    assert(await p.evaluate(() => !TS.UI.vview.hits.some((h) => h.kind === 'npc' && (h.id === 'smith' || h.id === 'diner'))), 'no koi/waan before built');
+    await tapAt(hitPt('smith', 'fac'));
     for (let i = 0; i < 80 && !(await p.$('.modal')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.modal'), 'smith modal');
     assert(await p.evaluate(() => TS.UI.S.village.smithLv === 0), 'smith still locked');
