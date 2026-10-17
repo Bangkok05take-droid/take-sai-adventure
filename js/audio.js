@@ -49,10 +49,20 @@
   A.suspend = function () { if (A.ctx && A.ctx.state === 'running') A.ctx.suspend(); };
   A.resume = function () { if (A.ctx && A.ctx.state === 'suspended' && A.enabled) A.ctx.resume(); };
   /* 試聴などで場面のBGMを一時的に止める。hold の間に playBgm が呼ばれても曲名だけ覚えておき、解除したときにその曲を流す */
-  A.holdBgm = function (on) {
+  // fade：止めるときに音を下げていく秒数（ムービーの暗転に合わせるときは長め）
+  A.holdBgm = function (on, fade) {
     A.bgmHold = !!on;
-    if (on) { if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; } stopSceneMusic(0.3); }
+    if (on) { if (A.bgmTimer) { clearInterval(A.bgmTimer); A.bgmTimer = null; } stopSceneMusic(fade == null ? 0.3 : fade); }
     else if (A.bgmName) A.playBgm(A.bgmName, true);
+  };
+  /* BGMの音量を0から今の音量まで sec 秒で上げる（ムービーのあと、画面が明るくなるのに合わせて場面の曲へつなぐ） */
+  A.fadeInBgm = function (sec) {
+    if (!A.ctx || !A.musicBus) return;
+    const t = A.ctx.currentTime;
+    for (const g of [A.musicBus.gain, A.reverbSend && A.reverbSend.gain]) {
+      if (!g) continue;
+      g.cancelScheduledValues(t); g.setValueAtTime(0.0001, t); g.linearRampToValueAtTime(Math.max(0.0001, A.bgmVol), t + sec);
+    }
   };
   /* 物語の場面だけ一時的に別の曲（例：ヤナイの会話）。終わったら、その間に変わった場面の曲も含めて元に戻す */
   A.eventBgm = null;

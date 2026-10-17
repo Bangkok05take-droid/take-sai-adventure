@@ -917,6 +917,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await shot('17m_boss_movie');
     // このテストの Chromium は H.264 を再生できないので、ムービーは約1.2秒で「読み込めませんでした」から自動で戦いへ進む。まだ出ていればスキップ
     await p.tap('.movie-skip', { timeout: 1000 }).catch(() => {}); await p.waitForTimeout(100);
+    for (let i = 0; i < 30 && await p.$('.movie'); i++) await p.waitForTimeout(100);   // 暗転してゲーム画面へ戻るまで（約0.8秒）
     assert(await p.evaluate(() => !document.querySelector('.movie')), 'movie closed');
     for (let i = 0; i < 30 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.talk'), 'boss intro talk on entering the room ' + await p.evaluate(() => { const r = TS.UI.S.run; return JSON.stringify({ p: [r.player.x, r.player.y], A: r.bossFight, dash: document.getElementById('b-dash').getAttribute('aria-pressed'), modal: document.querySelector('#modal-root').textContent.slice(0, 80), log: r.log ? r.log.slice(-3) : null }); }));
@@ -960,7 +961,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.evaluate(() => !TS.UI.modals.length), 'notice closed');
   });
 
-  await test('最終章（版3）：30階で大魔王バーン→会話→連れ去る場面（動画が無いので仮の会話）→ティウの救援（荷物の交換・再読み込み）→31〜34階→35階で体が戻る場面→祈りで全回復→真大魔王バーン→帰還口→エンディング', async () => {
+  await test('最終章（版3）：30階で大魔王バーン→会話→連れ去る場面（動画が無いので仮の会話）→ティウの救援（荷物の交換・再読み込み）→時空の亀裂→31〜32階→33階で体が戻る場面→祈りで全回復→真大魔王バーン→帰還口→エンディング', async () => {
     await p.evaluate(() => {
       const S = TS.UI.S, G = TS.Game;
       S.village.story.chapter = 6; S.village.bag = [];
@@ -979,12 +980,12 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     eq2(await p.evaluate(() => TS.UI.S.run.enemies.find((e) => e.boss).type), 'vearn', '30F boss');
     for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
     await p.waitForTimeout(700);
-    // 撃破の会話 → 連れ去る場面（仮の会話） → ティウの会話 → 救援の画面
-    for (let i = 0; i < 6 && !(await p.$('.modal h2:has-text("ティウの救援")')); i++) { await closeTalk(); await p.waitForTimeout(400); }
+    // 撃破の演出 → 連れ去るムービー（この Chromium は H.264 を流せないので、暗転 → 読み込めない案内 → 暗転明け）→ ティウの会話 → 救援の画面
+    for (let i = 0; i < 20 && !(await p.$('.modal h2:has-text("ティウの救援")')); i++) { await closeTalk(); await p.waitForTimeout(400); }
     assert(await p.isVisible('.modal h2:has-text("ティウの救援")'), 'rescue screen');
     const a0 = await p.evaluate(() => { const S = TS.UI.S, r = S.run; return { robe: r.bag.concat(r.floorItems.map((f) => f.item).filter(Boolean)).some((i) => i.id === 'demon_robe'),
-      portal: !!r.portal, stairs: !!r.stairs, rescue: r.final.rescue, seen: !!S.village.story.moviesSeen.vearnTaken, bag: r.bag.length, st: S.village.storage.length }; });
-    assert(a0.robe && !a0.portal && a0.stairs && a0.rescue === 'pending' && a0.seen, 'after vearn ' + JSON.stringify(a0));
+      portal: !!r.portal, stairs: !!r.stairs, crack: !!r.crack, rescue: r.final.rescue, seen: !!S.village.story.moviesSeen.vearnTaken, bag: r.bag.length, st: S.village.storage.length }; });
+    assert(a0.robe && !a0.portal && !a0.stairs && a0.crack && a0.rescue === 'pending' && a0.seen, 'after vearn ' + JSON.stringify(a0));
     await shot('19_rescue');
     // 救援の回復：HPと満腹度が今の最大まで（1回だけ）
     const hv = await p.evaluate(() => { const r = TS.UI.S.run; return { hp: r.player.hp, max: r.player.maxhp, hunger: r.player.hunger, maxHunger: TS.Data.PLAYER.maxHunger, healed: r.final.rescueHealed }; });
@@ -1023,15 +1024,15 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     eq2(await p.evaluate(() => TS.UI.S.run.bag.length + TS.UI.S.village.storage.length), a0.bag + a0.st, 'no dup after reload');
     await p.tap('.modal-buttons button >> text=進む'); await p.waitForTimeout(200);
     eq2(await p.evaluate(() => TS.UI.S.run.final.rescue + '/' + TS.UI.S.run.final.wolf), 'done/null', 'rescue done');
-    // 31〜34階（自動では飛ばさない）→ 35階
+    // 30階の時空の亀裂 → 31〜32階（自動では飛ばさない）→ 33階
     const floors = await p.evaluate(() => { const S = TS.UI.S, G = TS.Game, seen = [];
-      while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); seen.push(S.run.floor); }
+      while (S.run.floor < 33) { const r = S.run, to = r.stairs || r.crack; r.player.x = to.x; r.player.y = to.y; G.act(S, { type: 'descend' }); seen.push(S.run.floor); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
       b.hp = 5; b.hold = 3; b.cds = { ring: 9, palm: 9, flame: 9 };
       r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 100; r.player.poison = 5; G.updateVision(r);
       const ev = []; G.checkBossRoom(S, ev);
       return { seen, boss: b.type, intro: ev.some((e) => e.t === 'bossIntro') }; });
-    assert(floors.seen.join() === '31,32,33,34,35' && floors.boss === 'truevearn' && floors.intro, 'to 35F ' + JSON.stringify(floors));
+    assert(floors.seen.join() === '31,32,33' && floors.boss === 'truevearn' && floors.intro, 'to 33F ' + JSON.stringify(floors));
     await p.evaluate(() => TS.UI.playBossIntro('truevearn'));
     await p.waitForTimeout(200);
     assert(await p.isVisible('.talk'), 'body return (placeholder talk)');

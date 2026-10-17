@@ -42,11 +42,12 @@ const BOSSES = [{ id: 'croc', ch: 1, floor: 15, movie: 'crocodine', name: 'ク�
   const waitGone = async (p, ms) => { for (let i = 0; i < ms / 100 && await p.$('.movie'); i++) await p.waitForTimeout(100); };
   const after = async (p, label) => {
     await p.waitForTimeout(400);
+    for (let i = 0; i < 40 && await p.$('.movie'); i++) await p.waitForTimeout(100);   // 暗転からゲーム画面へ明るくなりきるまで待つ
     const s = await state(p);
     chk(!s.movie && s.intro === 'done' && s.engaged && s.starts === 1 && !s.hold && s.bgm === 'boss', `${label}：戦いが1回だけ始まり、ボス戦の曲 ${JSON.stringify(s)}`);
     await p.evaluate(() => { for (const x of document.querySelectorAll('#modal-root .back')) x.remove(); TS.UI.modals.length = 0; });
     const t0 = s.turn; await p.keyboard.press('Space'); await p.waitForTimeout(300);
-    chk((await state(p)).turn === t0 + 1, `${label}：操作が戻る`);
+    { const s2 = await state(p); chk(s2.turn === t0 + 1, `${label}：操作が戻る ${JSON.stringify(s2)} ${await p.evaluate(() => JSON.stringify({ m: TS.UI.modals.length, lock: TS.UI.lockUntil - performance.now(), pm: !!TS.UI.S.run.postMovie, movie: !!TS.UI.movie, over: TS.UI.S.run.over, scr: TS.UI.screen }))}`); }
     chk(!p.errs.length, `${label}：エラーなし ${p.errs.join('|')}`);
   };
   for (const B of BOSSES) {

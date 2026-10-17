@@ -1,5 +1,5 @@
 // 最終章（版3）の画面確認：node tools/final-v3-check.js [リポジトリ] [出力フォルダ]（幅360・390・430）
-// 30階：大魔王バーン撃破 → 仮の会話（連れ去る場面）→ ティウの救援の画面（はみ出さない・決定と終わるが押せる）／3点セットの「飛ぶ」見た目／35階：体が戻る場面（仮の会話）→ 祈り
+// 30階：大魔王バーン撃破 → 仮の会話（連れ去る場面）→ ティウの救援の画面（はみ出さない・決定と終わるが押せる）／3点セットの「飛ぶ」見た目／33階：体が戻る場面（仮の会話）→ 祈り
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const ROOT = process.argv[2] || path.join(__dirname, '..'), OUT = process.argv[3] || path.join(ROOT, 'tests', 'screenshots', 'final-v3'); fs.mkdirSync(OUT, { recursive: true });
@@ -51,7 +51,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     chk(af.bag === before + 3 && af.amber === 1, `${w} 確定で一括交換（倉庫1個＋素材2個） ${JSON.stringify(af)} before=${before}`);
     await p.tap('.modal-buttons button >> text=進む'); await p.waitForTimeout(200);
     chk(await p.evaluate(() => TS.UI.S.run.final.rescue === 'done' && !TS.UI.modals.length), `${w} 救援を終える`);
-    await p.evaluate(() => { const S = TS.UI.S, G = TS.Game; while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+    await p.evaluate(() => { const S = TS.UI.S, G = TS.Game; while (S.run.floor < 33) { const r = S.run; const to = r.stairs || r.crack; r.player.x = to.x; r.player.y = to.y; G.act(S, { type: 'descend' }); }
       const r = S.run, b = r.enemies.find((e) => e.boss); r.player.x = b.x - 2; r.player.y = b.y; r.player.hp = 50; G.updateVision(r); const ev = []; G.checkBossRoom(S, ev); TS.UI.playBossIntro('truevearn'); });
     await p.waitForTimeout(300);
     if (w === 390) await p.screenshot({ path: path.join(OUT, `body_return_${w}.png`) });
@@ -59,17 +59,14 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await p.screenshot({ path: path.join(OUT, `prayer_${w}.png`) });
     await closeTalk();
     const pr = await p.evaluate(() => { const r = TS.UI.S.run; return { hp: r.player.hp, max: r.player.maxhp, stage: r.final.stage }; });
-    chk(pr.hp === pr.max && pr.stage === 'battle2', `${w} 35階：体が戻る場面→祈り ${JSON.stringify(pr)}`);
+    chk(pr.hp === pr.max && pr.stage === 'battle2', `${w} 33階：体が戻る場面→祈り ${JSON.stringify(pr)}`);
     await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 1; b.hold = 3; r.player.x = b.x - 1; r.player.y = b.y; G.updateVision(r); });
     for (let i = 0; i < 20 && await p.evaluate(() => TS.UI.S.run.enemies.some((e) => e.boss)); i++) { await p.tap('#dpad [data-dir="right"]'); await p.waitForTimeout(160); }
     await p.waitForTimeout(700); await closeTalk();
-    const ck = await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game; r.explored.fill(1); r.enemies = []; r.player.x = r.crack.x; r.player.y = r.crack.y + 1; G.updateVision(r); return { crack: r.crack, portal: r.portal, state: G.crackState(TS.UI.S) }; });
-    await p.waitForTimeout(300);
-    if (w === 390) await p.screenshot({ path: path.join(OUT, `crack_${w}.png`) });
-    await p.tap('#dpad [data-dir="up"]'); await p.waitForTimeout(400);
-    const cm = await p.evaluate(() => document.querySelector('#modal-root').textContent);
-    chk(ck.state === 'unstable' && cm.includes('時空の亀裂') && (await p.evaluate(() => TS.UI.S.run.floor)) === 35, `${w} 35階：時空の亀裂（エンディング前は入れない） ${JSON.stringify(ck)}`);
-    if (w === 390) await p.screenshot({ path: path.join(OUT, `crack_msg_${w}.png`) });
+    // 33階には時空の亀裂を出さない（版4：隠しダンジョンの入口は30階の亀裂）。帰還口だけ
+    const ck = await p.evaluate(() => { const r = TS.UI.S.run; return { floor: r.floor, crack: r.crack, portal: !!r.portal, won: r.final.stage }; });
+    chk(ck.floor === 33 && !ck.crack && ck.portal && ck.won === 'won', `${w} 33階：真大魔王バーン撃破 → 帰還口（亀裂は出ない） ${JSON.stringify(ck)}`);
+    if (w === 390) await p.screenshot({ path: path.join(OUT, `truevearn_won_${w}.png`) });
     chk(!errs.length, `${w} エラーなし ${errs.join(' / ')}`);
     await ctx.close();
   }

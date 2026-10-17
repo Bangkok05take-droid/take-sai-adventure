@@ -89,7 +89,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
   // 2. スキップ（連打しても1回）
   { const { ctx, p } = await setup(390, 844); await kill(p); await p.waitForTimeout(250); const s0 = await st(p); await waitMovie(p, 4000); await p.waitForTimeout(800);
     await p.evaluate(() => { const s = document.querySelector('.movie-skip'); s.click(); s.click(); s.click(); });
-    await p.waitForTimeout(200);
+    await p.waitForTimeout(1000);
     chk(await p.evaluate(() => !document.querySelector('.movie') && !document.querySelector('video')), '390 スキップ連打：1回だけ終わり、動画も残らない');
     await after(p, 390, 'スキップ', s0);
     chk(await p.evaluate(() => document.querySelectorAll('.modal h2').length === 1), '390 スキップ連打：救援の画面は1つだけ');

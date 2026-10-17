@@ -29,14 +29,32 @@
 
   /* 章の進め方（2026年10月から）：各章とも1階から、その章のボスの階（D.CHAPTERS[章].goal）まで。
    * 第1章クロコダイン15階・第2章フレイザード20階・第3章キルバーン25階・第4章バラン30階・第5章ミストバーン30階（別々の章）。
-   * 最終章は1階から35階まで。35階で大魔王バーン → 真大魔王バーン。章・会話は js/story.js
+   * 最終章は1階から33階まで。30階で大魔王バーン、33階で真大魔王バーン（配置の版4。版3は35階、版2は35階で連戦）。章・会話は js/story.js
    * 配置の版（run.layout）：2＝この配置。更新前に始めた探索（layout なし）は、以前の配置（第1〜5章のボスは30階）のまま終える。 */
-  D.MAX_FLOOR = 30;          // 通常の階の最深（最終章はこの先31〜34階が大魔王の城、35階が玉座）
+  D.MAX_FLOOR = 30;          // 通常の階の最深（最終章はこの先31〜32階が大魔王の城、33階が真大魔王バーンの玉座）
   D.BOSS_FLOOR = 30;         // 以前の配置（layout 1）での第1〜5章のボスの階
-  D.LAYOUT = 3;              // 新しく始める探索の配置の版
-  /* 版3（2026年10月）：最終章は地下30階に大魔王バーン、地下35階に真大魔王バーン（31〜34階は探索）。
-   * どちらも一度倒したら出ない（skip）。版2の探索（更新前から続いているもの）は、以前どおり35階で連戦 */
-  D.FINAL_V3 = { vearn: 30, truevearn: 35 };
+  D.LAYOUT = 4;              // 新しく始める探索の配置の版
+  /* 最終章の2体のボスの階。どちらも一度倒したら出ない（skip）。版2の探索（更新前から続いているもの）は、以前どおり35階で連戦。
+   *  版4（2026年10月）：地下30階に大魔王バーン、地下33階に真大魔王バーン（31〜32階は探索）。30階の時空の亀裂から31階へ。
+   *    真大魔王バーンを倒したあとは、30階の同じ亀裂が隠しダンジョン（最奥35階に竜人王バラン）の入口になる。
+   *  版3（更新前から続いている探索だけ）：30階・35階（31〜34階は探索）。途中の探索の階は変えない */
+  D.FINAL_V3 = { vearn: 30, truevearn: 33 };
+  D.finalFloors = (layout) => ((layout || D.LAYOUT) >= 4 ? D.FINAL_V3 : { vearn: 30, truevearn: 35 });
+  /* 地下30階・大魔王バーンの玉座の間（2026年10月、ChatGPT制作のデザイン assets/reference/throne-room-v1/ をそのまま使う）。
+   * 背景の絵（1024×1536）を、絵の 64px を1マスとして敷く。絵の床の升目（約74px。中央の絨毯で左右がずれる）は1マスにしていない。
+   * マスの区切りは中央の通路（絨毯 x 450〜577）がちょうど2マスになる位置：列 c は絵の x = 64c+1.5 から、行 r は y = 64r−44 から。
+   *  hall：戦う広間（床の内側。左右の炎の台・柱が立つ縁取りの帯と、上の玉座の段は壁＝入れない）
+   *  corridor：下の入口から上へ進む通路（両脇の柱・炎の台は壁）。start：入口（通路のいちばん下）
+   *  crack：大魔王バーン撃破後に残る時空の亀裂の場所（玉座の右手前。ムービーで亀裂が玉座の右に開く）
+   *  flames：絵の中の炎の位置（絵の座標。ゆらぐ明かりを重ねるだけ） */
+  D.THRONE_ROOM = {
+    w: 16, h: 25, tile: 64, imgX: 1.5, imgY: -44, imgW: 1024, imgH: 1536,
+    hall: { x: 2, y: 6, w: 12, h: 13 }, corridor: { x: 7, y: 19, w: 2, h: 5 }, start: { x: 7, y: 23 }, crack: { x: 10, y: 6 },
+    flames: [[98, 222], [407, 208], [615, 208], [925, 222], [70, 512], [70, 800], [953, 512], [953, 800], [408, 1222], [615, 1222]],
+  };
+  /* 隠しダンジョン（真大魔王バーンを倒したあと、30階の時空の亀裂から入る。最奥の35階に竜人王バラン）。
+   * 開始階・階の数・敵などは保留中なので、まだ無い（null）。用意できたらここに定義し、G.crackState が 'hidden' を返す */
+  D.HIDDEN_DUNGEON = null;
   // 以前の版のボス配置（更新前から続いている探索だけが使う）
   D.LEGACY_BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
   D.BOSS_FLOORS = D.LEGACY_BOSS_FLOORS;   // 互換のため残す
@@ -304,12 +322,12 @@
       pattern: { stomp: 1, stompMult: 2.0, line: 6, lineMult: 1.7, every: 4, summon: 'jelly', summonEvery: 8, summonMax: 2 } },
     elephant: { name: '夢見の黄金象', hp: 720, atk: 36, def: 17, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown',
       pattern: { stomp: 2, stompMult: 1.7, line: 6, lineMult: 2.0, every: 4, summon: 'wisp', summonEvery: 9, summonMax: 2, enrage: 0.5 } },
-    // ---- 最終章の31〜35階 ----
+    // ---- 最終章の31階より下 ----
     darkknight: { name: '魔王軍の騎士', hp: 150, atk: 44, def: 20, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
       tip: '大剣を振りかぶってから強打する。予告を見たら離れよう。' },
     imp:    { name: '魔界の小鬼',   hp: 62,  atk: 24, def: 8, exp: 80,  ai: 'magic',   sprite: 'imp', base: 31, shoot: 32, range: 5,
       tip: '離れた所から火の玉を撃つ。角を使ってかわそう。' },
-    /* ---- 章のボス（30階）と最終章（35階）。boss：専用の行動（js/bossai.js）。arena：ボス部屋の景観 ----
+    /* ---- 章のボス（30階）と最終章（30階・33階）。boss：専用の行動（js/bossai.js）。arena：ボス部屋の景観 ----
      * 単にHPが多いだけにしないよう、予告つきの大技・床の危険・分身・霧などで戦い方を変える。大技のあとは隙ができる。 */
     croc:   { name: 'クロコダイン', hp: 640, atk: 34, def: 15, exp: 700, ai: 'boss', sprite: 'croc', noScale: true, arena: 'arena_croc', big: true },
     flame:  { name: 'フレイザード', hp: 680, atk: 36, def: 15, exp: 800, ai: 'boss', sprite: 'flame', noScale: true, arena: 'arena_flame', big: true },
@@ -358,7 +376,7 @@
   D.bossFloorOf = (ch, layout) => {
     const C = D.CHAPTERS && D.CHAPTERS[ch];
     if (!C) return D.BOSS_FLOOR;
-    if (C.final) return D.LAST_FLOOR;
+    if (C.final) return D.finalFloors(layout).truevearn;   // 版2も35階（版3と同じ）
     return (layout || D.LAYOUT) >= 2 ? C.goal : D.BOSS_FLOOR;
   };
   function floorDef(f, ch, layout, skip) {
@@ -366,7 +384,8 @@
     const C = legacy ? null : D.CHAPTERS && D.CHAPTERS[ch];
     let bossId = legacy ? D.LEGACY_BOSS_FLOORS[f] : C ? (f === D.bossFloorOf(ch, layout) ? C.boss : null) : null;
     if (C && C.final && (layout || D.LAYOUT) >= 3) {   // 版3の最終章
-      bossId = Object.keys(D.FINAL_V3).find((b) => D.FINAL_V3[b] === f) || null;
+      const FF = D.finalFloors(layout);
+      bossId = Object.keys(FF).find((b) => FF[b] === f) || null;
       if (bossId && skip && skip[bossId]) bossId = null;
     }
     if (bossId) {
@@ -435,7 +454,7 @@
     if (f <= 25) return [['golem', 2], ['wisp', 3], ['lizard', 2], ['shaman', 2], ['thief', 2], ['bat', 1], ['statue', 1]];
     return [['guard', 3], ['golem', 2], ['wisp', 2], ['shaman', 2], ['thief', 2], ['lizard', 1]];
   };
-  // 最終章の31〜35階：大魔王の城
+  // 最終章の31階より下：大魔王の城
   function demonFloor(f, C) {
     const items = [['herb', 3], ['big_herb', 3], ['elixir', 2], ['khaoniao', 2], ['banana', 1], ['sleep_incense', 2], ['slow_powder', 1],
       ['fire_charm', 1], ['thunder_king_staff', 0.8], ['antidote', 1], ['sight_scroll', 1], ['sense_scroll', 1], ['clear_incense', 1],
@@ -462,7 +481,7 @@
   // モンスターハウス：地下6階以降の通常階でまれに。1階に1部屋まで。敵とお宝が多い部屋
   D.MONSTER_HOUSE = { minFloor: 6, chance: 0.08, minArea: 12, enemiesMax: 10, extraItems: 3 };
   /* ダンジョンの希少素材商人「謎の旅商人」。鍛冶の強化・鍛冶屋の拡張に使う素材だけを売る（武器や道具は売らない）。
-   * 出現：8階以降のふつうの階で約14%（ボスの階・最終章35階・モンスターハウスの部屋には出ない）。
+   * 出現：8階以降のふつうの階で約14%（ボスの階・最終章の真大魔王バーンの階・モンスターハウスの部屋には出ない）。
    * 価格の目安（簡易AI 各200回の平均）：12階まで行って帰ると約1100G、21階で約2200G、30階前後で約3100G。
    *   素材は1マスの道具の約7%（1階あたり約0.4個）なので、自分で集めると同じ地域を2〜3階探す手間。
    *   その手間より高く、1回の探索の稼ぎの半分〜3分の2にあたる値段にする。

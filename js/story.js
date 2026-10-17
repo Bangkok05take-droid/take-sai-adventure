@@ -27,7 +27,7 @@
     friend2:   { name: 'コイ', portrait: 'koi' },
   };
 
-  /* 章。boss は goal の階で待つ相手（第1章15階・第2章20階・第3章25階・第4章30階・第5章30階・最終章35階）。
+  /* 章。boss は goal の階で待つ相手（第1章15階・第2章20階・第3章25階・第4章30階・第5章30階・最終章33階。配置の版3の探索は35階）。
    * bias：その章で多く出る敵（その深さにもともと出る敵だけを増やす。浅い階に強敵は出さない）
    * prep：その章で拾いやすい・お店に並ぶ「ボスに備える道具」
    * reward：撃破で現れる品（ボスの階に置かれる）と、村へ帰ったときの復興支援金（1回だけ） */
@@ -47,12 +47,12 @@
     5: { name: '第5章', title: '影の衣', boss: 'mist', goal: 30, color: '#6a4aa0',
       bias: { shaman: 1.8, wisp: 1.5, bat: 1.4 }, prep: [['clear_incense', 1.2], ['elixir', 0.6]], shop: ['clear_incense'],
       reward: { items: ['hero_sword', 'hero_shield'], funds: 3000 }, tip: '霧の中でも赤い印は見える。きりばらいの香で霧と拘束を払える。' },
-    6: { name: '最終章', title: '大魔王の封印', boss: 'vearn', goal: 35, final: true, color: '#c8a040',
+    6: { name: '最終章', title: '大魔王の封印', boss: 'vearn', goal: 33, final: true, color: '#c8a040',
       bias: { guard: 1.4, golem: 1.2 }, prep: [['elixir', 1], ['big_herb', 1.5]], shop: [],
-      reward: { items: ['demon_robe'], funds: 5000 }, tip: '30階の大魔王バーンを倒しても、まだ終わりではない…。35階をめざそう。' },
+      reward: { items: ['demon_robe'], funds: 5000 }, tip: '30階の大魔王バーンを倒しても、まだ終わりではない…。33階をめざそう。' },
   };
   D.FINAL_CHAPTER = 6;
-  D.LAST_FLOOR = 35;
+  D.LAST_FLOOR = 33;   // 最終章の最深（版4：33階の真大魔王バーン）。隠しダンジョンは別（開始階は保留）
 
   // 冒頭の短い場面（はじめから）
   D.STORY = {};

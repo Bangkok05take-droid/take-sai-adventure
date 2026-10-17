@@ -46,6 +46,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
   // 撃破後の会話を閉じて、操作が戻るか（1歩動いてターンが進む）
   const after = async (p, w, label) => {
     await p.waitForTimeout(400);
+    for (let i = 0; i < 40 && await p.$('.movie'); i++) await p.waitForTimeout(100);   // 暗転からゲーム画面へ明るくなりきるまで待つ
     const s = await st(p);
     chk(!s.movie && !s.pm && s.saved === null && s.talk && s.talk.includes('その剣に'), `${w} ${label}：撃破後の会話へ進む・保存も済み ${JSON.stringify(s)}`);
     for (let i = 0; i < 40 && await p.$('.talk'); i++) { await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(50); }
@@ -87,7 +88,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
   // 2. スキップ（連打しても1回）
   { const { ctx, p } = await setup(390, 844); await kill(p); await waitMovie(p, 4000); await p.waitForTimeout(800);
     await p.evaluate(() => { const s = document.querySelector('.movie-skip'); s.click(); s.click(); s.click(); });
-    await p.waitForTimeout(200);
+    await p.waitForTimeout(1000);
     chk(await p.evaluate(() => !document.querySelector('.movie') && !document.querySelector('video') && document.querySelectorAll('.talk').length === 1), '390 スキップ連打：1回だけ終わり、動画も残らない');
     await after(p, 390, 'スキップ'); await ctx.close(); }
   // 3. 読み込み失敗（404）

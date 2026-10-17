@@ -14,6 +14,7 @@
   // opts：{ boss: ボスの階か, returnPoint: 帰還の祠を置くか }（省略時は以前の版の配置）
   function generate(floor, rng, opts) {
     opts = opts || { boss: !!D.LEGACY_BOSS_FLOORS[floor], returnPoint: D.RETURN_POINT_FLOORS.includes(floor) };
+    if (opts.throne) return generateThroneFloor();
     if (opts.boss) return generateBossFloor(rng);
     for (let attempt = 0; attempt < 80; attempt++) {
       const g = tryGenerate(floor, rng, opts);
@@ -163,6 +164,18 @@
     for (let x = 7; x < 13; x++) tiles[cy * w + x] = CORR;
     const map = { w, h, tiles, rooms, boss: true };
     return { map, start: { x: 3, y: 11 }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: 22, y: 11 } };
+  }
+
+  /* 地下30階・大魔王バーンの玉座の間（D.THRONE_ROOM）。下の入口から中央の通路を上へ進み、広間へ入る。
+   * rooms[0]＝通路（入口。最初の道具を置く）、rooms[1]＝広間（ボス部屋）。玉座・柱・炎の台・旗は壁（絵に描かれていて、通れない） */
+  function generateThroneFloor() {
+    const T = D.THRONE_ROOM, w = T.w, h = T.h;
+    const tiles = new Array(w * h).fill(WALL);
+    const rooms = [Object.assign({ id: 0 }, T.corridor), Object.assign({ id: 1 }, T.hall)];
+    for (const r of rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) tiles[y * w + x] = FLOOR;
+    const map = { w, h, tiles, rooms, boss: true, throne: true };
+    const hl = T.hall;
+    return { map, start: { x: T.start.x, y: T.start.y }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: hl.x + (hl.w >> 1), y: hl.y + (hl.h >> 1) } };
   }
 
   function randomRoomTile(rng, room) {

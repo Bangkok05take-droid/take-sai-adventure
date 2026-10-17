@@ -1293,7 +1293,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, ground: {}, bosses: {}, enemies: {}, take: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, ground: {}, bosses: {}, enemies: {}, take: {}, rooms: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1333,6 +1333,7 @@
     }
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
     for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
+    for (const [k, src] of Object.entries(A.rooms || {})) if (src) load(src, (img) => { SP.art.rooms[k] = img; });   // 部屋の絵（大きいので画像のまま使う）
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
     for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {
       const n = Math.max(1, Math.round(img.width / img.height)), w = img.width / n;

@@ -207,7 +207,7 @@
   // ================= 遊び方 =================
   const HELP_HTML = `<div class="help">
     <h3>目的</h3>
-    <p>師匠マスターヤナイが大魔王を封じた遺跡へ、勇者たけが挑む。第1〜5章は、1階からその章のボスの階（第1章15階・第2章20階・第3章25階・第4章と第5章30階）をめざし、そこで待つ魔王軍の将を倒す。倒すと報酬と帰還口が現れ、村へ帰ると次の章へ進む。第5章のあと、30階の大魔王バーン、35階の真大魔王バーンに挑む最終章が始まる。</p>
+    <p>師匠マスターヤナイが大魔王を封じた遺跡へ、勇者たけが挑む。第1〜5章は、1階からその章のボスの階（第1章15階・第2章20階・第3章25階・第4章と第5章30階）をめざし、そこで待つ魔王軍の将を倒す。倒すと報酬と帰還口が現れ、村へ帰ると次の章へ進む。第5章のあと、30階の大魔王バーン、33階の真大魔王バーンに挑む最終章が始まる。</p>
     <p>途中で帰還しても、倒れても、章はそのまま（クリアした章をやり直すことはない）。拾ったお宝はサイの店で売って村を復興させ、次の挑戦の準備をしよう。</p>
     <h3>ボス戦</h3>
     <ul>
@@ -1458,54 +1458,110 @@
     AU.holdBgm(true);
     talk(lines, fin, { skip: true });
   }
-  // 動画を画面いっぱいに流す（縦の動画は切らない）。終わり・スキップ・失敗で onEnd(理由) を1回だけ
+  /* ムービーの前後の暗転（ミリ秒。初期の調整値。スマホで間延びしない短さ）。
+   *  out：ゲーム画面を黒へ／in：黒から動画の最初のコマへ（明るくなりきってから再生）
+   *  endOut：最後まで見たとき、最後のコマを残したまま黒へ／skipOut：スキップのとき（短め）／errOut：読み込み失敗のとき
+   *  reveal：黒からゲーム画面へ（この間も操作は受けつけない）
+   *  ready：黒くなってから最初のコマの用意を待つ上限（iOS などは再生を始めるまで読み込まないので、過ぎたら黒のまま再生を始め、映ったら明るくする） */
+  UI.MOVIE_FADE = { out: 500, in: 400, endOut: 400, skipOut: 250, errOut: 200, reveal: 500, ready: 700 };
+  /* 動画を画面いっぱいに流す（縦の動画は切らない）。終わり・スキップ・失敗で onEnd(理由) を1回だけ。
+   * 暗転：①入力を止める（UI.modals）②ゲーム画面を黒へ（BGMも下げる）③黒の間に最初のコマを用意 ④動画を明るくしてから再生。
+   * 終わり：①最後のコマのまま黒へ（動画の音も下げる）②黒の間に onEnd（ムービー後の状態・会話・曲）③ゲーム画面を明るく ④それから操作を戻す。
+   * 黒い幕（.movie の背景）は最後まで残すので、読み込み中・終わった直後に元の画面や白い画面は見えない */
   function movieOverlay(m, id, onEnd, errMsg) {
-    AU.holdBgm(true);
+    const FD = UI.MOVIE_FADE;
+    AU.holdBgm(true, FD.out / 1000);
     const root = document.createElement('div');
-    root.className = 'movie';
+    root.className = 'movie movie-fading';
     root.innerHTML = '<div class="movie-msg" hidden></div><button class="movie-play primary" hidden>▶ タップして再生</button><button class="movie-skip">スキップ ▶▶</button>';
     const pre = UI.moviePre && UI.moviePre.id === id ? UI.moviePre.v : null;
     const v = pre || document.createElement('video');
     UI.moviePre = null;
     v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.playsInline = true; v.loop = false; v.controls = false; v.preload = 'auto';
-    v.poster = m.poster;
+    v.removeAttribute('poster');   // 用意した最初のコマより先に、別の絵（ポスター）が映らないように
     const st = UI.S.settings;
-    v.muted = !st.sound; v.volume = Math.max(0, Math.min(1, st.bgmVol == null ? 1 : st.bgmVol));
+    const vol = Math.max(0, Math.min(1, st.bgmVol == null ? 1 : st.bgmVol));
+    v.muted = !st.sound; v.volume = vol;
+    v.style.opacity = '0';
     if (!pre) v.src = m.video;
     root.prepend(v);
+    root.style.opacity = '0';
     document.body.appendChild(root);
+    root.getBoundingClientRect();   // 透明の状態を一度描いてから、黒へ変える
+    root.style.transition = `opacity ${FD.out}ms ease`; root.style.opacity = '1';
     const msg = root.querySelector('.movie-msg'), playBtn = root.querySelector('.movie-play'), skipBtn = root.querySelector('.movie-skip');
-    let done = false, stall = null;
+    let done = false, stall = null, black = false, shown = false, started = false, readyTimer = null;
     const say = (t) => { msg.textContent = t || ''; msg.hidden = !t; };
     const ask = (label) => { playBtn.textContent = label; playBtn.hidden = false; };
+    // 動画を明るくする（then：明るくなりきってから）
+    function showVideo(then) {
+      if (shown) return;
+      shown = true; root.classList.remove('movie-fading');
+      v.style.transition = `opacity ${FD.in}ms ease`; v.style.opacity = '1';
+      if (then) setTimeout(() => { if (!done) then(); }, FD.in);
+    }
+    // 黒くなりきって、最初のコマが用意できたら：明るくしてから再生
+    function maybeShow() {
+      if (done || shown || !black) return;
+      if (v.readyState >= 2) { clearTimeout(readyTimer); showVideo(tryPlay); }
+    }
     function finish(reason) {
       if (done) return;
       done = true; UI.movie = null; UI.movieEnd = reason;
-      clearTimeout(stall); document.removeEventListener('visibilitychange', onVis);
-      try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* 片付けだけ */ }
-      root.remove();
-      const i = UI.modals.indexOf(handle); if (i >= 0) UI.modals.splice(i, 1);
-      onEnd(reason);
+      clearTimeout(stall); clearTimeout(readyTimer); document.removeEventListener('visibilitychange', onVis);
+      root.classList.add('movie-closing');
+      playBtn.hidden = true; skipBtn.hidden = true;
+      const outMs = reason === 'ended' ? FD.endOut : reason === 'skip' ? FD.skipOut : FD.errOut;
+      // ①最後のコマのまま黒へ（動画の音も下げる）。黒い幕はそのまま
+      v.style.transition = `opacity ${outMs}ms ease`; v.style.opacity = '0';
+      const v0 = v.volume, t0 = performance.now();
+      const fadeVol = setInterval(() => { const k = Math.min(1, (performance.now() - t0) / outMs); try { v.volume = v0 * (1 - k); } catch (e) { /* iOS は音量を変えられない */ } if (k >= 1) clearInterval(fadeVol); }, 30);
+      setTimeout(() => {
+        clearInterval(fadeVol);
+        say('');
+        try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* 片付けだけ */ }
+        v.remove();
+        const i = UI.modals.indexOf(handle); if (i >= 0) UI.modals.splice(i, 1);
+        // ②黒の間に、ムービー後の状態・会話・曲を用意（報酬・戦闘開始などは onEnd の中で1回だけ）
+        try { onEnd(reason); } finally {
+          // ③ゲーム画面を明るく（曲も一緒に上げる）④明るくなりきるまで操作は受けつけない
+          AU.fadeInBgm((FD.reveal + 400) / 1000);
+          const endAt = performance.now() + FD.reveal + 40;
+          UI.lockUntil = Math.max(UI.lockUntil, endAt);
+          root.getBoundingClientRect();
+          root.style.transition = `opacity ${FD.reveal}ms ease`; root.style.opacity = '0';
+          setTimeout(() => root.remove(), endAt - performance.now());   // 黒い幕が消えるのと同時に操作を戻す
+        }
+      }, outMs);
     }
     function tryPlay() {
       if (done) return;
-      playBtn.hidden = true;
+      playBtn.hidden = true; started = true;
       let p; try { p = v.play(); } catch (e) { p = Promise.reject(e); }
-      if (p && p.catch) p.catch((e) => { if (done) return; if (v.error) return onError(); say(''); ask(e && e.name === 'NotAllowedError' ? '▶ タップして再生' : '▶ 再生する'); });
+      if (p && p.catch) p.catch((e) => { if (done) return; if (v.error) return onError(); say(''); showVideo(); ask(e && e.name === 'NotAllowedError' ? '▶ タップして再生' : '▶ 再生する'); });
     }
     function onError() {
       if (done) return;
+      clearTimeout(readyTimer);
       playBtn.hidden = true; say(errMsg || 'ムービーを読み込めませんでした。戦いを始めます。');
-      setTimeout(() => finish('error'), 1200);
+      setTimeout(() => finish('error'), 1200);   // 黒い画面のまま止まらず、今までの代わりの流れへ
     }
-    function onVis() { if (done) return; if (document.hidden) v.pause(); else if (v.paused && !v.ended) ask('▶ タップして再開'); }
+    function onVis() { if (done) return; if (document.hidden) v.pause(); else if (started && v.paused && !v.ended) ask('▶ タップして再開'); }
     v.addEventListener('ended', () => finish('ended'));
     v.addEventListener('error', onError);
+    v.addEventListener('loadeddata', maybeShow);
+    v.addEventListener('canplay', maybeShow);
     v.addEventListener('waiting', () => { clearTimeout(stall); stall = setTimeout(() => { if (!done && !v.ended) { say('読み込みに時間がかかっています。スキップもできます。'); ask('↻ 再試行'); } }, 6000); });
-    v.addEventListener('playing', () => { clearTimeout(stall); say(''); playBtn.hidden = true; });
+    v.addEventListener('playing', () => { clearTimeout(stall); say(''); playBtn.hidden = true; if (!shown) showVideo(); });
     if (pre && pre.error) setTimeout(onError, 0);
     document.addEventListener('visibilitychange', onVis);
-    // 動画の上のタッチ・クリックは、後ろのゲームへ伝えない
+    // ②黒くなりきったら ③最初のコマを待つ。待ちきれなければ、黒のまま再生を始め、映ったら明るくする（冒頭はほとんど見逃さない）
+    setTimeout(() => {
+      if (done) return;
+      black = true; maybeShow();
+      if (!shown) readyTimer = setTimeout(() => { if (!done && !shown && !started) tryPlay(); }, FD.ready);
+    }, FD.out);
+    // 動画の上のタッチ・クリックは、後ろのゲームへ伝えない（暗転中・明るくなる途中も）
     for (const t of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'contextmenu']) root.addEventListener(t, (e) => { e.stopPropagation(); if (t === 'contextmenu') e.preventDefault(); });
     skipBtn.addEventListener('click', () => finish('skip'));
     playBtn.addEventListener('click', () => { if (playBtn.textContent.includes('再試行')) { say(''); try { v.load(); } catch (e) { /* 次の再生で */ } } tryPlay(); });
@@ -1514,7 +1570,6 @@
     const handle = { el: root, back: root, body: root, opts: {}, close: () => finish('skip'), accept: () => true, movie: true };
     UI.modals.push(handle);
     UI.movie = { id, video: v, finish };
-    tryPlay();
   }
   /* 撃破後ムービー（run.postMovie。いまは通常のバランの「ミストバーンが連れ去る」）。
    * 撃破の演出のあとに流し、終わり・スキップ・読み込み失敗のどれでも G.finishPostMovie を1回だけ呼んで then へ（撃破後の会話）。
@@ -2015,7 +2070,7 @@
     } });
     buttons.push({ label: '置く（1ターン）', onClick: () => {
       const run = UI.S.run;
-      if (G.itemAt(run, run.player.x, run.player.y) || G.onStairs(run) || G.onReturnPoint(run) || G.onPortal(run)) { setTimeout(() => info('置けません', 'ここには置けません。'), 0); return; }
+      if (G.itemAt(run, run.player.x, run.player.y) || G.onStairs(run) || G.onCrack(run) || G.onReturnPoint(run) || G.onPortal(run)) { setTimeout(() => info('置けません', 'ここには置けません。'), 0); return; }
       finish({ type: 'drop', uid: it.uid });
     } });
     modal({ title: esc(G.itemName(it)), html: detailHtml(it), buttons });
@@ -2044,10 +2099,23 @@
     h.body.querySelector('.primary').style.fontSize = '14px';
   }
 
-  /* 35階の時空の亀裂（ミストが逃げた先）。入れるかは G.crackState。36階から先（竜人王バラン）はまだ無いので、今は入れない */
+  /* 時空の亀裂。入れるかは G.crackState。
+   * 30階（版4）：真大魔王バーンを倒す前は31階へ、倒したあとは隠しダンジョンの入口（まだ無いので入れない）。
+   * 35階（版3の探索だけ）：ミストが逃げた先。36階から先はまだ無いので、今は入れない */
   function promptCrack() {
     if (!UI.S.run || UI.modals.length || !G.onCrack(UI.S.run)) return;
     const stt = G.crackState(UI.S);
+    // 30階：大魔王バーン撃破後に残った亀裂。真大魔王バーンを倒す前は31階へ、倒したあとは隠しダンジョンへ（まだ準備中）。救援が終わるまでは入らない
+    if (stt === 'rescue') { info('時空の亀裂', '<p>ミストバーンが大魔王バーンを連れ去った、時空の亀裂だ。</p><p>ティウの救援が終わってから、先へ進もう。</p>'); return; }
+    if (stt === 'next') {
+      const f = UI.S.run.floor;
+      modal({ title: '時空の亀裂', html: `<p>ミストバーンが大魔王バーンを連れ去った、時空の亀裂だ。</p><p>亀裂の奥へ進みますか？（地下${f + 1}階へ）</p><p class="note">進まなかった場合も「足元」ボタンからいつでも進めます。</p>`, buttons: [
+        { label: 'まだ探索する' },
+        { label: '進む', cls: 'primary', onClick: () => { setTimeout(() => doDescend(), 0); } },
+      ] });
+      return;
+    }
+    if (stt === 'hiddenNotReady') { info('時空の亀裂', '<p>時空の亀裂の奥から、竜の気配がする……。</p><p class="note">この先の隠しダンジョンは準備中です。</p>'); return; }
     const msg = { unstable: '時空の亀裂が、玉座の後ろで渦を巻いている。……まだ揺らいでいて、入れそうにない。（いまは村へ帰って、物語を見届けよう）',
       notReady: '時空の亀裂の奥から、竜の気配がする。……この先（36階〜）は準備中。', open: '時空の亀裂の奥から、竜の気配がする。' }[stt] || '';
     if (msg) info('時空の亀裂', `<p>${msg}</p>`);

@@ -76,7 +76,9 @@ function defeatBoss(S) {
 function goDown(S) {
   const run = S.run;
   if (G.F(run).boss && run.enemies.some((e) => e.boss)) defeatBoss(S);
-  run.player.x = run.stairs.x; run.player.y = run.stairs.y;
+  const to = run.stairs || (run.crack && run.crack.kind === 'throne30' ? run.crack : null);   // 30階（玉座の間）は時空の亀裂から先へ
+  if (G.canRescue(run)) G.commitRescue(S);
+  run.player.x = to.x; run.player.y = to.y;
   G.act(S, { type: 'descend' });
 }
 function goToFloor(S, f) { while (S.run.floor < f) goDown(S); }
@@ -1466,7 +1468,7 @@ function placeNear(S, dx, dy) {
   G.updateVision(run); return b;
 }
 const stepOk = (run, dir) => { const [dx, dy] = G.DIRS[dir]; return G.canStep(run.map, run.player.x, run.player.y, dx, dy) && !G.enemyAt(run, run.player.x + dx, run.player.y + dy); };
-test('章ごとのボスの階：第1章15階・第2章20階・第3章25階・第4章30階・第5章30階（別々の章）。最終章（版3）は30階に大魔王バーン、31〜34階を探索、35階に真大魔王バーン', () => {
+test('章ごとのボスの階：第1章15階・第2章20階・第3章25階・第4章30階・第5章30階（別々の章）。最終章（版4）は30階に大魔王バーン、31〜32階を探索、33階に真大魔王バーン。版3の途中の探索は35階のまま', () => {
   const want = { 1: ['croc', 15], 2: ['flame', 20], 3: ['kill', 25], 4: ['baran', 30], 5: ['mist', 30] };
   for (const ch of [1, 2, 3, 4, 5]) {
     const [boss, fl] = want[ch];
@@ -1478,8 +1480,12 @@ test('章ごとのボスの階：第1章15階・第2章20階・第3章25階・�
   const S = chapterRun(6, 210, 30);
   eq(S.run.final.v, 3); eq(S.run.enemies.filter((e) => e.boss).map((e) => e.type).join(), 'vearn', '30F vearn'); assert(!S.run.stairs, 'no stairs before the fight');
   for (let f = 1; f < 30; f++) assert(!G.F(S.run, f).boss, 'no boss above ' + f);
-  for (let f = 31; f < 35; f++) assert(!G.F(S.run, f).boss, 'no boss on ' + f);
-  eq(G.F(S.run, 35).boss, 'truevearn'); eq(G.maxFloor(S.run), 35);
+  eq(S.run.layout, 4);
+  for (let f = 31; f < 33; f++) assert(!G.F(S.run, f).boss, 'no boss on ' + f);
+  eq(G.F(S.run, 33).boss, 'truevearn'); eq(G.maxFloor(S.run), 33); eq(D.CHAPTERS[6].goal, 33);
+  // 版3（更新前から続いている探索）は、途中で階を変えない：31〜34階を探索、35階に真大魔王バーン
+  for (let f = 31; f < 35; f++) assert(!D.floorFor(6, f, 3).boss, 'v3 no boss on ' + f);
+  eq(D.floorFor(6, 35, 3).boss, 'truevearn'); eq(D.bossFloorOf(6, 3), 35);
   // 版2（更新前から続く探索）は以前どおり35階で大魔王バーン
   const O = chapterRunV2(6, 211, 35); eq(O.run.enemies.find((e) => e.boss).type, 'vearn'); eq(O.run.final.stage, 'battle1');
 });
@@ -1653,8 +1659,8 @@ test('全章を順に進める：第1章→第5章→最終章→エンディン
     eq(res.chapterClear, ch); eq(res.rewardFunds, D.CHAPTERS[ch].reward.funds);
   }
   eq(S.village.story.chapter, 6);
-  departWithScroll(S, 310); goToFloor(S, 30); defeatBoss(S); assert(!S.run.portal && S.run.stairs, '30F: stairs, no portal'); assert(G.commitRescue(S).ok);
-  goToFloor(S, 35); defeatBoss(S);
+  departWithScroll(S, 310); goToFloor(S, 30); defeatBoss(S); assert(!S.run.portal && !S.run.stairs && S.run.crack, '30F: time crack, no stairs, no portal'); assert(G.commitRescue(S).ok);
+  goToFloor(S, D.FINAL_V3.truevearn); defeatBoss(S);
   S.run.player.x = S.run.portal.x; S.run.player.y = S.run.portal.y; G.act(S, { type: 'returnHome' });
   const res = G.finishRun(S);
   assert(res.finalClear && S.village.story.endingDone);
@@ -1881,9 +1887,11 @@ function toBossFloor(ch, seed) {
   return S;
 }
 // 通路の、部屋の入口の1つ手前のマス（部屋の外）
+// dir：部屋へ入る向き、out：部屋から通路へ出る向き（30階の玉座の間は下の通路から上へ入る。ほかのボス部屋は左の通路から右へ）
 function doorOutside(run) {
   const A = run.bossFight;
-  for (let y = A.y; y < A.y + A.h; y++) { const x = A.x - 1; if (TS.Dungeon.passable(run.map, x, y)) return { x, y }; }
+  for (let y = A.y; y < A.y + A.h; y++) { const x = A.x - 1; if (TS.Dungeon.passable(run.map, x, y)) return { x, y, dir: 'right', out: 'left' }; }
+  for (let x = A.x; x < A.x + A.w; x++) { const y = A.y + A.h; if (TS.Dungeon.passable(run.map, x, y)) return { x, y, dir: 'up', out: 'down' }; }
   throw new Error('no door');
 }
 const insideAll = (run) => run.enemies.filter((e) => e.boss || e.summoned).every((e) => G.inArena(run, e.x, e.y));
@@ -1903,7 +1911,7 @@ test('全ボス：入室前は部屋の中央で待ち（移動・攻撃・特�
     for (let i = 0; i < 25; i++) { const r = G.act(S, { type: 'wait' }); assert(!r.events.some((e) => e.t === 'bossStart'), 'no start in corridor'); }
     assert(b.x === pos0[0] && b.y === pos0[1] && !b.charge && !run.hazards.length && !run.fog && run.enemies.length === 1 && b.hp === hp0 && !A.engaged, 'boss stays idle ch' + ch);
     // 部屋に入る（右へ1歩）：戦闘開始は1回だけ。入ったターンにボスは動かない
-    const r1 = G.act(S, { type: 'move', dir: 'right' });
+    const r1 = G.act(S, { type: 'move', dir: door.dir });
     let nStart = r1.events.filter((e) => e.t === 'bossStart').length;
     if (D.BOSS_INTROS[b.type]) {   // 登場ムービーのあるボス：入室ではムービーだけ。終えたときに1回だけ戦闘開始
       eq(r1.events.filter((e) => e.t === 'bossIntro').length, 1, 'intro ch' + ch); assert(!A.engaged && A.intro === 'pending');
@@ -1919,8 +1927,8 @@ test('全ボス：入室前は部屋の中央で待ち（移動・攻撃・特�
     for (let t = 0; t < 160 && run.enemies.includes(b) && !run.over; t++) {
       const out = Math.floor(t / 20) % 2 === 1;   // 20ターンごとに通路へ出る／戻る
       const p = run.player;
-      if (out && G.inArena(run, p.x, p.y)) { const st = TS.Dungeon && G.act(S, { type: 'move', dir: 'left' }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
-      else if (!out && !G.inArena(run, p.x, p.y)) { const st = G.act(S, { type: 'move', dir: 'right' }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
+      if (out && G.inArena(run, p.x, p.y)) { const st = TS.Dungeon && G.act(S, { type: 'move', dir: door.out }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
+      else if (!out && !G.inArena(run, p.x, p.y)) { const st = G.act(S, { type: 'move', dir: door.dir }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
       else { const st = G.act(S, { type: 'wait' }); starts += st.events.filter((e) => e.t === 'bossStart').length; }
       run.player.hp = run.player.maxhp;
       assert(insideAll(run), 'confined ch' + ch + ' t' + t + ' ' + JSON.stringify(run.enemies.map((e) => [e.type, e.x, e.y])));
@@ -1961,7 +1969,7 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   const S = toBossFloor(6, 941), run = S.run, st = S.village.story;
   eq(run.floor, 30); eq(run.enemies.find((e) => e.boss).type, 'vearn');
   run.player.x = doorOutside(run).x; run.player.y = doorOutside(run).y; G.updateVision(run);
-  const r0 = G.act(S, { type: 'move', dir: 'right' });
+  const r0 = G.act(S, { type: 'move', dir: doorOutside(run).dir });
   assert(r0.events.some((e) => e.t === 'bossIntro' && e.boss === 'vearn') && !run.bossFight.engaged, 'vearn intro movie first');
   G.finishBossIntro(S);   // 登場ムービーを終えた扱い
   assert(run.bossFight.engaged); eq(G.dungeonBgm(run), 'boss');
@@ -1969,16 +1977,20 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   defeatBoss(S);
   assert(run.bossFight.won); eq(G.dungeonBgm(run), 'dungeon'); assert(st.defeated.vearn);
   eq(run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, 1, 'robe once');
-  assert(run.stairs && !run.portal, 'stairs, no portal'); eq(run.final.rescue, 'pending'); assert(G.canRescue(run));
+  // 玉座の間：下り階段は無く、玉座の右手前に時空の亀裂が残る（ローブとは別のマス）。帰還口も無い
+  assert(run.map.throne && !run.stairs && !run.portal, 'no stairs, no portal'); eq(run.final.rescue, 'pending'); assert(G.canRescue(run));
+  eq(run.crack.x + ',' + run.crack.y + ',' + run.crack.kind, D.THRONE_ROOM.crack.x + ',' + D.THRONE_ROOM.crack.y + ',throne30', 'crack near the throne');
+  assert(!G.itemAt(run, run.crack.x, run.crack.y), 'robe not on the crack');
   const L = SV.deserialize(SV.serialize(S));
   eq(L.run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, 1, 'no duplicate after reload'); eq(L.run.final.rescue, 'pending');
-  // 救援が終わるまでは玉座の後ろの階段を降りられない
-  eq(L.run.stairs.x + ',' + L.run.stairs.y, (() => { const t = G.throneBack(L.run.map); return t.x + ',' + t.y; })(), 'stairs behind the throne');
-  L.run.player.x = L.run.stairs.x; L.run.player.y = L.run.stairs.y; G.act(L, { type: 'descend' }); eq(L.run.floor, 30, 'no descend before rescue ends');
-  assert(G.commitRescue(L).ok); assert(!G.canRescue(L.run));
-  // 31〜34階を探索して35階へ（ワープしない）
-  const seen = []; while (L.run.floor < 35) { const r = L.run; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(L, { type: 'descend' }); seen.push(r.floor); }
-  eq(seen.join(), '31,32,33,34,35');
+  assert(L.run.crack && L.run.crack.kind === 'throne30' && DG.same(L.run.crack, run.crack), 'crack kept after reload');
+  // 救援が終わるまでは亀裂に入れない
+  eq(G.crackState(L), 'rescue');
+  L.run.player.x = L.run.crack.x; L.run.player.y = L.run.crack.y; G.act(L, { type: 'descend' }); eq(L.run.floor, 30, 'no descend before rescue ends');
+  assert(G.commitRescue(L).ok); assert(!G.canRescue(L.run)); eq(G.crackState(L), 'next', 'crack leads on (provisional: next floor)');
+  // 31〜32階を探索して33階へ（ワープしない）
+  const seen = []; while (L.run.floor < 33) { const r = L.run, to = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = to.x; r.player.y = to.y; G.act(L, { type: 'descend' }); seen.push(r.floor); }
+  eq(seen.join(), '31,32,33');
   const R = L.run, tv = R.enemies.find((e) => e.boss); eq(tv.type, 'truevearn'); assert(!R.bossFight.engaged);
   R.player.hp = 60; R.player.maxhp = 500; R.player.poison = 3; R.player.hunger = 40;
   const d = doorOutside(R); R.player.x = d.x; R.player.y = d.y; G.updateVision(R);
@@ -1990,19 +2002,63 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   eq(G.finishBossIntro(L).length, 0, 'prayer once');
   defeatBoss(L);
   eq(R.final.stage, 'won'); assert(R.portal && st.defeated.truevearn || L.village.story.defeated.truevearn);
-  assert(!R.floorItems.some((f) => f.item && f.item.bossReward), 'no item reward at 35F');
-  // 時空の亀裂が玉座の後ろに残る。エンディングの前は入れない（判断待ち）
-  assert(R.crack && !DG.same(R.crack, R.portal)); eq(G.crackState(L), 'unstable');
-  R.player.x = R.crack.x; R.player.y = R.crack.y + 1; G.updateVision(R); R.enemies = [];
-  const rc = G.act(L, { type: 'move', dir: 'up' }); assert(rc.events.some((e) => e.t === 'onCrack' && e.state === 'unstable')); eq(R.floor, 35);
+  assert(!R.floorItems.some((f) => f.item && f.item.bossReward), 'no item reward at 33F');
+  // 版4：33階には時空の亀裂を出さない（隠しダンジョンの入口は30階の亀裂）
+  assert(!R.crack, 'no crack on 33F');
   R.player.x = R.portal.x; R.player.y = R.portal.y; G.act(L, { type: 'returnHome' });
   const res = G.finishRun(L); assert(res.finalClear && L.village.story.endingDone);
-  // クリア後：30階・35階にボスは出ない。35階は下への階段が無く、帰還の祠
+  // クリア後：30階にボスは出ない。同じ亀裂が隠しダンジョンの入口に切り替わる（隠しダンジョンはまだ無いので入れない。開始階は保留）
   departWithScroll(L, 942); assert(L.run.final.skip.vearn && L.run.final.skip.truevearn);
-  goToFloor(L, 30); assert(!L.run.enemies.some((e) => e.boss) && L.run.stairs && L.run.map.boss, '30F: throne room without boss');
-  assert(DG.same(L.run.stairs, G.throneBack(L.run.map)), 'stairs behind the throne'); assert(!G.canRescue(L.run), 'no rescue after clear');
-  goToFloor(L, 35); assert(!L.run.enemies.some((e) => e.boss) && !L.run.stairs && L.run.returnPoint && L.run.crack, '35F: no boss, crack, return point');
-  eq(G.crackState(L), 'notReady', '36F not ready yet');
+  goToFloor(L, 30); assert(!L.run.enemies.some((e) => e.boss) && !L.run.stairs && L.run.map.throne, '30F: throne room without boss');
+  assert(L.run.crack && L.run.crack.kind === 'throne30' && !G.canRescue(L.run), 'crack, no rescue after clear'); eq(G.crackState(L), 'hiddenNotReady');
+  const C = L.run.crack; L.run.player.x = C.x; L.run.player.y = C.y + 1; G.updateVision(L.run); L.run.enemies = [];
+  const rc = G.act(L, { type: 'move', dir: 'up' }); assert(rc.events.some((e) => e.t === 'onCrack' && e.state === 'hiddenNotReady'));
+  G.act(L, { type: 'descend' }); eq(L.run.floor, 30, 'hidden dungeon not ready: stays on 30F');
+  // 33階（倒したあと）：ボスは出ない。下への階段・亀裂は無く、帰還の祠
+  assert(!G.F(L.run, 33).boss, '33F no boss after clear');
+});
+test('30階の時空の亀裂の行き先：真大魔王バーンを倒す前は31階、倒したあとは隠しダンジョン（まだ無い）。読み込み直しても同じ', () => {
+  const S = toBossFloor(6, 978); defeatBoss(S); G.commitRescue(S);
+  eq(G.crackState(S), 'next');
+  S.village.story.defeated.truevearn = true; eq(G.crackState(S), 'hiddenNotReady');
+  const L = SV.deserialize(SV.serialize(S)); eq(G.crackState(L), 'hiddenNotReady');
+  L.run.player.x = L.run.crack.x; L.run.player.y = L.run.crack.y; G.act(L, { type: 'descend' }); eq(L.run.floor, 30);
+  S.village.story.defeated.truevearn = false; S.run.player.x = S.run.crack.x; S.run.player.y = S.run.crack.y; G.act(S, { type: 'descend' }); eq(S.run.floor, 31);
+});
+test('30階・玉座の間（デザインの絵）：下の通路から上へ入る。玉座・柱・炎の台・旗は通れない。中央の床は広い。撃破後、亀裂へ歩いて行ける・ムービーのあとも同じ状態', () => {
+  const S = toBossFloor(6, 977), run = S.run, m = run.map, T = D.THRONE_ROOM, A = run.bossFight, p = run.player;
+  assert(m.throne && m.w === T.w && m.h === T.h, 'throne map');
+  eq([A.x, A.y, A.w, A.h].join(), [T.hall.x, T.hall.y, T.hall.w, T.hall.h].join(), 'arena = hall');
+  assert(A.w * A.h >= 150, 'wide floor for the fight');
+  eq(p.x + ',' + p.y, T.start.x + ',' + T.start.y, 'start at the bottom of the corridor'); assert(p.y > A.y + A.h - 1 && !G.inArena(run, p.x, p.y));
+  const pass = (x, y) => DG.passable(m, x, y);
+  // 広間のまわり：下は中央の通路の2マスだけ開いている。左右・上（玉座の段）は壁
+  for (let x = A.x - 1; x <= A.x + A.w; x++) eq(pass(x, A.y + A.h), x >= T.corridor.x && x < T.corridor.x + T.corridor.w, 'bottom edge x' + x);
+  for (let y = 0; y < A.y; y++) for (let x = 0; x < m.w; x++) assert(!pass(x, y), 'throne dais / pillars / banners are walls ' + x + ',' + y);
+  for (let y = A.y; y < A.y + A.h; y++) { assert(!pass(A.x - 1, y) && !pass(A.x + A.w, y), 'side torches / pillars are walls y' + y); for (let x = A.x; x < A.x + A.w; x++) assert(pass(x, y)); }
+  // 通路：両脇の柱・炎の台は壁。通路は縦にまっすぐ
+  for (let y = T.corridor.y; y < T.corridor.y + T.corridor.h; y++) { assert(!pass(T.corridor.x - 1, y) && !pass(T.corridor.x + T.corridor.w, y)); }
+  for (let x = 0; x < m.w; x++) assert(!pass(x, m.h - 1), 'bottom row is wall');
+  // 入口から全部の床へ行ける
+  const dist = DG.distances(m, p.x, p.y);
+  for (let i = 0; i < m.w * m.h; i++) if (m.tiles[i] !== DG.WALL) assert(dist[i] >= 0, 'reachable ' + i);
+  // 上へ歩いて入室：広間へ入った1歩で登場ムービー
+  S.village.story.introSeen.vearn = false;
+  let intro = null;
+  for (let i = 0; i < 10 && !intro; i++) { const r = G.act(S, { type: 'move', dir: 'up' }); intro = r.events.find((e) => e.t === 'bossIntro'); }
+  assert(intro && intro.boss === 'vearn' && G.inArena(run, p.x, p.y) && p.y === A.y + A.h - 1, 'enter the hall going up');
+  G.finishBossIntro(S);
+  // 戦闘前は亀裂を出さない
+  assert(!run.crack, 'no crack before the fight');
+  defeatBoss(S);
+  // 撃破：亀裂は玉座の右手前の床（広間の中、いちばん上の列）。たけの位置から歩いて行ける
+  const c = run.crack; assert(c && G.inArena(run, c.x, c.y) && c.y === A.y, 'crack on the floor near the throne');
+  assert(Math.abs(c.x - (T.corridor.x + 0.5)) <= 3, 'near the throne (center)');
+  assert(DG.distances(m, p.x, p.y)[c.y * m.w + c.x] >= 0, 'crack reachable');
+  // ムービー（見終えた・スキップ・失敗のどれでも G.finishPostMovie）のあとも、亀裂・ローブ・救援は同じ。読み込み直しても同じ
+  const snap = () => JSON.stringify([S.run.crack, S.run.floorItems.map((f) => f.item && f.item.id).sort(), S.run.final.rescue, S.run.stairs]);
+  const s0 = snap(); G.finishPostMovie(S); eq(snap(), s0);
+  const L = SV.deserialize(SV.serialize(S)); eq(JSON.stringify([L.run.crack, L.run.floorItems.map((f) => f.item && f.item.id).sort(), L.run.final.rescue, L.run.stairs]), s0, 'same after reload');
 });
 test('最終章（版3）：30階で大魔王バーンを倒したあと倒れても、次は30階に出ない（ローブは倉庫へ）。35階は未撃破なら真大魔王バーン', () => {
   const S = toBossFloor(6, 950), run = S.run;
@@ -2012,7 +2068,7 @@ test('最終章（版3）：30階で大魔王バーンを倒したあと倒れ�
   assert(S.village.story.defeated.vearn && !S.village.story.endingDone); eq(S.village.story.chapter, 6);
   eq(S.village.storage.filter((i) => i.id === 'demon_robe').length, 1, 'robe kept in storage');
   departWithScroll(S, 951); goToFloor(S, 30); assert(!S.run.enemies.some((e) => e.boss), 'vearn does not return');
-  goToFloor(S, 35); eq(S.run.enemies.find((e) => e.boss).type, 'truevearn');
+  goToFloor(S, D.FINAL_V3.truevearn); eq(S.run.enemies.find((e) => e.boss).type, 'truevearn');
 });
 test('ティウの救援：回復は1回だけ（HP・満腹度を今の最大まで・状態異常を治す。最大は増えない）', () => {
   const S = toBossFloor(6, 959), run = S.run, p = run.player;
@@ -2059,8 +2115,8 @@ test('ティウの救援：選び直しは何度でも（予定は保存）→ �
   const n1 = count(); assert(!G.commitRescue(S, { out: [], in: [d.uid], mats: {} }).ok, 'closed after commit'); eq(count(), n1);
   L = SV.deserialize(SV.serialize(S)); assert(L.village.storage.some((i) => i.uid === cr.uid) && L.run.bag.some((i) => i.uid === c.uid) && !G.canRescue(L.run));
   G.wolfShown(S); eq(run.final.wolf, null);
-  // 31階へ降りられる
-  run.player.x = run.stairs.x; run.player.y = run.stairs.y; G.act(S, { type: 'descend' }); eq(run.floor, 31);
+  // 時空の亀裂から31階へ進める（行き先は仮）
+  run.player.x = run.crack.x; run.player.y = run.crack.y; G.act(S, { type: 'descend' }); eq(run.floor, 31);
   // 何も選ばずに終えてもよい
   const S2 = toBossFloor(6, 961); defeatBoss(S2); const b2 = S2.run.bag.length; assert(G.commitRescue(S2).ok); eq(S2.run.bag.length, b2);
 });
@@ -2390,7 +2446,7 @@ test('アクセサリーの入手：中盤以降の道具の表にまれに入�
     assert(!has(ch, 20, 'life_necklace') && has(ch, 21, 'life_necklace') && has(ch, 21, 'full_bangle'), 'deep ' + ch);
     assert(!has(ch, D.bossFloorOf(ch), 'life_necklace'), 'not on boss floor');
   }
-  assert(has(6, 33, 'life_necklace'), 'demon floors');
+  assert(has(6, 32, 'life_necklace'), 'demon floors');
   const acc = Object.keys(D.ITEMS).filter((id) => D.ITEMS[id].type === 'accessory');
   eq(acc.length, 7);
   // ボスの報酬のアクセサリー（マスク・紋章・ローブ）は床には出ない
@@ -2498,7 +2554,7 @@ test('登場ムービー：クロコダイン（フレイザード・バラン�
     eq(T.run.log.filter((l) => l.includes('との戦いが始まった')).length, 1, 'battle starts once'); }
   // 大魔王バーン（最終章30階）も入室で登場ムービー
   { const T = toBossFloor(6, 1416), dr = doorOutside(T.run); eq(T.run.floor, 30); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
-    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'vearn') && !T.run.bossFight.engaged, 'vearn intro');
+    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: dr.dir }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'vearn') && !T.run.bossFight.engaged, 'vearn intro');
     eq(T.run.player.hp, hp0); const ev = G.finishBossIntro(T); eq(ev.filter((e) => e.t === 'bossStart').length, 1); eq(G.finishBossIntro(T).length, 0, 'once'); assert(T.village.story.introSeen.vearn); }
   // ミストバーン（第5章）も入室で登場ムービー
   { const T = toBossFloor(5, 1415), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
@@ -3039,7 +3095,7 @@ test('ティウの案内：素材・お宝の入手の階は実際の出現の�
     }
   }
   eq(JSON.stringify(G.itemGuide(S, 'amber_shard').floors), '[[11,15]]');
-  eq(JSON.stringify(G.itemGuide(S, 'gold_leaf').floors), '[[26,35]]');
+  eq(JSON.stringify(G.itemGuide(S, 'gold_leaf').floors), '[[26,33]]');
   const ids = (t) => G.guideItems(S, t).map((g) => g.id);
   assert(!ids('treasure').includes('croc_tear') && !ids('treasure').includes('baran_emblem'), 'boss rewards hidden before defeat');
   V.story.defeated.baran = true; assert(ids('treasure').includes('baran_emblem'), 'shown after defeat');

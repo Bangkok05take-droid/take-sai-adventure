@@ -50,6 +50,7 @@
   G.layoutOf = (run) => (run && run.layout) || 1;
   G.F = (run, f) => D.floorFor(G.chapterOf(run), f == null ? run.floor : f, G.layoutOf(run), run.final && run.final.v === 3 ? run.final.skip : null);
   G.finalV3 = (run) => !!(run && run.final && run.final.v === 3);
+  G.finalFloors = (run) => D.finalFloors(G.layoutOf(run));   // その探索の最終章のボスの階（版4：30・33階、版3：30・35階）
   // その探索の最深階（＝ボスの階）
   G.maxFloor = (run) => (G.chapterOf(run) === 'legacy' ? D.MAX_FLOOR : D.bossFloorOf(G.chapterOf(run), G.layoutOf(run)));
   // 村に表示する「現在の章・次のボス・目標階」
@@ -152,7 +153,7 @@
     G.log(run, 'ティウが駆けつけた！ HPと満腹度が回復し、体の不調も消えた。');
     return true;
   };
-  // HP・満腹度を今の最大まで、毒・拘束を治す（救援・35階の祈り）
+  // HP・満腹度を今の最大まで、毒・拘束を治す（救援・真大魔王バーンの前の祈り）
   G.fullRecover = function (run) {
     const p = run.player;
     p.hp = p.maxhp; p.hunger = D.PLAYER.maxHunger; p.poison = 0; p.bound = 0; p.lowWarned = false; p.starveAcc = 0;
@@ -302,9 +303,13 @@
     const Fdef = G.F(run), ch = G.chapterOf(run);
     const rpFloors = ch === 'legacy' ? D.RETURN_POINT_FLOORS : D.returnFloors(ch);
     // 帰還の祠は25階に1回だけ。ただしボスの階には置かない（第3章は25階がボスの階なので出ない）
-    // 版3の30階・35階は、ボスを倒したあとの再探索でも玉座の間（ボスの階の形）。30階は玉座の後ろの階段、35階は時空の亀裂
-    const throne = G.finalV3(run) && Object.values(D.FINAL_V3).includes(floor);
-    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, returnPoint: !Fdef.boss && !throne && rpFloors.includes(floor) });
+    // 最終章（版3・版4）の2体のボスの階は、ボスを倒したあとの再探索でも玉座の間（ボスの階の形）。
+    // 30階は大魔王バーンの玉座の間（D.THRONE_ROOM。下の通路から入る）で、撃破後は時空の亀裂から先へ。
+    // 真大魔王バーンの階（版4は33階・版3は35階）は以前の形のまま。版3だけ、そこにも時空の亀裂（以前の仕様）
+    const FF = G.finalFloors(run);
+    const throne = G.finalV3(run) && Object.values(FF).includes(floor);
+    const throne30 = throne && floor === FF.vearn;
+    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, returnPoint: !Fdef.boss && !throne && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す
     run.map = gen.map;
@@ -312,12 +317,12 @@
     run.returnPoint = gen.returnPoint;
     run.crack = null;
     if (throne && !Fdef.boss) {
-      if (floor === D.FINAL_V3.vearn) run.stairs = G.throneBack(run.map);   // 30階：玉座の後ろの下り階段（31階へ）
+      if (throne30) { run.stairs = null; run.crack = G.throneCrack(run.map); }   // 30階（倒したあと）：玉座の右手前に時空の亀裂（下り階段は無い）
       else {
-        /* 35階（真大魔王バーンを倒したあと）：ミストが逃げた時空の亀裂が残る（36階への道。G.crackState）。
-         * 下への階段は無い。36階から先はまだ無いので、帰れるように前室に帰還の祠を置く */
+        /* 真大魔王バーンの階（倒したあと）：下への階段は無い。帰れるように前室に帰還の祠を置く。
+         * 版3（35階）だけ、ミストが逃げた時空の亀裂が残る（以前の仕様。版4の隠しダンジョンの入口は30階の亀裂） */
         run.stairs = null;
-        run.crack = G.throneBack(run.map);
+        if (G.layoutOf(run) < 4) run.crack = G.throneBack(run.map);
         run.returnPoint = DG.freeTile(run.map, rng, [gen.start], run.map.rooms[0]);
       }
     }
@@ -641,18 +646,26 @@
   G.onReturnPoint = (run) => !!run.returnPoint && DG.same(run.returnPoint, run.player);
   G.onPortal = (run) => !!run.portal && DG.same(run.portal, run.player);
   G.onCrack = (run) => !!run.crack && DG.same(run.crack, run.player);
-  /* 玉座の後ろ（玉座の間の奥の壁ぎわ、絨毯の先）。30階の下り階段・35階の時空の亀裂の場所（仮の位置） */
+  /* 玉座の後ろ（玉座の間の奥の壁ぎわ、絨毯の先）。版3の探索の35階の時空の亀裂の場所（仮の位置） */
   G.throneBack = function (map) {
     const rm = map.rooms[1] || map.rooms[0];
     return { x: rm.x + Math.floor(rm.w / 2), y: rm.y };
   };
-  /* 35階の時空の亀裂：
+  // 30階の時空の亀裂（大魔王バーン撃破後に残る）：玉座の右手前の決まったマス。kind: 'throne30' で版3の35階の亀裂と区別する
+  // 以前の形の30階（更新前から続いている探索）は、玉座の後ろの位置に出す
+  G.throneCrack = (map) => Object.assign(map && !map.throne ? G.throneBack(map) : { x: D.THRONE_ROOM.crack.x, y: D.THRONE_ROOM.crack.y }, { kind: 'throne30' });
+  /* 30階の時空の亀裂（行き先は進行で切り替わる。2026年10月確定）：
+   *  'rescue' … ティウの救援が終わるまで（入れない）
+   *  'next'   … 真大魔王バーンを倒す前：次の階（31階）へ進む
+   *  'hidden' … 真大魔王バーンを倒したあと：隠しダンジョンへ（D.HIDDEN_DUNGEON。開始階などは保留中で、まだ無い → 'hiddenNotReady'。入れない）
+   * 版3の探索（35階）の時空の亀裂：
    *  'none'     … 亀裂が無い（真大魔王バーンを倒す前。36階へは進めない）
    *  'unstable' … 真大魔王バーンを倒した直後、エンディングの前（入れない。判断待ち：エンディング前でも入れるか）
    *  'notReady' … クリア後。36〜40階（竜人王バラン）がまだ無いので入れない
    *  'open'     … 36階へ進める（D.POSTGAME_FLOORS が用意できたら） */
   G.crackState = function (S) {
     const run = S.run, st = S.village.story;
+    if (run && run.crack && run.crack.kind === 'throne30') return G.canRescue(run) ? 'rescue' : !st.defeated.truevearn ? 'next' : D.HIDDEN_DUNGEON ? 'hidden' : 'hiddenNotReady';
     if (!run || !run.crack || !st.defeated.truevearn) return 'none';
     if (!st.endingDone) return 'unstable';
     return D.POSTGAME_FLOORS ? 'open' : 'notReady';
@@ -691,8 +704,13 @@
       case 'face': if (DIRS[a.dir]) run.player.dir = a.dir; break;
       case 'descend':
         // 30階：ティウの救援（倉庫との交換）が終わるまでは降りない
-        if (G.onStairs(run) && G.canRescue(run)) { G.log(run, 'ティウの救援が終わってから、先へ進もう。'); ev.push({ t: 'warn', msg: '先に救援を終えよう' }); return { consumed: false, events: ev }; }
-        if (G.onStairs(run)) {
+        if ((G.onStairs(run) || G.onCrack(run)) && G.canRescue(run)) { G.log(run, 'ティウの救援が終わってから、先へ進もう。'); ev.push({ t: 'warn', msg: '先に救援を終えよう' }); return { consumed: false, events: ev }; }
+        // 30階の時空の亀裂：真大魔王バーンを倒す前は次の階（31階）へ
+        if (G.onCrack(run) && run.crack.kind === 'throne30' && G.crackState(S) === 'next') {
+          G.log(run, 'たけは時空の亀裂へ飛びこんだ。');
+          enterFloor(S, run.floor + 1);
+          ev.push({ t: 'stairs' });
+        } else if (G.onStairs(run)) {
           G.log(run, 'たけは階段を降りた。');
           enterFloor(S, run.floor + 1);
           ev.push({ t: 'stairs' });
@@ -849,7 +867,7 @@
     run.hazards = []; run.fog = 0; run.player.bound = 0;
     const room = run.bossFight || DG.roomAt(run.map, e.x, e.y);   // 報酬と帰還口はボス部屋の中に
     const drop = (id) => {
-      const taken = run.floorItems.concat([run.player]);
+      const taken = run.floorItems.concat([run.player], run.crack ? [run.crack] : []);   // 30階：時空の亀裂のマスには置かない
       const pos = !taken.some((t) => t.x === e.x && t.y === e.y) ? { x: e.x, y: e.y } : DG.freeTile(run.map, run.rng, taken, room);
       // bossReward：拾わずに探索を終えても失わないための印（G.finishRun で倉庫へ届ける。拾った品・村の品からは外す）
       if (pos) run.floorItems.push({ x: pos.x, y: pos.y, item: Object.assign(G.makeItem(S, id), { bossReward: true }) });
@@ -869,14 +887,14 @@
     }
     if (e.type === 'vearn' && G.finalV3(run)) {
       /* 版3：地下30階の大魔王バーン。一度倒したら二度と出ない。報酬は大魔王のローブ（初めて倒したとき）。
-       * 村への帰還口は出さず、下への階段を出す（31〜34階を探索して35階へ）。このあとミストバーンが連れ去る場面とティウの救援（画面側） */
+       * 村への帰還口・下り階段は出さない。ミストバーンが連れ去ったあとに残る時空の亀裂から先へ（真大魔王バーンを倒す前は31階へ。31〜32階を探索して33階へ）。
+       * このあとミストバーンが連れ去るムービーとティウの救援（画面側）。亀裂は撃破のときに決めて保存し、ムービーの間は画面に出さない */
       const first = !st.defeated.vearn;
       st.defeated.vearn = true;
       run.final.skip.vearn = true;
+      run.stairs = null;
+      run.crack = G.throneCrack(run.map);   // 報酬より先に決める（ローブを亀裂のマスに置かない）
       if (first) for (const id of D.CHAPTERS[D.FINAL_CHAPTER].reward.items) drop(id);
-      // ミストバーンが大魔王バーンを連れ去ったあと、玉座の後ろに下り階段が現れる（救援が終わるまでは降りない）
-      run.stairs = G.throneBack(run.map);
-      if (DG.same(run.stairs, run.player) || G.itemAt(run, run.stairs.x, run.stairs.y)) run.stairs = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room);
       run.final.rescue = 'pending';
       G.updateVision(run);
       G.log(run, '大魔王バーンを倒した！' + (first ? ' 大魔王のローブが残された。' : ''));
@@ -913,8 +931,8 @@
       // 版3：ローブは30階の大魔王バーンの報酬。真大魔王バーンの品の報酬は無い（再戦も無い）
       if (!G.finalV3(run)) for (const id of firstFinal ? D.CHAPTERS[D.FINAL_CHAPTER].reward.items : ['golden_elephant']) drop(id);
       openPortal();
-      // 版3：ミストが逃げた時空の亀裂が、玉座の後ろに残る（入れるかは G.crackState）
-      if (G.finalV3(run)) { run.crack = G.throneBack(run.map); if (DG.same(run.crack, run.portal) || DG.same(run.crack, run.player)) run.crack = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player, run.portal]), room); }
+      // 版3（35階）だけ：ミストが逃げた時空の亀裂が、玉座の後ろに残る（入れるかは G.crackState）。版4は30階の亀裂が隠しダンジョンの入口
+      if (G.finalV3(run) && G.layoutOf(run) < 4) { run.crack = G.throneBack(run.map); if (DG.same(run.crack, run.portal) || DG.same(run.crack, run.player)) run.crack = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player, run.portal]), room); }
       G.log(run, '真大魔王バーンを倒した！ 光る帰還口が開いた。');
       ev.push({ t: 'finalWin' });
       return;
@@ -1291,7 +1309,7 @@
     const run = S.run, p = run.player;
     const it = G.findBag(run, uid);
     if (!it) return false;
-    if (G.itemAt(run, p.x, p.y) || G.onStairs(run) || G.onReturnPoint(run) || G.onPortal(run)) {
+    if (G.itemAt(run, p.x, p.y) || G.onStairs(run) || G.onCrack(run) || G.onReturnPoint(run) || G.onPortal(run)) {
       G.log(run, 'ここには置けない。');
       return false;
     }

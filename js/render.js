@@ -95,6 +95,32 @@
     L.drawn[y * run.map.w + x] = 1;
   }
 
+  /* 30階の玉座の間の背景：絵の 64px を1マス（ts）に拡大・縮小して、見える範囲だけ転送する。
+   * 細かい絵なので、ここだけなめらかに拡大する。絵の下端（入口の通路の先）は背景色へなじませる。炎の位置にゆらぐ明かりを重ねる */
+  function drawThroneBg(g, img, ox, oy, ts, W, H, now, TH) {
+    const T = D.THRONE_ROOM, sc = ts / T.tile;
+    const dx = ox - T.imgX * sc, dy = oy - T.imgY * sc;
+    const sx = Math.max(0, -dx / sc), sy = Math.max(0, -dy / sc);
+    const sw = Math.min(T.imgW, (W - dx) / sc) - sx, sh = Math.min(T.imgH, (H - dy) / sc) - sy;
+    if (sw > 0 && sh > 0) {
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.drawImage(img, sx, sy, sw, sh, dx + sx * sc, dy + sy * sc, sw * sc, sh * sc);
+      g.imageSmoothingEnabled = false;
+    }
+    const fy = dy + (T.imgH - 110) * sc, gr = g.createLinearGradient(0, fy, 0, dy + T.imgH * sc);
+    gr.addColorStop(0, TH.bg + '00'); gr.addColorStop(1, TH.bg);
+    g.fillStyle = gr; g.fillRect(dx, fy, T.imgW * sc, 110 * sc);
+    g.globalCompositeOperation = 'lighter';
+    T.flames.forEach(([fx, fy2], i) => {
+      const cx = dx + fx * sc, cy = dy + fy2 * sc, r = ts * (1.1 + 0.08 * Math.sin(now / 190 + i * 1.7));
+      if (cx < -r || cy < -r || cx > W + r || cy > H + r) return;
+      const rg = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+      rg.addColorStop(0, 'rgba(255,170,80,' + (0.16 + 0.05 * Math.sin(now / 130 + i)).toFixed(3) + ')'); rg.addColorStop(1, 'rgba(255,120,40,0)');
+      g.fillStyle = rg; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+    });
+    g.globalCompositeOperation = 'source-over';
+  }
+
   // ---------------- ダンジョン ----------------
   RD.drawDungeon = function (canvas, S, now) {
     const run = S.run;
@@ -117,15 +143,18 @@
     const L = getLayer(run);
     const reach = TS.Tiles.isWaterTheme(theme) ? 2 : 1;
     // 新しく見えたマスを描く。重くならないよう1フレームの時間に上限を設け、たけに近いマスから描く
+    // 30階の玉座の間：背景の絵をそのまま敷く（タイルは描かない。通れる所・壁は D.THRONE_ROOM の地図のとおり）
+    const throneBg = m.throne && SP.art.rooms && SP.art.rooms.throneBg;
     const todo = [];
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!L.drawn[y * m.w + x] && known(run, L, x, y, reach)) todo.push([x, y]);
+    if (!throneBg) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!L.drawn[y * m.w + x] && known(run, L, x, y, reach)) todo.push([x, y]);
     if (todo.length) {
       todo.sort((a, b) => Math.max(Math.abs(a[0] - p.x), Math.abs(a[1] - p.y)) - Math.max(Math.abs(b[0] - p.x), Math.abs(b[1] - p.y)));
       const t0 = performance.now();
       for (let i = 0; i < todo.length; i++) { if (i >= 12 && performance.now() - t0 > 7) break; paintTile(run, L, todo[i][0], todo[i][1]); }
     }
     // 見える範囲を1回で転送
-    g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
+    if (throneBg) drawThroneBg(g, throneBg, ox, oy, ts, W, H, now, TH);
+    else g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
     // 動く地形：たいまつ・階段・帰還の祠・帰還口
     const fr = (ms, n) => Math.floor(now / ms) % n;
     const inView = (t) => t.x >= x0 && t.x <= x1 && t.y >= y0 && t.y <= y1;
@@ -156,8 +185,19 @@
     special(run.stairs, SP.tiles.stairs);
     special(run.returnPoint, SP.tiles.returnPoint[fr(600, 2)]);
     if (run.portal) special(run.portal, SP.tiles.portal[fr(180, 3)]);
-    // 35階の時空の亀裂（仮の絵：黒紫の裂け目がゆらぐ。完成の絵はChatGPT側）
-    if (run.crack && run.explored[run.crack.y * m.w + run.crack.x]) {
+    /* 時空の亀裂（30階：大魔王バーン撃破後、版3の探索の35階：真大魔王バーン撃破後）。素材の絵（assets/rooms/time-crack.png）を、
+     * 足元のマスの下端にそろえて縦長に立てる（約2.4マスの高さ。上は玉座の段・壁にかかる）。撃破後ムービーの間は出さない（ムービーで亀裂が開く） */
+    const crackImg = SP.art.rooms && SP.art.rooms.crack;
+    if (run.crack && crackImg && !run.postMovie && run.explored[run.crack.y * m.w + run.crack.x]) {
+      const pul = 0.5 + 0.5 * Math.sin(now / 420), h = ts * (2.4 + 0.04 * pul), w = h * crackImg.width / crackImg.height;
+      const cx = ox + (run.crack.x + 0.5) * ts, by = oy + (run.crack.y + 1) * ts + ts * 0.12;
+      const gr = g.createRadialGradient(cx, by - ts * 0.6, 0, cx, by - ts * 0.6, ts * 1.4);
+      gr.addColorStop(0, 'rgba(200,110,255,' + (0.22 + 0.12 * pul).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(120,40,190,0)');
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(cx - ts * 1.4, by - ts * 2, ts * 2.8, ts * 2.8); g.globalCompositeOperation = 'source-over';
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.globalAlpha = 0.88 + 0.12 * pul; g.drawImage(crackImg, cx - w / 2, by - h, w, h); g.globalAlpha = 1;
+      g.imageSmoothingEnabled = false;
+    } else if (run.crack && !crackImg && !run.postMovie && run.explored[run.crack.y * m.w + run.crack.x]) {   // 絵を読み込めないとき：仮の絵
       const cx = ox + (run.crack.x + 0.5) * ts, cy = oy + (run.crack.y + 0.5) * ts, wob = Math.sin(now / 260) * 0.06;
       const gr = g.createRadialGradient(cx, cy, 0, cx, cy, ts * 0.6);
       gr.addColorStop(0, 'rgba(255,170,255,0.55)'); gr.addColorStop(0.5, 'rgba(120,40,170,0.45)'); gr.addColorStop(1, 'rgba(40,0,60,0)');
@@ -530,7 +570,7 @@
     const dot = (pos, col, s) => { if (!pos) return; g.fillStyle = col; g.fillRect(x0 + pos.x * c - (s - 1) * c / 2, y0 + pos.y * c - (s - 1) * c / 2, c * s, c * s); };
     if (run.stairs && run.explored[run.stairs.y * m.w + run.stairs.x]) dot(run.stairs, '#ffffff', 1.6);
     if (run.returnPoint && run.explored[run.returnPoint.y * m.w + run.returnPoint.x]) dot(run.returnPoint, '#6ae0ff', 1.6);
-    if (run.crack && run.explored[run.crack.y * m.w + run.crack.x]) dot(run.crack, '#d27bff', 1.6);
+    if (run.crack && !run.postMovie && run.explored[run.crack.y * m.w + run.crack.x]) dot(run.crack, '#d27bff', 1.6);
     if (run.portal) dot(run.portal, '#ffd84a', 1.8);
     for (const f of run.floorItems) if (run.explored[f.y * m.w + f.x]) dot(f, '#7cff7c', 1);
     for (const e of run.enemies) if (G.isVisible(run, e.x, e.y)) dot(e, '#ff4a4a', 1.2);
