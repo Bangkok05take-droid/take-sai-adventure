@@ -158,6 +158,10 @@
      *  crack：時空の亀裂（透過PNG。背景には焼きこまず、状態に応じて別に描く）
      * 読み込めなければ、今までのタイルの絵と仮の亀裂の絵で描く */
     rooms: { throneBg: 'assets/rooms/throne-room.webp', crack: 'assets/rooms/time-crack.png' },
+    /* 技の演出の絵（assets/fx/）。描き直しはしない。
+     *  kaiserPhoenix：大魔王バーンのカイザーフェニックス（下向きに飛ぶ火の鳥。tools/make-kaiser-phoenix.py で余白を切り、縮小）。
+     *    攻撃の向きに合わせてゲームで回す。読み込めなければ今までの炎の帯の演出 */
+    fx: { kaiserPhoenix: 'assets/fx/kaiser-phoenix.png' },
     /* 通常の敵（assets/enemies/）：見本の一覧画像から tools/extract-enemies.py で作る透過PNG。まだ素材が無いので空。
      * 1コマは 64×64（足の裏 y=60、足元の中央 x=32）、待機2コマなら横に並べた 128×64。キーは js/data.js の敵の sprite 名。
      * 書いた敵だけ画像に替わり、書かない敵は今までのコードで描いた絵のまま。必要な素材の一覧は docs/ENEMY_ART.md */

@@ -1670,7 +1670,13 @@
 
   function afterAction(res, action, logLen) {
     const S = UI.S;
-    handleEvents(res.events, action);
+    const hx = handleEvents(res.events, action) || {}, fxD = hx.hitD || 0;
+    // 飛ぶ技（カイザーフェニックス）が届くまでは次の行動を受けつけない（連打で演出の途中に動かない）。
+    // HPゲージも届いた時に減らす（ダメージの処理は1回だけ。表示を遅らせるだけ）
+    if (fxD) {
+      stopHold(); UI.lockUntil = Math.max(UI.lockUntil, performance.now() + fxD + 120);
+      if (hx.held && S.run) { UI.hpHold = { hp: S.run.player.hp + hx.held, until: performance.now() + fxD }; setTimeout(() => { UI.hpHold = null; updateHud(); }, fxD + 10); }
+    }
     // 謎の旅商人を初めて見つけたとき
     const mc = S.run && S.run.merchant;
     if (mc && !mc.seen && G.isVisible(S.run, mc.x, mc.y)) { mc.seen = true; G.log(S.run, '謎の旅商人がいる。話しかけると、珍しい素材を買える。'); toast('謎の旅商人がいる…'); }
@@ -1680,7 +1686,7 @@
     // 探索の終わり：帰還は魔法陣の光を見せてから村へ（少し長め）。倒れたときは短く
     // 倒れたとき：ボス戦の曲などを止める（結果の画面のあと、村の曲になる）。帰還は村の曲へ切りかわるまで今の曲のまま
     if (S.run && S.run.over && S.run.result && S.run.result.type === 'dead') AU.stopBgm(0.8);
-    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, res.events.some((e) => e.t === 'return') ? 760 : 350); return; }
+    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, res.events.some((e) => e.t === 'return') ? 760 : (fxD ? fxD + 450 : 350)); return; }   // 倒れたときは命中を見せてから
     if (res.floorChanged) {
       RD.clearFx();
       stopHold(); AU.playBgm(G.dungeonBgm(S.run)); toast('地下' + S.run.floor + '階');
@@ -1741,6 +1747,8 @@
     }
     const atkTile = (e) => atkDir && e.x === atkDir.x && e.y === atkDir.y;
     let throwD = 0;   // 投げた道具が届くまで、命中の演出を遅らせる
+    let hitD = 0;     // ボスの飛ぶ技（カイザーフェニックス）が届くまで、たけへの命中の表示を遅らせる
+    let held = 0;     // その間、HPゲージに出さずにおくダメージ（届いた時に減らす）
     for (const e of events) {
       switch (e.t) {
         // 投げる：道具の絵が直線に飛ぶ。命中・効果の演出は届いてから
@@ -1763,14 +1771,15 @@
           flash(); toast((e.name || '命つなぎの首飾り') + 'が光った！ 立ち上がった！', 'levelup'); AU.sfx('levelup');
           break;
         case 'hit': {
-          const d = e.target === 'enemy' && atkTile(e) ? ATK_HIT : (e.target === 'enemy' ? throwD : 0);
+          const d = e.target === 'enemy' && atkTile(e) ? ATK_HIT : (e.target === 'enemy' ? throwD : hitD);
           RD.addFx({ t: 'num', x: e.x, y: e.y, text: String(e.n), color: e.target === 'player' ? '#ff6a6a' : '#ffffff', delay: d, dur: 650 });
           RD.addFx({ t: 'flash', x: e.x, y: e.y, target: e.target, dur: 160, delay: d });
-          AU.sfx(e.target === 'player' ? 'hurt' : 'hit');
+          if (d > 100) setTimeout(() => AU.sfx(e.target === 'player' ? 'hurt' : 'hit'), d); else AU.sfx(e.target === 'player' ? 'hurt' : 'hit');
+          if (e.target === 'player' && d === hitD && hitD) held += e.n;
           break;
         }
         // ミス：命中の演出は出さず「ミス」の文字だけ
-        case 'miss': RD.addFx({ t: 'num', x: e.x, y: e.y, text: 'ミス', color: '#aaccff', delay: atkTile(e) ? ATK_HIT : 0, dur: 600 }); AU.sfx('miss'); break;
+        case 'miss': RD.addFx({ t: 'num', x: e.x, y: e.y, text: 'ミス', color: '#aaccff', delay: atkTile(e) ? ATK_HIT : hitD, dur: 600 }); AU.sfx('miss'); break;
         case 'kill':
           AU.sfx('kill');
           if (e.boss) RD.addFx({ t: 'bossdie', x: e.x, y: e.y, sprite: e.sprite, dur: 1500 }); // ボスの撃破：白く光って沈みながら消える
@@ -1822,7 +1831,7 @@
           if (/霧/.test(e.msg)) RD.addFx({ t: 'darkfog', x: p.x, y: p.y, dur: 800 });   // ミストバーンの暗い霧
           break;
         case 'telegraph': toast('！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;
-        case 'blast': blastFx(e, run, p); break;
+        case 'blast': { const dl = blastFx(e, run, p); if (dl) hitD = Math.max(hitD, dl); break; }   // 飛ぶ技：たけへの命中の表示は届いてから
         case 'steal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
         case 'summon': {
           const m = run.enemies.find((q) => q.x === e.x && q.y === e.y);
@@ -1862,10 +1871,14 @@
         default: break;
       }
     }
+    return { hitD, held };   // 飛ぶ技が届くまでの時間（0：なし）と、その間HPゲージに出さないダメージ
   }
 
   /* 予告していた攻撃の発動。演出は予告と同じマス（e.tiles）の上だけに出し、安全なマスを隠さない。
    * 画面の揺れは強い技（クロコダインの斧・真大魔王バーンの天地の掌）だけ、控えめに。 */
+  /* カイザーフェニックスの間合い（ms）：光が集まる gather → 飛ぶ fly（距離で変わる：1マス flyPerTile、flyMin〜flyMax）→ 当たる閃光 impact。
+   * 全体でおよそ0.8〜1.2秒（調整値） */
+  UI.PHOENIX = { gather: 320, flyPerTile: 95, flyMin: 300, flyMax: 560, impact: 260 };
   function blastFx(e, run, p) {
     const FXm = TS.FX, tiles = e.tiles || [];
     const b = e.id !== undefined && run.enemies.find((q) => q.id === e.id);
@@ -1881,7 +1894,17 @@
         RD.addFx({ t: 'darkfog', x: b ? b.x : p.x, y: b ? b.y : p.y, dur: 600 });
         if (tiles.some((t) => t.x === p.x && t.y === p.y) && p.bound > 0) RD.addFx({ t: 'chains', x: p.x, y: p.y, dur: 700 });
         AU.sfx('sleep'); return;
-      case 'firebird': RD.addFx({ t: 'flamewave', tiles, dur: 520 }); AU.sfx('bolt'); return;       // 大魔王バーン：炎の鳥
+      case 'firebird': {   // 大魔王バーン：カイザーフェニックス（火の鳥の絵が飛ぶ。絵が無ければ今までの炎の帯）
+        if (!(SP.art.fx && SP.art.fx.kaiserPhoenix) || !b || !tiles.length) { RD.addFx({ t: 'flamewave', tiles, dur: 520 }); AU.sfx('bolt'); return 0; }
+        // 当たる所：たけが列の上ならたけ、外れなら列の端（当たりはゲーム側で決まっている。見た目で広げない）
+        const onLine = tiles.some((t) => t.x === p.x && t.y === p.y), to = onLine ? { x: p.x, y: p.y } : tiles[tiles.length - 1];
+        const dist = Math.max(Math.abs(to.x - b.x), Math.abs(to.y - b.y));
+        const PH = UI.PHOENIX, fly = Math.max(PH.flyMin, Math.min(PH.flyMax, dist * PH.flyPerTile));
+        RD.addFx({ t: 'kphoenix', from: { x: b.x, y: b.y }, to, dx: Math.sign(to.x - b.x), dy: Math.sign(to.y - b.y), gather: PH.gather, fly, dur: PH.gather + fly + PH.impact });
+        AU.sfx('bolt');
+        setTimeout(() => AU.sfx('bolt'), PH.gather + fly);   // 当たる音
+        return PH.gather + fly;   // 命中の数字・点滅はこの時間に合わせる
+      }
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
       case 'palm': // 真大魔王バーン：速く重い打撃と強い衝撃
         RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffb0f0', dur: 380 });
@@ -1909,21 +1932,23 @@
     const p = run.player;
     $('h-floor').textContent = '地下' + run.floor + '階';
     $('h-lv').textContent = 'Lv' + p.lvl;
-    $('h-hp').textContent = Math.max(0, p.hp) + '/' + p.maxhp;
-    const r = Math.max(0, p.hp) / p.maxhp;
+    // 飛ぶ技が届くまでは、当たる前のHPを出す（UI.hpHold）
+    const hpNow = UI.hpHold && performance.now() < UI.hpHold.until ? UI.hpHold.hp : p.hp;
+    $('h-hp').textContent = Math.max(0, hpNow) + '/' + p.maxhp;
+    const r = Math.max(0, hpNow) / p.maxhp;
     const bar = $('h-hpbar');
     bar.style.width = (r * 100) + '%';
     bar.className = r <= 0.3 ? 'low' : r <= 0.6 ? 'mid' : '';
     // HPゲージの反応：減ったら少し揺れて赤く光り、減った分が遅れて縮む。増えたら緑に光る（同じ探索・同じ階の中だけ）
     const key = run.seed + ':' + run.floor, wrap = bar.closest('.hpwrap'), ghost = $('h-hpghost');
-    if (UI.hudKey === key && UI.hudHp !== undefined && p.hp !== UI.hudHp) {
-      const cls = p.hp < UI.hudHp ? 'hurt' : 'healed';
+    if (UI.hudKey === key && UI.hudHp !== undefined && hpNow !== UI.hudHp) {
+      const cls = hpNow < UI.hudHp ? 'hurt' : 'healed';
       wrap.classList.remove('hurt', 'healed'); void wrap.offsetWidth; wrap.classList.add(cls);
       clearTimeout(UI.hudTimer); UI.hudTimer = setTimeout(() => wrap.classList.remove('hurt', 'healed'), 420);
       if (cls === 'hurt') { ghost.style.transition = 'none'; ghost.style.width = (Math.max(0, UI.hudHp) / p.maxhp * 100) + '%'; void ghost.offsetWidth; ghost.style.transition = ''; }
     }
     ghost.style.width = (r * 100) + '%';
-    UI.hudKey = key; UI.hudHp = p.hp;
+    UI.hudKey = key; UI.hudHp = hpNow;
     // 満腹度が増えたらゲージを光らせる（食事）
     if (UI.hudFood !== undefined && UI.hudKey === key && p.hunger > UI.hudFood) { const fw = $('h-foodbar').closest('.foodwrap'); if (fw) { fw.classList.remove('healed'); void fw.offsetWidth; fw.classList.add('healed'); setTimeout(() => fw.classList.remove('healed'), 600); } }
     UI.hudFood = p.hunger;

@@ -346,5 +346,76 @@
     g.globalAlpha = 1;
   };
 
+  /* カイザーフェニックス（大魔王バーンの火の鳥。絵は assets/fx/kaiser-phoenix.png、下向きの絵を攻撃の向きへ回す）。
+   * 見た目だけ。当たり・ダメージはゲーム側で決まっていて、ここでは触らない。羽ばたきの別の絵は使わず、静止画の移動・拡縮・透明度で動かす。
+   *  ① gather：バーンの前（攻撃の向きへ0.6マス）に小さな炎の光が集まる
+   *  ② fly：火の鳥が翼を広げた姿で現れ（少し小さい所から大きく）、当たる所（たけ、外れなら列の端）まで飛ぶ。薄い残像と少しの火の粉
+   *  ③ 当たる所で短い炎の閃光。火の鳥は少し広がりながら消える
+   * f：{ from, to（マス）, dx, dy（向き）, gather, fly（ms）, dur } */
+  FX.draw.kphoenix = function (g, f, a, v) {
+    const img = TS.Sprites && TS.Sprites.art.fx && TS.Sprites.art.fx.kaiserPhoenix;
+    const el = a * f.dur, G0 = f.gather, F0 = f.fly, len = Math.hypot(f.dx, f.dy) || 1, ux = f.dx / len, uy = f.dy / len;
+    const sx = cx(v, f.from.x) + ux * v.ts * 0.6, sy = cy(v, f.from.y) + uy * v.ts * 0.6 - v.ts * 0.2;
+    const ex = cx(v, f.to.x), ey = cy(v, f.to.y) - v.ts * 0.15;
+    const ang = Math.atan2(uy, ux) - Math.PI / 2;   // 絵は下向き（0, 1）
+    const W = v.ts * 2.2, H = img ? W * img.height / img.width : W;   // 翼を広げた幅は約2.2マス（見た目だけ。当たりは予告の列のまま）
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    // ① 炎の光が集まる
+    if (el < G0 + 80) {
+      const t = Math.min(1, el / G0), n = FX.n(10);
+      for (let i = 0; i < n; i++) {
+        const th = rnd(f.seed, i) * Math.PI * 2, r = v.ts * (0.95 - 0.85 * ease(t)) * (0.6 + 0.4 * rnd(f.seed, i + 20));
+        g.globalAlpha = Math.min(1, t * 1.6) * (el > G0 ? 1 - (el - G0) / 80 : 1);
+        g.fillStyle = i % 3 ? '#ffb040' : '#fff0a0';
+        g.beginPath(); g.arc(sx + Math.cos(th) * r, sy + Math.sin(th) * r * 0.8, v.k * (1.6 + 1.2 * rnd(f.seed, i + 40)), 0, Math.PI * 2); g.fill();
+      }
+      const gr = g.createRadialGradient(sx, sy, 0, sx, sy, v.ts * (0.25 + 0.35 * t));
+      gr.addColorStop(0, 'rgba(255,240,170,' + (0.75 * t).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,120,30,0)');
+      g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(sx - v.ts, sy - v.ts, v.ts * 2, v.ts * 2);
+    }
+    // ② 飛ぶ（はじめ少し速度をためて、だんだん速く）
+    const pos = (t) => { const k = t * t * 0.35 + t * 0.65; return [sx + (ex - sx) * k, sy + (ey - sy) * k]; };
+    const ft = (el - G0) / F0;
+    if (ft >= 0 && img) {
+      const t = Math.min(1, ft);
+      // 火の粉：飛んだ跡に少しだけ残り、上へ舞って消える
+      const n = FX.n(12);
+      for (let i = 0; i < n; i++) {
+        const born = i / n, age = (Math.min(ft, 1.6) - born) * F0 / 380;
+        if (born > t || age < 0 || age > 1) continue;
+        const [px, py] = pos(born), j = (rnd(f.seed, i + 60) - 0.5) * v.ts * 0.7;
+        g.globalAlpha = 0.85 * (1 - age);
+        g.fillStyle = i % 2 ? '#ffd060' : '#ff7a30';
+        g.beginPath(); g.arc(px - uy * j, py + ux * j - age * v.ts * 0.5, v.k * (1.2 + 1.4 * (1 - age)), 0, Math.PI * 2); g.fill();
+      }
+      g.imageSmoothingEnabled = true;
+      const drawBird = (px, py, sc, al) => {
+        g.globalAlpha = al; g.translate(px, py); g.rotate(ang);
+        g.drawImage(img, -W * sc / 2, -H * sc * 0.62, W * sc, H * sc);
+        g.setTransform(1, 0, 0, 1, 0, 0);
+      };
+      if (ft < 1) {
+        // 薄い残像（少し前の位置）
+        for (const [lag, al] of [[0.16, 0.22], [0.3, 0.12]]) { const lt = t - lag; if (lt > 0) { const [px, py] = pos(lt); drawBird(px, py, 0.92, al); } }
+        const appear = Math.min(1, ft / 0.22);   // 翼を広げて現れる
+        const [px, py] = pos(t);
+        g.globalCompositeOperation = 'source-over';
+        drawBird(px, py, 0.55 + 0.45 * ease(appear) + 0.04 * Math.sin(el / 45), Math.min(1, appear * 1.4));
+      } else {
+        // ③ 当たる：火の鳥は少し広がりながら消え、短い炎の閃光
+        const ht = Math.min(1, (el - G0 - F0) / Math.max(1, f.dur - G0 - F0));
+        g.globalCompositeOperation = 'lighter';
+        if (ht < 0.6) drawBird(ex, ey, 1 + 0.35 * ht, 0.9 * (1 - ht / 0.6));
+        const r = v.ts * (0.4 + 0.9 * ease(ht));
+        const gr = g.createRadialGradient(ex, ey, 0, ex, ey, r);
+        gr.addColorStop(0, 'rgba(255,255,220,' + (0.95 * (1 - ht)).toFixed(3) + ')'); gr.addColorStop(0.45, 'rgba(255,170,60,' + (0.7 * (1 - ht)).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,80,20,0)');
+        g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(ex - r, ey - r, r * 2, r * 2);
+      }
+      g.imageSmoothingEnabled = false;
+    }
+    g.restore();
+  };
+
   TS.FX = FX;
 })(globalThis.TS = globalThis.TS || {});
