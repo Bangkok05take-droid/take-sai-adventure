@@ -284,4 +284,6 @@
     }
     return false;
   };
+  // 竜人王バラン（隠しダンジョン35階）：戦い方は通常のバランと同じ（専用の行動はまだ決まっていない）
+  AI.dragonbaran = (S, e, ev, sees, H) => AI.baran(S, e, ev, sees, H);
 })(globalThis.TS = globalThis.TS || {});

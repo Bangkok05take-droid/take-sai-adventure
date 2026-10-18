@@ -94,14 +94,14 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     const prompt = await p.evaluate(() => { const m = document.querySelector('.modal'); return m ? m.textContent : ''; });
     chk(prompt.includes('時空の亀裂') && prompt.includes('地下31階'), `${w} 亀裂に乗ると確認が出る`);
     await shot('7_on_crack');
-    // 真大魔王バーンを倒したあと：同じ亀裂が隠しダンジョンの入口になる（まだ無いので「準備中」。入れない）
+    // 真大魔王バーンを倒したあと：同じ亀裂が隠しダンジョンの入口になる（確認だけ。入るのは tools/hidden-dungeon-check.js）
     await p.tap('.modal-buttons button >> text=まだ探索する'); await p.waitForTimeout(300);
     await p.evaluate(() => { TS.UI.S.village.story.defeated.truevearn = true; const r = TS.UI.S.run; r.player.y = r.crack.y + 1; TS.Game.updateVision(r); TS.UI.lockUntil = 0; });
     await p.waitForTimeout(200); await p.tap('#dpad [data-dir="up"]'); await p.waitForTimeout(500);
     const hid = await p.evaluate(() => { const m = document.querySelector('.modal'); return { text: m ? m.textContent : '', state: TS.Game.crackState(TS.UI.S) }; });
-    chk(hid.state === 'hiddenNotReady' && hid.text.includes('隠しダンジョンは準備中'), `${w} 真大魔王バーン撃破後：同じ亀裂は隠しダンジョンの入口（準備中で入れない） ${JSON.stringify(hid.state)}`);
+    chk(hid.state === 'hidden' && hid.text.includes('時空の狭間') && hid.text.includes('帰還の祠はありません'), `${w} 真大魔王バーン撃破後：同じ亀裂は隠しダンジョンの入口 ${JSON.stringify(hid.state)}`);
     if (w === 390) await shot('8_crack_after_truevearn');
-    await p.tap('.modal-buttons button:last-child'); await p.waitForTimeout(300);
+    await p.tap('.modal-buttons button >> text=まだ探索する'); await p.waitForTimeout(300);
     await p.evaluate(() => { TS.UI.S.village.story.defeated.truevearn = false; const r = TS.UI.S.run; r.player.y = r.crack.y + 1; TS.Game.updateVision(r); TS.UI.lockUntil = 0; });
     await p.waitForTimeout(200); await p.tap('#dpad [data-dir="up"]'); await p.waitForTimeout(500);
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);

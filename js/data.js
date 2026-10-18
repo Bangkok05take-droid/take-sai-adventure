@@ -52,9 +52,16 @@
     hall: { x: 2, y: 6, w: 12, h: 13 }, corridor: { x: 7, y: 19, w: 2, h: 5 }, start: { x: 7, y: 23 }, crack: { x: 10, y: 6 },
     flames: [[98, 222], [407, 208], [615, 208], [925, 222], [70, 512], [70, 800], [953, 512], [953, 800], [408, 1222], [615, 1222]],
   };
-  /* 隠しダンジョン（真大魔王バーンを倒したあと、30階の時空の亀裂から入る。最奥の35階に竜人王バラン）。
-   * 開始階・階の数・敵などは保留中なので、まだ無い（null）。用意できたらここに定義し、G.crackState が 'hidden' を返す */
-  D.HIDDEN_DUNGEON = null;
+  /* 隠しダンジョン（2026年10月確定）：真大魔王バーンを倒したあと、30階の時空の亀裂から入る。
+   * 31階から始まり、35階の竜人王バランまで。31〜35階は部屋が大きい（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul）。帰還の祠は無い。
+   * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜人王バランを倒したあとの帰還口
+   *  strong：強敵の階と、敵の強さ（HP・攻撃）・経験値の倍率（強敵の絵はまだ無いので、今の魔王の城の敵を強くしている） */
+  D.HIDDEN_DUNGEON = { from: 31, to: 35, boss: 'dragonbaran', name: '時空の狭間', strong: { floors: [32, 33, 34], mul: 1.35, exp: 1.6 } };
+  /* 隠しダンジョンの地図：部屋の面積が本編の約2倍（縦横それぞれ約1.5倍）。区画を大きくし、部屋の大きさの下限も上げる。
+   * 本編（D.MAP）：区画 11×8、部屋 横4〜8・縦3〜5／隠しダンジョン：区画 15×11、部屋 横6〜12・縦4〜8 */
+  D.HIDDEN_MAP = { cols: 3, rows: 3, cellW: 15, cellH: 11, roomW: 6, roomH: 4 };
+  D.HIDDEN_MAP.w = D.HIDDEN_MAP.cols * D.HIDDEN_MAP.cellW;
+  D.HIDDEN_MAP.h = D.HIDDEN_MAP.rows * D.HIDDEN_MAP.cellH;
   // 以前の版のボス配置（更新前から続いている探索だけが使う）
   D.LEGACY_BOSS_FLOORS = { 10: 'lion', 20: 'catfish', 30: 'elephant' };
   D.BOSS_FLOORS = D.LEGACY_BOSS_FLOORS;   // 互換のため残す
@@ -335,6 +342,9 @@
     kill_clone: { name: 'キルバーン', hp: 1, atk: 20, def: 0, exp: 0, ai: 'clone', sprite: 'kill', noScale: true, clone: true },
     baran:  { name: 'バラン',       hp: 780, atk: 40, def: 18, exp: 1000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
     mist:   { name: 'ミストバーン', hp: 820, atk: 40, def: 19, exp: 1100, ai: 'boss', sprite: 'mist', noScale: true, arena: 'arena_mist', big: true },
+    /* 竜人王バラン（隠しダンジョン35階）。通常のバランとは別のボス。戦い方はバランと同じ（js/bossai.js）で、強い。
+     * 絵はまだ無いので、バランの絵を仮に使う（完成の絵はChatGPT側）。登場ムービー・報酬の品はまだ無い */
+    dragonbaran: { name: '竜人王バラン', hp: 1500, atk: 52, def: 23, exp: 4000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
     mist_clone: { name: 'ミストバーン', hp: 1, atk: 22, def: 0, exp: 0, ai: 'clone', sprite: 'mist', noScale: true, clone: true },
     vearn:  { name: '大魔王バーン', hp: 900, atk: 44, def: 20, exp: 1500, ai: 'boss', sprite: 'vearn', noScale: true, arena: 'throne', big: true },
     truevearn: { name: '真大魔王バーン', hp: 1200, atk: 48, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'throne', big: true },
@@ -379,6 +389,18 @@
     if (C.final) return D.finalFloors(layout).truevearn;   // 版2も35階（版3と同じ）
     return (layout || D.LAYOUT) >= 2 ? C.goal : D.BOSS_FLOOR;
   };
+  /* 隠しダンジョンの階（31〜35階）。部屋の大きい地図（hidden）。32〜34階は強敵（enemyMul・expMul）。35階は竜人王バラン */
+  function hiddenFloor(f) {
+    const H = D.HIDDEN_DUNGEON;
+    if (f >= H.to) return { theme: D.ENEMIES[H.boss].arena, areaName: H.name + '・最奥', hidden: true, boss: H.boss, enemies: [], enemyCount: [0, 0], itemCount: [4, 4], goldCount: [0, 0],
+      items: [['herb', 2], ['big_herb', 2], ['elixir', 1], ['khaoniao', 1]] };
+    const base = demonFloor(f, D.CHAPTERS[D.FINAL_CHAPTER]), strong = H.strong.floors.includes(f);
+    return Object.assign({}, base, { areaName: H.name, hidden: true, returnPoint: false,
+      enemies: strong ? [['darkknight', 3], ['guard', 3], ['imp', 2], ['golem', 2], ['wisp', 1]] : base.enemies,
+      enemyCount: strong ? [9, 11] : [8, 10], itemCount: [7, 9], goldCount: [4, 6],
+      enemyMul: strong ? H.strong.mul : 1, expMul: strong ? H.strong.exp : 1 });
+  }
+  D.hiddenFloor = (f) => floorCache['hidden:' + f] || (floorCache['hidden:' + f] = hiddenFloor(f));
   function floorDef(f, ch, layout, skip) {
     const legacy = ch === 'legacy' || ch == null;
     const C = legacy ? null : D.CHAPTERS && D.CHAPTERS[ch];

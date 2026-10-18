@@ -48,11 +48,12 @@
   G.chapterOf = (run) => (run && run.chapter != null ? run.chapter : 'legacy');
   // 配置の版：新しい探索は D.LAYOUT。更新前から続いている探索（layout なし）は以前の配置（第1〜5章のボスは30階）
   G.layoutOf = (run) => (run && run.layout) || 1;
-  G.F = (run, f) => D.floorFor(G.chapterOf(run), f == null ? run.floor : f, G.layoutOf(run), run.final && run.final.v === 3 ? run.final.skip : null);
+  // 隠しダンジョン（run.hidden）の31〜35階は、本編とは別の階
+  G.F = (run, f) => (run && run.hidden && (f == null ? run.floor : f) >= D.HIDDEN_DUNGEON.from) ? D.hiddenFloor(f == null ? run.floor : f) : D.floorFor(G.chapterOf(run), f == null ? run.floor : f, G.layoutOf(run), run.final && run.final.v === 3 ? run.final.skip : null);
   G.finalV3 = (run) => !!(run && run.final && run.final.v === 3);
   G.finalFloors = (run) => D.finalFloors(G.layoutOf(run));   // その探索の最終章のボスの階（版4：30・33階、版3：30・35階）
   // その探索の最深階（＝ボスの階）
-  G.maxFloor = (run) => (G.chapterOf(run) === 'legacy' ? D.MAX_FLOOR : D.bossFloorOf(G.chapterOf(run), G.layoutOf(run)));
+  G.maxFloor = (run) => run && run.hidden ? D.HIDDEN_DUNGEON.to : (G.chapterOf(run) === 'legacy' ? D.MAX_FLOOR : D.bossFloorOf(G.chapterOf(run), G.layoutOf(run)));
   // 村に表示する「現在の章・次のボス・目標階」
   G.storyStatus = function (V) {
     const st = V.story || G.newStory(), C = D.CHAPTERS[st.chapter];
@@ -307,9 +308,10 @@
     // 30階は大魔王バーンの玉座の間（D.THRONE_ROOM。下の通路から入る）で、撃破後は時空の亀裂から先へ。
     // 真大魔王バーンの階（版4は33階・版3は35階）は以前の形のまま。版3だけ、そこにも時空の亀裂（以前の仕様）
     const FF = G.finalFloors(run);
-    const throne = G.finalV3(run) && Object.values(FF).includes(floor);
+    const throne = !Fdef.hidden && G.finalV3(run) && Object.values(FF).includes(floor);   // 隠しダンジョンの階は別（玉座の間ではない）
     const throne30 = throne && floor === FF.vearn;
-    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, returnPoint: !Fdef.boss && !throne && rpFloors.includes(floor) });
+    // 隠しダンジョン：部屋の大きい地図（D.HIDDEN_MAP）。帰還の祠は無い
+    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, hidden: !!Fdef.hidden, returnPoint: !Fdef.hidden && !Fdef.boss && !throne && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す
     run.map = gen.map;
@@ -378,7 +380,8 @@
       run.enemies.push(b);
       if (run.final && !G.finalV3(run) && F.boss === 'vearn') { run.final.stage = 'battle1'; run.final.healed = false; run.final.cutsceneSeen = false; S.village.story.finalStage = 'battle1'; }
     }
-    G.log(run, '地下' + floor + '階　' + D.THEMES[F.theme].name);
+    G.log(run, '地下' + floor + '階　' + G.areaName(F));
+    if (F.enemyMul > 1) G.log(run, '強敵の気配がする……。');
     if (run.returnPoint) G.log(run, 'この階には村へ帰れる「帰還の祠」がある。');
     if (F.boss) G.log(run, '奥から大きな気配がする…。' + D.ENEMIES[F.boss].name + 'が部屋の奥で待ち構えている！');
     G.updateVision(run);
@@ -588,18 +591,21 @@
   function makeEnemy(run, type, x, y) {
     const E = D.ENEMIES[type], f = run.floor;
     const k = E.noScale ? 0 : Math.max(0, f - (E.base || 1));
-    const cm = E.noScale ? 1 : D.chapterMul(run.chapter, f);   // 章が進むと少しずつ強く（浅い階はほぼ同じ）
+    const F = G.F(run), sm = E.noScale ? 1 : (F.enemyMul || 1);   // 隠しダンジョンの強敵の階（32〜34階）
+    const cm = (E.noScale ? 1 : D.chapterMul(run.chapter, f)) * sm;   // 章が進むと少しずつ強く（浅い階はほぼ同じ）
     const hp = Math.round(E.hp * (1 + D.ENEMY_SCALE.hp * k) * cm);
     return {
       id: run.nextEnemyId++, type, x, y, hp, maxhp: hp,
       atk: Math.round(E.atk * (1 + D.ENEMY_SCALE.atk * k) * cm),
       def: E.def,
-      exp: Math.round(E.exp * (1 + D.ENEMY_SCALE.exp * k)),
+      exp: Math.round(E.exp * (1 + D.ENEMY_SCALE.exp * k) * (E.noScale ? 1 : (F.expMul || 1))),
       sleep: E.ai === 'dormant' ? 9999 : 0,
       tx: null, ty: null, acts: 0, dir: 'down', cycle: 0, rest: 0, charge: null, stolen: 0,
     };
   }
   G.makeEnemy = makeEnemy;
+  // 階の名前（隠しダンジョンは地域の名前の代わりに「時空の狭間」）
+  G.areaName = (F) => F.areaName || D.THEMES[F.theme].name;
 
   // ---------- 視界 ----------
   // 部屋の中（入口のマスを含む）なら部屋全体と周囲の壁、通路では周囲1マスが見える。
@@ -710,6 +716,12 @@
           G.log(run, 'たけは時空の亀裂へ飛びこんだ。');
           enterFloor(S, run.floor + 1);
           ev.push({ t: 'stairs' });
+        } else if (G.onCrack(run) && run.crack.kind === 'throne30' && G.crackState(S) === 'hidden') {
+          // 真大魔王バーンを倒したあと：同じ亀裂から隠しダンジョンへ（31階から。本編の31階とは別の階）
+          run.hidden = true;
+          G.log(run, 'たけは時空の亀裂へ飛びこんだ。……ここは時空の狭間だ。');
+          enterFloor(S, D.HIDDEN_DUNGEON.from);
+          ev.push({ t: 'stairs' }, { t: 'hiddenEnter' });
         } else if (G.onStairs(run)) {
           G.log(run, 'たけは階段を降りた。');
           enterFloor(S, run.floor + 1);
@@ -920,6 +932,14 @@
       G.log(run, '大魔王バーンを倒した……！');
       G.log(run, 'しかし、影が集まり、真大魔王バーンがよみがえった！ サイたちの祈りでHPが全回復した。');
       ev.push({ t: 'finalTransform' });
+      return;
+    }
+    if (e.type === D.HIDDEN_DUNGEON.boss) {
+      // 竜人王バラン（隠しダンジョン35階）：倒すと帰還口。報酬の品はまだ決まっていない（出さない）
+      st.defeated[e.type] = true;
+      openPortal();
+      G.log(run, E.name + 'を倒した！ 光る帰還口が開いた。村へ帰ろう。');
+      ev.push({ t: 'bossDown', boss: e.type });
       return;
     }
     if (e.type === 'truevearn') {

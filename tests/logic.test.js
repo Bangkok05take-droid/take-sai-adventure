@@ -2010,20 +2010,73 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   // クリア後：30階にボスは出ない。同じ亀裂が隠しダンジョンの入口に切り替わる（隠しダンジョンはまだ無いので入れない。開始階は保留）
   departWithScroll(L, 942); assert(L.run.final.skip.vearn && L.run.final.skip.truevearn);
   goToFloor(L, 30); assert(!L.run.enemies.some((e) => e.boss) && !L.run.stairs && L.run.map.throne, '30F: throne room without boss');
-  assert(L.run.crack && L.run.crack.kind === 'throne30' && !G.canRescue(L.run), 'crack, no rescue after clear'); eq(G.crackState(L), 'hiddenNotReady');
+  assert(L.run.crack && L.run.crack.kind === 'throne30' && !G.canRescue(L.run), 'crack, no rescue after clear'); eq(G.crackState(L), 'hidden');
   const C = L.run.crack; L.run.player.x = C.x; L.run.player.y = C.y + 1; G.updateVision(L.run); L.run.enemies = [];
-  const rc = G.act(L, { type: 'move', dir: 'up' }); assert(rc.events.some((e) => e.t === 'onCrack' && e.state === 'hiddenNotReady'));
-  G.act(L, { type: 'descend' }); eq(L.run.floor, 30, 'hidden dungeon not ready: stays on 30F');
+  const rc = G.act(L, { type: 'move', dir: 'up' }); assert(rc.events.some((e) => e.t === 'onCrack' && e.state === 'hidden'));
+  G.act(L, { type: 'descend' }); eq(L.run.floor, 31); assert(L.run.hidden, 'into the hidden dungeon');
   // 33階（倒したあと）：ボスは出ない。下への階段・亀裂は無く、帰還の祠
   assert(!G.F(L.run, 33).boss, '33F no boss after clear');
 });
-test('30階の時空の亀裂の行き先：真大魔王バーンを倒す前は31階、倒したあとは隠しダンジョン（まだ無い）。読み込み直しても同じ', () => {
+test('30階の時空の亀裂の行き先：真大魔王バーンを倒す前は31階、倒したあとは隠しダンジョンの31階。読み込み直しても同じ', () => {
   const S = toBossFloor(6, 978); defeatBoss(S); G.commitRescue(S);
   eq(G.crackState(S), 'next');
-  S.village.story.defeated.truevearn = true; eq(G.crackState(S), 'hiddenNotReady');
-  const L = SV.deserialize(SV.serialize(S)); eq(G.crackState(L), 'hiddenNotReady');
-  L.run.player.x = L.run.crack.x; L.run.player.y = L.run.crack.y; G.act(L, { type: 'descend' }); eq(L.run.floor, 30);
+  S.village.story.defeated.truevearn = true; eq(G.crackState(S), 'hidden');
+  const L = SV.deserialize(SV.serialize(S)); eq(G.crackState(L), 'hidden');
+  L.run.player.x = L.run.crack.x; L.run.player.y = L.run.crack.y; G.act(L, { type: 'descend' }); eq(L.run.floor, 31); assert(L.run.hidden);
+  // 隠しダンジョンがまだ用意されていない（D.HIDDEN_DUNGEON が無い）ときは「準備中」
+  const keep = D.HIDDEN_DUNGEON; D.HIDDEN_DUNGEON = null; try { eq(G.crackState(S), 'hiddenNotReady'); } finally { D.HIDDEN_DUNGEON = keep; }
   S.village.story.defeated.truevearn = false; S.run.player.x = S.run.crack.x; S.run.player.y = S.run.crack.y; G.act(S, { type: 'descend' }); eq(S.run.floor, 31);
+});
+test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂から31階へ。31〜35階は部屋が広い（面積約2倍）・帰還の祠なし・32〜34階は強敵・35階に竜人王バラン → 帰還口。読み込み直しても隠しダンジョンのまま', () => {
+  const H = D.HIDDEN_DUNGEON;
+  const S = toBossFloor(6, 979); defeatBoss(S); G.commitRescue(S);
+  S.village.story.defeated.truevearn = true; S.village.story.endingDone = true;
+  eq(G.crackState(S), 'hidden');
+  S.run.player.x = S.run.crack.x; S.run.player.y = S.run.crack.y;
+  const r0 = G.act(S, { type: 'descend' }); assert(r0.events.some((e) => e.t === 'hiddenEnter'));
+  const run = S.run; eq(run.floor, 31); assert(run.hidden); eq(G.maxFloor(run), 35);
+  // 部屋の大きさ：本編（同じ階・同じ種）と比べて、部屋の平均の面積がおよそ2倍
+  const avg = (m) => m.rooms.reduce((a, r) => a + r.w * r.h, 0) / m.rooms.length;
+  let hid = 0, base = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    hid += avg(DG.generate(31, R.create(seed), { hidden: true }).map);
+    base += avg(DG.generate(31, R.create(seed), {}).map);
+  }
+  const ratio = hid / base; assert(ratio >= 1.8 && ratio <= 2.6, 'room area about 2x: ' + ratio.toFixed(2));
+  eq(run.map.w + 'x' + run.map.h, D.HIDDEN_MAP.w + 'x' + D.HIDDEN_MAP.h);
+  const L0 = SV.deserialize(SV.serialize(S)); assert(L0.run.hidden && L0.run.floor === 31 && G.F(L0.run).hidden, 'hidden kept after reload');
+  // 31〜34階：帰還の祠なし。32〜34階は強敵（同じ敵が本編より強い）。入口から全部の床・階段へ行ける
+  const seen = [];
+  while (run.floor < 35) {
+    const F = G.F(run); assert(F.hidden && !run.returnPoint, 'no return shrine on ' + run.floor);
+    eq(!!(F.enemyMul > 1), H.strong.floors.includes(run.floor), 'strong on ' + run.floor);
+    const dist = DG.distances(run.map, run.player.x, run.player.y);
+    assert(dist[run.stairs.y * run.map.w + run.stairs.x] >= 0, 'stairs reachable ' + run.floor);
+    if (F.enemyMul > 1) {
+      const e = run.enemies.find((x) => x.type === 'darkknight' || x.type === 'guard');
+      if (e) { const plain = G.makeEnemy(Object.assign({}, run, { hidden: false, floor: 31 }), e.type, 0, 0); assert(e.maxhp > plain.maxhp && e.atk > plain.atk, 'stronger ' + e.type); }
+      assert(run.log.some((l) => l.includes('強敵の気配')), 'strong notice');
+    }
+    seen.push(run.floor);
+    goDown(S);
+  }
+  eq(seen.join(), '31,32,33,34');
+  // 35階：竜人王バラン（部屋の大きいボス部屋）。帰還の祠なし。倒すと帰還口、品の報酬は無い
+  eq(run.floor, 35); const b = run.enemies.find((e) => e.boss); eq(b && b.type, 'dragonbaran'); assert(!run.returnPoint);
+  eq(run.bossFight.w * run.bossFight.h, 21 * 21, 'big arena');
+  const items0 = run.floorItems.length;
+  defeatBoss(S);
+  assert(run.portal && S.village.story.defeated.dragonbaran, 'portal after dragon king');
+  eq(run.floorItems.filter((f) => f.item && f.item.bossReward).length, 0, 'no item reward yet');
+  run.player.x = run.portal.x; run.player.y = run.portal.y; G.act(S, { type: 'returnHome' });
+  assert(run.over || !S.run || S.run.over, 'returned');
+  // 本編（真大魔王バーンを倒す前）の31階は、隠しダンジョンではない
+  const M = toBossFloor(6, 980); defeatBoss(M); G.commitRescue(M); M.run.player.x = M.run.crack.x; M.run.player.y = M.run.crack.y; G.act(M, { type: 'descend' });
+  assert(M.run.floor === 31 && !M.run.hidden && !G.F(M.run).hidden && M.run.map.w === D.MAP.w, 'main 31F is not hidden');
+});
+test('冒頭の会話：大魔王は地下33階へ封じる', () => {
+  assert(D.STORY.intro.some((l) => l[1].includes('地下33階へ封じる')) || JSON.stringify(D.STORY).includes('地下33階へ封じる'));
+  assert(!JSON.stringify(D.STORY).includes('地下35階へ封じる'));
 });
 test('30階・玉座の間（デザインの絵）：下の通路から上へ入る。玉座・柱・炎の台・旗は通れない。中央の床は広い。撃破後、亀裂へ歩いて行ける・ムービーのあとも同じ状態', () => {
   const S = toBossFloor(6, 977), run = S.run, m = run.map, T = D.THRONE_ROOM, A = run.bossFight, p = run.player;

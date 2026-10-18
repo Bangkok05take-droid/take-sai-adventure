@@ -1962,8 +1962,8 @@
     const f = UI.S.run.floor;
     const run = UI.S.run, F1 = G.F(run, f + 1), F0 = G.F(run, f);
     const nextBoss = F1.boss;
-    const bossWarn = nextBoss ? `<div class="warnbox">この先は「${D.THEMES[F1.theme].name}」。${D.ENEMIES[nextBoss].name}が待っています。HPと道具を整えてから進もう。</div>` : '';
-    const region = F1.theme !== F0.theme && !nextBoss ? `<p class="note">この先は「${D.THEMES[F1.theme].name}」。</p>` : '';
+    const bossWarn = nextBoss ? `<div class="warnbox">この先は「${G.areaName(F1)}」。${D.ENEMIES[nextBoss].name}が待っています。HPと道具を整えてから進もう。</div>` : '';
+    const region = G.areaName(F1) !== G.areaName(F0) && !nextBoss ? `<p class="note">この先は「${G.areaName(F1)}」。</p>` : '';
     modal({ title: '階段', html: `<p>下へ続く階段がある。地下${f + 1}階へ降りますか？</p>${bossWarn}${region}<p class="note">降りなかった場合も「足元」ボタンからいつでも降りられます。</p>`, buttons: [
       { label: 'まだ探索する' },
       { label: '降りる', cls: 'primary', onClick: () => { setTimeout(() => doDescend(), 0); } },
@@ -2115,6 +2115,14 @@
       ] });
       return;
     }
+    if (stt === 'hidden') {
+      modal({ title: '時空の亀裂', html: `<p>時空の亀裂の奥から、竜の気配がする……。</p><p>隠しダンジョン「${esc(D.HIDDEN_DUNGEON.name)}」へ進みますか？（地下${D.HIDDEN_DUNGEON.from}階から）</p>`
+        + '<div class="warnbox">部屋が広く、強い敵が出ます。帰還の祠はありません。帰るには帰還の巻物を使うか、最奥の竜人王バランを倒してください。</div>', buttons: [
+        { label: 'まだ探索する' },
+        { label: '進む', cls: 'primary', onClick: () => { setTimeout(() => doDescend(), 0); } },
+      ] });
+      return;
+    }
     if (stt === 'hiddenNotReady') { info('時空の亀裂', '<p>時空の亀裂の奥から、竜の気配がする……。</p><p class="note">この先の隠しダンジョンは準備中です。</p>'); return; }
     const msg = { unstable: '時空の亀裂が、玉座の後ろで渦を巻いている。……まだ揺らいでいて、入れそうにない。（いまは村へ帰って、物語を見届けよう）',
       notReady: '時空の亀裂の奥から、竜の気配がする。……この先（36階〜）は準備中。', open: '時空の亀裂の奥から、竜の気配がする。' }[stt] || '';
@@ -2135,7 +2143,7 @@
     const run = UI.S.run;
     const p = run.player;
     const nextExp = D.EXP_TABLE[p.lvl + 1];
-    const html = `<div class="kv"><span>場所</span><span>地下${run.floor}階（${D.THEMES[G.F(run).theme].name}）</span>
+    const html = `<div class="kv"><span>場所</span><span>地下${run.floor}階（${G.areaName(G.F(run))}）</span>
       <span>章</span><span>${G.chapterOf(run) === 'legacy' ? '以前の版の冒険（帰還後に第1章へ）' : esc(D.CHAPTERS[run.chapter].name + '「' + D.CHAPTERS[run.chapter].title + '」')}</span>
       <span>レベル</span><span>${p.lvl}（次まで ${nextExp ? nextExp - p.exp : '-'}）</span>
       <span>HP</span><span>${p.hp}/${p.maxhp}</span><span>満腹度</span><span>${p.hunger}%</span>
