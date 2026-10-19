@@ -3347,5 +3347,30 @@ test('ティウの案内：素材・お宝の入手の階は実際の出現の�
   const am = G.itemGuide(S, 'amber_shard').uses; assert(am.some((u) => u.kind === 'smith' && u.to === 4) && am.some((u) => u.kind === 'facility'));
 });
 
+test('ボスを倒したあとの帰還口はボス部屋の中央（たけ・報酬の品のマスを避けて中央にいちばん近い床）。報酬の品もボス部屋の中。前室には出ない。以前のセーブの外の帰還口は読み込みで中央へ', () => {
+  for (const [ch, seed] of [[1, 311], [2, 312], [3, 313], [5, 315]]) {
+    for (const where of ['center', 'edge']) {
+      const S = toBossFloor(ch, seed + (where === 'edge' ? 50 : 0)), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
+      if (where === 'edge') { b.x = A.x; b.y = A.y; }   // 部屋の隅で倒れる
+      // 報酬の品を置く予定のマスを先にふさいでおく（ふさがっていても部屋の外に出さない）
+      run.floorItems.push({ x: b.x, y: b.y, item: G.makeItem(S, 'herb') });
+      defeatBoss(S);
+      const cx = A.x + (A.w >> 1), cy = A.y + (A.h >> 1), P = run.portal;
+      assert(P && G.inArena(run, P.x, P.y), 'portal inside the arena ch' + ch);
+      assert(Math.max(Math.abs(P.x - cx), Math.abs(P.y - cy)) <= 1, 'portal at the center ch' + ch + ' ' + JSON.stringify([P, cx, cy]));
+      assert(!(P.x === run.player.x && P.y === run.player.y), 'not under the player');
+      for (const f of run.floorItems.filter((f) => f.item && f.item.bossReward)) {
+        assert(G.inArena(run, f.x, f.y), 'reward inside the arena'); assert(!(f.x === P.x && f.y === P.y), 'reward not on the portal');
+      }
+    }
+  }
+  // 以前のセーブ：帰還口が前室にあった → 読み込みでボス部屋の中央へ
+  const S = toBossFloor(3, 330), run = S.run; defeatBoss(S);
+  run.portal = { x: run.map.rooms[0].x + 1, y: run.map.rooms[0].y + 1 };
+  const raw = JSON.parse(SV.serialize(S)); const L = SV.deserialize(JSON.stringify(raw));
+  const A = L.run.bossFight, P = L.run.portal;
+  assert(G.inArena(L.run, P.x, P.y) && Math.max(Math.abs(P.x - (A.x + (A.w >> 1))), Math.abs(P.y - (A.y + (A.h >> 1)))) <= 1, 'moved to the center on load');
+});
+
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

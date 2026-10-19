@@ -192,6 +192,11 @@
         fill(data.run.player, { poison: 0, poisonGuard: 0, bound: 0, bindGuard: 0 });
         fill(data.run, { hazards: [], fog: 0 });
         fixBossFight(data.run);
+        // ボスを倒したあとの帰還口が、ボス部屋の外（前室など）に出ていたセーブ（2026年10月まで）：ボス部屋の中央へ移す
+        const r = data.run, A = r.bossFight;
+        if (r.portal && A && A.won && r.map && r.map.boss && !G.inArena(r, r.portal.x, r.portal.y)) {
+          try { r.portal = G.arenaCenter(r, (r.floorItems || []).concat(r.crack ? [r.crack] : [])); } catch (e) { /* 動かせなければそのまま */ }
+        }
       }
     }
     data.version = D.SAVE_VERSION;

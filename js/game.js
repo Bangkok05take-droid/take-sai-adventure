@@ -928,14 +928,21 @@
     run.enemies = run.enemies.filter((o) => !o.clone && !o.summoned);
     run.hazards = []; run.fog = 0; run.player.bound = 0;
     const room = run.bossFight || DG.roomAt(run.map, e.x, e.y);   // 報酬と帰還口はボス部屋の中に
+    /* 帰還口はボス部屋の中央（たけ・時空の亀裂のマスは避けて、中央にいちばん近い床）。報酬の品はこのマスに置かない。
+     * 以前は部屋の中のでたらめなマスで、ふさがっていると別の部屋（前室など）に出ることがあった */
+    const center = run.bossFight ? G.arenaCenter(run, run.crack ? [run.crack] : []) : null;
     const drop = (id) => {
-      const taken = run.floorItems.concat([run.player], run.crack ? [run.crack] : []);   // 30階：時空の亀裂のマスには置かない
-      const pos = !taken.some((t) => t.x === e.x && t.y === e.y) ? { x: e.x, y: e.y } : DG.freeTile(run.map, run.rng, taken, room);
+      const taken = run.floorItems.concat([run.player], run.crack ? [run.crack] : [], center ? [center] : []);   // 30階：時空の亀裂のマスには置かない
+      // ボスが倒れたマス。ふさがっていれば、ボス部屋の中でそのマスにいちばん近い空いた床（部屋の外には出さない）
+      const pos = !taken.some((t) => t.x === e.x && t.y === e.y) ? { x: e.x, y: e.y }
+        : run.bossFight ? G.arenaNear(run, e.x, e.y, taken) : DG.freeTile(run.map, run.rng, taken, room);
       // bossReward：拾わずに探索を終えても失わないための印（G.finishRun で倉庫へ届ける。拾った品・村の品からは外す）
       if (pos) run.floorItems.push({ x: pos.x, y: pos.y, item: Object.assign(G.makeItem(S, id), { bossReward: true }) });
     };
     const openPortal = () => {
-      run.portal = DG.freeTile(run.map, run.rng, run.floorItems.concat([run.player]), room);
+      const taken = run.floorItems.concat([run.player], run.crack ? [run.crack] : []);
+      run.portal = center && !taken.some((t) => t.x === center.x && t.y === center.y) ? center
+        : run.bossFight ? G.arenaCenter(run, taken) : DG.freeTile(run.map, run.rng, taken, room);
       G.updateVision(run);
       ev.push({ t: 'portal' });
     };
@@ -1658,7 +1665,12 @@
   G.bossWaiting = (run, e) => !!(run.bossFight && !run.bossFight.engaged && (!e || e.boss));
   /* 部屋の中央に近い、空いている床（ボスの置き場所・補正先）。avoid：重ねたくない位置 */
   G.arenaCenter = function (run, avoid) {
-    const A = run.bossFight, cx = A.x + (A.w >> 1), cy = A.y + (A.h >> 1);
+    const A = run.bossFight;
+    return G.arenaNear(run, A.x + (A.w >> 1), A.y + (A.h >> 1), avoid);
+  };
+  // ボス部屋の中で (cx, cy) にいちばん近い、空いている床（敵・たけ・avoid のマスは除く）
+  G.arenaNear = function (run, cx, cy, avoid) {
+    const A = run.bossFight;
     let best = null, bd = 1e9;
     for (let y = A.y; y < A.y + A.h; y++) for (let x = A.x; x < A.x + A.w; x++) {
       if (!DG.passable(run.map, x, y) || G.enemyAt(run, x, y) || (run.player && run.player.x === x && run.player.y === y)) continue;
