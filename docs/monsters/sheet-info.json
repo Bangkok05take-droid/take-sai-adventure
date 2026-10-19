@@ -1,0 +1,309 @@
+{
+ "frog": {
+  "sprite": "frog",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "turtle": {
+  "sprite": "turtle",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "monkey": {
+  "sprite": "monkey",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "root": {
+  "sprite": "root",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "jelly": {
+  "sprite": "jelly",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "statue": {
+  "sprite": "statue",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "bat": {
+  "sprite": "bat",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "shaman": {
+  "sprite": "shaman",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "lizard": {
+  "sprite": "lizard",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "thief": {
+  "sprite": "thief",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "golem": {
+  "sprite": "golem",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "wisp": {
+  "sprite": "wisp",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "guard": {
+  "sprite": "guard",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "lion": {
+  "sprite": "lion",
+  "src": "code",
+  "loaded": true,
+  "w": 48,
+  "logical": 48,
+  "frames": 2,
+  "art": false
+ },
+ "catfish": {
+  "sprite": "catfish",
+  "src": "code",
+  "loaded": true,
+  "w": 48,
+  "logical": 48,
+  "frames": 2,
+  "art": false
+ },
+ "elephant": {
+  "sprite": "elephant",
+  "src": "code",
+  "loaded": true,
+  "w": 48,
+  "logical": 48,
+  "frames": 2,
+  "art": false
+ },
+ "darkknight": {
+  "sprite": "darkknight",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "dragon": {
+  "sprite": "dragon",
+  "src": "enemies",
+  "loaded": true,
+  "w": 192,
+  "logical": 64,
+  "frames": 2,
+  "art": true
+ },
+ "silverdevil": {
+  "sprite": "silverdevil",
+  "src": "enemies",
+  "loaded": true,
+  "w": 192,
+  "logical": 64,
+  "frames": 2,
+  "art": true
+ },
+ "gigantes": {
+  "sprite": "gigantes",
+  "src": "enemies",
+  "loaded": true,
+  "w": 192,
+  "logical": 64,
+  "frames": 2,
+  "art": true
+ },
+ "bombrock": {
+  "sprite": "bombrock",
+  "src": "enemies",
+  "loaded": true,
+  "w": 192,
+  "logical": 64,
+  "frames": 2,
+  "art": true
+ },
+ "mimic": {
+  "sprite": "mimic",
+  "src": "enemies",
+  "loaded": true,
+  "w": 192,
+  "logical": 64,
+  "frames": 2,
+  "art": true
+ },
+ "madhand": {
+  "sprite": "madhand",
+  "src": "enemies",
+  "loaded": true,
+  "w": 192,
+  "logical": 64,
+  "frames": 2,
+  "art": true
+ },
+ "imp": {
+  "sprite": "imp",
+  "src": "code",
+  "loaded": true,
+  "w": 32,
+  "logical": 32,
+  "frames": 2,
+  "art": false
+ },
+ "croc": {
+  "sprite": "croc",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "flame": {
+  "sprite": "flame",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "kill": {
+  "sprite": "kill",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "kill_clone": {
+  "sprite": "kill",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "baran": {
+  "sprite": "baran",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "mist": {
+  "sprite": "mist",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "dragonbaran": {
+  "sprite": "baran",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "mist_clone": {
+  "sprite": "mist",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "vearn": {
+  "sprite": "vearn",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "truevearn": {
+  "sprite": "truevearn",
+  "src": "bosses",
+  "loaded": true,
+  "w": 96,
+  "logical": 96,
+  "frames": 1,
+  "art": true
+ },
+ "_take": true
+}

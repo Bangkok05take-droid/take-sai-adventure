@@ -1,0 +1,57 @@
+[
+ {
+  "name": "01_idle",
+  "title": "待機",
+  "note": "部屋 8x5"
+ },
+ {
+  "name": "02_move",
+  "title": "移動",
+  "note": ""
+ },
+ {
+  "name": "03_move_strong",
+  "title": "移動（絵の敵：滑るだけ）・シルバーデビルの2歩",
+  "note": ""
+ },
+ {
+  "name": "04_attack",
+  "title": "通常攻撃（踏み込み）・被弾",
+  "note": ""
+ },
+ {
+  "name": "05_ranged",
+  "title": "射撃（吹き矢・光の矢・火の玉）",
+  "note": ""
+ },
+ {
+  "name": "06_telegraph",
+  "title": "予告・発動・隙（石像の戦士・結晶ゴーレム）",
+  "note": ""
+ },
+ {
+  "name": "07_defeat",
+  "title": "撃破（通常の敵）",
+  "note": ""
+ },
+ {
+  "name": "08_status",
+  "title": "状態異常のしるし",
+  "note": ""
+ },
+ {
+  "name": "09_strong_special",
+  "title": "強敵の技（炎・2回攻撃・自爆・ミミック・つかむ）",
+  "note": "つかまれた：true"
+ },
+ {
+  "name": "10_boss",
+  "title": "ボス（クロコダイン）：予告・隙・被弾・撃破",
+  "note": "予告：true　ボス残り：0"
+ },
+ {
+  "name": "11_clone",
+  "title": "分身（キルバーン）",
+  "note": "分身：2"
+ }
+]
