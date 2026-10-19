@@ -295,6 +295,13 @@
     // 敵（奥の行から順に描く。大きなボスの絵が手前の敵を隠さない）
     for (const e of run.enemies.slice().sort((a, b) => a.y - b.y)) {
       if (!G.isVisible(run, e.x, e.y)) continue;
+      // 化けているミミック：床のお宝（宝箱）と同じ見た目（HPの棒・状態の印も出さない）
+      if (e.disguised) {
+        const sx = ox + e.x * ts, sy = oy + e.y * ts, ci = SP.chestIcon(ts);
+        if (ci) { g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(sx + ts / 2, sy + ts * 0.82, ts * 0.42, ts * 0.09, 0, 0, Math.PI * 2); g.fill(); g.drawImage(ci, sx, sy + Math.round(ts * 0.06), ts, ts); }
+        else g.drawImage(SP.tiles.chest[0], sx, sy, ts, ts);
+        continue;
+      }
       const ep = lerpPos('e' + e.id, e.x, e.y, now);
       let sx = Math.round(ox + ep.x * ts), sy = Math.round(oy + ep.y * ts);
       const l = lungeOffset(e.id, now, ts);

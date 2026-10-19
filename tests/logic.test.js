@@ -2054,12 +2054,14 @@ test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂か
   const seen = [];
   while (run.floor < 35) {
     const F = G.F(run); assert(F.hidden && !run.returnPoint, 'no return shrine on ' + run.floor);
-    eq(!!(F.enemyMul > 1), H.strong.floors.includes(run.floor), 'strong on ' + run.floor);
+    eq(!!F.strong, H.strong.floors.includes(run.floor), 'strong on ' + run.floor);
     const dist = DG.distances(run.map, run.player.x, run.player.y);
     assert(dist[run.stairs.y * run.map.w + run.stairs.x] >= 0, 'stairs reachable ' + run.floor);
-    if (F.enemyMul > 1) {
-      const e = run.enemies.find((x) => x.type === 'darkknight' || x.type === 'guard');
-      if (e) { const plain = G.makeEnemy(Object.assign({}, run, { hidden: false, floor: 31 }), e.type, 0, 0); assert(e.maxhp > plain.maxhp && e.atk > plain.atk, 'stronger ' + e.type); }
+    if (F.strong) {
+      // 強敵の階：専用の強敵（6種のどれか）が出る。今の敵を一律に強くする仕組みは無い
+      const strongTypes = ['dragon', 'silverdevil', 'gigantes', 'bombrock', 'mimic', 'madhand'];
+      assert(run.enemies.some((e) => strongTypes.includes(e.type)), 'strong enemies on ' + run.floor);
+      const g = run.enemies.find((e) => e.type === 'darkknight'); if (g) eq(g.maxhp, G.makeEnemy(run, 'darkknight', 0, 0).maxhp, 'no blanket multiplier');
       assert(run.log.some((l) => l.includes('強敵の気配')), 'strong notice');
     }
     seen.push(run.floor);
@@ -2144,6 +2146,103 @@ test('ワーンの食堂：完成の会話はワーンの指定の文。古い�
   assert(src.includes("['waan', 'お待たせ！ ワーンの食堂ができたよ！\\n冒険に行く前は、ちゃんと食べていってね！\\n元気が出る料理を作ってあげる！！']"), 'line');
   eq(D.FACILITIES.find((f) => f.id === 'diner').name, 'ワーンの食堂');
 });
+// 隠しダンジョンの強敵：テスト用の部屋に置く（攻撃は必ず当たる）
+function strongRoom(seed) {
+  const S = newRun(seed, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);
+  const run = S.run; run.player.hp = run.player.maxhp = 99999; run.player.x = 5; run.player.y = 5; G.updateVision(run);
+  const put = (type, x, y) => { const e = G.makeEnemy(run, type, x, y); e.awake = true; run.enemies.push(e); return e; };
+  return { S, run, p: run.player, put };
+}
+const withHit = (fn) => { const k = D.ENEMY_HIT_RATE; D.ENEMY_HIT_RATE = 1; try { fn(); } finally { D.ENEMY_HIT_RATE = k; } };
+test('ドラゴン：一直線に炎。壁か最初のキャラクターで止まる（貫かない）。間の敵に当たれば後ろのたけには当たらない。敵が倒れても炎は先へ進まない', () => withHit(() => {
+  const { S, run, p, put } = strongRoom(4101);
+  // たけが最初：たけに当たる
+  let d = put('dragon', 9, 5); d.cds = {}; G.updateVision(run);
+  let hp = p.hp, r = G.act(S, { type: 'wait' }), b = r.events.find((e) => e.t === 'breath');
+  assert(b && b.hit && b.to.x === 5 && b.to.y === 5 && p.hp < hp, 'hits the player first');
+  // 間に敵：その敵に当たって止まる（たけには当たらない）。炎の止まる所＝その敵のマス
+  run.enemies = []; d = put('dragon', 9, 5); d.cds = {}; const shield = put('gigantes', 7, 5); shield.sleep = 99; G.updateVision(run);
+  const sh0 = shield.hp; r = G.act(S, { type: 'wait' }); b = r.events.find((e) => e.t === 'breath');
+  assert(b && b.to.x === 7 && b.to.y === 5, 'stops at the shield enemy'); assert(shield.hp < sh0, 'shield takes damage');
+  assert(!r.events.some((e) => e.t === 'hit' && e.target === 'player'), 'player behind is safe');
+  // 間の敵が炎で倒れても、その一発は先へ進まない
+  run.enemies = []; d = put('dragon', 9, 5); d.cds = {}; const weak = put('madhand', 7, 5); weak.hp = 1; weak.sleep = 99; G.updateVision(run);
+  r = G.act(S, { type: 'wait' }); assert(!run.enemies.includes(weak), 'shield died'); assert(!r.events.some((e) => e.t === 'hit' && e.target === 'player'), 'flame did not continue');
+  eq(r.events.find((e) => e.t === 'breath').to.x, 7, 'flame drawn up to the shield only');
+  // 壁で途切れていれば吐かない／射程の外は吐かない
+  run.enemies = []; d = put('dragon', 5 + D.STRONG.dragon.range + 1, 5); d.cds = {}; d.sleep = 0; G.updateVision(run);
+  r = G.act(S, { type: 'wait' }); assert(!r.events.some((e) => e.t === 'breath'), 'out of range');
+  // 使ったあとは待ち（cd）
+  run.enemies = []; d = put('dragon', 8, 5); d.cds = {}; G.updateVision(run); G.act(S, { type: 'wait' }); eq(d.cds.breath, D.STRONG.dragon.cd);
+}));
+test('シルバーデビル：1手番に2回。離れていれば2歩、隣なら2回攻撃、1歩目で隣なら残り1回で攻撃（2歩のあと攻撃はしない）', () => withHit(() => {
+  const { S, run, p, put } = strongRoom(4102);
+  let e = put('silverdevil', 12, 5); G.updateVision(run);
+  let hp = p.hp; G.act(S, { type: 'wait' }); eq(Math.abs(e.x - 12), 2, 'two steps'); eq(p.hp, hp, 'no attack after two steps');
+  run.enemies = []; e = put('silverdevil', 6, 5); G.updateVision(run);
+  let r = G.act(S, { type: 'wait' }); eq(r.events.filter((x) => x.t === 'hit' && x.target === 'player').length, 2, 'two attacks when adjacent');
+  run.enemies = []; e = put('silverdevil', 7, 5); G.updateVision(run);
+  r = G.act(S, { type: 'wait' }); eq(e.x, 6, 'one step'); eq(r.events.filter((x) => x.t === 'hit' && x.target === 'player').length, 1, 'then one attack');
+  // たけの3点セットの2回行動とは別（敵の手番の中だけの話）
+  eq(D.ENEMIES.silverdevil.ai, 'double');
+}));
+test('ギガンテス：HP・攻撃・防御が高く、近づいて通常攻撃だけ（特別な技なし）', () => withHit(() => {
+  const E = D.ENEMIES.gigantes, others = ['darkknight', 'guard', 'golem'].map((k) => D.ENEMIES[k]);
+  assert(others.every((o) => E.hp > o.hp && E.atk > o.atk && E.def > o.def), 'high stats'); eq(E.ai, 'melee');
+  const { S, run, p, put } = strongRoom(4103); const g = put('gigantes', 8, 5); G.updateVision(run);
+  G.act(S, { type: 'wait' }); eq(g.x, 7, 'approaches'); assert(!g.charge, 'no special');
+}));
+test('爆弾岩：HP20%以下で止まる。0より大きく10%以下で即自爆（範囲のたけにダメージ・経験値なし）。一撃で0以下なら自爆せずに倒れる', () => withHit(() => {
+  const B = D.STRONG.bombrock;
+  let { S, run, p, put } = strongRoom(4104);
+  let b = put('bombrock', 9, 5); b.hp = Math.floor(b.maxhp * B.stopAt); G.updateVision(run);
+  G.act(S, { type: 'wait' }); eq(b.x, 9, 'stops moving at 20%');
+  // 自爆：隣で、残りが10%以下になる攻撃
+  b.x = 6; b.y = 5; b.hp = Math.floor(b.maxhp * B.stopAt); const exp0 = p.exp;
+  const dmg = b.hp - Math.max(1, Math.floor(b.maxhp * B.blastAt));
+  const ev = []; const hp = p.hp; G._damageEnemy(S, b, dmg, ev, 'test');
+  assert(!run.enemies.includes(b) && ev.some((e) => e.t === 'blast' && e.fx === 'explode'), 'self destruct'); assert(p.hp < hp, 'player in range is hurt'); eq(p.exp, exp0, 'no exp');
+  // 一撃で0以下：自爆しないで倒れる（経験値あり）
+  ({ S, run, p, put } = strongRoom(4105)); b = put('bombrock', 6, 5); b.hp = 5;
+  const ev2 = []; const hp2 = p.hp; G._damageEnemy(S, b, 50, ev2, 'test');
+  assert(!ev2.some((e) => e.fx === 'explode') && ev2.some((e) => e.t === 'kill' && e.exp > 0) && !ev2.some((e) => e.t === 'hit' && e.target === 'player'), 'killed without exploding (with exp)');
+  // 範囲の外なら当たらない
+  ({ S, run, p, put } = strongRoom(4106)); b = put('bombrock', 9, 5); const hp3 = p.hp;
+  G._damageEnemy(S, b, b.hp - 1, [], 'test'); eq(p.hp, hp3, 'out of range');
+}));
+test('ミミック：お宝に化けて動かない（見えている敵に入らない）。隣に来た手番に正体を現して1回だけ攻撃。攻撃されても正体を現す', () => withHit(() => {
+  const { S, run, p, put } = strongRoom(4107);
+  const m = put('mimic', 9, 5); m.disguised = true; G.updateVision(run);
+  G.act(S, { type: 'wait' }); assert(m.disguised && m.x === 9, 'stays disguised'); assert(!G.visibleEnemies(run).includes(m), 'looks like treasure');
+  m.x = 6; G.updateVision(run);
+  const r = G.act(S, { type: 'wait' });
+  assert(!m.disguised, 'revealed'); eq(r.events.filter((e) => e.t === 'hit' && e.target === 'player').length, 1, 'one attack only (no extra first strike)');
+  const m2 = put('mimic', 4, 5); m2.disguised = true; G.updateVision(run);
+  G._damageEnemy(S, m2, 1, [], 'test'); assert(!m2.disguised, 'reveals when attacked');
+  // 階に置く：強敵の階で化けたまま
+  eq(JSON.stringify(D.STRONG.mimic.count), '[1,2]');
+}));
+test('マドハンド：つかむと移動できない（攻撃・道具・装備はできる）。つかんだマドハンドを倒すと解ける。自然にも解ける。3点セットは無効', () => withHit(() => {
+  let { S, run, p, put } = strongRoom(4108);
+  let h = put('madhand', 6, 5); G.updateVision(run);
+  G.act(S, { type: 'wait' }); assert(p.bound > 0); eq(p.boundBy, h.id);
+  const x0 = p.x; G.act(S, { type: 'move', dir: 'left' }); eq(p.x, x0, 'cannot move');
+  const herb = G.makeItem(S, 'herb'); run.bag.push(herb); assert(G.act(S, { type: 'use', uid: herb.uid }).consumed, 'can use items');
+  const sw = G.makeItem(S, 'iron_katana'); run.bag.push(sw); assert(G.act(S, { type: 'equip', uid: sw.uid }).consumed, 'can change equipment');
+  h.hp = 1; G.act(S, { type: 'move', dir: 'right' });   // 攻撃はできる（倒すと解ける）
+  assert(!run.enemies.includes(h), 'killed'); eq(p.bound, 0, 'released'); eq(p.boundBy, null);
+  // 自然に解ける
+  // 自然に解ける：たけの手番で turns 回だけ動けない
+  ({ S, run, p, put } = strongRoom(4109)); h = put('madhand', 6, 5); G.updateVision(run); G.act(S, { type: 'wait' }); h.sleep = 999;
+  // （動こうとしても手番は使わないので、待って数える）
+  let waits = 0; while (p.bound > 0 && waits < 10) { const y0 = p.y; G.act(S, { type: 'move', dir: 'down' }); eq(p.y, y0, 'cannot move while bound'); G.act(S, { type: 'wait' }); waits++; }
+  eq(waits, D.STRONG.madhand.turns, 'bound for the set number of turns'); eq(p.bound, 0, 'released naturally');
+  // 3点セット：つかまれない
+  ({ S, run, p, put } = strongRoom(4110));
+  for (const id of ['shinma_sword', 'dragonic_shield', 'dragon_crest']) { const it = G.makeItem(S, id); run.bag.push(it); G.act(S, { type: 'equip', uid: it.uid }); }
+  assert(G.sets(run).all3); h = put('madhand', 6, 5); G.updateVision(run);
+  for (let i = 0; i < 3; i++) G.act(S, { type: 'wait' }); eq(p.bound, 0, 'immune with the set');
+}));
 test('冒頭の会話：大魔王は地下33階へ封じる', () => {
   assert(D.STORY.intro.some((l) => l[1].includes('地下33階へ封じる')) || JSON.stringify(D.STORY).includes('地下33階へ封じる'));
   assert(!JSON.stringify(D.STORY).includes('地下35階へ封じる'));

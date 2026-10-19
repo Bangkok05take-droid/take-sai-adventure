@@ -366,6 +366,14 @@
       occupied.push(pos);
       run.enemies.push(makeEnemy(run, R.weighted(rng, F.enemies), pos.x, pos.y));
     }
+    // ミミック（隠しダンジョンの強敵の階）：床のお宝に化けて置く。たけのいる部屋には置かない
+    if (F.mimics) for (let i = 0, n = R.int(rng, F.mimics[0], F.mimics[1]); i < n; i++) {
+      const pos = DG.freeTile(run.map, rng, occupied, R.pick(rng, otherRooms));
+      if (!pos || DG.roomAt(run.map, pos.x, pos.y).id === gen.startRoom) continue;
+      occupied.push(pos);
+      const m = makeEnemy(run, 'mimic', pos.x, pos.y); m.disguised = true;
+      run.enemies.push(m);
+    }
     placeMonsterHouse(S, gen, occupied);
     placeMerchant(S, gen);
     run.bossFight = null;
@@ -381,7 +389,7 @@
       if (run.final && !G.finalV3(run) && F.boss === 'vearn') { run.final.stage = 'battle1'; run.final.healed = false; run.final.cutsceneSeen = false; S.village.story.finalStage = 'battle1'; }
     }
     G.log(run, '地下' + floor + '階　' + G.areaName(F));
-    if (F.enemyMul > 1) G.log(run, '強敵の気配がする……。');
+    if (F.strong) G.log(run, '強敵の気配がする……。');
     if (run.returnPoint) G.log(run, 'この階には村へ帰れる「帰還の祠」がある。');
     if (F.boss) G.log(run, '奥から大きな気配がする…。' + D.ENEMIES[F.boss].name + 'が部屋の奥で待ち構えている！');
     G.updateVision(run);
@@ -603,14 +611,13 @@
   function makeEnemy(run, type, x, y) {
     const E = D.ENEMIES[type], f = run.floor;
     const k = E.noScale ? 0 : Math.max(0, f - (E.base || 1));
-    const F = G.F(run), sm = E.noScale ? 1 : (F.enemyMul || 1);   // 隠しダンジョンの強敵の階（32〜34階）
-    const cm = (E.noScale ? 1 : D.chapterMul(run.chapter, f)) * sm;   // 章が進むと少しずつ強く（浅い階はほぼ同じ）
+    const cm = E.noScale ? 1 : D.chapterMul(run.chapter, f);   // 章が進むと少しずつ強く（浅い階はほぼ同じ）
     const hp = Math.round(E.hp * (1 + D.ENEMY_SCALE.hp * k) * cm);
     return {
       id: run.nextEnemyId++, type, x, y, hp, maxhp: hp,
       atk: Math.round(E.atk * (1 + D.ENEMY_SCALE.atk * k) * cm),
       def: E.def,
-      exp: Math.round(E.exp * (1 + D.ENEMY_SCALE.exp * k) * (E.noScale ? 1 : (F.expMul || 1))),
+      exp: Math.round(E.exp * (1 + D.ENEMY_SCALE.exp * k)),
       sleep: E.ai === 'dormant' ? 9999 : 0,
       tx: null, ty: null, acts: 0, dir: 'down', cycle: 0, rest: 0, charge: null, stolen: 0,
     };
@@ -649,7 +656,8 @@
     if (!run._vis) G.updateVision(run);
     return x >= 0 && y >= 0 && x < run.map.w && y < run.map.h && run._vis[y * run.map.w + x] === 1;
   };
-  G.visibleEnemies = (run) => run.enemies.filter((e) => G.isVisible(run, e.x, e.y));
+  // 化けているミミックは、お宝に見えるので「見えている敵」に入れない（ダッシュなどが止まらない）
+  G.visibleEnemies = (run) => run.enemies.filter((e) => G.isVisible(run, e.x, e.y) && !e.disguised);
 
   // ---------- 行動 ----------
   // 足元の道具をその場で使えるか（使う種類だけ。装備・お宝・素材などは拾うだけ）
@@ -847,14 +855,43 @@
     const run = S.run;
     e.hp -= dmg;
     if (e.sleep > 1000) e.sleep = 0; // 眠っていた根っこオバケは起きる
+    if (e.disguised) revealMimic(run, e, ev);   // 化けているミミックは、攻撃されると正体を現す
     G.log(run, msg);
     ev.push({ t: 'hit', x: e.x, y: e.y, n: dmg, target: 'enemy' });
+    // 倒れたかを先に判定する（一撃で0以下なら自爆せずに倒れる）。爆弾岩は残りが0より大きく最大の10%以下になったら、すぐに自爆
     if (e.hp <= 0) killEnemy(S, e, ev);
+    else if (D.ENEMIES[e.type].ai === 'bomb' && e.hp <= e.maxhp * D.STRONG.bombrock.blastAt) selfDestruct(S, e, ev);
+  }
+  G._damageEnemy = damageEnemy;
+  // ミミックが正体を現す（追加の攻撃はしない。攻撃はいつもの敵の手番で）
+  function revealMimic(run, e, ev) {
+    e.disguised = false;
+    G.log(run, '宝箱はミミックだった！');
+    ev.push({ t: 'warn', msg: 'ミミックだ！' });
+  }
+  /* 爆弾岩の自爆：まわり（D.STRONG.bombrock.radius マス）に爆発。たけが範囲にいればダメージ。
+   * 仮：まわりの敵・道具には影響しない。自爆した爆弾岩は消える（経験値は入らない） */
+  function selfDestruct(S, e, ev) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], B = D.STRONG.bombrock;
+    const tiles = areaTiles(run, e, B.radius).concat([{ x: e.x, y: e.y }]);
+    run.enemies.splice(run.enemies.indexOf(e), 1);
+    G.log(run, E.name + 'が自爆した！');
+    ev.push({ t: 'blast', id: e.id, tiles, fx: 'explode' });
+    ev.push({ t: 'kill', x: e.x, y: e.y, sprite: E.sprite, exp: 0 });
+    if (Math.max(Math.abs(p.x - e.x), Math.abs(p.y - e.y)) <= B.radius) {
+      const dmg = calcDamage(run.rng, e.atk * B.mult, G.playerDef(run));
+      p.hp -= dmg;
+      G.log(run, 'たけは爆発に巻きこまれ、' + dmg + 'のダメージ。');
+      ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player', big: true });
+      if (p.hp <= 0) die(S, E.name + 'の自爆に巻きこまれた');
+    }
   }
 
   function killEnemy(S, e, ev) {
     const run = S.run, E = D.ENEMIES[e.type];
     run.enemies.splice(run.enemies.indexOf(e), 1);
+    // つかんでいたマドハンドを倒すと、拘束がすぐ解ける
+    if (run.player.boundBy === e.id && run.player.bound > 0) { run.player.bound = 0; run.player.boundBy = null; run.player.bindGuard = 4; G.log(run, 'マドハンドの手がはなれた！ 動けるようになった。'); }
     G.log(run, E.name + 'をたおした！ 経験値' + e.exp);
     ev.push({ t: 'kill', x: e.x, y: e.y, boss: !!e.boss, sprite: E.sprite, exp: e.exp });
     gainExp(S, e.exp, ev);
@@ -1579,7 +1616,7 @@
       }
     }
     if (run.fog > 0) { run.fog--; if (!run.fog) G.log(run, '霧が晴れた。'); }
-    if (p.bound > 0) { p.bound--; if (!p.bound) { p.bindGuard = 4; G.log(run, '体が動くようになった！'); } }
+    if (p.bound > 0) { p.bound--; if (!p.bound) { p.bindGuard = 4; p.boundBy = null; G.log(run, '体が動くようになった！'); } }
     else if (p.bindGuard > 0) p.bindGuard--;
     // 時間経過で敵が湧く（見えない場所）
     if (run.turn % D.SPAWN_INTERVAL === 0 && run.enemies.length < D.maxEnemies(run.floor) && !G.F(run).boss) spawnEnemy(S);
@@ -1740,6 +1777,22 @@
       case 'magic':
         if (sees && adjacent(run, e, p) && stepAway(run, e)) return;
         break;
+      case 'mimic':   // 化けている間は動かない。たけが隣に来たら正体を現し、この手番で1回だけ攻撃する（変身による追加の先制はない）
+        if (e.disguised) { if (!adjacent(run, e, p)) return; revealMimic(run, e, ev); }
+        break;
+      case 'bomb':    // 爆弾岩：HPが最大の20%以下になると移動しない（隣なら攻撃はする）
+        if (e.hp <= e.maxhp * D.STRONG.bombrock.stopAt && !adjacent(run, e, p)) return;
+        break;
+      case 'breath':  // ドラゴン：一直線上（2〜射程マス）にいれば炎を吐く（待ちあり）。隣なら通常攻撃
+        e.cds = e.cds || {}; if (e.cds.breath > 0) e.cds.breath--;
+        if (sees && !e.cds.breath && !adjacent(run, e, p) && dragonBreath(S, e, ev)) { e.cds.breath = D.STRONG.dragon.cd; return; }
+        break;
+      case 'double':  // シルバーデビル：1手番に2回行動。離れていれば2歩、隣なら2回攻撃、1歩目で隣になれば残り1回で攻撃
+        for (let k = 0; k < 2 && run.enemies.includes(e) && !run.over; k++) {
+          if (adjacent(run, e, p)) enemyAttack(S, e, e.atk, ev, false);
+          else { if (G.isVisible(run, e.x, e.y)) { e.tx = p.x; e.ty = p.y; } moveEnemy(run, e); }
+        }
+        return;
       default: break;
     }
     if (adjacent(run, e, p)) { enemyAttack(S, e, e.atk, ev, false); return; }
@@ -1906,6 +1959,41 @@
     }
   }
 
+  /* ドラゴンの炎：たけのいる向き（8方向）へ一直線に進み、壁か、最初に当たったキャラクター（敵・たけ）で止まる。貫かない。
+   * 間にほかの敵がいれば、その敵に当たって止まる（後ろのたけには当たらない。敵が倒れても、その炎は先へ進まない）。
+   * 吐くのは、たけが一直線上で2〜射程マスにいて、間に壁が無いとき（間に敵がいても吐く＝敵を盾にできる）。戻り値：吐いたか */
+  function dragonBreath(S, e, ev) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], K = D.STRONG.dragon;
+    const ddx = p.x - e.x, ddy = p.y - e.y, dist = Math.max(Math.abs(ddx), Math.abs(ddy));
+    if (!(ddx === 0 || ddy === 0 || Math.abs(ddx) === Math.abs(ddy)) || dist < 2 || dist > K.range) return false;
+    const dx = Math.sign(ddx), dy = Math.sign(ddy);
+    // 壁で途切れていれば吐かない（たけまで炎が届く道すじがある時だけ）
+    let x = e.x, y = e.y;
+    for (let i = 0; i < dist; i++) { if (!G.canStep(run.map, x, y, dx, dy)) return false; x += dx; y += dy; }
+    e.dir = G.dirOf(dx, dy) || e.dir;
+    // 炎を進める：最初のキャラクターで止まる
+    x = e.x; y = e.y; let target = null, end = null;
+    for (let i = 0; i < K.range; i++) {
+      if (!G.canStep(run.map, x, y, dx, dy)) break;
+      x += dx; y += dy; end = { x, y };
+      if (x === p.x && y === p.y) { target = 'player'; break; }
+      const o = G.enemyAt(run, x, y); if (o) { target = o; break; }
+    }
+    ev.push({ t: 'breath', id: e.id, from: { x: e.x, y: e.y }, to: end, hit: !!target });
+    const atk = Math.round(e.atk * K.mult);
+    if (target === 'player') {
+      const dmg = calcDamage(run.rng, atk, G.playerDef(run));
+      p.hp -= dmg;
+      G.log(run, E.name + 'の炎！ たけは' + dmg + 'のダメージ。');
+      ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player' });
+      if (p.hp <= 0) die(S, E.name + 'の炎にやられた');
+    } else if (target) {
+      const dmg = calcDamage(run.rng, atk, target.def);
+      G.log(run, E.name + 'の炎は' + D.ENEMIES[target.type].name + 'に当たって止まった！');
+      damageEnemy(S, target, dmg, ev, D.ENEMIES[target.type].name + 'に' + dmg + 'のダメージ。');
+    } else G.log(run, E.name + 'の炎は届かなかった。');
+    return true;
+  }
   function canShoot(run, e) {
     return G.clearLine(run, e, run.player, D.ENEMIES[e.type].range);
   }
@@ -1942,6 +2030,14 @@
     G.log(run, E.name + (ranged ? (E.ai === 'magic' ? 'の光の矢！' : 'の吹き矢！') : 'の攻撃！') + 'たけは' + dmg + 'のダメージ。');
     ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player' });
     if (p.hp <= 0) { die(S, E.name + 'にやられた'); return; }
+    // マドハンド：つかむ（移動できなくなる。攻撃・道具・装備はできる）。3点セットでは無効
+    if (E.ai === 'grab' && !p.bound && !p.bindGuard) {
+      if (G.sets(run).all3) { G.log(run, '竜の気がマドハンドの手をはねのけた！'); return; }
+      p.bound = D.STRONG.madhand.turns + 1; p.boundBy = e.id;   // +1：つかんだ手番の終わりに1減るので、たけの手番で turns 回動けない
+      G.log(run, E.name + 'がたけをつかんだ！（移動できない。攻撃・道具・装備はできる。このマドハンドを倒すと解ける）');
+      ev.push({ t: 'warn', msg: 'つかまれた！' });
+      return;
+    }
     // 毒（治ったあとしばらくはかからない＝連続しない）
     if (E.ai === 'poison' && !p.poison && !p.poisonGuard && R.chance(run.rng, D.POISON.chance)) {
       if (G.hasAcc(run, 'poison')) { G.log(run, '毒よけの指輪が毒を防いだ！'); return; }

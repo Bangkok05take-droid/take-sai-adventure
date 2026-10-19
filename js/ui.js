@@ -1764,6 +1764,8 @@
         // 真魔剛竜剣＋ドラゴニックオーラの盾の2マス攻撃（仮の見た目：届いたマスに「バシュン！」。斬撃の絵はChatGPT側で用意する予定）
         // 版3の35階：決戦の前のサイたちの祈り（HP全回復・毒と拘束が治る）
         case 'prayer': { const p = UI.S.run.player; RD.addFx({ t: 'healrise', x: p.x, y: p.y, dur: 900 }); toast('サイたちの祈りで、HPが全回復した！', 'levelup'); break; }
+        // ドラゴンの炎：吐いた所から、止まった所（壁か、最初に当たった相手）まで。当たり判定と同じ所で止める
+        case 'breath': RD.addFx({ t: 'breath', from: e.from, to: e.to || e.from, hit: e.hit, dur: 420 }); AU.sfx('bolt'); break;
         case 'reach': for (const t of e.tiles) RD.addFx({ t: 'num', x: t.x, y: t.y, text: 'バシュン！', color: '#9ad8ff', small: true, dur: 600 }); break;
         case 'revive':
           stopAllInput(); UI.lockUntil = performance.now() + 700;
@@ -1906,6 +1908,8 @@
         return PH.gather + fly;   // 命中の数字・点滅はこの時間に合わせる
       }
       // 竜人王バラン：ドルオーラ（金色の光の帯）・なぎ払い（まわりへの衝撃）。突進は 'rush'
+      // 爆弾岩の自爆：まわりへの爆発
+      case 'explode': RD.addFx({ t: 'impact', tiles, center: tiles[tiles.length - 1] || null, color: '#ffb040', dur: 460 }); FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
       case 'doloura': RD.addFx({ t: 'flamewave', tiles, color: '#ffd040', dur: 560 }); FXm.shake(RD, 3, 260); AU.sfx('bolt'); return;
       case 'sweep': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#9ad8ff', dur: 380 }); AU.sfx('hit'); return;
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎

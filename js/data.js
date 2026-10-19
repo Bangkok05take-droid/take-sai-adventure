@@ -55,11 +55,24 @@
   /* 隠しダンジョン（2026年10月確定）：真大魔王バーンを倒したあと、30階の時空の亀裂から入る。
    * 31階から始まり、35階の竜人王バランまで。31〜34階は部屋の数が本編の約2倍（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul、仮）。帰還の祠は無い。
    * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜人王バランを倒したあとの帰還口
-   *  strong：強敵の階と、敵の強さ（HP・攻撃）・経験値の倍率。**仮**：専用の強敵（ドラゴン・シルバーデビルなど）の絵・能力が届くまで、
-   *    今の魔王の城の敵を強くしているだけ（完成の仕様ではない）
+   *  strong：強敵の階（32〜34階）。専用の強敵6種（D.STRONG・敵の定義）が出る。以前の「今の敵を一律1.35倍」はやめた
    *  counts：部屋が約2倍になった分の配置数（仮。本編の魔王の城は 道具5〜7・お金3〜4・敵6〜7）。道具とお金は約2倍、敵は約1.5倍 */
-  D.HIDDEN_DUNGEON = { from: 31, to: 35, boss: 'dragonbaran', name: '時空の狭間', strong: { floors: [32, 33, 34], mul: 1.35, exp: 1.6 },
+  D.HIDDEN_DUNGEON = { from: 31, to: 35, boss: 'dragonbaran', name: '時空の狭間', strong: { floors: [32, 33, 34] },
     counts: { items: [10, 14], gold: [6, 8], enemies: [9, 11] } };
+  /* 隠しダンジョンの強敵の数値（2026年10月：動きは確定。**ここの数値はすべて仮の調整案**。決まったら差し替える）
+   *  dragon：炎の射程（マス）・威力（攻撃力×）・使ったあとの待ち（ターン）。炎は壁か最初に当たった相手（敵・たけ）で止まる（貫かない）
+   *  bombrock：動かなくなるHPの割合・自爆するHPの割合（確定：20%以下で停止、0より大きく10%以下で自爆）・爆発の範囲（まわり何マス）・威力（攻撃力×）。
+   *    爆発は**仮**にたけだけに当たる（まわりの敵・道具には影響しない）。自爆では経験値は入らない（仮）
+   *  madhand：つかむ（攻撃が当たると拘束）。自然に解けるまでのターン（仮）。つかんだマドハンドを倒すとすぐ解ける。3点セットでは無効
+   *  mimic：1階に化けている数（仮）
+   *  spawn：32〜34階の出現の重み（仮）。31階は魔王の城と同じ敵 */
+  D.STRONG = {
+    dragon: { range: 5, mult: 1.3, cd: 3 },
+    bombrock: { stopAt: 0.2, blastAt: 0.1, radius: 1, mult: 2.5 },
+    madhand: { turns: 3 },
+    mimic: { count: [1, 2] },
+    spawn: [['dragon', 2], ['silverdevil', 2], ['gigantes', 2], ['bombrock', 2], ['madhand', 3], ['darkknight', 1], ['imp', 1]],
+  };
   /* 竜人王バラン（隠しダンジョン35階）の戦い方（2026年10月：技の種類は確定。**数値はすべて調整案（仮）**）。
    *  通常攻撃：隣なら殴る（ほかの技が使えないとき）
    *  ドルオーラ：一直線（壁まで）を予告して放つ。列の外へ出ればかわせる。後半は縦横の十字
@@ -356,6 +369,20 @@
     // ---- 最終章の31階より下 ----
     darkknight: { name: '魔王軍の騎士', hp: 150, atk: 44, def: 20, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
       tip: '大剣を振りかぶってから強打する。予告を見たら離れよう。' },
+    /* ---- 隠しダンジョンの強敵（2026年10月：動きは確定。能力値・数値はすべて**仮**＝D.STRONG の調整案。専用の絵はChatGPT側） ----
+     * 絵が届くまでは、今の敵の絵に色を重ねた仮の見た目（js/sprites.js の SP.PLACEHOLDER）。base 31：深さによる強化は31階から */
+    dragon:      { name: 'ドラゴン',         hp: 190, atk: 46, def: 20, exp: 230, ai: 'breath', sprite: 'dragon', base: 31,
+      tip: '一直線に炎を吐く。炎は最初に当たった相手で止まるので、間にほかの敵がいれば盾になる。' },
+    silverdevil: { name: 'シルバーデビル',   hp: 110, atk: 34, def: 16, exp: 200, ai: 'double', sprite: 'silverdevil', base: 31,
+      tip: '1回の手番に2回動く。離れていれば2歩、隣なら2回攻撃。' },
+    gigantes:    { name: 'ギガンテス',       hp: 320, atk: 58, def: 26, exp: 300, ai: 'melee', sprite: 'gigantes', base: 31,
+      tip: 'HP・攻撃・防御がとても高い。ひたすら近づいて殴ってくる。' },
+    bombrock:    { name: '爆弾岩',           hp: 150, atk: 30, def: 30, exp: 160, ai: 'bomb', sprite: 'bombrock', base: 31,
+      tip: 'HPが少なくなると動かなくなり、ぎりぎりまで減ると自爆する。一撃で倒せば爆発しない。' },
+    mimic:       { name: 'ミミック',         hp: 160, atk: 48, def: 22, exp: 250, ai: 'mimic', sprite: 'mimic', base: 31,
+      tip: '床のお宝に化けている。隣に行くと正体を現して襲ってくる。' },
+    madhand:     { name: 'マドハンド',       hp: 70,  atk: 26, def: 12, exp: 90,  ai: 'grab', sprite: 'madhand', base: 31,
+      tip: 'つかまれると移動できない（攻撃・道具・装備はできる）。つかんだマドハンドを倒すと解ける。' },
     imp:    { name: '魔界の小鬼',   hp: 62,  atk: 24, def: 8, exp: 80,  ai: 'magic',   sprite: 'imp', base: 31, shoot: 32, range: 5,
       tip: '離れた所から火の玉を撃つ。角を使ってかわそう。' },
     /* ---- 章のボス（30階）と最終章（30階・33階）。boss：専用の行動（js/bossai.js）。arena：ボス部屋の景観 ----
@@ -420,9 +447,8 @@
       items: [['herb', 2], ['big_herb', 2], ['elixir', 1], ['khaoniao', 1]] };
     const base = demonFloor(f, D.CHAPTERS[D.FINAL_CHAPTER]), strong = H.strong.floors.includes(f);
     return Object.assign({}, base, { areaName: H.name, hidden: true, returnPoint: false,
-      enemies: strong ? [['darkknight', 3], ['guard', 3], ['imp', 2], ['golem', 2], ['wisp', 1]] : base.enemies,
-      enemyCount: H.counts.enemies, itemCount: H.counts.items, goldCount: H.counts.gold,
-      enemyMul: strong ? H.strong.mul : 1, expMul: strong ? H.strong.exp : 1 });
+      enemies: strong ? D.STRONG.spawn : base.enemies, strong, mimics: strong ? D.STRONG.mimic.count : null,
+      enemyCount: H.counts.enemies, itemCount: H.counts.items, goldCount: H.counts.gold });
   }
   D.hiddenFloor = (f) => floorCache['hidden:' + f] || (floorCache['hidden:' + f] = hiddenFloor(f));
   function floorDef(f, ch, layout, skip) {

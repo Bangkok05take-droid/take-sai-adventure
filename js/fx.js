@@ -417,5 +417,24 @@
     g.restore();
   };
 
+  /* ドラゴンの炎：吐いた所から止まった所まで、炎が伸びる（止まった所より先へは描かない＝当たり判定と同じ）。当たったら止まった所で小さく弾ける */
+  FX.draw.breath = function (g, f, a, v) {
+    const x0 = cx(v, f.from.x), y0 = cy(v, f.from.y), x1 = cx(v, f.to.x), y1 = cy(v, f.to.y);
+    const grow = Math.min(1, a / 0.45), fade = a < 0.6 ? 1 : 1 - (a - 0.6) / 0.4;
+    const xe = x0 + (x1 - x0) * grow, ye = y0 + (y1 - y0) * grow;
+    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+    g.globalAlpha = 0.55 * fade; g.strokeStyle = '#ff5a20'; g.lineWidth = v.ts * 0.5;
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(xe, ye); g.stroke();
+    g.globalAlpha = 0.9 * fade; g.strokeStyle = '#ffd860'; g.lineWidth = v.ts * 0.2;
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(xe, ye); g.stroke();
+    if (grow >= 1) {
+      const r = v.ts * (0.25 + 0.4 * Math.min(1, (a - 0.45) / 0.3));
+      const gr = g.createRadialGradient(x1, y1, 0, x1, y1, r);
+      gr.addColorStop(0, 'rgba(255,240,180,' + (0.9 * fade).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,90,20,0)');
+      g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(x1 - r, y1 - r, r * 2, r * 2);
+    }
+    g.restore();
+  };
+
   TS.FX = FX;
 })(globalThis.TS = globalThis.TS || {});

@@ -1,5 +1,5 @@
 // 隠しダンジョンの画面確認：node tools/hidden-dungeon-check.js [リポジトリ] [出力フォルダ]（幅360・390・430）
-// 真大魔王バーン撃破後の30階 → 亀裂から入る → 31階（部屋の数が約2倍）→ 33階（強敵・仮）→ 35階（竜人王バラン：ドルオーラ・なぎ払い・突進の予告）
+// 真大魔王バーン撃破後の30階 → 亀裂から入る → 31階（部屋の数が約2倍）→ 33階（専用の強敵6種）→ 35階（竜人王バラン：ドルオーラ・なぎ払い・突進の予告）
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const TS_W = 44;   // D.HIDDEN_MAP.w
@@ -33,8 +33,8 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await p.evaluate(() => { const S = TS.UI.S, G = TS.Game; while (S.run.floor < 33) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, room = TS.Dungeon.roomAt(r.map, r.player.x, r.player.y); const e = r.enemies[0]; if (e && room) { e.x = Math.min(room.x + room.w - 1, r.player.x + 2); e.y = r.player.y; e.sleep = 99; } G.updateVision(r); TS.UI.lockUntil = 0; });
     await p.waitForTimeout(500);
-    s = await p.evaluate(() => { const r = TS.UI.S.run, F = TS.Game.F(r); return { floor: r.floor, mul: F.enemyMul, log: r.log.slice(-3).join('/'), rp: !!r.returnPoint }; });
-    chk(s.floor === 33 && s.mul > 1 && s.log.includes('強敵の気配') && !s.rp, `${w} 33階：強敵の階 ${JSON.stringify(s)}`);
+    s = await p.evaluate(() => { const r = TS.UI.S.run, F = TS.Game.F(r); return { floor: r.floor, strong: !!F.strong, kinds: [...new Set(r.enemies.map((e) => e.type))].join(), log: r.log.slice(-3).join('/'), rp: !!r.returnPoint }; });
+    chk(s.floor === 33 && s.strong && /dragon|silverdevil|gigantes|bombrock|mimic|madhand/.test(s.kinds) && s.log.includes('強敵の気配') && !s.rp, `${w} 33階：強敵の階（専用の強敵） ${JSON.stringify(s)}`);
     await shot('3_floor33_strong');
     // 35階：竜人王バラン
     await p.evaluate(() => { const S = TS.UI.S, G = TS.Game; while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
