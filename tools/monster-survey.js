@@ -74,6 +74,12 @@ const codeSize = (s) => { const m = spSrc.match(new RegExp('E\\.' + s + ' = \\(f
 const PH = { dragon: 'lizard', silverdevil: 'imp', gigantes: 'guard', bombrock: 'golem', madhand: 'jelly', mimic: '宝箱' };
 function image(id) {
   const s = E[id].sprite;
+  const ES = A.enemySheets && A.enemySheets.map[s];
+  if (ES) {   // 通常の敵15種（ZIP monster_sprites_v1）：96×96 のコマ4つ。本体の高さは たけ（47ドット）に合わせた倍率
+    const f = A.enemySheets.dir + ES.file + '.png', body = Math.round(ES.body * A.enemySheets.takeBody / A.enemySheets.bodyRef * 10) / 10;
+    return { file: f, size: pngSize(f), disp: '本体の高さ ' + body + 'ドット（' + (ES.body === 64 ? 'たけと同じ' : 'たけの0.625倍') + '）', status: '専用（ChatGPT制作の絵）', frames: '4コマ（待機A・待機B・技の準備・技の発動。技は ' + ES.kind + '）' };
+  }
+  if (s === 'bat') return { file: 'なし（ドラキーの絵は ZIP が途中で切れていて届いていない）', size: '—', disp: '1マス（今のコードの絵 32×32）', status: '仮（絵が未着のため、旧ヤミコウモリのコードの絵）', frames: '2コマ' };
   if (A.enemies && A.enemies[s]) {
     const sc = A.enemyArtScale[s] || 1, logical = 192 / sc;
     return { file: A.enemies[s], size: pngSize(A.enemies[s]), disp: (logical / 32) + 'マス（' + logical + 'ドット枠）', status: '専用（ChatGPT制作の絵）', frames: '1枚（静止画）' };

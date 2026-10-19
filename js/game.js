@@ -855,7 +855,7 @@
   function damageEnemy(S, e, dmg, ev, msg) {
     const run = S.run;
     e.hp -= dmg;
-    if (e.sleep > 1000) e.sleep = 0; // 眠っていた根っこオバケは起きる
+    if (e.sleep > 1000) e.sleep = 0; // 眠っていたきりかぶおばけは起きる
     if (e.disguised) revealMimic(run, e, ev);   // 化けているミミックは、攻撃されると正体を現す
     G.log(run, msg);
     ev.push({ t: 'hit', x: e.x, y: e.y, n: dmg, target: 'enemy' });
@@ -1761,7 +1761,7 @@
     // 眠り（眠ると予告中の攻撃も中断される）
     if (e.sleep > 0) {
       if (e.charge) { e.charge = null; G.log(run, E.name + 'の構えがとけた。'); }
-      if (e.sleep > 1000) { // 休眠中の根っこオバケ：近づくと起きる
+      if (e.sleep > 1000) { // 休眠中のきりかぶおばけ：近づくと起きる
         if (cheb(e, p) <= 2) { e.sleep = 0; G.log(run, E.name + 'が目を覚ました！'); }
         return;
       }
@@ -1966,7 +1966,7 @@
     e.cd = 3;
     if (G.isVisible(run, e.x, e.y) || G.isVisible(run, hurt.x, hurt.y)) {
       G.log(run, E.name + 'が' + D.ENEMIES[hurt.type].name + 'を回復した！');
-      ev.push({ t: 'enemyHeal', x: hurt.x, y: hurt.y, n });
+      ev.push({ t: 'enemyHeal', x: hurt.x, y: hurt.y, n, by: e.id, from: { x: e.x, y: e.y } });   // by・from：回復した敵（画面の技のコマ用。判定には使わない）
     }
     return true;
   }
@@ -1977,7 +1977,7 @@
     run.runGold -= n; e.stolen = (e.stolen || 0) + n;
     e.flee = true;
     G.log(run, E.name + 'に' + n + 'G盗まれた！倒せば取り返せる。');
-    ev.push({ t: 'steal', x: run.player.x, y: run.player.y, n });
+    ev.push({ t: 'steal', x: run.player.x, y: run.player.y, n, id: e.id, from: { x: e.x, y: e.y } });   // id・from：盗んだ敵と、逃げる前の場所（画面の技のコマ用）
     // 見えない場所へ逃げる
     for (let i = 0; i < 20; i++) {
       const t = DG.randomRoomTile(run.rng, R.pick(run.rng, run.map.rooms));
@@ -2049,13 +2049,13 @@
     if (ranged) ev.push({ t: 'dart', from: { x: e.x, y: e.y }, to: { x: p.x, y: p.y } });
     else ev.push({ t: 'lunge', id: e.id, x: e.x, y: e.y });
     if (!R.chance(run.rng, D.ENEMY_HIT_RATE)) {
-      G.log(run, E.name + (ranged ? 'の吹き矢は外れた。' : 'の攻撃をかわした。'));
+      G.log(run, E.name + (ranged ? 'の' + (E.shot || '矢') + 'は外れた。' : 'の攻撃をかわした。'));
       ev.push({ t: 'miss', x: p.x, y: p.y });
       return;
     }
     const dmg = calcDamage(run.rng, atk, G.playerDef(run));
     p.hp -= dmg;
-    G.log(run, E.name + (ranged ? (E.ai === 'magic' ? 'の光の矢！' : 'の吹き矢！') : 'の攻撃！') + 'たけは' + dmg + 'のダメージ。');
+    G.log(run, E.name + (ranged ? 'の' + (E.shot || '矢') + '！' : 'の攻撃！') + 'たけは' + dmg + 'のダメージ。');
     ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player' });
     if (p.hp <= 0) { die(S, E.name + 'にやられた'); return; }
     // マドハンド：つかむ（移動できなくなる。攻撃・道具・装備はできる）。3点セットでは無効

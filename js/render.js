@@ -410,12 +410,20 @@
       else if (emov && (kind === 'monkey' || kind === 'thief')) sy -= (Math.floor(et * 4) % 2) * Math.round(k * 2);  // 猿：軽い足運び
       const aim = RD.fx.find((f) => f.t === 'aim' && f.id === e.id && now - f.t0 < f.dur);
       if (aim) { const a = (now - aim.t0) / aim.dur, s = a < 0.6 ? -a / 0.6 : -(1 - a) / 0.4; sx += Math.round(aim.dx * s * ts * 0.12); sy += Math.round(aim.dy * s * ts * 0.12) - Math.round(k * 2 * (a < 0.6 ? 1 : 0)); }   // 吹き矢の構え：のけぞって狙う
-      const frames = SP.enemyFrames(D.ENEMIES[e.type].sprite);
-      const img = frames[e.sleep ? 0 : (Math.floor(now / (D.ENEMIES[e.type].ai === 'fast' ? 160 : 420) + e.id) % frames.length)];
+      const frames = SP.enemyFrames(kind);
+      let img = frames[e.sleep ? 0 : (Math.floor(now / (D.ENEMIES[e.type].ai === 'fast' ? 160 : 420) + e.id) % frames.length)];
+      /* 通常の敵15種の技のコマ（見た目だけ。判定はゲーム側で1回だけ済んでいる）：
+       * 予告中（e.charge）は「技の準備」、技の演出（RD.fx の eact：攻撃・射撃・大技の発動・盗み・回復）の間は「準備 → 発動」 */
+      const eact = RD.fx.find((f) => f.t === 'eact' && f.id === e.id && f.x === e.x && f.y === e.y && now - f.t0 - (f.delay || 0) >= 0 && now - f.t0 - (f.delay || 0) < f.dur);
+      if (e.charge && !e.sleep && SP.enemyAction(kind, 'prep')) img = SP.enemyAction(kind, 'prep', SP.enemyFlip(kind, (G.DIRS[e.dir] || [0])[0]));
+      else if (eact && SP.enemyAction(kind, 'prep')) img = SP.enemyAction(kind, now - eact.t0 - (eact.delay || 0) < eact.prep ? 'prep' : 'act', eact.flip);
       const hit = hitFx(e.x, e.y, 'enemy', now);
-      const big = (img.logical || img.width) / TILE;   // 細かく持っている絵（隠しダンジョンの強敵）は枠の大きさで（占有は1マスのまま）
-      if (img.logical) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; }
+      const big = (img.logical || img.width) / TILE;   // 細かく持っている絵（隠しダンジョンの強敵・通常の敵15種）は枠の大きさで（占有は1マスのまま）
+      if (img.logical && !img.sheet) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; }   // 通常の敵15種は最近傍（ドット絵のまま）
       const dw = ts * big;
+      // 絵の上端：コマの足元（footY）があれば、たけと同じ足元の高さ（マスの下端の1ドット上）にそろえる
+      const ty0 = img.footY ? sy + ts - k - dw * img.footY / img.height : sy + ts - dw;
+      const bodyTop = img.sheet ? sy + ts - k - img.bodyH * k : sy + ts - dw;   // 本体のてっぺん（「！」・状態の印の位置）
       const isClone = !!D.ENEMIES[e.type].clone;
       // ボスの立っているマス（当たり判定）を足元の円で示す
       if (e.boss || isClone) {
@@ -423,28 +431,28 @@
         g.beginPath(); g.ellipse(sx + ts / 2, sy + ts * 0.82, ts * 0.46, ts * 0.17, 0, 0, Math.PI * 2); g.stroke();
       }
       // 分身には影がない（観察すると本体が分かる手がかり）。ゆらゆらと透ける
-      if (!isClone) shadow(sx + ts / 2, sy + ts * 0.9, ts * 0.32 * Math.min(big, 1.4));
+      if (!isClone) shadow(sx + ts / 2, sy + ts * 0.9, ts * 0.32 * (img.sheet ? (img.bodyH > 32 ? 1.15 : 0.8) : Math.min(big, 1.4)));
       let shake = hit ? Math.round(Math.sin(now / 20) * k * 2) : 0;
       // 見本のボスの絵：待機は1ドットの上下動、攻撃予告は小刻みに震えて赤く点滅
       let lift = 0;
       if (img.art) {
         if (e.charge) shake += Math.round(Math.sin(now / 35) * k);
-        else if (!hit && !e.sleep) lift = (Math.floor(now / 520 + e.id) % 2) * Math.round(k);
+        else if (!hit && !e.sleep && !img.sheet) lift = (Math.floor(now / 520 + e.id) % 2) * Math.round(k);   // 待機の2コマがある絵は上下させない
       }
       if (isClone) g.globalAlpha = 0.78 + 0.18 * Math.sin(now / 160 + e.id);
-      g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw - lift, dw, dw);
+      g.drawImage(img, sx + (ts - dw) / 2 + shake, ty0 - lift, dw, dw);
       g.globalAlpha = 1;
-      if (img.art && e.charge) { g.globalAlpha = 0.25 + 0.25 * Math.sin(now / 120); g.drawImage(SP.tinted(img, '#ff2a2a'), sx + (ts - dw) / 2 + shake, sy + ts - dw - lift, dw, dw); g.globalAlpha = 1; }
+      if (img.art && e.charge) { g.globalAlpha = 0.25 + 0.25 * Math.sin(now / 120); g.drawImage(SP.tinted(img, '#ff2a2a'), sx + (ts - dw) / 2 + shake, ty0 - lift, dw, dw); g.globalAlpha = 1; }
       if (isClone && G.hasCharm(run, 'truesight')) badge(g, '幻', sx + ts / 2, sy + ts - dw * 0.55, ts, k, '#c8f0ff', '#102040');
-      if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
+      if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, ty0, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       g.imageSmoothingEnabled = false;
-      if (e.charge) badge(g, '！', sx + ts / 2, sy + ts - dw - ts * 0.05, ts, k, '#ff5050', '#400');
+      if (e.charge) badge(g, '！', sx + ts / 2, bodyTop - ts * 0.05, ts, k, '#ff5050', '#400');
       else if (e.rest > 0) { g.font = `bold ${Math.round(ts * 0.3)}px sans-serif`; g.fillStyle = '#bde0ff'; g.fillText('…', sx + ts * 0.65, sy + ts * 0.2); }
       // 状態異常のしるし（眠り＝月、鈍足＝砂時計）。頭の上に横に並べ、重ならないようにする
       const st = [];
       if (e.sleep > 0) st.push('sleep');
       if (e.slow > 0) st.push('slow');
-      if (st.length) RD.drawStatus(g, st, sx + ts / 2, sy + ts - dw * (img.art ? 0.78 : 0.95) - ts * 0.18, k, now);
+      if (st.length) RD.drawStatus(g, st, sx + ts / 2, img.sheet ? bodyTop - ts * 0.18 : sy + ts - dw * (img.art ? 0.78 : 0.95) - ts * 0.18, k, now);
       if (e.hp < e.maxhp && !e.boss) {
         g.fillStyle = '#000'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, ts - 4 * k, 3 * k);
         g.fillStyle = '#ff5050'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, Math.max(1, (ts - 4 * k) * e.hp / e.maxhp), 2 * k);
@@ -571,8 +579,8 @@
         return [f.dx * s * ts, f.dy * s * ts];
       }
       if (f.t !== 'lunge' || f.id !== id) continue;
-      const a = (now - f.t0) / 140;
-      if (a >= 1) continue;
+      const a = (now - f.t0 - (f.delay || 0)) / 140;   // delay：技の準備のコマのあとに踏み込む（通常の敵15種）
+      if (a < 0 || a >= 1) continue;
       const s = Math.sin(a * Math.PI) * ts * 0.3;
       return [f.dx * s, f.dy * s];
     }

@@ -1246,6 +1246,17 @@
       return c;
     }));
   }
+  /* 通常の敵の技のコマ（無ければ null）。phase：'prep'（準備）・'act'（発動）。flip：左右を反転したコマ（向きを合わせる） */
+  SP.enemyAction = function (sprite, phase, flip) {
+    const ES = SP.art.enemySheet && SP.art.enemySheet[sprite];
+    if (!ES) return null;
+    const c = ES[phase];
+    if (!flip) return c;
+    if (!ES.flip[phase]) { const f = flipCanvas(c); Object.assign(f, { art: c.art, sheet: c.sheet, logical: c.logical, footY: c.footY, bodyH: c.bodyH }); ES.flip[phase] = f; }
+    return ES.flip[phase];
+  };
+  // 技のコマを、たけ（相手）のいる横の向きに合わせるか：dx は相手の方向（-1 左・1 右）。絵が正面（face なし）なら反転しない
+  SP.enemyFlip = (sprite, dx) => { const ES = SP.art.enemySheet && SP.art.enemySheet[sprite]; return !!(ES && ES.face && dx && (dx < 0 ? 'L' : 'R') !== ES.face); };
   SP.enemyFrames = (sprite) => SP.s.enemy[sprite] || placeholderFrames(sprite) || SP.s.enemy.frog;
 
   const urlCache = {};
@@ -1312,7 +1323,7 @@
   /* デザイン見本から作った画像（js/assets.js）を読み込む。読み込めたものから、コードで描いた絵と入れかえる。
    * SP.art.chars[名前] = { front, back, side, sideR }（キャンバス 52×64、足の裏 y=62）
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
-  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, ground: {}, bosses: {}, enemies: {}, take: {}, rooms: {}, fx: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, ground: {}, bosses: {}, enemies: {}, enemySheet: {}, take: {}, rooms: {}, fx: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1360,6 +1371,16 @@
       const sc = (A.enemyArtScale && A.enemyArtScale[k]) || 1;   // 細かく持っている絵：画面では枠の大きさ（logical）として扱う
       const fr = [0, 1].map((i) => { const c = document.createElement('canvas'); c.width = w; c.height = img.height; c.getContext('2d').drawImage(img, Math.min(i, n - 1) * w, 0, w, img.height, 0, 0, w, img.height); c.art = true; if (sc > 1) c.logical = w / sc; return c; });
       SP.art.enemies[k] = fr;
+    });
+    /* 通常の敵15種のシート（js/assets.js の enemySheets）：96×96 のコマ4つ（待機A・待機B・技の準備・技の発動）。
+     * 画面では、どのコマも同じ倍率（たけの本体の高さ ÷ 大型の本体の高さ）。コマの足元（foot）をマスの足元にそろえる。
+     *  logical：コマの大きさ（ドット）、footY：コマの中の足元の行、bodyH：本体の高さ（ドット。状態の印の位置に使う）、sheet：最近傍で描く印 */
+    const ES = A.enemySheets;
+    if (ES) for (const [k, cfg] of Object.entries(ES.map || {})) load(ES.dir + cfg.file + '.png', (img) => {
+      const F = ES.frame, sc = ES.takeBody / ES.bodyRef;
+      const fr = [0, 1, 2, 3].map((i) => { const c = document.createElement('canvas'); c.width = c.height = F; c.getContext('2d').drawImage(img, i * F, 0, F, F, 0, 0, F, F);
+        c.art = true; c.sheet = true; c.logical = F * sc; c.footY = ES.foot[1]; c.bodyH = cfg.body * sc; return c; });
+      SP.art.enemySheet[k] = { idle: [fr[0], fr[1]], prep: fr[2], act: fr[3], kind: cfg.kind, face: cfg.face, flip: {} };
     });
     if (!left) end();
   };
@@ -1427,6 +1448,7 @@
     // ボス：見本の絵（1枚）。待機・予告・被弾などの違いは描画側の動き・点滅で出す
     for (const [k, cv] of Object.entries(SP.art.bosses)) s.enemy[k] = [cv, cv];
     for (const [k, fr] of Object.entries(SP.art.enemies)) s.enemy[k] = fr;
+    for (const [k, ES] of Object.entries(SP.art.enemySheet)) s.enemy[k] = ES.idle;   // 通常の敵15種：待機の2コマ（技のコマは SP.enemyAction）
   }
   // 絵の形のまま1色に塗った影絵（攻撃予告の赤い点滅・撃破の白い光に使う）。一度作って使い回す
   const tintCache = new Map();

@@ -1845,10 +1845,14 @@
           break;
         case 'fizzle': toast('杖の力が残っていない（回数0）'); AU.sfx('bump'); break;
         case 'dart': {
-          // 吹き矢・光の矢：まず構え（のけぞって狙う）、続けて矢が飛ぶ
-          const sh = run.enemies.find((q) => q.x === e.from.x && q.y === e.from.y);
-          if (sh) RD.addFx({ t: 'aim', id: sh.id, dx: Math.sign(e.to.x - e.from.x), dy: Math.sign(e.to.y - e.from.y), dur: 220 });
-          RD.addFx({ t: 'dart', from: e.from, to: e.to, dur: 300, delay: sh ? 120 : 0 }); AU.sfx('dart'); break;
+          // 矢・光の矢・火の玉：まず構え（のけぞって狙う。技のコマのある敵は「準備 → 発動」のコマ）、続けて矢が飛ぶ
+          const sh = run.enemies.find((q) => q.x === e.from.x && q.y === e.from.y), EA = UI.ENEMY_ACT;
+          const framed = sh && enemyActFx(sh, 'attack', Math.sign(e.to.x - e.from.x), EA.prep, EA.prep + EA.act);
+          if (sh && !framed) RD.addFx({ t: 'aim', id: sh.id, dx: Math.sign(e.to.x - e.from.x), dy: Math.sign(e.to.y - e.from.y), dur: 220 });
+          const dd = framed ? EA.prep : sh ? 120 : 0;
+          RD.addFx({ t: 'dart', from: e.from, to: e.to, dur: 300, delay: dd }); AU.sfx('dart');
+          hitD = Math.max(hitD, dd + 150);   // 当たり・ミスの表示は、矢が届いた時（判定はゲーム側で1回だけ済んでいる）
+          break;
         }
         // 眠り：淡い紫の粒と Zzz（眠っている間は敵の頭に月のしるし）。だれもいなければ理由だけ
         case 'sleep':
@@ -1857,8 +1861,11 @@
           break;
         case 'lunge': {
           const dx = Math.sign(p.x - e.x), dy = Math.sign(p.y - e.y);
-          RD.addFx({ t: 'lunge', id: e.id, dx, dy, dur: 140 });
-          const en = run.enemies.find((q) => q.id === e.id);
+          const en = run.enemies.find((q) => q.id === e.id), EA = UI.ENEMY_ACT;
+          // 通常の敵15種：技の準備のコマ → 発動のコマで踏み込む。当たりの表示は発動に合わせる（判定はゲーム側で1回だけ）
+          const framed = en && enemyActFx(en, 'attack', dx, EA.prep, EA.prep + EA.act);
+          RD.addFx({ t: 'lunge', id: e.id, dx, dy, dur: 140, delay: framed ? EA.prep : 0 });
+          if (framed) hitD = Math.max(hitD, EA.prep);
           if (en && (en.type === 'kill' || en.type === 'kill_clone')) RD.addFx({ t: 'scythe', x: en.x, y: en.y, dx, dy, dur: 300 });   // キルバーンの鎌の弧
           break;
         }
@@ -1868,7 +1875,12 @@
           break;
         case 'telegraph': toast('！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;
         case 'blast': { const dl = blastFx(e, run, p); if (dl) hitD = Math.max(hitD, dl); break; }   // 飛ぶ技：たけへの命中の表示は届いてから
-        case 'steal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
+        case 'steal': {
+          // おどるほうせき：盗む動作のコマを、逃げる前の場所に残して見せる（盗みはゲーム側で1回だけ済んでいる）
+          const th = e.id !== undefined && { id: e.id, x: e.from.x, y: e.from.y, type: (run.enemies.find((q) => q.id === e.id) || {}).type || 'thief' };
+          if (th) enemyActFx(th, 'steal', Math.sign(e.x - th.x), UI.ENEMY_ACT.prep, UI.ENEMY_ACT.prep + 280);
+          RD.addFx({ t: 'num', x: e.x, y: e.y, text: '-' + e.n + 'G', color: '#ffb0b0' }); toast(e.n + 'G 盗まれた！', 'danger'); AU.sfx('hurt'); break;
+        }
         case 'summon': {
           const m = run.enemies.find((q) => q.x === e.x && q.y === e.y);
           // キルバーン・ミストバーンの分身：残像が現れる。ほかは赤い光
@@ -1876,7 +1888,10 @@
           else RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8a8a', dur: 600 });
           AU.sfx('warn'); break;
         }
-        case 'enemyHeal': RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0', delay: throwD }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600, delay: throwD }); break;
+        case 'enemyHeal':
+          // 仲間を回復した敵：回復のコマがあれば「準備 → 発動」。無ければ（まほうつかい：発動のコマは火の玉）準備のコマだけ
+          if (e.by !== undefined) { const hl = run.enemies.find((q) => q.id === e.by); if (hl && !enemyActFx(hl, 'heal', Math.sign(e.x - hl.x), UI.ENEMY_ACT.prep, UI.ENEMY_ACT.prep + UI.ENEMY_ACT.act)) enemyActFx(hl, 'attack', Math.sign(e.x - hl.x), 420, 420); }
+          RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.n, color: '#9effa0', delay: throwD }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#9effa0', dur: 600, delay: throwD }); break;
         // 雷鳴の巻物：見えている敵それぞれに空から雷
         case 'fire':
           if (e.targets.length) { RD.addFx({ t: 'thunder', targets: e.targets, dur: 520 }); flash(true); AU.sfx('bolt'); }
@@ -1915,10 +1930,21 @@
   /* カイザーフェニックスの間合い（ms）：光が集まる gather → 飛ぶ fly（距離で変わる：1マス flyPerTile、flyMin〜flyMax）→ 当たる閃光 impact。
    * 全体でおよそ0.8〜1.2秒（調整値） */
   UI.PHOENIX = { gather: 320, flyPerTile: 95, flyMin: 300, flyMax: 560, impact: 260 };
+  /* 通常の敵15種の技のコマ（js/assets.js の enemySheets）。kind がその敵の技のコマの種類と合うときだけ演出を足し、true を返す。
+   * 見た目だけ：ターン・ダメージ・回復・盗みの判定は足さない（ゲーム側で1回だけ済んでいる）。prep：準備のコマの長さ、dur：全体（ミリ秒）。
+   * dx：相手のいる横の向き（-1 左・1 右・0）。絵の向きと反対なら左右を反転して描く */
+  UI.ENEMY_ACT = { prep: 140, act: 160, blast: 360 };
+  function enemyActFx(en, kind, dx, prep, dur) {
+    const sprite = D.ENEMIES[en.type] && D.ENEMIES[en.type].sprite, ES = SP.art.enemySheet && SP.art.enemySheet[sprite];
+    if (!ES || ES.kind !== kind || en.boss) return false;
+    RD.addFx({ t: 'eact', id: en.id, x: en.x, y: en.y, sprite, prep, dur, flip: SP.enemyFlip(sprite, dx) });
+    return true;
+  }
   function blastFx(e, run, p) {
     const FXm = TS.FX, tiles = e.tiles || [];
     const b = e.id !== undefined && run.enemies.find((q) => q.id === e.id);
     if (b) RD.addFx({ t: 'lunge', id: b.id, dx: Math.sign(p.x - b.x), dy: Math.sign(p.y - b.y), dur: 160 });
+    if (b && !b.boss) enemyActFx(b, 'attack', Math.sign(p.x - b.x) || (G.DIRS[b.dir] || [0])[0], 0, UI.ENEMY_ACT.blast);   // 予告した大技の発動：発動のコマ
     switch (e.fx) {
       case 'axe': // クロコダイン：重い斧の振り下ろし、衝撃、土煙
         RD.addFx({ t: 'impact', tiles, center: tiles[tiles.length - 1] || null, dur: 420 }); RD.addFx({ t: 'dust', tiles, dur: 650 });

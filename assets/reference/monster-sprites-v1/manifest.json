@@ -1,0 +1,1112 @@
+[
+  {
+    "asset": "slime",
+    "name": "スライム",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "army_crab",
+    "name": "ぐんたいガニ",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "liliput",
+    "name": "リリパット",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "dracky",
+    "name": "ドラキー",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "bubble_slime",
+    "name": "バブルスライム",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "dancing_jewel",
+    "name": "おどるほうせき",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "steal_prepare",
+      "steal"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "stump",
+    "name": "きりかぶおばけ",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "healslime",
+    "name": "ホイミスライム",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "heal_prepare",
+      "heal"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "mage",
+    "name": "まほうつかい",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "metal_slime",
+    "name": "メタルスライム",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "escape_prepare",
+      "escape"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "living_statue",
+    "name": "うごくせきぞう",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 64,
+    "relativeToTake": 1,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "golem",
+    "name": "ゴーレム",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 64,
+    "relativeToTake": 1,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "restless_armour",
+    "name": "さまようよろい",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "demon_knight",
+    "name": "あくまのきし",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 64,
+    "relativeToTake": 1,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  },
+  {
+    "asset": "baby_satan",
+    "name": "ベビーサタン",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  }
+]

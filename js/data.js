@@ -165,7 +165,7 @@
     bronze_shield: { name: 'てつの盾', type: 'shield', def: 4, sell: 100, icon: 'shield', tint: 'iron',
       desc: '象の紋章が入った鉄の盾。' },
     turtle_shield: { name: 'はがねの盾', type: 'shield', def: 7, sell: 210, icon: 'shield', tint: 'steel',
-      desc: '石ガメの甲羅をはがねで縁取った、堅い盾。' },
+      desc: 'ぐんたいガニの甲羅をはがねで縁取った、堅い盾。' },
     herb:          { name: 'やくそう', type: 'heal', heal: 35, price: 30, sell: 12, icon: 'herb',
       desc: 'HPを35回復し、毒も治す。' },
     elixir:        { name: 'いのちの霊薬', type: 'heal', heal: 999, price: 150, sell: 55, icon: 'potion',
@@ -292,7 +292,7 @@
     poison_ring:   { name: '毒よけの指輪', type: 'accessory', acc: 'poison', sell: 250, icon: 'ring',
       desc: '装備している間、新しく毒にかからない。すでにかかっている毒は治らない。' },
     purse_charm:   { name: 'がまぐちの守り', type: 'accessory', acc: 'theft', sell: 250, icon: 'purse',
-      desc: '装備している間、金ぴかザルなどにお金を盗まれない。盗まれたお金は戻らない。' },
+      desc: '装備している間、おどるほうせきなどにお金を盗まれない。盗まれたお金は戻らない。' },
     full_bangle:   { name: '満腹の腕輪', type: 'accessory', acc: 'hunger', sell: 600, icon: 'bangle',
       desc: '装備している間、歩いても休んでも満腹度が減らない。今の満腹度は回復しない。' },
     life_necklace: { name: '命つなぎの首飾り', type: 'accessory', acc: 'revive', sell: 800, icon: 'lifeneck',
@@ -342,30 +342,30 @@
   };
 
   /* 敵
-   * ai: melee 普通 / slow 2ターンに1回 / ranged 吹き矢 / dormant 近づくまで眠る / erratic ふらふら
+   * ai: melee 普通 / slow 2ターンに1回 / ranged 矢（shot：撃つ物の名前）/ dormant 近づくまで眠る / erratic ふらふら
    *     fast 2回動く / support 仲間を回復 / telegraph 予告してから強打 / area 予告してから周囲を攻撃
    *     poison 毒 / magic 遠くから魔法 / thief お金を盗んで逃げる / boss
    * base: 出現し始める階（ここからの階数で強くなる） */
   D.ENEMIES = {
-    frog:   { name: 'ガマ蛙',       hp: 9,   atk: 4,  def: 1, exp: 3,   ai: 'melee',   sprite: 'frog' },
-    turtle: { name: '石ガメ',       hp: 20,  atk: 5,  def: 6, exp: 8,   ai: 'slow',    sprite: 'turtle' },
-    monkey: { name: '吹き矢ザル',   hp: 12,  atk: 3,  def: 1, exp: 7,   ai: 'ranged',  sprite: 'monkey', shoot: 4, range: 4 },
-    root:   { name: '根っこオバケ', hp: 24,  atk: 8,  def: 3, exp: 13,  ai: 'dormant', sprite: 'root' },
-    jelly:  { name: '水クラゲ',     hp: 28,  atk: 10, def: 4, exp: 17,  ai: 'erratic', sprite: 'jelly' },
-    statue: { name: '石像の戦士',   hp: 40,  atk: 13, def: 6, exp: 28,  ai: 'telegraph', sprite: 'statue', base: 8, heavy: 2.2,
-      tip: '隣にいると剣を振りかぶり、次の行動で強打する。離れればかわせる。' },
-    bat:    { name: 'ヤミコウモリ', hp: 30,  atk: 17, def: 3, exp: 30,  ai: 'fast',    sprite: 'bat', base: 11, tip: '1ターンに2回動く。' },
-    shaman: { name: '苔の祈祷師',   hp: 38,  atk: 14, def: 4, exp: 38,  ai: 'support', sprite: 'shaman', base: 12, heal: 0.4,
+    frog:   { name: 'スライム',       hp: 9,   atk: 4,  def: 1, exp: 3,   ai: 'melee',   sprite: 'frog' },
+    turtle: { name: 'ぐんたいガニ',       hp: 20,  atk: 5,  def: 6, exp: 8,   ai: 'slow',    sprite: 'turtle' },
+    monkey: { name: 'リリパット',   hp: 12,  atk: 3,  def: 1, exp: 7,   ai: 'ranged',  sprite: 'monkey', shoot: 4, range: 4, shot: '矢' },
+    root:   { name: 'きりかぶおばけ', hp: 24,  atk: 8,  def: 3, exp: 13,  ai: 'dormant', sprite: 'root' },
+    jelly:  { name: 'ホイミスライム',     hp: 28,  atk: 10, def: 4, exp: 17,  ai: 'erratic', sprite: 'jelly' },
+    statue: { name: 'うごくせきぞう',   hp: 40,  atk: 13, def: 6, exp: 28,  ai: 'telegraph', sprite: 'statue', base: 8, heavy: 2.2,
+      tip: '隣にいると拳を振りかぶり、次の行動で強打する。離れればかわせる。' },
+    bat:    { name: 'ドラキー', hp: 30,  atk: 17, def: 3, exp: 30,  ai: 'fast',    sprite: 'bat', base: 11, tip: '1ターンに2回動く。' },
+    shaman: { name: 'まほうつかい',   hp: 38,  atk: 14, def: 4, exp: 38,  ai: 'support', sprite: 'shaman', base: 12, heal: 0.4,
       tip: '傷ついた仲間を回復する。先に倒すか眠らせよう。' },
-    lizard: { name: '毒トカゲ',     hp: 50,  atk: 22, def: 6, exp: 48,  ai: 'poison',  sprite: 'lizard', base: 16, tip: '噛まれると毒になる。薬草・解毒の葉で治る。' },
-    thief:  { name: '金ぴかザル',   hp: 45,  atk: 16, def: 5, exp: 42,  ai: 'thief',   sprite: 'thief', base: 17,
+    lizard: { name: 'バブルスライム',     hp: 50,  atk: 22, def: 6, exp: 48,  ai: 'poison',  sprite: 'lizard', base: 16, tip: '噛まれると毒になる。薬草・解毒の葉で治る。' },
+    thief:  { name: 'おどるほうせき',   hp: 45,  atk: 16, def: 5, exp: 42,  ai: 'thief',   sprite: 'thief', base: 17,
       tip: '探索中のお金を盗んで逃げる。倒せば取り返せる。' },
-    golem:  { name: '結晶ゴーレム', hp: 110, atk: 30, def: 16, exp: 90, ai: 'area',    sprite: 'golem', base: 21, heavy: 2.0, slowMove: true,
+    golem:  { name: 'ゴーレム', hp: 110, atk: 30, def: 16, exp: 90, ai: 'area',    sprite: 'golem', base: 21, heavy: 2.0, slowMove: true,
       tip: '動きは遅いが、地面を踏みならして周囲を攻撃する（予告あり）。' },
-    wisp:   { name: '光の精',       hp: 45,  atk: 18, def: 6, exp: 60,  ai: 'magic',   sprite: 'wisp', base: 21, shoot: 26, range: 5,
+    wisp:   { name: 'メタルスライム',       hp: 45,  atk: 18, def: 6, exp: 60,  ai: 'magic',   sprite: 'wisp', base: 21, shoot: 26, range: 5, shot: '光の矢',
       tip: '離れた所から光の矢を撃つ。物陰や斜めの角を使ってかわそう。' },
-    guard:  { name: '神殿の番兵',   hp: 120, atk: 40, def: 18, exp: 120, ai: 'telegraph', sprite: 'guard', base: 26, heavy: 2.2,
-      tip: '大剣を振りかぶってから強打する。予告を見たら離れよう。' },
+    guard:  { name: 'さまようよろい',   hp: 120, atk: 40, def: 18, exp: 120, ai: 'telegraph', sprite: 'guard', base: 26, heavy: 2.2,
+      tip: '剣を振りかぶってから強打する。予告を見たら離れよう。' },
     lion:   { name: '守護獅子',     hp: 160, atk: 15, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true, drop: 'croc_tear',
       pattern: { stomp: 1, stompMult: 2.0, line: 4, lineMult: 1.8, every: 4 } },
     catfish: { name: '大ナマズ王',  hp: 380, atk: 26, def: 12, exp: 320, ai: 'boss',   sprite: 'catfish', noScale: true, drop: 'iceflame_crystal',
@@ -373,8 +373,8 @@
     elephant: { name: '夢見の黄金象', hp: 720, atk: 36, def: 17, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown',
       pattern: { stomp: 2, stompMult: 1.7, line: 6, lineMult: 2.0, every: 4, summon: 'wisp', summonEvery: 9, summonMax: 2, enrage: 0.5 } },
     // ---- 最終章の31階より下 ----
-    darkknight: { name: '魔王軍の騎士', hp: 150, atk: 44, def: 20, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
-      tip: '大剣を振りかぶってから強打する。予告を見たら離れよう。' },
+    darkknight: { name: 'あくまのきし', hp: 150, atk: 44, def: 20, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
+      tip: '斧を振りかぶってから強打する。予告を見たら離れよう。' },
     /* ---- 隠しダンジョンの強敵（2026年10月：動きは確定。能力値・数値はすべて**仮**＝D.STRONG の調整案。専用の絵はChatGPT側） ----
      * 絵が届くまでは、今の敵の絵に色を重ねた仮の見た目（js/sprites.js の SP.PLACEHOLDER）。base 31：深さによる強化は31階から */
     dragon:      { name: 'ドラゴン',         hp: 190, atk: 46, def: 20, exp: 230, ai: 'breath', sprite: 'dragon', base: 31,
@@ -389,7 +389,7 @@
       tip: '床のお宝に化けている。隣に行くと正体を現して襲ってくる。' },
     madhand:     { name: 'マドハンド',       hp: 70,  atk: 26, def: 12, exp: 90,  ai: 'grab', sprite: 'madhand', base: 31,
       tip: 'つかまれると移動できない（攻撃・道具・装備はできる）。つかんだマドハンドを倒すと解ける。' },
-    imp:    { name: '魔界の小鬼',   hp: 62,  atk: 24, def: 8, exp: 80,  ai: 'magic',   sprite: 'imp', base: 31, shoot: 32, range: 5,
+    imp:    { name: 'ベビーサタン',   hp: 62,  atk: 24, def: 8, exp: 80,  ai: 'magic',   sprite: 'imp', base: 31, shoot: 32, range: 5, shot: '火の玉',
       tip: '離れた所から火の玉を撃つ。角を使ってかわそう。' },
     /* ---- 章のボス（30階）と最終章（30階・33階）。boss：専用の行動（js/bossai.js）。arena：ボス部屋の景観 ----
      * 単にHPが多いだけにしないよう、予告つきの大技・床の危険・分身・霧などで戦い方を変える。大技のあとは隙ができる。 */

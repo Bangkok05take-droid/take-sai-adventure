@@ -175,6 +175,35 @@
       dragon: 'assets/enemies/dragon.png', silverdevil: 'assets/enemies/silverdevil.png', gigantes: 'assets/enemies/gigantes.png',
       bombrock: 'assets/enemies/bombrock.png', mimic: 'assets/enemies/mimic.png', madhand: 'assets/enemies/madhand.png',
     },
+    /* 通常の敵15種の絵（2026年10月、ZIP monster_sprites_v1。ChatGPT制作の生成画像を分割した素材。描き直しはしない）。
+     * 1枚のシート 384×96 に 96×96 のコマが4つ：待機A・待機B・技の準備・技の発動（キーは js/data.js の敵の sprite 名。内部IDはそのまま）。
+     * 元の README・manifest・個別のコマは assets/reference/monster-sprites-v1/（生成原寸の source.png は置いていない）。
+     *  foot：足元の位置（どのコマも x=48・y=84）。bodyRef：大型3体の待機の本体の高さ（64px）。
+     *  takeBody：たけの本体の高さ（ドット。take_front.png の不透明な範囲 y=15〜61）。大型3体の本体をこの高さに、
+     *    小型12体（本体40px）はその 40/64＝0.625 倍になる（全コマ同じ倍率。武器を振り上げても体の大きさは変わらない）。
+     *  kind：技のコマの種類（attack・steal 盗み・heal 回復・escape 逃走）。face：技のコマが向いている向き（R 右・L 左・null 正面）。
+     *    たけが反対側にいるときは左右を反転して描く（絵は変えない）。
+     *  ドラキー（bat）は ZIP が途中で切れていて絵が届いていない。届くまで今のコードの絵（ヤミコウモリの絵） */
+    enemySheets: {
+      dir: 'assets/enemies/normal/', frame: 96, foot: [48, 84], bodyRef: 64, takeBody: 47,
+      map: {
+        frog: { file: 'slime', kind: 'attack', face: 'L', body: 40 },
+        turtle: { file: 'army_crab', kind: 'attack', face: 'R', body: 40 },
+        monkey: { file: 'liliput', kind: 'attack', face: 'R', body: 40 },
+        root: { file: 'stump', kind: 'attack', face: 'R', body: 40 },
+        jelly: { file: 'healslime', kind: 'heal', face: null, body: 40 },
+        statue: { file: 'living_statue', kind: 'attack', face: 'L', body: 64 },
+        // bat: { file: 'dracky', kind: 'attack', face: null, body: 40 },   // 絵が届いていない（ZIP の途中で切れていた）
+        shaman: { file: 'mage', kind: 'attack', face: 'R', body: 40 },
+        lizard: { file: 'bubble_slime', kind: 'attack', face: 'R', body: 40 },
+        thief: { file: 'dancing_jewel', kind: 'steal', face: null, body: 40 },
+        golem: { file: 'golem', kind: 'attack', face: 'L', body: 64 },
+        wisp: { file: 'metal_slime', kind: 'escape', face: 'R', body: 40 },
+        guard: { file: 'restless_armour', kind: 'attack', face: 'L', body: 40 },
+        darkknight: { file: 'demon_knight', kind: 'attack', face: 'L', body: 64 },
+        imp: { file: 'baby_satan', kind: 'attack', face: 'R', body: 40 },
+      },
+    },
     enemyBox: { w: 64, h: 64, foot: 60 },
     enemyArtScale: { dragon: 3, silverdevil: 3, gigantes: 3, bombrock: 3, mimic: 3, madhand: 3 },   // 枠（64×64）の何倍の細かさで持っているか
   };

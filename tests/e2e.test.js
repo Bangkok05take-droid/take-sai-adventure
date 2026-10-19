@@ -861,7 +861,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       const r = TS.UI.S.run, pl = r.player;
       r.enemies = [];
       r.runGold = 50;
-      // 隣のマスにガマ蛙を置く
+      // 隣のマスにスライムを置く
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         if (TS.Dungeon.passable(r.map, pl.x + dx, pl.y + dy)) {
           r.enemies.push({ id: 999, type: 'frog', x: pl.x + dx, y: pl.y + dy, hp: 99, maxhp: 99, atk: 99, def: 0, exp: 1, sleep: 0, tx: null, ty: null, acts: 0, dir: 'down' });
@@ -876,7 +876,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     for (let i = 0; i < 20 && !(await p.$('text=探索失敗')); i++) { await p.tap('#b-wait'); await p.waitForTimeout(150); }
     await p.waitForTimeout(400);
     assert(await p.isVisible('text=探索失敗'));
-    assert(await p.isVisible('text=ガマ蛙にやられた'));
+    assert(await p.isVisible('text=スライムにやられた'));
     await shot('16_defeat');
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(150);
     await closeTalk();
@@ -1223,19 +1223,21 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     eq2(hid, 0, 'cleared when hidden');
   });
 
-  await test('通常の敵の画像の差し替え：TS.ASSETS.enemies に書いた敵だけ画像に替わる（2コマを分ける）。書かない敵は今の絵のまま', async () => {
+  await test('通常の敵の画像の差し替え：TS.ASSETS.enemies に書いた敵だけ画像に替わる（2コマを分ける）。書かない敵は今の絵のまま（15種のシートの絵も読み込み直しても同じ）', async () => {
     const r = await p.evaluate(() => new Promise((done) => {
-      const SP = TS.Sprites, keep = SP.s.enemy.frog, keepT = SP.s.enemy.turtle;
+      // ドラキー（bat）は絵が届いていないので、今はコードの絵。ここに仮の絵を書いたときだけ替わる
+      const SP = TS.Sprites, keep = SP.s.enemy.bat;
       const c = document.createElement('canvas'); c.width = 128; c.height = 64;
       const g = c.getContext('2d'); g.fillStyle = '#3a8a3a'; g.fillRect(20, 30, 24, 30); g.fillStyle = '#8ad04a'; g.fillRect(84, 28, 24, 32);
-      TS.ASSETS.enemies = { frog: c.toDataURL() };
+      TS.ASSETS.enemies = Object.assign({}, TS.ASSETS.enemies, { bat: c.toDataURL() });
       SP.loadArt(() => {
-        const f = SP.s.enemy.frog, out = { art: !!f[0].art, w: f[0].width, two: f[0] !== f[1], turtleSame: SP.s.enemy.turtle === keepT };
-        TS.ASSETS.enemies = {}; SP.art.enemies = {}; SP.s.enemy.frog = keep;
+        const f = SP.s.enemy.bat, t = SP.s.enemy.turtle;
+        const out = { art: !!f[0].art, w: f[0].width, two: f[0] !== f[1], turtleSheet: !!(t[0].sheet && t[0].width === 96 && SP.enemyAction('turtle', 'act')) };
+        delete TS.ASSETS.enemies.bat; delete SP.art.enemies.bat; SP.s.enemy.bat = keep;
         done(out);
       });
     }));
-    assert(r.art && r.w === 64 && r.two && r.turtleSame, JSON.stringify(r));
+    assert(r.art && r.w === 64 && r.two && r.turtleSheet, JSON.stringify(r));
   });
 
   await test('歩行アニメとダッシュの速さ：移動中は左足・右足のコマが交互に出て、止まると待機。ダッシュは1マス約60ms、指を離すと止まる', async () => {

@@ -243,7 +243,7 @@
       const room = arena(run, e);
       const t = R.shuffle(run.rng, freeTiles(run, room, (x, y) => !G.enemyAt(run, x, y) && Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) >= 3))[0];
       cd.summon = 10;
-      if (t) { const m = H.makeEnemy(run, 'imp', t.x, t.y); m.summoned = true; m.exp = 20; m.hold = 1; run.enemies.push(m); say(run, E.name + 'が魔界の小鬼を呼んだ！'); ev.push({ t: 'summon', x: t.x, y: t.y }); return true; }
+      if (t) { const m = H.makeEnemy(run, 'imp', t.x, t.y); m.summoned = true; m.exp = 20; m.hold = 1; run.enemies.push(m); say(run, E.name + 'が' + D.ENEMIES.imp.name + 'を呼んだ！'); ev.push({ t: 'summon', x: t.x, y: t.y }); return true; }
     }
     return false;
   };

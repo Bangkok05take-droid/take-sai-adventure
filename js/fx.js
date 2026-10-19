@@ -62,10 +62,23 @@
     for (let i = 0; i < 6; i++) { const t = i / 6 * Math.PI * 2 + 0.3, l = r * 1.25; g.fillRect(x + Math.cos(t) * l - v.k, y + Math.sin(t) * l - v.k, 2 * v.k, 2 * v.k); }
     g.globalAlpha = 1;
   };
+  /* 通常の敵15種の技のコマ（盗み・逃走など）を、その場に残して見せる。敵がそのマスにいる間は render.js の敵の描画がコマを替えるので、ここでは描かない。
+   * 盗んで見えない所へ移った（おどるほうせき）など、敵がもうそのマスにいないときだけ、元のマスにコマを描いて消す */
+  FX.draw.eact = function (g, f, a, v) {
+    const SP = TS.Sprites, run = TS.UI && TS.UI.S && TS.UI.S.run;
+    if (run && run.enemies.some((o) => o.id === f.id && o.x === f.x && o.y === f.y)) return;
+    const age = a * f.dur, img = SP.enemyAction(f.sprite, age < f.prep ? 'prep' : 'act', f.flip); if (!img) return;
+    const dw = v.ts * img.logical / 32, top = v.oy + (f.y + 1) * v.ts - v.k - dw * img.footY / img.height;
+    g.globalAlpha = a < 0.75 ? 1 : (1 - a) / 0.25;
+    g.drawImage(img, cx(v, f.x) - dw / 2, top, dw, dw);
+    g.globalAlpha = 1;
+  };
   // 通常の敵の撃破：縦につぶれながら白く消える（短く）
   FX.draw.die = function (g, f, a, v) {
     const SP = TS.Sprites, fr = SP.s.enemy[f.sprite]; if (!fr) return;
-    const img = fr[0], dw = v.ts * (img.logical || img.width) / 32, x = cx(v, f.x) - dw / 2, foot = v.oy + (f.y + 1) * v.ts;
+    const img = fr[0], dw = v.ts * (img.logical || img.width) / 32, x = cx(v, f.x) - dw / 2;
+    // 足元のあるコマ（通常の敵15種）は、コマの足元をたけと同じ高さに（コマの下の透明な余白の分だけ下げる）
+    const foot = v.oy + (f.y + 1) * v.ts + (img.footY ? dw * (1 - img.footY / img.height) - v.k : 0);
     const h = dw * (1 - a * 0.8);
     g.globalAlpha = 1 - a; g.drawImage(SP.tinted(img, '#ffffff'), x + dw * a * 0.15, foot - h, dw * (1 - a * 0.3), h);
     g.globalAlpha = 1;

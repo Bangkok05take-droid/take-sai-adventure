@@ -145,7 +145,7 @@ test('1回の移動で、起きている各敵がちょうど1回行動する', 
     es.forEach((e, k) => eq(e.acts, before[k] + 1, 'enemy acts'));
   }
 });
-test('遅い敵（石ガメ）は2ターンに1回、眠っている敵は動かない', () => {
+test('遅い敵（ぐんたいガニ。旧・石ガメ）は2ターンに1回、眠っている敵は動かない', () => {
   const S = newRun(6); bigRoomFloor(S);
   const t = addEnemy(S, 'turtle', 15, 10), z = addEnemy(S, 'frog', 18, 12);
   z.sleep = 5;
@@ -168,7 +168,7 @@ test('敵のいる方向へ移動すると攻撃になり、位置は変わら�
   for (let i = 0; i < 10; i++) { G.act(S, { type: 'move', dir: 'right' }); if (e.hp < hp) hits++; }
   eq(S.run.player.x, 5); assert(e.hp < hp, 'damaged');
 });
-test('敵の攻撃で1階のHP満タンから一撃死しない（ガマ蛙の最大ダメージ）', () => {
+test('敵の攻撃で1階のHP満タンから一撃死しない（スライム。旧・ガマ蛙の最大ダメージ）', () => {
   const S = newRun(9);
   const max = Math.round(D.ENEMIES.frog.atk * 1.15);
   assert(max < S.run.player.maxhp / 3, 'frog too strong');
@@ -237,7 +237,7 @@ test('稲妻の杖は斜めにも飛び、角で止まる', () => {
   G.act(S, { type: 'use', uid: st.uid, dir: 'downright' });
   eq(e.hp, 999, 'blocked by corner');
 });
-test('吹き矢ザルは斜め一直線からも撃つが、角越しには撃たない', () => {
+test('リリパット（旧・吹き矢ザル）は斜め一直線からも撃つが、角越しには撃たない', () => {
   const S = newRun(56); bigRoomFloor(S);
   const mk = addEnemy(S, 'monkey', 8, 8);
   assert(G.clearLine(S.run, mk, S.run.player, 4), 'diagonal line');
@@ -464,7 +464,7 @@ test('結晶ゴーレム：周囲8マスを予告してから攻撃。2マス離
   for (let i = 0; i < 2 && e.charge; i++) G.act(S, { type: 'move', dir: 'left' });
   eq(p.hp >= 899, true, 'dodged area');
 });
-test('ヤミコウモリは1ターンに2歩動く', () => {
+test('ドラキー（旧・ヤミコウモリ）は1ターンに2歩動く', () => {
   const S = newRun(75); bigRoomFloor(S);
   const e = realEnemy(S, 'bat', 15, 5, 11);
   G.act(S, { type: 'wait' });
@@ -491,7 +491,7 @@ test('毒：かかると毎ターン減り自然回復しない。治った直�
   p.poison = 5; const h = G.makeItem(S, 'herb'); S.run.bag.push(h);
   G.act(S, { type: 'use', uid: h.uid }); eq(p.poison, 0, 'herb cures');
 });
-test('金ぴかザル：お金を盗んで逃げ、倒すと取り返せる', () => {
+test('おどるほうせき（旧・金ぴかザル）：お金を盗んで逃げ、倒すと取り返せる', () => {
   const S = newRun(78); bigRoomFloor(S);
   const run = S.run; run.runGold = 200;
   const m = run.map; m.rooms.push({ id: 1, x: 25, y: 16, w: 4, h: 3 });
@@ -615,7 +615,7 @@ test('敗北：持ち物と探索中のお金を失い、村の資金・倉庫�
   const e = addEnemy(S, 'frog', 6, 5); e.atk = 50;
   let guard = 0;
   while (!S.run.over && guard++ < 50) G.act(S, { type: 'wait' });
-  eq(S.run.result.type, 'dead'); assert(/ガマ蛙/.test(S.run.result.cause));
+  eq(S.run.result.type, 'dead'); assert(/スライム/.test(S.run.result.cause));
   const res = G.finishRun(S);
   eq(res.floor, 1); eq(S.run, null);
   eq(S.village.funds, 500); eq(S.village.bag.length, 0); eq(S.village.storage.length, 1); eq(S.village.stage, 2);
@@ -3285,7 +3285,7 @@ test('ティウの案内：どんそくの粉＋「隣に来たら一発、次�
   const h0 = p2.hp; for (let i = 0; i < 4; i++) G.act(S2, { type: 'move', dir: 'left' });
   assert(p2.hp < h0, 'standing and hitting gets hit back on its turn');
 });
-test('ティウの案内：離れて撃つ敵（吹き矢ザル）は、どんそくの粉でも下がると撃ってくることがある', () => {
+test('ティウの案内：離れて撃つ敵（リリパット）は、どんそくの粉でも下がると撃ってくることがある', () => {
   const S = newRun(1703); bigRoomFloor(S); const run = S.run, p = run.player;
   p.x = 14; p.y = 8; p.hp = p.maxhp = 500; G.updateVision(run);
   const e = addEnemy(S, 'monkey', 11, 8); e.hp = e.maxhp = 9999; e.awake = true; e.slow = 15;

@@ -58,8 +58,8 @@ const hold = (p, ms) => p.waitForTimeout(ms);
     const titles = { normal: '通常のモンスター（出てくる階の順）', strong: '強敵（隠しダンジョン32〜34階）', boss: 'ボス・分身', legacy: '以前の版だけのボス（新しい探索では出ない）' };
     const info = await p.evaluate(() => { const SP = TS.Sprites, A = TS.ASSETS, D = TS.Data, out = {};
       for (const [id, E] of Object.entries(D.ENEMIES)) { const s = E.sprite, fr = SP.s.enemy[s];
-        const src = A.enemies && A.enemies[s] ? 'enemies' : A.bosses && A.bosses[s] ? 'bosses' : 'code';
-        const loaded = src === 'enemies' ? !!SP.art.enemies[s] : src === 'bosses' ? !!SP.art.bosses[s] : !!fr;
+        const src = A.enemies && A.enemies[s] ? 'enemies' : A.enemySheets && A.enemySheets.map[s] ? 'sheet' : A.bosses && A.bosses[s] ? 'bosses' : 'code';
+        const loaded = src === 'enemies' ? !!SP.art.enemies[s] : src === 'sheet' ? !!SP.art.enemySheet[s] : src === 'bosses' ? !!SP.art.bosses[s] : !!fr;
         const f0 = fr && fr[0], f1 = fr && fr[1];
         out[id] = { sprite: s, src, loaded, w: f0 ? f0.width : 0, logical: f0 ? (f0.logical || f0.width) : 0, frames: fr ? (f0 === f1 ? 1 : 2) : 0, art: !!(f0 && f0.art) }; }
       out._take = !!(SP.s.take.down && SP.s.take.down.art); return out; });
@@ -69,13 +69,16 @@ const hold = (p, ms) => p.waitForTimeout(ms);
         const SP = TS.Sprites, A = TS.ASSETS, D = TS.Data, DOT = 2, TILE = 32 * DOT;
         const cells = [{ id: '_take' }].concat(list.map((id) => ({ id })));
         for (const c of cells) {
-          if (c.id === '_take') { const set = SP.s.take.down; c.img = set && (set.idle || set.walk && set.walk[0]); c.name = 'たけ'; c.sub = '主人公（比較用）'; c.dw = c.img ? c.img.width * DOT : TILE; c.dh = c.img ? c.img.height * DOT : TILE; c.take = true; c.note = set && set.art ? '専用（見本の絵 52×64）' : 'コードの絵'; continue; }
-          const E = D.ENEMIES[c.id], s = E.sprite, src = A.enemies && A.enemies[s] ? 'enemies' : A.bosses && A.bosses[s] ? 'bosses' : 'code';
-          const loaded = src === 'enemies' ? !!SP.art.enemies[s] : src === 'bosses' ? !!SP.art.bosses[s] : !!SP.s.enemy[s];
+          if (c.id === '_take') { const set = SP.s.take.down; c.img = set && (set.idle || set.walk && set.walk[0]); c.name = 'たけ'; c.sub = '主人公（比較用）'; c.dw = c.img ? c.img.width * DOT : TILE; c.dh = c.img ? c.img.height * DOT : TILE; c.take = true; c.note = set && set.art ? '専用（見本の絵 52×64）' : 'コードの絵'; c.bodyDots = 47; continue; }
+          const E = D.ENEMIES[c.id], s = E.sprite, src = A.enemies && A.enemies[s] ? 'enemies' : A.enemySheets && A.enemySheets.map[s] ? 'sheet' : A.bosses && A.bosses[s] ? 'bosses' : 'code';
+          const loaded = src === 'enemies' ? !!SP.art.enemies[s] : src === 'sheet' ? !!SP.art.enemySheet[s] : src === 'bosses' ? !!SP.art.bosses[s] : !!SP.s.enemy[s];
           c.name = E.name; c.sub = c.id;
           if (!loaded) { c.img = null; c.dw = c.dh = TILE * (src === 'enemies' ? 2 : src === 'bosses' ? 3 : 1); c.note = '読み込めなかった'; continue; }
           const img = SP.s.enemy[s][0]; c.img = img; c.dw = c.dh = (img.logical || img.width) * DOT;
-          c.note = src === 'enemies' ? '専用（ChatGPT ' + img.width + '×' + img.height + '）' : src === 'bosses' ? (c.id === 'dragonbaran' ? '借用・仮（バランの絵）' : E.clone ? '本体の絵を借用' : '専用（見本の絵 ' + img.width + '×' + img.height + '）') : '仮（コードの絵 ' + img.width + '×' + img.height + '）';
+          if (src === 'sheet') c.foot = img.footY / img.height;
+          if (c.id === 'bat') { c.note = '絵が未着・仮（コードの絵）'; c.tiles = 1; }   // ドラキー：ZIP が途中で切れていて絵が届いていない   // コマの足元（たけと同じ高さにそろえる）
+          if (src === 'sheet') c.bodyDots = Math.round(img.bodyH);
+          c.note = src === 'sheet' ? '専用（ChatGPT・4コマ）' : src === 'enemies' ? '専用（ChatGPT ' + img.width + '×' + img.height + '）' : src === 'bosses' ? (c.id === 'dragonbaran' ? '借用・仮（バランの絵）' : E.clone ? '本体の絵を借用' : '専用（見本の絵 ' + img.width + '×' + img.height + '）') : '仮（コードの絵 ' + img.width + '×' + img.height + '）';
           c.tiles = (img.logical || img.width) / 32;
         }
         const pad = 18, labelH = 64, top = 46, perRow = cells.length > 9 ? Math.ceil(cells.length / 2) : cells.length;
@@ -96,16 +99,17 @@ const hold = (p, ms) => p.waitForTimeout(ms);
           let x = pad;
           for (const c of r) {
             const w = Math.max(c.dw, 150), cx = x + w / 2;
-            g.imageSmoothingEnabled = !!(c.img && c.img.logical); g.imageSmoothingQuality = 'high';
+            g.imageSmoothingEnabled = !!(c.img && c.img.logical && !c.img.sheet); g.imageSmoothingQuality = 'high';   // 通常の敵15種は最近傍（ゲームと同じ）
             if (c.img) {
               if (c.take) { const B = TS.ASSETS.charBox; g.drawImage(c.img, Math.round(cx - B.w / 2 * DOT), Math.round(base - DOT - B.foot * DOT), c.dw, c.dh); }
+              else if (c.foot) g.drawImage(c.img, Math.round(cx - c.dw / 2), Math.round(base - DOT - c.dh * c.foot), c.dw, c.dh);   // ゲームと同じ：足元をたけの足元の高さに
               else g.drawImage(c.img, Math.round(cx - c.dw / 2), base - c.dh, c.dw, c.dh);
             } else {
               g.setLineDash([6, 4]); g.strokeStyle = '#ff7070'; g.strokeRect(cx - c.dw / 2, base - c.dh, c.dw, c.dh); g.setLineDash([]);
               g.fillStyle = '#ff9090'; g.font = 'bold 14px sans-serif'; g.textAlign = 'center'; g.fillText('画像なし', cx, base - c.dh / 2); g.textAlign = 'left';
             }
             g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = 'bold 15px sans-serif'; g.fillText(c.name, cx, base + 20);
-            g.fillStyle = '#c8c8d8'; g.font = '12px sans-serif'; g.fillText(c.sub + (c.tiles ? '　' + c.tiles + 'マス' : ''), cx, base + 37);
+            g.fillStyle = '#c8c8d8'; g.font = '12px sans-serif'; g.fillText(c.sub + (c.bodyDots ? '　本体' + c.bodyDots + 'ドット' : c.tiles ? '　' + c.tiles + 'マス' : ''), cx, base + 37);
             g.fillStyle = c.note === '読み込めなかった' ? '#ff9090' : /仮|借用/.test(c.note) ? '#ffd890' : '#a8e8b0'; g.fillText(c.note, cx, base + 54); g.textAlign = 'left';
             x += w + pad;
           }
