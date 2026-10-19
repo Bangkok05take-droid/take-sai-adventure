@@ -6,15 +6,24 @@
 
   D.SAVE_VERSION = 8;
   /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
-  // baran：第4章・地下30階の玉座のバラン（通常のバラン戦）だけ。地下40階の裏ボス「竜人王バラン」は別のボスなので、ここには入れない
+  // baran：第4章・地下30階の玉座のバラン（通常のバラン戦）だけ。隠しダンジョン35階の「竜人王バラン」は別のボスなので、ここには入れない
   // flame：第2章のフレイザード（2026年10月、名前テロップ入り完成版の動画で追加）
   // kill：第3章のキルバーン（2026年10月、名前テロップ入り完成版の動画で追加）
   // mist：第5章のミストバーン（2026年10月、名前テロップ入り完成版の動画で追加）
   // vearn：最終章30階の大魔王バーン（2026年10月、名前テロップ入り完成版の動画で追加）
-  D.BOSS_INTROS = { croc: 'crocodine', flame: 'flazzard', kill: 'killvearn', baran: 'baran', mist: 'mistvearn', vearn: 'vearn', truevearn: 'bodyReturn' };
+  // truevearn：最終章33階の真大魔王バーン（2026年10月、正式採用の動画 9667.mp4。老バーンとミストバーンが白い異空間で融合して覚醒する）。
+  //   この動画だけは、ボス部屋に入ったときではなく、32階から33階へ着いた直後に流す（D.BOSS_ARRIVAL）
+  D.BOSS_INTROS = { croc: 'crocodine', flame: 'flazzard', kill: 'killvearn', baran: 'baran', mist: 'mistvearn', vearn: 'vearn', truevearn: 'trueVearnAwaken' };
+  /* 階に着いた直後に戦いが始まるボス（歩いてボス部屋に入る必要がない）。着いたら、たけをボス部屋の中（入口から3マス）に置き、
+   * 登場ムービーをまだ見ていなければムービー → 戦い。見たことがあれば、着いたらすぐ戦い（G.arriveBossFloor） */
+  D.BOSS_ARRIVAL = { truevearn: true };
+  /* 登場ムービーを見た記録の名前（story.introSeen のキー）。書いていないボスはボスIDのまま。
+   * truevearn：以前は仮の会話（「ムービー準備中」）を見ると truevearn に記録していた。正式の動画は、その記録とは別に1回だけ流す */
+  D.INTRO_SEEN_KEY = { truevearn: 'truevearnAwaken' };
+  D.introSeenKey = (id) => (D.INTRO_SEEN_KEY && D.INTRO_SEEN_KEY[id]) || id;
   /* 撃破後ムービー（ボスID → 物語のムービーの名前）。章の探索でそのボスを倒したとき、撃破の演出のあとに流す。
    * 通常のバラン（baran）だけ。クリア後の竜人王バランは別のIDにするので、ここには入らない */
-  D.BOSS_OUTROS = { baran: 'baranTaken' };   // truevearn：版3の35階、肉体返還（動画は未受領。仮の会話）
+  D.BOSS_OUTROS = { baran: 'baranTaken' };
   /* 村で拾える品（2026年10月）。拾った記録は story.found[id]（セーブに残る。お宝の記録・ボスの撃破記録とは別）。
    * at：拾うマス。need：拾えるようになる条件（村の発展の飾りの建設済み。ムービーを見たかどうかは関係しない）
    * 竜の紋章：赤い橋の向こう岸 (4,25)＝橋の下り口 (3,25) のすぐ右。向こう岸の25行は木 (5,25)・(1,25) で区切られていて、
@@ -398,7 +407,8 @@
     dragonbaran: { name: '竜人王バラン', hp: 1500, atk: 52, def: 23, exp: 4000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
     mist_clone: { name: 'ミストバーン', hp: 1, atk: 22, def: 0, exp: 0, ai: 'clone', sprite: 'mist', noScale: true, clone: true },
     vearn:  { name: '大魔王バーン', hp: 900, atk: 44, def: 20, exp: 1500, ai: 'boss', sprite: 'vearn', noScale: true, arena: 'throne', big: true },
-    truevearn: { name: '真大魔王バーン', hp: 1200, atk: 48, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'throne', big: true },
+    // arena 'void'：融合と覚醒の舞台（登場ムービーの白い異空間）。白い床・白い霧・空席の水晶の玉座（js/render.js の drawVoidBg）
+    truevearn: { name: '真大魔王バーン', hp: 1200, atk: 48, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'void', big: true },
   };
   D.POISON = { chance: 0.4, turns: 8, guard: 15, dmgRate: 0.025 }; // 毒：最大HPの2.5%を毎ターン。治った後しばらくかからない
   D.ENEMY_SCALE = { hp: 0.12, atk: 0.08, exp: 0.12 }; // 出現し始めた階から1階ごとの上昇率
@@ -423,6 +433,7 @@
     arena_kill:  { name: '死神の遊技場' },
     arena_baran: { name: '竜の騎士の神殿' },
     arena_mist:  { name: '影の霧の間' },
+    void:        { name: '白き異空間' },   // 33階の真大魔王バーン（名前は仮）
   });
   // 以前の版の地域（更新前から続く探索用）
   D.themeOf = (f) => (f <= 3 ? 'brick' : f <= 6 ? 'roots' : f <= 9 ? 'water' : f === 10 ? 'orb' : f <= 15 ? 'garden'

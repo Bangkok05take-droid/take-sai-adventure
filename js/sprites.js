@@ -1028,6 +1028,8 @@
     arena_kill:  { floor: '#5a2a3a', floor2: '#3a2030', wall: '#4a2a40', top: '#14080e', deco: '#e8c040', bg: '#080206', light: '#ff7090' },
     arena_baran: { floor: '#c8c0a8', floor2: '#b8b098', wall: '#8a9ab8', top: '#1e2434', deco: '#e8c040', bg: '#04060c', light: '#a0c8ff' },
     arena_mist:  { floor: '#4a3e6a', floor2: '#40365e', wall: '#3a3058', top: '#100c1e', deco: '#b090ff', bg: '#04030a', light: '#c8b0ff' },
+    // 33階・真大魔王バーンの白い異空間（床と背景は js/render.js の drawVoidBg が描く。ここはその色と、予備のタイルの色）
+    void:        { floor: '#eceef4', floor2: '#e0e4ec', wall: '#d4d9e4', top: '#c4cad8', deco: '#a8d8ff', bg: '#e4e8f0', light: '#ffffff' },
   };
   SP.themeColors = THEME;
   const hash = (x, y, s) => { let h = (x * 374761393 + y * 668265263 + (s || 0) * 2246822519) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; };

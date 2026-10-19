@@ -1989,13 +1989,15 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   L.run.player.x = L.run.crack.x; L.run.player.y = L.run.crack.y; G.act(L, { type: 'descend' }); eq(L.run.floor, 30, 'no descend before rescue ends');
   assert(G.commitRescue(L).ok); assert(!G.canRescue(L.run)); eq(G.crackState(L), 'next', 'crack leads on (provisional: next floor)');
   // 31〜32階を探索して33階へ（ワープしない）
-  const seen = []; while (L.run.floor < 33) { const r = L.run, to = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = to.x; r.player.y = to.y; G.act(L, { type: 'descend' }); seen.push(r.floor); }
+  const seen = []; let r1 = null; while (L.run.floor < 33) { const r = L.run, to = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = to.x; r.player.y = to.y;
+    if (r.floor === 32) { r.player.hp = 60; r.player.maxhp = 500; r.player.poison = 3; r.player.hunger = 40; }
+    r1 = G.act(L, { type: 'descend' }); seen.push(r.floor); }
   eq(seen.join(), '31,32,33');
   const R = L.run, tv = R.enemies.find((e) => e.boss); eq(tv.type, 'truevearn'); assert(!R.bossFight.engaged);
-  R.player.hp = 60; R.player.maxhp = 500; R.player.poison = 3; R.player.hunger = 40;
-  const d = doorOutside(R); R.player.x = d.x; R.player.y = d.y; G.updateVision(R);
-  const r1 = G.act(L, { type: 'move', dir: 'right' });
-  assert(r1.events.some((e) => e.t === 'bossIntro' && e.boss === 'truevearn') && R.bossFight.intro === 'pending', 'body-return scene first');
+  // 33階に着いた直後に覚醒ムービー（歩いてボス部屋に入らなくてよい）。たけはボス部屋の中
+  assert(r1.events.some((e) => e.t === 'bossIntro' && e.boss === 'truevearn') && R.bossFight.intro === 'pending', 'awakening movie right after arriving');
+  assert(G.inArena(R, R.player.x, R.player.y), 'placed inside the arena');
+  eq(R.enemies.length, 1, 'only the true Vearn (no Mist, no old Vearn)');
   const ev = G.finishBossIntro(L);
   assert(ev.some((e) => e.t === 'prayer') && ev.filter((e) => e.t === 'bossStart').length === 1);
   eq(R.player.hp, 500, 'prayer full HP'); eq(R.player.poison, 0, 'status cleared'); eq(R.player.hunger, D.PLAYER.maxHunger, 'hunger full'); eq(R.player.maxhp, 500, 'max not raised');

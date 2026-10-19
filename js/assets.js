@@ -92,6 +92,9 @@
       mistvearn: { video: 'assets/movies/mistvearn-intro-titled.mp4', poster: 'assets/movies/mistvearn-titled-poster.jpg' },
       // 大魔王バーン（2026年10月、名前テロップ入り完成版。720×1280・10秒・H.264＋AAC。再エンコードなし）
       vearn: { video: 'assets/movies/vearn-intro-titled.mp4', poster: 'assets/movies/vearn-titled-poster.jpg' },
+      // 真大魔王バーンの覚醒（2026年10月、正式採用版。受け取った 9667.mp4 をそのまま置いた。720×1280・10秒・H.264＋AAC。再エンコードなし。
+      // 名前テロップは無い）。白い異空間で老バーンとミストバーンが融合する。33階に着いた直後に流す。poster は動画の最初の1コマ
+      trueVearnAwaken: { video: 'assets/movies/truevearn-awaken.mp4', poster: 'assets/movies/truevearn-awaken-poster.jpg' },
       baran: { video: 'assets/movies/baran-intro-titled.mp4', poster: 'assets/movies/baran-titled-poster.jpg' },
       // 通常のバランの撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の霧でバランを連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
       baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' },

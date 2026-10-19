@@ -334,6 +334,8 @@ details summary { cursor: pointer; margin: 4px 0; }
 /* ボスの登場ムービー（縦の動画を切らずに、黒い余白で全体を見せる。ゲームより手前で、タッチ・キーを受け止める） */
 .movie { position: fixed; inset: 0; z-index: 30; background: #000; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
 .movie video { position: relative; z-index: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+/* 場面転換の黒い幕（33階の真大魔王バーン：32階から暗転して、黒のまま登場ムービーへつなぐ。js/ui.js の cover） */
+.scene-cover { position: fixed; inset: 0; z-index: 31; background: #000; touch-action: none; }
 .movie-skip, .movie-play, .movie-msg { z-index: 2; }
 .movie-skip { position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); min-width: 120px; min-height: 52px; font-size: 17px; opacity: 0.92; }
 /* 中央寄せは transform を使わない（押している間の button:active の transform で、ボタンが指の下から逃げないように） */

@@ -343,6 +343,8 @@
     AU.setEnabled(UI.S.settings.sound);
     applyVolumes();
     if (UI.S.run) {
+      // 33階の覚醒ムービーの途中で読み込み直した：ダンジョンの画面を出す前に黒くする（戦いの前の33階を一瞬も見せない）
+      { const A0 = UI.S.run.bossFight, b0 = A0 && A0.intro === 'pending' && UI.S.run.enemies.find((e) => e.boss); if (b0 && D.BOSS_ARRIVAL && D.BOSS_ARRIVAL[b0.type]) { cover(0); AU.holdBgm(true); } }
       showScreen('dungeon');
       if (UI.S.run.over) handleRunOver();
       else {
@@ -1414,10 +1416,40 @@
    * 音：音オフなら消音のまま（勝手に鳴らさない）。音量はBGMの音量。音つきの自動再生が拒否されたら「タップして再生」（消音で流して見た扱いにはしない）。
    * 読み込めない（404・形式が合わない）：短く知らせて、そのまま戦いへ。読み込みが長いとき：案内と「再試行」。スキップはいつでも押せる。
    * アプリを裏にしたら一時停止し、戻ったら「タップして再開」。決まった時間で打ち切るタイマーは使わない */
+  /* 場面転換の黒い幕（UI.cover）。33階の真大魔王バーン（D.BOSS_ARRIVAL）のように、着いた直後にムービーを流す階では、
+   * 階段を降りる前に今の階を黒へ暗転し、黒のまま次の階を作ってムービーへつなぐ（操作できる33階の画面・ボス戦を一瞬も見せない）。
+   * ムービーが始まる（movieOverlay が黒のまま引き継ぐ）か、ムービーにならなかったときに外す */
+  function cover(ms) {
+    if (UI.cover) return UI.cover;
+    const c = document.createElement('div');
+    c.className = 'scene-cover';
+    c.style.opacity = ms ? '0' : '1';   // ms が0：すぐ黒（読み込み直したとき）
+    document.body.appendChild(c);
+    if (ms) { c.getBoundingClientRect(); c.style.transition = `opacity ${ms}ms ease`; c.style.opacity = '1'; }
+    for (const t of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click']) c.addEventListener(t, (e) => e.stopPropagation());
+    UI.cover = c;
+    return c;
+  }
+  function uncover(ms) {
+    const c = UI.cover;
+    if (!c) return;
+    UI.cover = null;
+    if (!ms) { c.remove(); return; }
+    c.style.transition = `opacity ${ms}ms ease`; c.style.opacity = '0';
+    setTimeout(() => c.remove(), ms);
+  }
+  // 次の階段で、着いた直後の登場ムービーが流れるか（D.BOSS_ARRIVAL・配置の版4・動画があり、まだ見ていない）
+  function arrivalMovieNext() {
+    const run = UI.S.run;
+    if (!run || !G.onStairs(run) || G.layoutOf(run) < 4) return null;
+    const b = G.F(run, run.floor + 1).boss, st = UI.S.village.story;
+    if (!b || !(D.BOSS_ARRIVAL && D.BOSS_ARRIVAL[b]) || !introMovie(b) || (st.introSeen && st.introSeen[D.introSeenKey(b)])) return null;
+    return b;
+  }
   const introMovie = (id) => { const M = TS.ASSETS && TS.ASSETS.movies, n = id && D.BOSS_INTROS && D.BOSS_INTROS[id]; return (M && n && M[n]) || null; };
   function prepareBossIntro(id) {
     const m = introMovie(id), st = UI.S.village.story;
-    if (!m || (st.introSeen && st.introSeen[id]) || (UI.moviePre && UI.moviePre.id === id)) return;
+    if (!m || (st.introSeen && st.introSeen[D.introSeenKey(id)]) || (UI.moviePre && UI.moviePre.id === id)) return;
     try { const v = document.createElement('video'); v.preload = 'auto'; v.muted = true; v.setAttribute('playsinline', ''); v.poster = m.poster; v.src = m.video; UI.moviePre = { id, v }; } catch (e) { UI.moviePre = null; }
   }
   function playBossIntro(id) {
@@ -1485,10 +1517,12 @@
     v.style.opacity = '0';
     if (!pre) v.src = m.video;
     root.prepend(v);
-    root.style.opacity = '0';
+    // 場面転換の黒（UI.cover：33階に着く前に32階から暗転した）が出ていれば、黒のまま続ける（暗転し直さない＝33階の画面を見せない）
+    const fromBlack = !!UI.cover, outMs0 = fromBlack ? 0 : FD.out;
+    root.style.opacity = fromBlack ? '1' : '0';
     document.body.appendChild(root);
-    root.getBoundingClientRect();   // 透明の状態を一度描いてから、黒へ変える
-    root.style.transition = `opacity ${FD.out}ms ease`; root.style.opacity = '1';
+    if (fromBlack) uncover(0);
+    else { root.getBoundingClientRect(); root.style.transition = `opacity ${FD.out}ms ease`; root.style.opacity = '1'; }   // 透明の状態を一度描いてから、黒へ変える
     const msg = root.querySelector('.movie-msg'), playBtn = root.querySelector('.movie-play'), skipBtn = root.querySelector('.movie-skip');
     let done = false, stall = null, black = false, shown = false, started = false, readyTimer = null;
     const say = (t) => { msg.textContent = t || ''; msg.hidden = !t; };
@@ -1560,7 +1594,7 @@
       if (done) return;
       black = true; maybeShow();
       if (!shown) readyTimer = setTimeout(() => { if (!done && !shown && !started) tryPlay(); }, FD.ready);
-    }, FD.out);
+    }, outMs0);
     // 動画の上のタッチ・クリックは、後ろのゲームへ伝えない（暗転中・明るくなる途中も）
     for (const t of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'contextmenu']) root.addEventListener(t, (e) => { e.stopPropagation(); if (t === 'contextmenu') e.preventDefault(); });
     skipBtn.addEventListener('click', () => finish('skip'));
@@ -1689,10 +1723,11 @@
     if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, res.events.some((e) => e.t === 'return') ? 760 : (fxD ? fxD + 450 : 350)); return; }   // 倒れたときは命中を見せてから
     if (res.floorChanged) {
       RD.clearFx();
-      stopHold(); AU.playBgm(G.dungeonBgm(S.run)); toast('地下' + S.run.floor + '階');
-      // ボスの階に着いたとき：戦いはまだ始まらない（ボスは奥の部屋の中央で待つ。曲は探索のまま）
-      const boss = G.F(S.run).boss;
-      if (boss) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
+      stopHold(); AU.playBgm(G.dungeonBgm(S.run)); if (!UI.cover) toast('地下' + S.run.floor + '階');
+      // ボスの階に着いたとき：戦いはまだ始まらない（ボスは奥の部屋の中央で待つ。曲は探索のまま）。
+      // 着いた直後に戦いになるボス（33階の真大魔王バーン）は、気配の知らせを出さない（すぐムービーか戦い）
+      const boss = G.F(S.run).boss, arrival = S.run.bossFight && (S.run.bossFight.engaged || S.run.bossFight.intro === 'pending');
+      if (boss && !arrival) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
       if (boss) prepareBossIntro(boss);   // 登場ムービーがあれば、ここで動画の読み込みだけ始める（起動時には読まない）
     }
     // ボス部屋に初めて入った（登場ムービーのあるボス）：ダッシュ・長押し・予約を止めて、ムービーへ。戦いの開始はムービーのあと
@@ -1861,7 +1896,7 @@
         case 'monsterHouse': toast('モンスターハウスだ！', 'danger'); AU.sfx('warn'); break;
         case 'bossDown': case 'finalWin': for (let i = 0; i < 4; i++) RD.addFx({ t: 'sparkle', x: p.x + (i % 2 ? 2 : -2), y: p.y + (i < 2 ? 1 : -1), color: '#ffe080', dur: 1200 }); AU.sfx('levelup'); break;
         case 'finalTransform': AU.sfx('warn'); break;
-        case 'stairs': AU.sfx('stairs'); flash(); break;
+        case 'stairs': AU.sfx('stairs'); if (!UI.cover) flash(); break;
         case 'reveal': RD.addFx({ t: 'reveal', x: p.x, y: p.y, dur: 700 }); AU.sfx('heal'); break;
         // 気配察知：たけから赤い輪が広がる（敵の印は地図に出る）
         case 'sense': RD.addFx({ t: 'reveal', x: p.x, y: p.y, dur: 700, color: '#ff8a6a' }); AU.sfx('warn'); toast('敵の気配が地図に出た（この階にいる間）'); break;
@@ -2003,7 +2038,19 @@
   }
   function doDescend() {
     UI.lockUntil = 0;
-    doAct({ type: 'descend' });
+    const ab = arrivalMovieNext();
+    if (!ab) { doAct({ type: 'descend' }); return; }
+    // 33階の真大魔王バーン：32階を黒へ暗転（曲も下げる）→ 黒のまま降りる → 登場ムービー（movieOverlay が黒を引き継ぐ）
+    const FD = UI.MOVIE_FADE;
+    stopAllInput(); prepareBossIntro(ab);
+    AU.holdBgm(true, FD.out / 1000);
+    cover(FD.out);
+    UI.lockUntil = performance.now() + FD.out + 200;
+    setTimeout(() => {
+      UI.lockUntil = 0;
+      doAct({ type: 'descend' });
+      if (!UI.movie) { AU.holdBgm(false); uncover(UI.MOVIE_FADE.reveal); }   // ムービーにならなかった（降りられなかった等）：黒を外して元へ
+    }, FD.out);
   }
   function promptReturnPoint() {
     const run = UI.S.run;

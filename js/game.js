@@ -746,6 +746,7 @@
           G.log(run, 'たけは階段を降りた。');
           enterFloor(S, run.floor + 1);
           ev.push({ t: 'stairs' });
+          G.arriveBossFloor(S, ev);   // 33階の真大魔王バーン：着いた直後に登場ムービー → 戦い
         }
         return { consumed: false, events: ev, floorChanged: true };
       case 'returnHome':
@@ -1677,7 +1678,7 @@
     const run = S.run, A = run.bossFight, p = run.player;
     if (!A || A.engaged || A.intro === 'pending' || !G.inArena(run, p.x, p.y)) return;
     const boss = run.enemies.find((e) => e.boss), id = boss ? boss.type : null, st = S.village.story;
-    if (id && D.BOSS_INTROS && D.BOSS_INTROS[id] && A.intro !== 'done' && !(st.introSeen && st.introSeen[id])) {
+    if (id && D.BOSS_INTROS && D.BOSS_INTROS[id] && A.intro !== 'done' && !(st.introSeen && st.introSeen[D.introSeenKey(id)])) {
       A.intro = 'pending';
       ev.push({ t: 'bossIntro', boss: id });
       return;
@@ -1685,6 +1686,21 @@
     engageBoss(S, ev, false);
   }
   G.checkBossRoom = checkBossRoom;
+  /* 階に着いた直後に戦いが始まるボス（D.BOSS_ARRIVAL。最終章33階の真大魔王バーン。配置の版4だけ）。
+   * 階段で着いたとき1回だけ呼ぶ：たけをボス部屋の中（入口から3マス、通路と同じ行）に置き、checkBossRoom と同じ判定で
+   * 登場ムービー（まだ見ていなければ bossIntro → G.finishBossIntro で戦い開始）か、すぐに戦い開始。歩いて部屋に入る必要はない。
+   * 地図・当たり判定・ボスの位置は変えない（たけの立つ場所だけ。前室の道具は戦いのあとでも拾いに戻れる） */
+  G.arriveBossFloor = function (S, ev) {
+    const run = S.run, A = run.bossFight, F = G.F(run), p = run.player;
+    if (!A || A.engaged || !F.boss || !(D.BOSS_ARRIVAL && D.BOSS_ARRIVAL[F.boss]) || G.layoutOf(run) < 4) return false;
+    // 入口から3マス入った所（ボスとの間は4マス。戦いの始まりに、ボスが画面に入る距離）
+    const y = p.y >= A.y && p.y < A.y + A.h ? p.y : A.y + (A.h >> 1), x = Math.min(A.x + 3, A.x + A.w - 1);
+    const spot = DG.passable(run.map, x, y) && !G.enemyAt(run, x, y) ? { x, y } : G.arenaCenter(run, [run.enemies.find((e) => e.boss)]);
+    p.x = spot.x; p.y = spot.y; p.dir = 'right';
+    G.updateVision(run);
+    checkBossRoom(S, ev);
+    return true;
+  };
   function engageBoss(S, ev, afterIntro) {
     const run = S.run, A = run.bossFight;
     A.engaged = true;
@@ -1710,7 +1726,7 @@
     if (!A || A.intro !== 'pending') return ev;
     A.intro = 'done';
     const boss = run.enemies.find((e) => e.boss), st = S.village.story;
-    if (boss) { st.introSeen = st.introSeen || {}; st.introSeen[boss.type] = true; }
+    if (boss) { st.introSeen = st.introSeen || {}; st.introSeen[D.introSeenKey(boss.type)] = true; }
     if (!A.engaged) engageBoss(S, ev, true);
     return ev;
   };

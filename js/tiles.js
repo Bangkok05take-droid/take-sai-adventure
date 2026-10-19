@@ -156,6 +156,14 @@
       pillar: '#e8ecf4', accent: '#e8c040', mural: '#6a7a9a',
       feats: ['goldtrim'],
     },
+    void: {        // 33階・白い異空間（ふだんは js/render.js の drawVoidBg が描くので使わない。予備の白い大理石）
+      floor: ['#eceef4', '#e4e7ee', '#f2f3f7', '#dde1ea'], grout: '#b8c0d0', slab: 'temple',
+      corr: ['#e2e5ec', '#dadee8', '#e8eaf0'], dirt: '#a8b0c0',
+      wall: ['#d8dce6', '#e0e4ec', '#d0d5e0', '#e6e9f0'], mortar: '#b0b8c8', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#c8cedb', '#d0d5e0', '#c0c6d4'], topGap: '#a8b0c2', rim: '#a8d8ff',
+      pillar: '#f4f6fa', accent: '#a8d8ff', mural: '#c0c8d8',
+      feats: ['plain'],
+    },
     arena_mist: {  // 影の霧の間：紫の岩と淡い光の筋
       floor: ['#4a3e6a', '#443860', '#504474', '#3e3458'], grout: '#1c1630', slab: 'cave', crystal: '#b090ff',
       corr: ['#3e3458', '#382e50', '#463c62'], dirt: '#140f22',

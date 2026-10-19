@@ -121,6 +121,99 @@
     g.globalCompositeOperation = 'source-over';
   }
 
+  /* 33階・真大魔王バーンの白い異空間（地域 'void'。登場ムービーの白い空間とつなぐ）。
+   * 壁や天井は描かず、白い霧の中に、通れるマス（床・通路）だけを白い大理石の板として浮かべる。通れる所の縁には細い影の線。
+   * 地図・当たり判定は変えない（描き方だけ）。ボス部屋の奥（上の縁の外）に、融合後で空席になった水晶の玉座。
+   * 板と玉座はドット（1マス32ドット）で一度だけ描いて、拡大して使う（ゲームのほかの地形と同じ細かさ） */
+  const VOID = { tiles: null, throne: null };
+  function voidTile(v) {
+    const c = document.createElement('canvas'); c.width = c.height = TILE;
+    const g = c.getContext('2d'), base = ['#eef0f5', '#e8ebf2', '#f3f4f8', '#e4e8ef'][v];
+    g.fillStyle = base; g.fillRect(0, 0, TILE, TILE);
+    // 大理石の目地（板の継ぎ目）と、淡い筋
+    g.fillStyle = '#d3d8e3'; g.fillRect(0, TILE - 1, TILE, 1); g.fillRect(TILE - 1, 0, 1, TILE);
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, TILE - 1, 1); g.fillRect(0, 0, 1, TILE - 1);
+    if (v === 1 || v === 3) {   // 淡い筋は半分の板だけ
+      g.fillStyle = 'rgba(186,196,214,0.32)';
+      let x = (SP.hash(v, 1, 9) % 16) + 8, y = 8;
+      for (let i = 0; i < 14 && y < TILE - 6; i++) { g.fillRect(x, y, 1, 1); x += (SP.hash(v, i, 4) % 3) - 1; y += 1; }
+    }
+    g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(4 + v * 5, 6 + v * 3, 3, 1);
+    return c;
+  }
+  function voidThrone() {
+    // 水晶の玉座（空席）：横64・縦88ドット。足元（段の下端）が y=87
+    const c = document.createElement('canvas'); c.width = 64; c.height = 88;
+    const g = c.getContext('2d');
+    const poly = (pts, fill) => { g.fillStyle = fill; g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); g.fill(); };
+    const A = 'rgba(214,236,255,0.78)', B = 'rgba(184,214,246,0.82)', C = 'rgba(244,250,255,0.92)', E = 'rgba(150,186,230,0.9)';
+    // 背もたれの水晶の柱（中央が高い）
+    poly([[24, 30], [28, 6], [32, 0], [36, 6], [40, 30]], A);
+    poly([[14, 34], [17, 14], [20, 8], [23, 16], [24, 34]], B); poly([[40, 34], [41, 16], [44, 8], [47, 14], [50, 34]], B);
+    poly([[6, 44], [8, 26], [11, 20], [14, 28], [15, 44]], A); poly([[49, 44], [50, 28], [53, 20], [56, 26], [58, 44]], A);
+    poly([[28, 30], [31, 4], [32, 2], [33, 4], [36, 30]], C);
+    // 背もたれの板・座面・ひじ掛け
+    poly([[16, 34], [48, 34], [46, 58], [18, 58]], B);
+    poly([[20, 36], [44, 36], [42, 56], [22, 56]], 'rgba(232,244,255,0.6)');
+    poly([[10, 58], [54, 58], [52, 66], [12, 66]], C);
+    poly([[6, 50], [16, 50], [16, 66], [6, 66]], A); poly([[48, 50], [58, 50], [58, 66], [48, 66]], A);
+    // 段
+    poly([[4, 66], [60, 66], [62, 76], [2, 76]], B); poly([[0, 76], [64, 76], [64, 88], [0, 88]], A);
+    // 光の縁（左上から光）
+    g.fillStyle = 'rgba(255,255,255,0.95)';
+    for (const [x, y, w, h] of [[29, 8, 1, 20], [18, 16, 1, 16], [9, 26, 1, 16], [12, 58, 40, 1], [4, 66, 54, 1], [1, 76, 60, 1], [20, 36, 1, 18]]) g.fillRect(x, y, w, h);
+    g.fillStyle = E;
+    for (const [x, y, w, h] of [[16, 58, 32, 1], [46, 34, 1, 24], [57, 50, 1, 16], [62, 66, 1, 10], [0, 87, 64, 1]]) g.fillRect(x, y, w, h);
+    return c;
+  }
+  function drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1) {
+    if (!VOID.tiles) { VOID.tiles = [0, 1, 2, 3].map(voidTile); VOID.throne = voidThrone(); }
+    const m = run.map;
+    // 遠景：上が明るく、下がわずかに青い白。壁や天井の線は描かない
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#f6f7fb'); sky.addColorStop(0.55, '#e9ecf3'); sky.addColorStop(1, '#dde2ec');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    // ゆっくり流れる薄霧（世界に固定して、少し遅れて動く）
+    for (let i = 0; i < 7; i++) {
+      const h1 = SP.hash(i, 3, 17), r = ts * (3 + (h1 % 4));
+      const cx = ((ox * 0.6 + (h1 % 997) * ts * 0.05 + now * 0.004 * ts / 32 * (1 + i % 3)) % (W + r * 2) + (W + r * 2)) % (W + r * 2) - r;
+      const cy = (((h1 >> 10) % 1000) / 1000) * H + oy * 0.2 % H;
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+      gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+    // 空席の水晶の玉座：ボス部屋の上の縁の外、中央（通れないマスの上に立つ。当たり判定は無い）
+    const A = run.bossFight || m.rooms[1] || m.rooms[0];
+    if (A) {
+      const tw = 64 * k * 1.25, th = 88 * k * 1.25, cx = ox + (A.x + A.w / 2) * ts, by = oy + A.y * ts + ts * 0.15;
+      const halo = g.createRadialGradient(cx, by - th * 0.55, 0, cx, by - th * 0.55, th * 0.8);
+      halo.addColorStop(0, 'rgba(200,230,255,0.55)'); halo.addColorStop(1, 'rgba(200,230,255,0)');
+      g.fillStyle = halo; g.fillRect(cx - th, by - th * 1.4, th * 2, th * 1.6);
+      g.globalAlpha = 0.9 + 0.08 * Math.sin(now / 900);
+      g.drawImage(VOID.throne, Math.round(cx - tw / 2), Math.round(by - th), Math.round(tw), Math.round(th));
+      g.globalAlpha = 1;
+    }
+    // 通れるマス（見たことのある所）：白い大理石の板。縁は細い影で区切る（どこまで歩けるか分かるように）
+    const pass = (x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h && m.tiles[y * m.w + x] !== DG.WALL;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (!pass(x, y) || !run.explored[y * m.w + x]) continue;
+      const sx = ox + x * ts, sy = oy + y * ts;
+      g.drawImage(VOID.tiles[SP.hash(x, y, 5) & 3], sx, sy, ts, ts);
+      g.fillStyle = 'rgba(120,132,160,0.55)';
+      if (!pass(x, y - 1)) g.fillRect(sx, sy, ts, Math.round(k));
+      if (!pass(x - 1, y)) g.fillRect(sx, sy, Math.round(k), ts);
+      if (!pass(x + 1, y)) g.fillRect(sx + ts - Math.round(k), sy, Math.round(k), ts);
+      if (!pass(x, y + 1)) { g.fillRect(sx, sy + ts - Math.round(k), ts, Math.round(k)); g.fillStyle = 'rgba(150,160,190,0.22)'; g.fillRect(sx, sy + ts, ts, Math.round(k * 4)); }
+    }
+    // 床に映る玉座の淡い光
+    if (A) {
+      const cx = ox + (A.x + A.w / 2) * ts, cy = oy + (A.y + 0.6) * ts, r = ts * 2.2;
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+      gr.addColorStop(0, 'rgba(190,225,255,0.35)'); gr.addColorStop(1, 'rgba(190,225,255,0)');
+      g.fillStyle = gr; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+  }
+
   // ---------------- ダンジョン ----------------
   RD.drawDungeon = function (canvas, S, now) {
     const run = S.run;
@@ -145,8 +238,9 @@
     // 新しく見えたマスを描く。重くならないよう1フレームの時間に上限を設け、たけに近いマスから描く
     // 30階の玉座の間：背景の絵をそのまま敷く（タイルは描かない。通れる所・壁は D.THRONE_ROOM の地図のとおり）
     const throneBg = m.throne && SP.art.rooms && SP.art.rooms.throneBg;
+    const voidBg = theme === 'void';   // 33階・真大魔王バーンの白い異空間（タイルは描かず drawVoidBg）
     const todo = [];
-    if (!throneBg) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!L.drawn[y * m.w + x] && known(run, L, x, y, reach)) todo.push([x, y]);
+    if (!throneBg && !voidBg) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!L.drawn[y * m.w + x] && known(run, L, x, y, reach)) todo.push([x, y]);
     if (todo.length) {
       todo.sort((a, b) => Math.max(Math.abs(a[0] - p.x), Math.abs(a[1] - p.y)) - Math.max(Math.abs(b[0] - p.x), Math.abs(b[1] - p.y)));
       const t0 = performance.now();
@@ -154,6 +248,7 @@
     }
     // 見える範囲を1回で転送
     if (throneBg) drawThroneBg(g, throneBg, ox, oy, ts, W, H, now, TH);
+    else if (voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
     else g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
     // 動く地形：たいまつ・階段・帰還の祠・帰還口
     const fr = (ms, n) => Math.floor(now / ms) % n;
@@ -235,10 +330,10 @@
       g.beginPath(); g.ellipse(sx + ts / 2, sy + ts * 0.8, ts * 0.24, ts * 0.075, 0, 0, Math.PI * 2); g.fill();
       g.drawImage(img, sx + pad, sy + pad - Math.round(k * (1 + fr(500, 2))), sz, sz);
     }
-    // 見えていない探索済みの場所は暗く
-    g.fillStyle = 'rgba(4,2,10,0.52)';
+    // 見えていない探索済みの場所は暗く（白い異空間では、白い霧で淡くする）
+    g.fillStyle = voidBg ? 'rgba(214,220,232,0.55)' : 'rgba(4,2,10,0.52)';
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      if (L.drawn[y * m.w + x] && !G.isVisible(run, x, y)) g.fillRect(ox + x * ts, oy + y * ts, ts, ts);
+      if ((voidBg ? run.explored[y * m.w + x] && m.tiles[y * m.w + x] !== DG.WALL : L.drawn[y * m.w + x]) && !G.isVisible(run, x, y)) g.fillRect(ox + x * ts, oy + y * ts, ts, ts);
     }
     // 霧（まわり2マスだけ見える）。この上に予告・床の印を描くので、霧の中でも危険は分かる
     if (run.fog > 0) {
@@ -251,9 +346,10 @@
     const pulse = 0.32 + 0.25 * Math.sin(now / 120);
     for (const e of run.enemies) {
       if (!e.charge || (!e.boss && !G.isVisible(run, e.x, e.y))) continue;
-      g.fillStyle = `rgba(255,40,40,${pulse})`;
+      // 白い異空間では、白い床の上でも分かるよう濃い赤と暗い縁にする
+      g.fillStyle = voidBg ? `rgba(225,20,40,${pulse + 0.18})` : `rgba(255,40,40,${pulse})`;
       for (const t of e.charge.tiles) g.fillRect(ox + t.x * ts + k, oy + t.y * ts + k, ts - 2 * k, ts - 2 * k);
-      g.strokeStyle = 'rgba(255,220,220,0.9)'; g.lineWidth = k;
+      g.strokeStyle = voidBg ? 'rgba(130,0,20,0.9)' : 'rgba(255,220,220,0.9)'; g.lineWidth = k;
       for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 1.5 * k, oy + t.y * ts + 1.5 * k, ts - 3 * k, ts - 3 * k);
     }
     // 床の危険（炎・氷・罠・雷）：色つきの印と、発動までにたけが動ける回数の数字。霧の中でも見える

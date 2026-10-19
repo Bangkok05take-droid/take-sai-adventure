@@ -962,7 +962,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.evaluate(() => !TS.UI.modals.length), 'notice closed');
   });
 
-  await test('最終章（版3）：30階で大魔王バーン→会話→連れ去る場面（動画が無いので仮の会話）→ティウの救援（荷物の交換・再読み込み）→時空の亀裂→31〜32階→33階で体が戻る場面→祈りで全回復→真大魔王バーン→帰還口→エンディング', async () => {
+  await test('最終章（版3）：30階で大魔王バーン→会話→連れ去る場面（動画が無いので仮の会話）→ティウの救援（荷物の交換・再読み込み）→時空の亀裂→31〜32階→33階に着くと覚醒ムービー→祈りで全回復→真大魔王バーン→帰還口→エンディング', async () => {
     await p.evaluate(() => {
       const S = TS.UI.S, G = TS.Game;
       S.village.story.chapter = 6; S.village.bag = [];
@@ -1027,16 +1027,18 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     eq2(await p.evaluate(() => TS.UI.S.run.final.rescue + '/' + TS.UI.S.run.final.wolf), 'done/null', 'rescue done');
     // 30階の時空の亀裂 → 31〜32階（自動では飛ばさない）→ 33階
     const floors = await p.evaluate(() => { const S = TS.UI.S, G = TS.Game, seen = [];
-      while (S.run.floor < 33) { const r = S.run, to = r.stairs || r.crack; r.player.x = to.x; r.player.y = to.y; G.act(S, { type: 'descend' }); seen.push(S.run.floor); }
+      let ev = [];
+      while (S.run.floor < 33) { const r = S.run, to = r.stairs || r.crack; r.player.x = to.x; r.player.y = to.y; if (r.floor === 32) { r.player.hp = 100; r.player.poison = 5; } ev = G.act(S, { type: 'descend' }).events; seen.push(S.run.floor); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
       b.hp = 5; b.hold = 3; b.cds = { ring: 9, palm: 9, flame: 9 };
-      r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = 100; r.player.poison = 5; G.updateVision(r);
-      const ev = []; G.checkBossRoom(S, ev);
-      return { seen, boss: b.type, intro: ev.some((e) => e.t === 'bossIntro') }; });
-    assert(floors.seen.join() === '31,32,33' && floors.boss === 'truevearn' && floors.intro, 'to 33F ' + JSON.stringify(floors));
+      // 33階に着いた直後に覚醒ムービー（歩いてボス部屋に入らなくてよい）
+      return { seen, boss: b.type, intro: ev.some((e) => e.t === 'bossIntro') && r.bossFight.intro === 'pending', inArena: G.inArena(r, r.player.x, r.player.y) }; });
+    assert(floors.seen.join() === '31,32,33' && floors.boss === 'truevearn' && floors.intro && floors.inArena, 'to 33F ' + JSON.stringify(floors));
+    // 覚醒ムービー（このPCの Chromium は H.264 を流せないので、読み込み失敗の扱いで戦いへ。動画そのものは tools/truevearn-awaken-check.js）
     await p.evaluate(() => TS.UI.playBossIntro('truevearn'));
     await p.waitForTimeout(200);
-    assert(await p.isVisible('.talk'), 'body return (placeholder talk)');
+    assert(await p.isVisible('.movie'), 'awakening movie');
+    for (let i = 0; i < 60 && await p.$('.movie'); i++) await p.waitForTimeout(100);
     await closeTalk(); await p.waitForTimeout(500); await closeTalk();
     const pr = await p.evaluate(() => { const r = TS.UI.S.run; return { hp: r.player.hp, max: r.player.maxhp, poison: r.player.poison, stage: r.final.stage }; });
     assert(pr.hp === pr.max && pr.poison === 0 && pr.stage === 'battle2', 'prayer ' + JSON.stringify(pr));
@@ -1674,12 +1676,12 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   await test('ブラウザのエラー・読み込み失敗がない', async () => {
     assert(errors.length === 0, errors.join('\n'));
   });
-  await test('登場ムービー（名前テロップ入り：クロコダイン・フレイザード・キルバーン・バラン・ミストバーン・大魔王バーン）の動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
-    for (const name of ['crocodine', 'flazzard', 'killvearn', 'baran', 'mistvearn', 'vearn']) {
+  await test('登場ムービー（名前テロップ入り：クロコダイン・フレイザード・キルバーン・バラン・ミストバーン・大魔王バーン。真大魔王バーンの覚醒）の動画と最初の1コマは、公開先のサブパスでも取得できる（Git LFS のポインタではない）', async () => {
+    for (const name of ['crocodine', 'flazzard', 'killvearn', 'baran', 'mistvearn', 'vearn', 'trueVearnAwaken']) {
       const r = await p.evaluate(async (name) => { const M = TS.ASSETS.movies[name], out = {};
         for (const [k, u] of Object.entries(M)) { const res = await fetch(u); const b = await res.arrayBuffer(); out[k] = { url: res.url, status: res.status, size: b.byteLength, head: Array.from(new Uint8Array(b.slice(0, 12))).map((x) => String.fromCharCode(x)).join('') }; }
         return out; }, name);
-      assert(r.video.status === 200 && r.video.size > 1e6 && r.video.head.slice(4, 8) === 'ftyp' && /\/take-sai-adventure\/assets\/movies\/[a-z]+-intro-titled\.mp4$/.test(r.video.url), name + ' video ' + JSON.stringify(r.video));
+      assert(r.video.status === 200 && r.video.size > 1e6 && r.video.head.slice(4, 8) === 'ftyp' && /\/take-sai-adventure\/assets\/movies\/([a-z]+-intro-titled|truevearn-awaken)\.mp4$/.test(r.video.url), name + ' video ' + JSON.stringify(r.video));
       assert(r.poster.status === 200 && r.poster.size > 1e4, name + ' poster ' + JSON.stringify(r.poster));
     }
   });
