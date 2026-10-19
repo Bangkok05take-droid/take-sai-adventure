@@ -50,7 +50,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await shot('01_title');
   });
 
-  await test('追加の道具の絵33種（assets/items-v2・assets/accessories・assets/items-boss。ボスの報酬の装備・お宝11種は128／床64）が読み込まれ、一覧・床の表示で使われる', async () => {
+  await test('追加の道具の絵32種（assets/items-v2・assets/accessories・assets/items-boss。ボスの報酬の装備・お宝10種は128／床64。お宝の竜の紋章は廃止）が読み込まれ、一覧・床の表示で使われる', async () => {
     await p.waitForFunction(() => TS.Sprites.art.ready, null, { timeout: 5000 });
     const r = await p.evaluate(() => {
       const SP = TS.Sprites, D = TS.Data, ids = Object.keys(TS.ASSETS.items.byId);
@@ -58,7 +58,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
         const boss = /^assets\/items-boss\//.test(TS.ASSETS.items.byId[id]), lw = boss ? 128 : 48, fw = boss ? 64 : 32;
         return !D.ITEMS[id] || !e.list || e.list.width !== lw || !e.floor || e.floor.width !== fw || SP.iconFor(D.ITEMS[id]) !== e.floor || !/^data:image\/png/.test(SP.iconURL(D.ITEMS[id])); }) };
     });
-    eq2(r.n, 33, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
+    eq2(r.n, 32, 'count'); eq2(r.bad.join(), '', 'not loaded or not used');
     // 床のお金（G）：32px用・48px用の金貨の絵（お宝の古金貨とは別）。描く大きさに合うほうを使う
     const gold = await p.evaluate(() => { const SP = TS.Sprites; return { w32: SP.art.gold[32] && SP.art.gold[32].width, w48: SP.art.gold[48] && SP.art.gold[48].width,
       small: SP.goldIcon(22) === SP.art.gold[32], big: SP.goldIcon(44) === SP.art.gold[48], notCoin: SP.goldIcon(44) !== SP.iconFor(TS.Data.ITEMS.old_coin) }; });

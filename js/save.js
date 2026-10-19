@@ -144,6 +144,22 @@
       data.village = V;
       data.version = 8;
     }
+    /* v8 → v9（2026年10月）：お宝の竜の紋章（baran_emblem、通常のバランの報酬・売れない飾り）を廃止。竜の紋章はアクセサリー（dragon_crest）だけ。
+     * 持ち物・倉庫・村のかばん・探索中の持ち物と床・買い戻しの入手履歴・届け物の知らせから消す（売値0・展示できない品なので、お金や展示は変わらない）。
+     * アクセサリーの竜の紋章と、バランの撃破・章の進み具合はそのまま */
+    if (data.version === 8) {
+      const V = data.village || {}, gone = (it) => !(it && it.id === 'baran_emblem');
+      if (Array.isArray(V.bag)) V.bag = V.bag.filter(gone);
+      if (Array.isArray(V.storage)) V.storage = V.storage.filter(gone);
+      if (V.bossObtained) delete V.bossObtained.baran_emblem;
+      if (Array.isArray(V.giftNotice)) { V.giftNotice = V.giftNotice.filter((id) => id !== 'baran_emblem'); if (!V.giftNotice.length) delete V.giftNotice; }
+      if (data.run) {
+        if (Array.isArray(data.run.bag)) data.run.bag = data.run.bag.filter(gone);
+        if (Array.isArray(data.run.floorItems)) data.run.floorItems = data.run.floorItems.filter((f) => gone(f.item));
+      }
+      data.village = V;
+      data.version = 9;
+    }
     const needObtained = !(data.village && data.village.bossObtainedInit);   // 買い戻しの入手履歴が無いセーブ（下で作る）
     const def = G.newState();
     fill(data, def);

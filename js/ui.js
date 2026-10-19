@@ -915,7 +915,6 @@
         if (g.museum) u.push('展示室に寄贈できる');
         out.push(u.length ? u.join('。') + '。' : '今のところ、売ったり展示したりはできない。大切にしまっておくお宝だな。');
       }
-      if (g.id === 'baran_emblem') out.push('装備できる「竜の紋章」（アクセサリー）とは別の品だ。こっちは装備できないお宝のほうだぞ。');
       return `<div class="tg-item"><img src="${SP.iconURL(d)}" alt=""><b>${esc(d.name)}</b></div>` + say(out);
     }
     const views = {

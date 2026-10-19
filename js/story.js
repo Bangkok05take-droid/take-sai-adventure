@@ -43,7 +43,7 @@
       reward: { items: ['phantom_shield', 'phantom_mask'], funds: 2000 }, tip: '分身には影がない。影のある本物を狙おう。罠は数字が0で破裂する。' },
     4: { name: '第4章', title: '竜の騎士', boss: 'baran', goal: 30, color: '#3a7ac8',
       bias: { statue: 2, guard: 1.6, golem: 1.2 }, prep: [['bolt_charm', 1], ['sleep_incense', 1]], shop: ['bolt_charm'],
-      reward: { items: ['shinma_sword', 'baran_emblem'], funds: 2500 }, tip: '大技のあとは2ターンの隙。雷の印は3×3。早めに外へ出よう。' },
+      reward: { items: ['shinma_sword'], funds: 2500 }, tip: '大技のあとは2ターンの隙。雷の印は3×3。早めに外へ出よう。' },
     5: { name: '第5章', title: '影の衣', boss: 'mist', goal: 30, color: '#6a4aa0',
       bias: { shaman: 1.8, wisp: 1.5, bat: 1.4 }, prep: [['clear_incense', 1.2], ['elixir', 0.6]], shop: ['clear_incense'],
       reward: { items: ['hero_sword', 'hero_shield'], funds: 3000 }, tip: '霧の中でも赤い印は見える。きりばらいの香で霧と拘束を払える。' },

@@ -4,7 +4,7 @@
   'use strict';
   const D = {};
 
-  D.SAVE_VERSION = 8;
+  D.SAVE_VERSION = 9;
   /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
   // baran：第4章・地下30階の玉座のバラン（通常のバラン戦）だけ。隠しダンジョン35階の「竜人王バラン」は別のボスなので、ここには入れない
   // flame：第2章のフレイザード（2026年10月、名前テロップ入り完成版の動画で追加）
@@ -259,10 +259,7 @@
       desc: '師匠ヤナイが遺した、勇者の剣。お宝として大切にしまっておこう（装備はできない）。' },
     hero_shield_relic: { name: '勇者の盾', type: 'treasure', sell: 0, noSell: true, icon: 'shield', tint: 'hero',
       desc: '師匠ヤナイが遺した、勇者の盾。お宝として大切にしまっておこう（装備はできない）。' },
-    // お宝の竜の紋章（2026年10月）：通常のバラン（第4章）を倒すと手に入る展示用のお宝。アクセサリーの竜の紋章（dragon_crest）とは別の品・別の記録。
-    // 売値・展示室の枠は未決定なので、決まるまで売れない・寄贈の枠に無い（展示室は12枠のまま）
-    baran_emblem:  { name: '竜の紋章', type: 'treasure', sell: 0, noSell: true, icon: 'gem', tint: 'crystal',
-      desc: 'バランが持っていた竜の紋章。お宝として大切にしまっておこう（装備はできない）。' },
+    // お宝の竜の紋章（baran_emblem）は2026年10月に廃止。竜の紋章はアクセサリー（dragon_crest）だけ。以前のセーブの品は読み込みで消す（js/save.js の v8 → v9）
     // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダインの涙。売れない（noSell。sell は以前の値を残しているだけ）
     croc_tear:     { name: 'クロコダインの涙', type: 'treasure', sell: 350, noSell: true, icon: 'gem', tint: 'crystal',
       desc: '獣王クロコダインの涙が固まったという、青緑の大きなしずく形の宝石。第1章の報酬。' },

@@ -61,10 +61,10 @@
         phantom_shield: 'assets/items-boss/phantom-shield', phantom_mask: 'assets/items-boss/phantom-mask',
         shinma_sword: 'assets/items-boss/shinma-goryuken', demon_robe: 'assets/items-boss/great-demon-robe',
         // アクセサリーの竜の紋章（2026年10月 v3）：金のペンダントに青い竜の紋章（ZIP take-sai-dragon-pendant-v3 の 128・64）。
-        // 以前の青い紋章だけの絵（dragon-emblem.png）は、お宝の紋章用に残している（お宝の紋章はまだゲームに無い）
+        // 以前の青い紋章だけの絵（assets/items-boss/dragon-emblem.png）は、お宝の竜の紋章の廃止（2026年10月）で使っていない（ファイルは残している）
         dragon_crest: 'assets/items-boss/dragon-pendant',
-        // お宝の竜の紋章（通常のバランの報酬）：以前の青い紋章の絵。ドラゴニックオーラの盾：受け取った絵を128／64に縮めたもの
-        baran_emblem: 'assets/items-boss/dragon-emblem', dragonic_shield: 'assets/items-boss/dragonic-aura-shield',
+        // ドラゴニックオーラの盾：受け取った絵を128／64に縮めたもの
+        dragonic_shield: 'assets/items-boss/dragonic-aura-shield',
         // 覇者の剣・覇者の盾（2026年10月、ChatGPT制作のドット絵。原画は assets/reference/hasha-v1/、tools/make-hasha-icons.py で縮めただけ）
         hero_sword: 'assets/items-boss/hasha-sword', hero_shield: 'assets/items-boss/hasha-shield',
         // アクセサリー（assets/accessories/。値に「/」があるときはフォルダ付きのパス。床用は同じフォルダの floor/）

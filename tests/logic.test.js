@@ -1445,14 +1445,14 @@ test('撃破後ムービー（通常のバラン）：撃破で1回だけ予約�
   eq(outro.length, 1); eq(outro[0].movie, 'baranTaken'); eq(run.postMovie, 'baranTaken');
   assert(res.events.findIndex((e) => e.t === 'bossDown') < res.events.findIndex((e) => e.t === 'bossOutro'), 'after defeat effect');
   const rewards = () => run.floorItems.filter((f) => f.item && f.item.bossReward).map((f) => f.item.id).sort().join();
-  eq(rewards(), 'baran_emblem,shinma_sword'); assert(run.portal && S.village.story.defeated.baran && S.village.bossKills.baran === 1);
+  eq(rewards(), 'shinma_sword'); assert(run.portal && S.village.story.defeated.baran && S.village.bossKills.baran === 1);
   // ムービー中に行動が届いても：行動しない・ターンは進まない・ムービーを終えた扱い（固まらない）
   const t0 = run.turn, pos = run.player.x + ',' + run.player.y;
   const r2 = G.act(S, { type: 'wait' });
   assert(!r2.consumed && run.turn === t0 && run.player.x + ',' + run.player.y === pos && !run.postMovie, 'no action during movie');
   eq(G.finishPostMovie(S), null, 'only once');
   // 終わったあと：報酬・帰還口は増えない、バランは戻らない
-  G.act(S, { type: 'wait' }); eq(rewards(), 'baran_emblem,shinma_sword'); assert(!run.enemies.some((e) => e.type === 'baran'), 'baran not shown again');
+  G.act(S, { type: 'wait' }); eq(rewards(), 'shinma_sword'); assert(!run.enemies.some((e) => e.type === 'baran'), 'baran not shown again');
   eq(S.village.bossKills.baran, 1);
   // 保存・読み込みでムービーの予約は残る（途中で読み込み直したら流し直す）
   run.postMovie = 'baranTaken'; eq(TS.Save.deserialize(TS.Save.serialize(S)).run.postMovie, 'baranTaken', 'kept in save');
@@ -1743,10 +1743,10 @@ function bossRewardRun(ch, seed, S0) {
   const res = G.finishRun(S);
   return { S, got, res };
 }
-test('各ボスの報酬（2026年10月の見直し）：クロコダイン＝涙・斧、フレイザード＝氷炎の盾・氷炎結晶、キルバーン＝ファントムシールド・マスク、バラン＝真魔剛竜剣・竜の紋章、ミストバーン＝勇者の剣・盾', () => {
+test('各ボスの報酬（2026年10月の見直し）：クロコダイン＝涙・斧、フレイザード＝氷炎の盾・氷炎結晶、キルバーン＝ファントムシールド・マスク、バラン＝真魔剛竜剣（お宝の竜の紋章は廃止）、ミストバーン＝勇者の剣・盾', () => {
   const want = {
     1: ['croc_tear', 'croc_axe'], 2: ['iceflame_shield', 'iceflame_crystal'],
-    3: ['phantom_shield', 'phantom_mask'], 4: ['shinma_sword', 'baran_emblem'], 5: ['hero_sword', 'hero_shield'],   // 竜の紋章は赤い橋の向こう岸で拾う（v3）
+    3: ['phantom_shield', 'phantom_mask'], 4: ['shinma_sword'], 5: ['hero_sword', 'hero_shield'],   // 竜の紋章はアクセサリーだけ（赤い橋の向こう岸で拾う）
   };
   eq(JSON.stringify(D.CHAPTERS[6].reward.items), JSON.stringify(['demon_robe']));
   for (const ch of [1, 2, 3, 4, 5]) {
@@ -2802,7 +2802,7 @@ test('ボスの報酬の装備7種：既存のIDのまま（重複なし）・�
   }
   // 同じ名前の道具は1つだけ（竜の紋章・龍の紋章も1つ）
   const names = Object.values(D.ITEMS).map((d) => d.name);
-  for (const id of Object.keys(want)) eq(names.filter((n) => n === D.ITEMS[id].name).length, id === 'dragon_crest' ? 2 : 1, 'unique ' + id);   // 覇者の剣・盾は1つずつ（お宝は勇者の剣・盾）   // 竜の紋章はお宝（baran_emblem）とアクセサリーの2つ
+  for (const id of Object.keys(want)) eq(names.filter((n) => n === D.ITEMS[id].name).length, 1, 'unique ' + id);   // 覇者の剣・盾は1つずつ（お宝は勇者の剣・盾）。竜の紋章はアクセサリーだけ（お宝の紋章は2026年10月に廃止）
   eq(D.ITEMS.dragon_crest.name, '竜の紋章'); assert(!names.includes('龍の紋章'));
   // 能力値・効果は前回の見直しのまま
   eq(D.ITEMS.croc_axe.atk, 16); eq(D.ITEMS.iceflame_shield.def, 15); eq(D.ITEMS.phantom_shield.def, 17); eq(D.ITEMS.shinma_sword.atk, 24);
@@ -3077,16 +3077,36 @@ test('漆黒の盾＋ローブの攻撃低下：真魔剛竜剣を「武器と�
   const shin = atkWith(['shinma_sword']);
   eq(atkWith(['shinma_sword', 'phantom_shield', 'demon_robe']), shin, 'equipped shinma: not reduced');
 });
-test('お宝の竜の紋章は通常のバランの報酬（アクセサリーとは別の品・別の記録）。赤い橋はバランを倒した後に建てられる', () => {
-  eq(D.ITEMS.baran_emblem.type, 'treasure'); eq(D.ITEMS.baran_emblem.name, '竜の紋章'); eq(D.ITEMS.dragon_crest.type, 'accessory');
-  assert(D.CHAPTERS[4].reward.items.includes('baran_emblem') && D.CHAPTERS[4].reward.items.includes('shinma_sword'));
+test('竜の紋章はアクセサリーだけ（お宝の竜の紋章は2026年10月に廃止）。バランの報酬は真魔剛竜剣だけ。赤い橋はバランを倒した後に建てられる', () => {
+  assert(!D.ITEMS.baran_emblem, 'treasure crest removed'); eq(D.ITEMS.dragon_crest.type, 'accessory');
+  eq(Object.values(D.ITEMS).filter((d) => d.name === '竜の紋章').length, 1, 'only one crest');
+  eq(JSON.stringify(D.CHAPTERS[4].reward.items), JSON.stringify(['shinma_sword']));
+  assert(!TS.ASSETS || !TS.ASSETS.items || !TS.ASSETS.items.byId.baran_emblem, 'no art mapping');
   const F = D.FACILITIES.find((f) => f.id === 'bridge'); eq(JSON.stringify(F.req), JSON.stringify(['baran'])); eq(F.price, 900);
   const S = G.newState(), V = S.village; V.funds = 5000; V.bestFloor = 30;
   assert(!G.facilityStatus(S, 'bridge').unlocked, 'locked before Baran');
   V.story.defeated.baran = true; assert(G.facilityStatus(S, 'bridge').unlocked);
-  // お宝を持っていても、アクセサリーの拾得は別（拾える）
-  V.bag.push(G.makeItem(S, 'baran_emblem')); assert(G.buildFacility(S, 'bridge').ok);
+  assert(G.buildFacility(S, 'bridge').ok);
   eq(JSON.stringify(G.villagePickups(V)), JSON.stringify(['dragon_crest']));
+});
+test('以前のセーブ（v8）のお宝の竜の紋章は、読み込みで消える（持ち物・倉庫・探索中・床・買い戻しの記録・届け物の知らせ）。アクセサリーの竜の紋章・ほかの品・進み具合はそのまま', () => {
+  const S = G.newState(), V = S.village; V.story.chapter = 5; V.story.defeated.baran = true; V.funds = 1234;
+  G.depart(S, 5150); const r = S.run;
+  const raw = JSON.parse(SV.serialize(S));
+  const mk = (id, uid) => ({ id, uid });
+  raw.version = 8;
+  raw.village.bag = [mk('baran_emblem', 901), mk('shinma_sword', 902)];
+  raw.village.storage = [mk('dragon_crest', 903), mk('baran_emblem', 904)];
+  raw.run.bag.push(mk('baran_emblem', 905));
+  raw.run.floorItems.push({ x: r.player.x, y: r.player.y, item: mk('baran_emblem', 906) });
+  raw.village.bossObtained = { shinma_sword: true, baran_emblem: true };
+  raw.village.giftNotice = ['baran_emblem'];
+  const L = SV.deserialize(JSON.stringify(raw));
+  const all = L.village.bag.concat(L.village.storage, L.run.bag, L.run.floorItems.map((f) => f.item).filter(Boolean));
+  assert(!all.some((it) => it.id === 'baran_emblem'), 'removed everywhere');
+  assert(L.village.bag.some((it) => it.id === 'shinma_sword') && L.village.storage.some((it) => it.id === 'dragon_crest'), 'others kept');
+  assert(!L.village.bossObtained.baran_emblem && L.village.bossObtained.shinma_sword); assert(!L.village.giftNotice, 'notice cleared');
+  eq(L.village.funds, 1234); assert(L.village.story.defeated.baran); eq(L.version, D.SAVE_VERSION);
 });
 
 console.log('覇者の剣・覇者の盾と、お宝の勇者の剣・勇者の盾（2026年10月）');
@@ -3136,7 +3156,7 @@ test('旅商人の買い取り：お宝の分類で町で売れる品だけ、�
   r.bag = r.bag.filter((i) => i.id === 'return_scroll'); r.runGold = 100;
   const mk = (id) => { const it = G.makeItem(S, id); r.bag.push(it); return it; };
   const lotus = mk('golden_lotus'), crown = mk('dream_crown'), tear = mk('croc_tear');
-  const no = ['hero_sword', 'golden_shield', 'poison_ring', 'amber_shard', 'herb', 'banana', 'thunder_staff', 'baran_emblem', 'hero_sword_relic', 'hero_shield_relic', 'return_scroll'].map((id) => (id === 'return_scroll' ? r.bag[0] : mk(id)));
+  const no = ['hero_sword', 'golden_shield', 'poison_ring', 'amber_shard', 'herb', 'banana', 'thunder_staff', 'hero_sword_relic', 'hero_shield_relic', 'return_scroll'].map((id) => (id === 'return_scroll' ? r.bag[0] : mk(id)));
   for (const it of no) { assert(!G.merchantBuysItem(it), it.id); eq(G.merchantSellPrice(it), 0); const n = r.bag.length, g = r.runGold; assert(!G.merchantSell(S, it.uid).ok, it.id + ' refused'); eq(r.bag.length, n); eq(r.runGold, g); }
   // 町の売値の半額
   eq(G.merchantSellPrice(lotus), 130); eq(G.merchantSellPrice(crown), 1000);
@@ -3149,7 +3169,7 @@ test('旅商人の買い取り：お宝の分類で町で売れる品だけ、�
   // 端数は切り捨て（仮のお宝で確かめる）
   D.ITEMS._odd = { name: 'テスト', type: 'treasure', sell: 75 }; eq(G.merchantSellPrice({ id: '_odd', uid: -1 }), 37); delete D.ITEMS._odd;
   // 町の売値は今までどおり
-  eq(G.sellPrice(crown), 2000); assert(G.canSell(G.makeItem(S, 'hero_sword')), 'weapons still sell in town'); assert(!G.canSell(G.makeItem(S, 'baran_emblem')));
+  eq(G.sellPrice(crown), 2000); assert(G.canSell(G.makeItem(S, 'hero_sword')), 'weapons still sell in town');
   // 保存・読み込み直しでも売ったまま
   const L = SV.deserialize(SV.serialize(S)); eq(L.run.runGold, 230); assert(!L.run.bag.some((i) => i.uid === lotus.uid));
 });
@@ -3161,7 +3181,7 @@ test('旅商人の素材：値段は4段階に固定（琥珀1000・青銅2000�
 });
 test('なくしたボスの報酬の買い戻し：対象と値段（ボスごと）。入手履歴があって今は持っていない品だけ。持ち物・装備中・倉庫・床・展示室にあれば出ない', () => {
   const want = { croc_tear: 1000, croc_axe: 1000, iceflame_shield: 2000, iceflame_crystal: 2000, phantom_shield: 3000, phantom_mask: 3000,
-    shinma_sword: 4000, baran_emblem: 4000, hero_sword: 5000, hero_shield: 5000, demon_robe: 6000 };
+    shinma_sword: 4000, hero_sword: 5000, hero_shield: 5000, demon_robe: 6000 };
   for (const [id, pr] of Object.entries(want)) eq(G.buybackPrice(id).price, pr, id);
   for (const id of ['dragon_crest', 'golden_elephant', 'hero_sword_relic', 'hero_shield_relic', 'amber_shard', 'dragonic_shield', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
   const S = findMerchant(8300, 3, 13), r = S.run, V = S.village;
@@ -3306,7 +3326,7 @@ test('ティウの案内：みとおしの巻物は地形・階段・道具の�
   eq(G.visibleEnemies(run).length, vis0, 'enemies are not revealed');
   eq(D.ITEMS.sight_scroll.name, 'みとおしの巻物'); eq(D.ITEMS.sense_scroll.type, 'sense');
 });
-test('ティウの案内：素材・お宝の入手の階は実際の出現の表と同じ。ボスの報酬は倒したあとだけ。2つの竜の紋章を区別。まだ無い品は出さない', () => {
+test('ティウの案内：素材・お宝の入手の階は実際の出現の表と同じ。ボスの報酬は倒したあとだけ。竜の紋章はアクセサリーだけ。まだ無い品は出さない', () => {
   const S = G.newState(), V = S.village;
   for (const g of G.guideItems(S, 'material').concat(G.guideItems(S, 'treasure'))) {
     for (const [a, b] of g.floors) for (let f = a; f <= b; f++) {
@@ -3317,9 +3337,9 @@ test('ティウの案内：素材・お宝の入手の階は実際の出現の�
   eq(JSON.stringify(G.itemGuide(S, 'amber_shard').floors), '[[11,15]]');
   eq(JSON.stringify(G.itemGuide(S, 'gold_leaf').floors), '[[26,33]]');
   const ids = (t) => G.guideItems(S, t).map((g) => g.id);
-  assert(!ids('treasure').includes('croc_tear') && !ids('treasure').includes('baran_emblem'), 'boss rewards hidden before defeat');
-  V.story.defeated.baran = true; assert(ids('treasure').includes('baran_emblem'), 'shown after defeat');
-  const be = G.itemGuide(S, 'baran_emblem'); eq(be.bosses[0].ch, 4); eq(be.floors.length, 0); eq(be.sell, 0);
+  assert(!ids('treasure').includes('croc_tear'), 'boss rewards hidden before defeat');
+  V.story.defeated.croc = true; assert(ids('treasure').includes('croc_tear'), 'shown after defeat');
+  const ct = G.itemGuide(S, 'croc_tear'); eq(ct.bosses[0].ch, 1); eq(ct.floors.length, 0);
   assert(!ids('treasure').includes('dragon_crest'), 'the accessory crest is not a treasure');
   assert(!ids('material').length || ids('material').every((id) => D.ITEMS[id].type === 'material'));
   eq(G.itemFloors('dragonic_shield').length, 0, 'not obtainable yet');

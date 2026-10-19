@@ -56,7 +56,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await p.tap(`#dpad [data-dir="${moved}"]`); await p.waitForTimeout(350);
     const s2 = await st(p);
     chk(s2.turn === t0 + 1 && !s2.hold && s2.bgm === 'dungeon' || (s2.turn === t0 + 1 && !s2.hold), `${w} ${label}：操作と曲が戻る（1歩でターンが進む・曲 ${s2.bgm}）`);
-    chk(!s2.baran && s2.rewards === 'baran_emblem,shinma_sword' && s2.portal && s2.kills === 1, `${w} ${label}：バランは戻らない・報酬2つ・帰還口・撃破1回 ${JSON.stringify(s2)}`);
+    chk(!s2.baran && s2.rewards === 'shinma_sword' && s2.portal && s2.kills === 1, `${w} ${label}：バランは戻らない・報酬（真魔剛竜剣）・帰還口・撃破1回 ${JSON.stringify(s2)}`);
     chk(!p.errs.length, `${w} ${label}：エラーなし ${p.errs.join(' / ')}`);
   };
 
@@ -65,7 +65,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     const { ctx, p } = await setup(w, h);
     await kill(p); await p.waitForTimeout(250);
     const s0 = await st(p);
-    chk(!s0.baran && s0.pm === 'baranTaken' && s0.saved === 'baranTaken' && !s0.movie && s0.hold && s0.rewards === 'baran_emblem,shinma_sword' && s0.portal, `${w} 撃破：報酬・帰還口は撃破のときに済み・ムービーの予約（保存済み）・曲は止める・まず撃破の演出 ${JSON.stringify(s0)}`);
+    chk(!s0.baran && s0.pm === 'baranTaken' && s0.saved === 'baranTaken' && !s0.movie && s0.hold && s0.rewards === 'shinma_sword' && s0.portal, `${w} 撃破：報酬・帰還口は撃破のときに済み・ムービーの予約（保存済み）・曲は止める・まず撃破の演出 ${JSON.stringify(s0)}`);
     if (w === 390) await p.screenshot({ path: path.join(OUT, `defeat_effect_${w}.png`) });
     // 撃破の演出からムービーまでの間の入力は受けない
     await p.tap('#dpad [data-dir="up"]'); await p.keyboard.press('Space'); await p.waitForTimeout(200);
