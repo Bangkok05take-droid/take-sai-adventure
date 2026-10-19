@@ -612,7 +612,8 @@
     const E = D.ENEMIES[type], f = run.floor;
     const k = E.noScale ? 0 : Math.max(0, f - (E.base || 1));
     const cm = E.noScale ? 1 : D.chapterMul(run.chapter, f);   // 章が進むと少しずつ強く（浅い階はほぼ同じ）
-    const hp = Math.round(E.hp * (1 + D.ENEMY_SCALE.hp * k) * cm);
+    // hpRange：深さで増えないHPの幅（メタルスライム 3〜5）
+    const hp = E.hpRange ? R.int(run.rng, E.hpRange[0], E.hpRange[1]) : Math.round(E.hp * (1 + D.ENEMY_SCALE.hp * k) * cm);
     return {
       id: run.nextEnemyId++, type, x, y, hp, maxhp: hp,
       atk: Math.round(E.atk * (1 + D.ENEMY_SCALE.atk * k) * cm),
@@ -848,12 +849,29 @@
       ev.push({ t: 'miss', x: e.x, y: e.y });
       return;
     }
+    // メタルスライム（metal）：通常攻撃は ミス・1・2 のどれか（防御の計算はしない）
+    const M = D.ENEMIES[e.type].metal;
+    if (M) {
+      const r = R.next(run.rng);
+      if (r < M.miss) { G.log(run, name + 'はひらりと身をかわした！ ミス！'); ev.push({ t: 'miss', x: e.x, y: e.y }); return; }
+      const d1 = r < M.miss + M.one ? 1 : 2;
+      damageEnemy(S, e, d1, ev, name + 'に' + d1 + 'のダメージ。', 'metal');
+      return;
+    }
     const dmg = calcDamage(run.rng, G.playerAtk(run), e.def);
     damageEnemy(S, e, dmg, ev, name + 'に' + dmg + 'のダメージ。');
   }
 
-  function damageEnemy(S, e, dmg, ev, msg) {
-    const run = S.run;
+  /* kind：'magic'（杖・巻物の雷）・'metal'（メタルスライムへの通常攻撃。決まった値）。
+   * メタルスライム：雷は効かない（ミス）。通常攻撃以外（投げた道具・ほかの敵の攻撃など）は1。
+   * 防御中のあくまのきし（e.guard）：受けるダメージが defend.cut 倍（最低1） */
+  function damageEnemy(S, e, dmg, ev, msg, kind) {
+    const run = S.run, E = D.ENEMIES[e.type], nm = E.name;
+    if (E.metal) {
+      if (kind === 'magic') { G.log(run, nm + 'には効かなかった！'); ev.push({ t: 'miss', x: e.x, y: e.y }); return; }
+      if (kind !== 'metal') { dmg = 1; msg = nm + 'に1のダメージ。'; }
+    }
+    if (e.guard > 0 && E.defend) { dmg = Math.max(1, Math.round(dmg * E.defend.cut)); msg = nm + 'は盾で受け止めた！ ' + dmg + 'のダメージ。'; }
     e.hp -= dmg;
     if (e.sleep > 1000) e.sleep = 0; // 眠っていたきりかぶおばけは起きる
     if (e.disguised) revealMimic(run, e, ev);   // 化けているミミックは、攻撃されると正体を現す
@@ -893,6 +911,8 @@
     run.enemies.splice(run.enemies.indexOf(e), 1);
     // つかんでいたマドハンドを倒すと、拘束がすぐ解ける
     if (run.player.boundBy === e.id && run.player.bound > 0) { run.player.bound = 0; run.player.boundBy = null; run.player.bindGuard = 4; G.log(run, 'マドハンドの手がはなれた！ 動けるようになった。'); }
+    // メタルスライム（expLevelUp）：倒した時のたけが、ちょうど1つレベルが上がる経験値（最低 expLevelUp。最高レベルなら最低値）
+    if (E.expLevelUp) { const p = run.player; e.exp = Math.max(E.expLevelUp, p.lvl < D.EXP_TABLE.length - 1 ? D.EXP_TABLE[p.lvl + 1] - p.exp : 0); }
     G.log(run, E.name + 'をたおした！ 経験値' + e.exp);
     ev.push({ t: 'kill', x: e.x, y: e.y, boss: !!e.boss, sprite: E.sprite, exp: e.exp });
     gainExp(S, e.exp, ev);
@@ -900,6 +920,13 @@
       run.runGold += e.stolen;
       G.log(run, '盗まれた' + e.stolen + 'Gを取り返した！');
       ev.push({ t: 'gold', x: e.x, y: e.y, n: e.stolen });
+    }
+    // おどるほうせき（dropGold）：盗む前に倒すと、その階のお金の山1つ分を落とす（盗んだ後は上で全額戻る）
+    if (E.dropGold && !e.stolen && !e.summoned && !G.itemAt(run, e.x, e.y) && !DG.same(run.stairs, e) && !DG.same(run.returnPoint, e)) {
+      const n = D.goldAmount(run.floor, R.next(run.rng));
+      run.floorItems.push({ x: e.x, y: e.y, gold: n });
+      G.log(run, E.name + 'はお金を落とした。');
+      ev.push({ t: 'loot', x: e.x, y: e.y });
     }
     if (E.clone) {
       G.log(run, 'それは幻だった！');
@@ -1278,7 +1305,7 @@
           if (hitE) break;
         }
         ev.push({ t: 'bolt', path, dir: p.dir, kind: d.tint === 'king' ? 'king' : 'staff', hit: !!hitE });
-        if (hitE) damageEnemy(S, hitE, d.dmg, ev, '雷が' + D.ENEMIES[hitE.type].name + 'に命中！ ' + d.dmg + 'のダメージ。');
+        if (hitE) damageEnemy(S, hitE, d.dmg, ev, '雷が' + D.ENEMIES[hitE.type].name + 'に命中！ ' + d.dmg + 'のダメージ。', 'magic');
         else G.log(run, '雷は壁に当たって消えた。');
         return true;
       }
@@ -1331,7 +1358,7 @@
         const vis = G.visibleEnemies(run);
         G.log(run, d.name + 'を読んだ！雷鳴がとどろく！');
         ev.push({ t: 'fire', targets: vis.map((e) => ({ x: e.x, y: e.y })) });
-        for (const e of vis) if (run.enemies.includes(e)) damageEnemy(S, e, d.dmg, ev, D.ENEMIES[e.type].name + 'に' + d.dmg + 'のダメージ。');
+        for (const e of vis) if (run.enemies.includes(e)) damageEnemy(S, e, d.dmg, ev, D.ENEMIES[e.type].name + 'に' + d.dmg + 'のダメージ。', 'magic');
         return true;
       }
       case 'clear': {
@@ -1758,6 +1785,7 @@
     if (G.bossWaiting(run, e)) return;
     // モンスターハウスで目を覚ました直後のターンは動かない
     if (e.hold > 0) { e.hold--; return; }
+    if (e.guard > 0) e.guard--;   // あくまのきしの防御：自分の行動のたびに1減る（0で終わり）
     // 眠り（眠ると予告中の攻撃も中断される）
     if (e.sleep > 0) {
       if (e.charge) { e.charge = null; G.log(run, E.name + 'の構えがとけた。'); }
@@ -1786,8 +1814,29 @@
         if (!sees && !e.tx) { e.tx = p.x; e.ty = p.y; }
         break;
       case 'telegraph':
-        if (sees && adjacent(run, e, p)) { startCharge(S, e, ev, [{ x: p.x, y: p.y }], E.heavy, 1, 'が武器を大きく振りかぶった！'); return; }
+        if (sees && adjacent(run, e, p)) {
+          // あくまのきし：ときどき攻撃の代わりに盾を構える（次の行動まで受けるダメージ半分）
+          if (E.defend && R.chance(run.rng, E.defend.chance)) {
+            e.guard = 1; e.dir = G.dirOf(p.x - e.x, p.y - e.y) || e.dir;
+            G.log(run, E.name + 'は盾を構えた！'); ev.push({ t: 'eguard', id: e.id }); return;
+          }
+          startCharge(S, e, ev, [{ x: p.x, y: p.y }], E.heavy, 1, 'が武器を大きく振りかぶった！'); return;
+        }
         break;
+      case 'erratic':   // ホイミスライム：傷ついた仲間がいれば回復（heal）
+        if (E.heal && supportHeal(S, e, ev)) return;
+        break;
+      case 'flee': {    // メタルスライム：見えている間は steps 歩、たけから逃げる。攻撃しない。追いこまれたらその場に
+        if (sees) {
+          let moved = 0;
+          for (let i = 0; i < (E.steps || 1); i++) { if (!stepAway(run, e)) break; moved++; }
+          e.tx = e.ty = null;   // 見えなくなったら、たけの方ではなく、うろうろする
+          if (moved) ev.push({ t: 'eanim', id: e.id, kind: 'escape', dx: Math.sign(e.x - p.x) });
+          return;
+        }
+        moveEnemy(run, e);
+        return;
+      }
       case 'area':
         if (sees && cheb(e, p) <= 1) { startCharge(S, e, ev, areaTiles(run, e, 1), E.heavy, 1, 'が地面を踏みならそうとしている！'); return; }
         break;
@@ -1802,9 +1851,22 @@
           if (!e.theftBlocked) { e.theftBlocked = true; G.log(run, E.name + 'がお金をねらったが、がまぐちの守りが口を閉じた！'); }
         }
         break;
-      case 'magic':
+      case 'magic': {
+        // ベビーサタン（blaze）：every 行動ごとに、たけのまわり3×3を予告して炎の呪文（次の行動で発動）
+        if (E.blaze) {
+          e.cds = e.cds || {};
+          if (e.cds.blaze == null) e.cds.blaze = 2; else if (e.cds.blaze > 0) e.cds.blaze--;
+          if (sees && !e.cds.blaze && cheb(e, p) <= E.blaze.range) {
+            const tiles = [];
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (DG.passable(run.map, p.x + dx, p.y + dy)) tiles.push({ x: p.x + dx, y: p.y + dy });
+            startCharge(S, e, ev, tiles, E.blaze.mult, E.blaze.rest, 'が両手に炎を集めた！ たけのまわりが燃え上がる！');
+            e.cds.blaze = E.blaze.every;
+            return;
+          }
+        }
         if (sees && adjacent(run, e, p) && stepAway(run, e)) return;
         break;
+      }
       case 'mimic':   // 化けている間は動かない。たけが隣に来たら正体を現し、この手番で1回だけ攻撃する（変身による追加の先制はない）
         if (e.disguised) { if (!adjacent(run, e, p)) return; revealMimic(run, e, ev); }
         break;
@@ -1911,6 +1973,8 @@
     const run = S.run, p = run.player, E = D.ENEMIES[e.type], c = e.charge;
     e.charge = null;
     e.rest = c.rest || 0;
+    // あくまのきし：大技のあとは攻撃を休み、盾で防御（defend.after 行動のあいだ。次に動くまで受けるダメージ半分）
+    if (E.defend && !c.kind) { e.rest = E.defend.after; e.guard = E.defend.after + 1; G.log(run, E.name + 'は盾を構え、守りを固めた！'); ev.push({ t: 'eguard', id: e.id }); }
     if (c.kind && G.BOSS_RESOLVE && G.BOSS_RESOLVE[c.kind]) { G.BOSS_RESOLVE[c.kind](S, e, ev, c, H); return; }
     ev.push({ t: 'blast', id: e.id, tiles: c.tiles, fx: c.fx });
     if (c.tiles.some((t) => t.x === p.x && t.y === p.y)) {

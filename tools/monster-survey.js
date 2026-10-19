@@ -16,8 +16,8 @@ function stats(id, ch, f) {
   const e = E[id];
   const k = e.noScale ? 0 : Math.max(0, f - (e.base || 1));
   const cm = e.noScale ? 1 : D.chapterMul(ch, f);
-  return { hp: Math.round(e.hp * (1 + D.ENEMY_SCALE.hp * k) * cm), atk: Math.round(e.atk * (1 + D.ENEMY_SCALE.atk * k) * cm),
-    def: e.def, exp: Math.round(e.exp * (1 + D.ENEMY_SCALE.exp * k)), k, cm: Math.round(cm * 1000) / 1000 };
+  return { hp: e.hpRange ? e.hpRange.join('〜') : Math.round(e.hp * (1 + D.ENEMY_SCALE.hp * k) * cm), atk: Math.round(e.atk * (1 + D.ENEMY_SCALE.atk * k) * cm),
+    def: e.def, exp: e.expLevelUp ? 'レベルが1上がる分（最低' + e.expLevelUp + '）' : Math.round(e.exp * (1 + D.ENEMY_SCALE.exp * k)), k, cm: Math.round(cm * 1000) / 1000 };
 }
 
 /* 出現の場所を集める：新しい探索（配置の版4）の第1〜6章、隠しダンジョン、以前の版（更新前から続く探索）*/
@@ -106,7 +106,8 @@ const AI = {
   poison: ['melee と同じ。当たると40%で毒（8ターン・最大HPの2.5%/ターン、治った後15ターンはかからない）', '1歩', '1回'],
   thief: ['隣で探索中のお金を15%（最低10G）盗み、見えない所へ瞬間移動して逃げ回る。倒すと取り返せる', '1歩（逃げ）', 'なし（盗むだけ）'],
   area: ['動きが遅い（2ターンに1回）。隣に来ると周囲8マスを予告→次の行動で踏みならし（攻撃力×heavy）→1ターンの隙', '2ターンに1歩', '予告して1回（範囲）'],
-  magic: ['一直線上・5マス以内で間に壁や敵が無ければ光の矢・火の玉（shoot の値）。隣に来られると1歩離れる', '1歩', '1回'],
+  magic: ['一直線上・range マス以内で間に壁や敵が無ければ光の矢・火の玉（shoot の値）。隣に来られると1歩離れる', '1歩', '1回'],
+  flee: ['攻撃しない。たけが見えている間は1ターンに steps 歩、たけから逃げる（追いこまれたらその場）。見えなければうろうろ', 'steps 歩（逃げ）', 'なし'],
   breath: ['一直線上・2〜5マスで炎（攻撃力×1.3）。炎は最初に当たった相手（敵・たけ）か壁で止まる。吐いた後3行動待つ。隣なら殴る', '1歩', '1回'],
   double: ['1回の手番に2回行動。離れていれば2歩、隣なら2回攻撃、1歩目で隣になれば残りで1回攻撃', '2歩', '最大2回'],
   bomb: ['HPが最大の20%以下で移動をやめる（隣なら攻撃はする）。0より大きく10%以下になった瞬間に自爆（周囲1マス・攻撃力×2.5）。一撃で倒せば爆発しない', '1歩（20%以下で0）', '1回'],
@@ -181,7 +182,14 @@ const ailment = (id) => (E[id].ai === 'boss' ? '眠り3ターン・鈍足6ター
 const range = (id) => { const e = E[id]; return e.ai === 'ranged' || e.ai === 'magic' ? '一直線 ' + e.range + 'マス（射撃の威力 ' + e.shoot + '、深さで攻撃と同じ率で伸びる）' :
   e.ai === 'telegraph' ? '隣1マス（予告したマス）' : e.ai === 'area' ? '周囲8マス' : e.ai === 'breath' ? '一直線 2〜' + D.STRONG.dragon.range + 'マス（最初の相手で止まる）' :
   e.ai === 'bomb' ? '隣1マス／自爆は周囲' + D.STRONG.bombrock.radius + 'マス（たけだけ）' : e.ai === 'boss' ? '技ごと（「行動」の欄）' : '隣1マス（8方向・壁の角越しは不可）'; };
-const heavy = (id) => (E[id].heavy ? '（強打 ×' + E[id].heavy + '）' : '');
+const heavy = (id) => { const e = E[id], t = [];
+  if (e.heavy) t.push('（強打 ×' + e.heavy + '）');
+  if (e.heal && e.ai !== 'support') t.push('。5マス以内でHP7割未満の仲間（ボス以外）を最大HPの' + Math.round(e.heal * 100) + '%回復（3行動待ち）');
+  if (e.blaze) t.push('。' + e.blaze.every + '行動ごとに、' + e.blaze.range + 'マス以内のたけのまわり3×3を予告 → 次の行動で炎（攻撃力×' + e.blaze.mult + '）→' + e.blaze.rest + 'ターンの隙');
+  if (e.defend) t.push('。大技のあと' + e.defend.after + '行動は防御（受けるダメージ×' + e.defend.cut + '）。隣では' + Math.round(e.defend.chance * 100) + '%で攻撃のかわりに防御（次の行動まで）');
+  if (e.dropGold) t.push('。盗む前に倒すと、その階のお金の山1つ分を落とす');
+  if (e.metal) t.push('。通常攻撃はミス' + Math.round(e.metal.miss * 100) + '%・1ダメージ' + Math.round(e.metal.one * 100) + '%・2ダメージ' + Math.round((1 - e.metal.miss - e.metal.one) * 100) + '%。杖・巻物の雷は効かない。ほかは1ダメージ');
+  return t.join('').replace(/steps/g, e.steps || 1); };
 function rowMd(id, extra) {
   const e = E[id], im = image(id), ai = AI[e.ai];
   const appearNew = SUMMONS[id] && !newRecs(id).length ? ['呼び出しのみ：' + SUMMONS[id].note] : appearText(id, (s) => s !== 'legacy').concat(SUMMONS[id] ? ['呼び出し：' + SUMMONS[id].note] : []);
@@ -208,8 +216,8 @@ function rowMd(id, extra) {
       (s2 && last !== first ? '<br>例：' + (last.scope === 'hidden' ? '隠し' : '第' + last.ch + '章') + last.f + '階 HP ' + s2.hp + '・攻撃 ' + s2.atk + '・経験値 ' + s2.exp + '（章の倍率 ' + s2.cm + '）' : '') + ' |');
   } else L.push('| 強さの伸び | なし（noScale：どの章・階でも同じ） |');
   if (e.ai === 'boss') L.push('| 行動 | ' + BOSS[id] + '。予告→次の行動で発動→隙。1ターンに1回行動 |');
-  else L.push('| 行動（ai: ' + e.ai + '） | ' + ai[0] + heavy(id) + ' |');
-  L.push('| 移動の速さ・行動回数・攻撃回数 | ' + (e.ai === 'boss' ? '1歩・1回・1回（大技は予告つき）' : ai[1] + '・' + (e.ai === 'double' ? '2回' : e.ai === 'fast' ? '移動2回' : '1回') + '・' + ai[2]) + ' |');
+  else L.push('| 行動（ai: ' + e.ai + '） | ' + ai[0].replace(/range/g, e.range).replace(/steps/g, e.steps || 1) + heavy(id) + ' |');
+  L.push('| 移動の速さ・行動回数・攻撃回数 | ' + (e.ai === 'boss' ? '1歩・1回・1回（大技は予告つき）' : ai[1].replace(/steps/g, e.steps || 1) + '・' + (e.ai === 'double' ? '2回' : e.ai === 'fast' ? '移動2回' : '1回') + '・' + ai[2]) + ' |');
   L.push('| 射程・範囲 | ' + range(id) + ' |');
   L.push('| 命中 | 通常攻撃・射撃は88%（敵共通）。予告の大技・炎・自爆は外れない（範囲の外へ出ればかわせる） |');
   L.push('| 状態異常への耐性 | ' + ailment(id) + ' |');
@@ -220,7 +228,7 @@ function rowMd(id, extra) {
   if (e.tip) L.push('| 案内の文 | ' + e.tip + ' |');
   L.push('');
   csv.push([extra, e.name, id, appearNew.join(' / '), appearOld.join(' / '), e.hp, e.atk, e.def, e.exp, e.noScale ? 'なし' : (e.base || 1), e.noScale ? 'なし' : 'HP+12%/攻撃+8%/経験値+12% 毎階×章倍率',
-    e.ai, e.ai === 'boss' ? '1歩' : ai[1], e.ai === 'boss' ? '1回' : ai[2], e.ai === 'boss' ? BOSS[id] : ai[0] + heavy(id), range(id), ailment(id),
+    e.ai, e.ai === 'boss' ? '1歩' : ai[1].replace(/steps/g, e.steps || 1), e.ai === 'boss' ? '1回' : ai[2], e.ai === 'boss' ? BOSS[id] : ai[0].replace(/range/g, e.range).replace(/steps/g, e.steps || 1) + heavy(id), range(id), ailment(id),
     e.ai === 'boss' ? bossDrops(id) : e.clone ? 'なし' : '12% 階の道具', im.file, im.size, im.disp, im.status].map(q).join(','));
   return L.join('\n');
 }

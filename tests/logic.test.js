@@ -3382,5 +3382,82 @@ test('ボスを倒したあとの帰還口はボス部屋の中央（たけ・�
   assert(G.inArena(L.run, P.x, P.y) && Math.max(Math.abs(P.x - (A.x + (A.w >> 1))), Math.abs(P.y - (A.y + (A.h >> 1)))) <= 1, 'moved to the center on load');
 });
 
+console.log('通常モンスターの行動変更（2026年10月、おすすめ案）');
+test('メタルスライム：HP3〜5・見えている間は2歩逃げて攻撃しない・通常攻撃はミス/1/2・雷は効かない・ほかは1・倒すとちょうど1レベル上がる（最低300）・出現は以前の4分の1', () => {
+  const S = newRun(901); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 500;
+  const hps = new Set(); for (let i = 0; i < 40; i++) hps.add(G.makeEnemy(run, 'wisp', 10, 5).hp);
+  eq([...hps].sort().join(), '3,4,5', 'hp 3-5');
+  // 2歩逃げる・攻撃しない
+  const m = realEnemy(S, 'wisp', p.x + 1, p.y, 22); m.hp = 99; const hp0 = p.hp;
+  const r = G.act(S, { type: 'wait' });
+  eq(Math.max(Math.abs(m.x - p.x), Math.abs(m.y - p.y)), 3, 'two steps away'); eq(p.hp, hp0, 'no attack'); assert(r.events.some((e) => e.t === 'eanim' && e.kind === 'escape'));
+  // 追いこまれたら、その場にとどまる（攻撃もしない）
+  m.x = 2; m.y = 2; p.x = 3; p.y = 3; G.updateVision(run); G.act(S, { type: 'wait' }); eq(m.x + ',' + m.y, '2,2', 'cornered'); eq(p.hp, hp0);
+  // 通常攻撃のダメージ：ミス・1・2 だけ
+  const seen = new Set();
+  for (let i = 0; i < 300; i++) { m.hp = 99; m.x = p.x + 1; m.y = p.y; m.sleep = 50; const before = m.hp; G.act(S, { type: 'move', dir: 'right' }); seen.add(before - m.hp); }
+  eq([...seen].sort().join(), '0,1,2', 'miss/1/2 ' + [...seen]);
+  // 雷（杖）は効かない、投げた物は1
+  m.hp = 4; m.x = p.x + 2; m.y = p.y; p.dir = 'right'; const st = G.makeItem(S, 'thunder_staff', { charges: 3 }); run.bag.push(st);
+  G.act(S, { type: 'use', uid: st.uid }); eq(m.hp, 4, 'staff no effect');
+  const herb = G.makeItem(S, 'banana'); run.bag.push(herb); G.act(S, { type: 'throw', uid: herb.uid, dir: 'right' }); eq(m.hp, 3, 'thrown item 1');
+  // 倒すと、ちょうど1つレベルが上がる
+  p.lvl = 20; p.exp = D.EXP_TABLE[20] + 10; m.hp = 1; m.x = p.x + 1; m.y = p.y; m.sleep = 50;
+  for (let i = 0; i < 20 && run.enemies.includes(m); i++) G.act(S, { type: 'move', dir: 'right' });
+  eq(p.lvl, 21, 'one level up'); assert(p.exp >= D.EXP_TABLE[21] && p.exp < D.EXP_TABLE[22]);
+  // 出現の重み：以前の4分の1
+  eq(D.enemyTable(24).find(([id]) => id === 'wisp')[1], 0.75); eq(D.enemyTable(28).find(([id]) => id === 'wisp')[1], 0.5);
+});
+test('ホイミスライム：HP42・攻撃6。5マス以内でHP7割未満の仲間を最大HPの30%回復（3行動待ち）。ボスと自分は回復しない', () => {
+  eq(D.ENEMIES.jelly.hp, 42); eq(D.ENEMIES.jelly.atk, 6);
+  const S = newRun(902); bigRoomFloor(S); const run = S.run;
+  const ally = realEnemy(S, 'turtle', 15, 10, 12); ally.hp = 5; ally.sleep = 50;
+  const hs = realEnemy(S, 'jelly', 12, 10, 12); hs.sleep = 0;
+  const r = G.act(S, { type: 'wait' });
+  eq(ally.hp, Math.min(ally.maxhp, 5 + Math.round(ally.maxhp * 0.3)), 'healed 30%'); assert(r.events.some((e) => e.t === 'enemyHeal' && e.by === hs.id));
+  const h1 = ally.hp; ally.hp = 5; G.act(S, { type: 'wait' }); eq(ally.hp, 5, 'waits after healing'); assert(h1 > 5);
+});
+test('おどるほうせき：盗む前に倒すと、その階のお金の山1つ分を落とす。盗んだ後に倒すと全額戻る（お金の山は落とさない）', () => {
+  const S = newRun(903); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 500; run.runGold = 0;
+  const t = realEnemy(S, 'thief', p.x + 1, p.y, 18); t.hp = 1; t.sleep = 50;
+  for (let i = 0; i < 20 && run.enemies.includes(t); i++) G.act(S, { type: 'move', dir: 'right' });
+  const g = run.floorItems.find((f) => f.gold && f.x === t.x && f.y === t.y); assert(g && g.gold > 0, 'drops gold before stealing');
+  // 盗んだ後
+  run.floorItems = []; run.runGold = 400;
+  const t2 = realEnemy(S, 'thief', p.x + 1, p.y, 18); G.act(S, { type: 'wait' }); assert(t2.stolen > 0, 'stole');
+  const stolen = t2.stolen; t2.hp = 1; t2.x = p.x + 1; t2.y = p.y; t2.sleep = 50; t2.flee = false; G.updateVision(run);
+  const g0 = run.runGold; for (let i = 0; i < 20 && run.enemies.includes(t2); i++) G.act(S, { type: 'move', dir: 'right' });
+  eq(run.runGold, g0 + stolen, 'refund all'); assert(!run.floorItems.some((f) => f.gold), 'no extra gold');
+});
+test('あくまのきし：大技のあとは2行動のあいだ防御（ダメージ半分）してから動く。ふだんも隣で20%防御（次の行動まで半分）', () => {
+  const S = newRun(904); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;
+  const k = realEnemy(S, 'darkknight', p.x + 1, p.y, 31);
+  // 大技を予告させる（防御の確率は0にして確かめる）
+  const ch = D.ENEMIES.darkknight.defend.chance; D.ENEMIES.darkknight.defend.chance = 0;
+  for (let i = 0; i < 5 && !k.charge; i++) G.act(S, { type: 'wait' });
+  assert(k.charge, 'telegraph'); G.act(S, { type: 'wait' });
+  eq(k.rest, 2); eq(k.guard, 3, 'guard until it acts again');
+  const hp0 = k.hp; G.act(S, { type: 'move', dir: 'right' });
+  const dealt = hp0 - k.hp; assert(dealt >= 0, 'dealt ' + dealt); assert(run.log.some((l) => l.includes('盾で受け止めた')) || dealt === 0, 'halved message');
+  G.act(S, { type: 'wait' }); G.act(S, { type: 'wait' }); eq(k.guard, 0, 'guard ends when it acts'); assert(!k.rest);
+  // ふだんの防御（確率1で確かめる）
+  D.ENEMIES.darkknight.defend.chance = 1; k.charge = null; k.rest = 0; k.guard = 0;
+  const r = G.act(S, { type: 'wait' }); assert(r.events.some((e) => e.t === 'eguard') && k.guard === 1 && !k.charge, 'guards instead of attacking');
+  D.ENEMIES.darkknight.defend.chance = ch;
+  // 半分の計算（防御中）
+  const atk = 120; k.guard = 1; const hp1 = k.hp; const evs = []; G._damageEnemy(S, k, atk, evs, 'x'); eq(hp1 - k.hp, 60, 'half damage');
+});
+test('ベビーサタン：5行動ごとに、たけのまわり3×3を予告して炎（攻撃力×1.6）。予告の外へ出ればかわせる。ふだんは火の玉', () => {
+  const S = newRun(905); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;
+  const b = realEnemy(S, 'imp', p.x + 2, p.y + 1, 31);   // 一直線ではない位置（火の玉は撃てない）
+  let tele = null;
+  for (let i = 0; i < 8 && !tele; i++) { const r = G.act(S, { type: 'wait' }); tele = r.events.find((e) => e.t === 'telegraph' && e.id === b.id); b.x = p.x + 2; b.y = p.y + 1; }
+  assert(tele && tele.tiles.length === 9 && tele.tiles.some((t) => t.x === p.x && t.y === p.y), 'telegraphs 3x3 around take');
+  // 外へ出てかわす
+  const hp0 = p.hp; G.act(S, { type: 'move', dir: 'left' }); G.act(S, { type: 'move', dir: 'left' });
+  assert(run.log.some((l) => l.includes('大技をかわした')) || p.hp === hp0, 'dodged');
+  eq(b.cds.blaze, 5 - 1 >= 0 ? b.cds.blaze : 0);   // 待ち時間がある
+});
+
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

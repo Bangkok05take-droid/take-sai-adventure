@@ -417,6 +417,8 @@
       const eact = RD.fx.find((f) => f.t === 'eact' && f.id === e.id && f.x === e.x && f.y === e.y && now - f.t0 - (f.delay || 0) >= 0 && now - f.t0 - (f.delay || 0) < f.dur);
       if (e.charge && !e.sleep && SP.enemyAction(kind, 'prep')) img = SP.enemyAction(kind, 'prep', SP.enemyFlip(kind, (G.DIRS[e.dir] || [0])[0]));
       else if (eact && SP.enemyAction(kind, 'prep')) img = SP.enemyAction(kind, now - eact.t0 - (eact.delay || 0) < eact.prep ? 'prep' : 'act', eact.flip);
+      // 防御中（あくまのきし e.guard）：防御のポーズ。盾をたけの方へ向ける。防御が終われば待機に戻る
+      else if (e.guard > 0 && SP.enemyAction(kind, 'guard')) img = SP.enemyAction(kind, 'guard', SP.enemyFlip(kind, Math.sign(p.x - e.x) || (G.DIRS[e.dir] || [0])[0], 'guard'));
       const hit = hitFx(e.x, e.y, 'enemy', now);
       const big = (img.logical || img.width) / TILE;   // 細かく持っている絵（隠しダンジョンの強敵・通常の敵15種）は枠の大きさで（占有は1マスのまま）
       if (img.logical && !img.sheet) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; }   // 通常の敵15種は最近傍（ドット絵のまま）
@@ -452,6 +454,7 @@
       const st = [];
       if (e.sleep > 0) st.push('sleep');
       if (e.slow > 0) st.push('slow');
+      if (e.guard > 0 && !SP.enemyAction(kind, 'guard')) st.push('guard');   // 防御のポーズの絵が無いときだけ、盾の印
       if (st.length) RD.drawStatus(g, st, sx + ts / 2, img.sheet ? bodyTop - ts * 0.18 : sy + ts - dw * (img.art ? 0.78 : 0.95) - ts * 0.18, k, now);
       if (e.hp < e.maxhp && !e.boss) {
         g.fillStyle = '#000'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, ts - 4 * k, 3 * k);
@@ -555,6 +558,8 @@
       } else if (kind === 'poison') {
         g.fillStyle = '#a8f070'; g.beginPath(); g.moveTo(x, y - 3.2 * k); g.quadraticCurveTo(x + 3 * k, y + 0.5 * k, x, y + 3 * k); g.quadraticCurveTo(x - 3 * k, y + 0.5 * k, x, y - 3.2 * k); g.fill();
         g.fillStyle = '#5a2a8a'; g.fillRect(x - 0.6 * k, y - 0.2 * k, 1.2 * k, 1.6 * k);
+      } else if (kind === 'guard') {   // 盾
+        g.fillStyle = '#9ad0ff'; g.beginPath(); g.moveTo(x - 3 * k, y - 3 * k); g.lineTo(x + 3 * k, y - 3 * k); g.lineTo(x + 3 * k, y); g.lineTo(x, y + 3.4 * k); g.lineTo(x - 3 * k, y); g.closePath(); g.fill();
       } else if (kind === 'bound') {
         g.strokeStyle = '#c8a8ff'; g.beginPath(); g.ellipse(x - 1.4 * k, y, 1.8 * k, 1.2 * k, 0, 0, Math.PI * 2); g.stroke();
         g.beginPath(); g.ellipse(x + 1.4 * k, y, 1.8 * k, 1.2 * k, 0, 0, Math.PI * 2); g.stroke();

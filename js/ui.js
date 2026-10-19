@@ -1875,6 +1875,10 @@
           break;
         case 'telegraph': toast('！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;
         case 'blast': { const dl = blastFx(e, run, p); if (dl) hitD = Math.max(hitD, dl); break; }   // 飛ぶ技：たけへの命中の表示は届いてから
+        // メタルスライムが逃げた：逃走のコマ（見た目だけ）
+        case 'eanim': { const en = run.enemies.find((q) => q.id === e.id); if (en) enemyActFx(en, e.kind, e.dx, UI.ENEMY_ACT.prep, UI.ENEMY_ACT.prep + UI.ENEMY_ACT.act); break; }
+        // あくまのきしが盾を構えた（ポーズは render.js が e.guard で出す）
+        case 'eguard': AU.sfx('bump'); break;
         case 'steal': {
           // おどるほうせき：盗む動作のコマを、逃げる前の場所に残して見せる（盗みはゲーム側で1回だけ済んでいる）
           const th = e.id !== undefined && { id: e.id, x: e.from.x, y: e.from.y, type: (run.enemies.find((q) => q.id === e.id) || {}).type || 'thief' };

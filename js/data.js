@@ -351,7 +351,10 @@
     turtle: { name: 'ぐんたいガニ',       hp: 20,  atk: 5,  def: 6, exp: 8,   ai: 'slow',    sprite: 'turtle' },
     monkey: { name: 'リリパット',   hp: 12,  atk: 3,  def: 1, exp: 7,   ai: 'ranged',  sprite: 'monkey', shoot: 4, range: 4, shot: '矢' },
     root:   { name: 'きりかぶおばけ', hp: 24,  atk: 8,  def: 3, exp: 13,  ai: 'dormant', sprite: 'root' },
-    jelly:  { name: 'ホイミスライム',     hp: 28,  atk: 10, def: 4, exp: 17,  ai: 'erratic', sprite: 'jelly' },
+    /* 2026年10月の行動変更（おすすめ案で確定。数値は調整用）
+     *  ホイミスライム：回復役。HP 28→42・攻撃 10→6。ふらふら歩き（erratic）のまま、5マス以内でHP7割未満の仲間（ボス以外）を最大HPの30%回復（heal）、3行動待ち */
+    jelly:  { name: 'ホイミスライム',     hp: 42,  atk: 6,  def: 4, exp: 17,  ai: 'erratic', sprite: 'jelly', heal: 0.3,
+      tip: '傷ついた仲間を回復する（回復役）。先に倒すか眠らせよう。' },
     statue: { name: 'うごくせきぞう',   hp: 40,  atk: 13, def: 6, exp: 28,  ai: 'telegraph', sprite: 'statue', base: 8, heavy: 2.2,
       tip: '隣にいると拳を振りかぶり、次の行動で強打する。離れればかわせる。' },
     bat:    { name: 'ドラキー', hp: 30,  atk: 17, def: 3, exp: 30,  ai: 'fast',    sprite: 'bat', base: 11, tip: '1ターンに2回動く。' },
@@ -360,12 +363,17 @@
     shaman: { name: 'まほうつかい',   hp: 38,  atk: 14, def: 4, exp: 38,  ai: 'magic', sprite: 'shaman', base: 12, shoot: 17, range: 4, keep: 2, shot: '火の玉',
       tip: '距離を取って、離れた所から火の玉の呪文を撃つ。角を使ってかわすか、近づいて倒そう。' },
     lizard: { name: 'バブルスライム',     hp: 50,  atk: 22, def: 6, exp: 48,  ai: 'poison',  sprite: 'lizard', base: 16, tip: '噛まれると毒になる。薬草・解毒の葉で治る。' },
-    thief:  { name: 'おどるほうせき',   hp: 45,  atk: 16, def: 5, exp: 42,  ai: 'thief',   sprite: 'thief', base: 17,
-      tip: '探索中のお金を盗んで逃げる。倒せば取り返せる。' },
+    // おどるほうせき：盗んで逃げる（今まで通り）。盗まれた後に倒すと全額戻る。盗まれる前に倒すと、その階のお金の山1つ分を落とす（dropGold）
+    thief:  { name: 'おどるほうせき',   hp: 45,  atk: 16, def: 5, exp: 42,  ai: 'thief',   sprite: 'thief', base: 17, dropGold: true,
+      tip: '探索中のお金を盗んで逃げる。盗まれる前に倒すとお金を落とし、盗まれた後に倒せば取り返せる。' },
     golem:  { name: 'ゴーレム', hp: 110, atk: 30, def: 16, exp: 90, ai: 'area',    sprite: 'golem', base: 21, heavy: 2.0, slowMove: true,
       tip: '動きは遅いが、地面を踏みならして周囲を攻撃する（予告あり）。' },
-    wisp:   { name: 'メタルスライム',       hp: 45,  atk: 18, def: 6, exp: 60,  ai: 'magic',   sprite: 'wisp', base: 21, shoot: 26, range: 5, shot: '光の矢',
-      tip: '離れた所から光の矢を撃つ。物陰や斜めの角を使ってかわそう。' },
+    /* メタルスライム（旧・光の精の射撃はやめた）：見えている間は1手番に2歩、たけから逃げる。攻撃しない（追いこまれたらその場にとどまる）。
+     *  HP 3〜5（hpRange。深さで増えない）。受けるダメージ（metal）：通常攻撃はミス30%・1が50%・2が20%、杖・巻物の雷は効かない（ミス）、ほかは1。
+     *  経験値：倒した時のたけが、ちょうど1つレベルが上がる量（最低300。expLevelUp）。眠り・鈍足の道具は効く。出現の重みは以前の4分の1 */
+    wisp:   { name: 'メタルスライム',       hp: 4,   atk: 1,  def: 255, exp: 300, ai: 'flee', sprite: 'wisp', base: 21, hpRange: [3, 5], noScaleHp: true, steps: 2,
+      metal: { miss: 0.3, one: 0.5 }, expLevelUp: 300,
+      tip: 'とにかく逃げる。防御がとても固く、ダメージは1か2しか入らない。倒すとレベルが上がるほどの経験値。眠らせると捕まえやすい。' },
     guard:  { name: 'さまようよろい',   hp: 120, atk: 40, def: 18, exp: 120, ai: 'telegraph', sprite: 'guard', base: 26, heavy: 2.2,
       tip: '剣を振りかぶってから強打する。予告を見たら離れよう。' },
     lion:   { name: '守護獅子',     hp: 160, atk: 15, def: 8, exp: 120, ai: 'boss',    sprite: 'lion', noScale: true, drop: 'croc_tear',
@@ -375,8 +383,11 @@
     elephant: { name: '夢見の黄金象', hp: 720, atk: 36, def: 17, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown',
       pattern: { stomp: 2, stompMult: 1.7, line: 6, lineMult: 2.0, every: 4, summon: 'wisp', summonEvery: 9, summonMax: 2, enrage: 0.5 } },
     // ---- 最終章の31階より下 ----
+    /* あくまのきし：予告の大技のあとは、2行動のあいだ攻撃を休んで盾で防御（受けるダメージ半分）。ふだんも隣で20%、攻撃の代わりに防御（次の行動まで半分）。
+     *  defend：after 大技のあとの防御の行動数、chance ふだんの防御の確率、cut 受けるダメージの倍率。専用の防御ポーズの絵はまだ無い（待機の絵に盾の印） */
     darkknight: { name: 'あくまのきし', hp: 150, atk: 44, def: 20, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
-      tip: '斧を振りかぶってから強打する。予告を見たら離れよう。' },
+      defend: { after: 2, chance: 0.2, cut: 0.5 },
+      tip: '斧を振りかぶってから強打する。そのあとは盾で守りを固める（ダメージ半分）。ときどき盾を構えて攻撃を受け止める。' },
     /* ---- 隠しダンジョンの強敵（2026年10月：動きは確定。能力値・数値はすべて**仮**＝D.STRONG の調整案。専用の絵はChatGPT側） ----
      * 絵が届くまでは、今の敵の絵に色を重ねた仮の見た目（js/sprites.js の SP.PLACEHOLDER）。base 31：深さによる強化は31階から */
     dragon:      { name: 'ドラゴン',         hp: 190, atk: 46, def: 20, exp: 230, ai: 'breath', sprite: 'dragon', base: 31,
@@ -391,8 +402,11 @@
       tip: '床のお宝に化けている。隣に行くと正体を現して襲ってくる。' },
     madhand:     { name: 'マドハンド',       hp: 70,  atk: 26, def: 12, exp: 90,  ai: 'grab', sprite: 'madhand', base: 31,
       tip: 'つかまれると移動できない（攻撃・道具・装備はできる）。つかんだマドハンドを倒すと解ける。' },
+    /* ベビーサタン：火の玉に加えて、5行動ごとに予告つきの炎（blaze）。たけのまわり3×3を予告し、次の行動で攻撃力×1.6。予告のマスの外へ出ればかわせる。
+     *  range：使う距離（一直線でなくてよい。見えていて5マス以内）。発動のあと1行動の隙 */
     imp:    { name: 'ベビーサタン',   hp: 62,  atk: 24, def: 8, exp: 80,  ai: 'magic',   sprite: 'imp', base: 31, shoot: 32, range: 5, shot: '火の玉',
-      tip: '離れた所から火の玉を撃つ。角を使ってかわそう。' },
+      blaze: { every: 5, mult: 1.6, range: 5, rest: 1 },
+      tip: '離れた所から火の玉を撃つ。ときどき、たけのまわりを焼く大きな炎の呪文（予告あり）。赤いマスの外へ逃げよう。' },
     /* ---- 章のボス（30階）と最終章（30階・33階）。boss：専用の行動（js/bossai.js）。arena：ボス部屋の景観 ----
      * 単にHPが多いだけにしないよう、予告つきの大技・床の危険・分身・霧などで戦い方を変える。大技のあとは隙ができる。 */
     croc:   { name: 'クロコダイン', hp: 640, atk: 34, def: 15, exp: 700, ai: 'boss', sprite: 'croc', noScale: true, arena: 'arena_croc', big: true },
@@ -533,15 +547,15 @@
     if (f <= 9) return [['turtle', 2], ['monkey', 3], ['root', 2], ['jelly', 3]].concat(f >= 8 ? [['statue', 1]] : []);
     if (f <= 15) return [['root', 2], ['jelly', 2], ['monkey', 2], ['bat', 3]].concat(f >= 12 ? [['shaman', 2]] : [], f >= 13 ? [['statue', 2]] : []);
     if (f <= 20) return [['jelly', 2], ['bat', 2], ['shaman', 2], ['statue', 2], ['lizard', 3], ['turtle', 1]].concat(f >= 17 ? [['thief', 2]] : []);
-    if (f <= 25) return [['golem', 2], ['wisp', 3], ['lizard', 2], ['shaman', 2], ['thief', 2], ['bat', 1], ['statue', 1]];
-    return [['guard', 3], ['golem', 2], ['wisp', 2], ['shaman', 2], ['thief', 2], ['lizard', 1]];
+    if (f <= 25) return [['golem', 2], ['wisp', 0.75], ['lizard', 2], ['shaman', 2], ['thief', 2], ['bat', 1], ['statue', 1]];
+    return [['guard', 3], ['golem', 2], ['wisp', 0.5], ['shaman', 2], ['thief', 2], ['lizard', 1]];
   };
   // 最終章の31階より下：大魔王の城
   function demonFloor(f, C) {
     const items = [['herb', 3], ['big_herb', 3], ['elixir', 2], ['khaoniao', 2], ['banana', 1], ['sleep_incense', 2], ['slow_powder', 1],
       ['fire_charm', 1], ['thunder_king_staff', 0.8], ['antidote', 1], ['sight_scroll', 1], ['sense_scroll', 1], ['clear_incense', 1],
       ['golden_sword', 0.6], ['golden_shield', 0.6], ['golden_elephant', 2], ['dream_crown', 1], ['gold_leaf', 2]].concat(D.ACCESSORY_DROPS.map((a) => [a.id, a.w]));
-    return { theme: 'demon', enemies: [['darkknight', 3], ['imp', 3], ['guard', 2], ['golem', 1], ['wisp', 1]],
+    return { theme: 'demon', enemies: [['darkknight', 3], ['imp', 3], ['guard', 2], ['golem', 1], ['wisp', 0.25]],
       enemyCount: [6, 7], itemCount: [5, 7], goldCount: [3, 4], items };
   }
   // 章・深さごとの階の定義（作った結果は覚えておく）

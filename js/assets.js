@@ -200,7 +200,8 @@
         golem: { file: 'golem', kind: 'attack', face: 'L', body: 64 },
         wisp: { file: 'metal_slime', kind: 'escape', face: 'R', body: 40 },
         guard: { file: 'restless_armour', kind: 'attack', face: 'L', body: 40 },
-        darkknight: { file: 'demon_knight', kind: 'attack', face: 'L', body: 64 },
+        // guard：防御のポーズ（ZIP demon_knight_guard_v1。96×96・足元48,84・本体60px＝腰を落とした姿。同じ倍率のまま。盾は右向き＝guardFace）
+        darkknight: { file: 'demon_knight', kind: 'attack', face: 'L', body: 64, guard: 'demon_knight_guard', guardFace: 'R', guardBody: 60 },
         imp: { file: 'baby_satan', kind: 'attack', face: 'R', body: 40 },
       },
     },

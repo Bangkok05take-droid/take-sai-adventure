@@ -109,9 +109,9 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
       }
     });
 
-    // ---------- 射撃：リリパット（矢）・ベビーサタン（火の玉）・メタルスライム（旧の光の矢。技のコマなし） ----------
+    // ---------- 射撃：リリパット（矢）・まほうつかい・ベビーサタン（火の玉） ----------
     await clip('ranged', async (p) => {
-      for (const [type, dx] of [['monkey', 3], ['monkey', -3], ['shaman', 3], ['shaman', -3], ['imp', 3], ['wisp', 3]]) {
+      for (const [type, dx] of [['monkey', 3], ['monkey', -3], ['shaman', 3], ['shaman', -3], ['imp', 3]]) {
         await setup(p, [{ type, dx, dy: 0 }]);
         await p.waitForTimeout(300);
         let fx = [], shot = false;
@@ -124,8 +124,7 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
           await p.waitForTimeout(900);
         }
         const ea = fx.find((f) => f.t === 'eact'), dt = fx.find((f) => f.t === 'dart'), num = fx.find((f) => f.t === 'num');
-        if (type === 'wisp') chk(shot && !ea && dt.delay === 120, `${W} メタルスライム：技のコマ（逃走）は撃つ動作に使わない（旧の射撃のまま・のけぞり） ${JSON.stringify(fx)}`);
-        else chk(shot && ea && dt.delay === 140 && (!num || num.delay >= 290) && ea.flip === (dx > 0), `${W} ${type}：準備 → 発動で${type === 'monkey' ? '矢' : '火の玉'}が飛ぶ・数字は届いたとき・向き ${JSON.stringify(fx)}`);
+        chk(shot && ea && dt.delay === 140 && (!num || num.delay >= 290) && ea.flip === (dx > 0), `${W} ${type}：準備 → 発動で${type === 'monkey' ? '矢' : '火の玉'}が飛ぶ・数字は届いたとき・向き ${JSON.stringify(fx)}`);
       }
     });
 
@@ -163,6 +162,85 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
       await key(p, 'Space', 900);
       const t1 = await probe(p), mg = t1.en.find((x) => x[0] === 'shaman'), tt = t1.en.find((x) => x[0] === 'turtle');
       chk(Math.abs(mg[2] - (await p.evaluate(() => TS.UI.S.run.player.x))) >= 2 && tt[1] === 5 && t1.hp === t0.hp, `${W} まほうつかい：隣に来られると離れる・仲間を回復しない ${JSON.stringify(t1.en)}`);
+    });
+
+    // ---------- 行動の変更（おすすめ案）：あくまのきしの防御のポーズ・メタルスライム・ベビーサタン・ホイミスライム・おどるほうせき ----------
+    await clip('behaviors', async (p) => {
+      // 描いた敵の絵（コマの canvas）を記録して、どのコマかを調べる
+      await p.evaluate(() => { const o = CanvasRenderingContext2D.prototype.drawImage;
+        CanvasRenderingContext2D.prototype.drawImage = function (img, ...a) { if (window.__rec && img && img.sheet) window.__rec.push(img); return o.call(this, img, ...a); }; });
+      const drawn = (sprite) => p.evaluate(async (sprite) => { window.__rec = []; await new Promise((r) => setTimeout(r, 160)); const ES = TS.Sprites.art.enemySheet[sprite], out = new Set();
+        for (const c of window.__rec) { if (c === ES.guard) out.add('guard'); else if (c === ES.flip.guard) out.add('guard-flip'); else if (c === ES.idle[0] || c === ES.idle[1]) out.add('idle');
+          else if (c === ES.prep || c === ES.flip.prep) out.add('prep'); else if (c === ES.act || c === ES.flip.act) out.add('act'); }
+        window.__rec = null; return [...out]; }, sprite);
+      const gi = await p.evaluate(() => { const g = TS.Sprites.art.enemySheet.darkknight.guard, i = TS.Sprites.art.enemySheet.darkknight.idle[0]; return g && { w: g.width, foot: g.footY, logical: g.logical, idleLogical: i.logical, body: Math.round(g.bodyH * 10) / 10 }; });
+      chk(gi && gi.w === 96 && gi.foot === 84 && gi.logical === gi.idleLogical, `${W} あくまのきし 防御のポーズ：96×96・足元84・待機と同じ倍率（引き伸ばさない） ${JSON.stringify(gi)}`);
+      // 防御のポーズ：たけの右にいる → 盾を左へ（反転）、左にいる → 盾は右のまま
+      for (const [dx, want] of [[1, 'guard-flip'], [-1, 'guard']]) {
+        await setup(p, [{ type: 'darkknight', dx, dy: 0, hold: 99 }, { type: 'darkknight', dx: dx * 2, dy: 1, hold: 99 }]);
+        await p.evaluate(() => { TS.UI.S.run.enemies[0].guard = 2; });
+        await p.waitForTimeout(300);
+        const d = await drawn('darkknight');
+        chk(d.includes(want) && d.includes('idle'), `${W} あくまのきし（たけの${dx > 0 ? '右' : '左'}）：防御中は防御のポーズ（${want === 'guard' ? '盾は右のまま' : '左右反転で盾をたけへ'}）・隣の防御していない騎士は待機 ${d}`);
+        if (W === 390 || dx > 0) await p.screenshot({ path: path.join(OUT, `guard_${dx > 0 ? 'right' : 'left'}_${W}.jpg`), quality: 85 });
+      }
+      // 大技のあと：防御（2行動）→ 防御が終われば待機に戻る
+      await setup(p, [{ type: 'darkknight', dx: 1, dy: 0 }]);
+      let st = null;
+      for (let i = 0; i < 8; i++) { await key(p, 'Space', 700); st = await p.evaluate(() => { const e = TS.UI.S.run.enemies[0]; return { guard: e.guard || 0, rest: e.rest || 0, charge: !!e.charge }; }); if (st.guard > 0 && !st.charge) break; }
+      const d1 = await drawn('darkknight');
+      chk(st.guard > 0 && d1.includes('guard-flip'), `${W} あくまのきし：大技のあと防御のポーズ ${JSON.stringify(st)} ${d1}`);
+      if (W === 390) await p.screenshot({ path: path.join(OUT, `guard_after-blast_${W}.jpg`), quality: 85 });
+      for (let i = 0; i < 4 && st.guard > 0; i++) { await key(p, 'Space', 700); st = await p.evaluate(() => { const e = TS.UI.S.run.enemies[0]; return { guard: e.guard || 0, charge: !!e.charge }; }); }
+      const d3 = await drawn('darkknight');
+      // 隣のままなら、防御が終わった行動で次の大技の予告に入る（準備のコマ）。防御のポーズは残らない
+      chk(st.guard === 0 && !d3.some((x) => x.startsWith('guard')), `${W} あくまのきし：2行動のあと防御が終わる（隣なら次の予告＝準備のコマ） ${JSON.stringify(st)} ${d3}`);
+      // 離れた所で防御中 → 防御が終われば待機に戻る
+      await setup(p, [{ type: 'darkknight', dx: 4, dy: 0 }], { px: 1, py: 2 });
+      await p.evaluate(() => { TS.UI.S.run.enemies[0].guard = 2; });
+      for (let i = 0; i < 4; i++) { await key(p, 'Space', 700); st = await p.evaluate(() => { const e = TS.UI.S.run.enemies[0]; return { guard: e.guard || 0, charge: !!e.charge }; }); if (!st.guard) break; }
+      await p.evaluate(() => { TS.UI.S.run.enemies[0].hold = 99; });
+      await p.waitForTimeout(800);
+      const d2 = await drawn('darkknight');
+      chk(st.guard === 0 && !st.charge && d2.includes('idle') && !d2.some((x) => x.startsWith('guard')), `${W} あくまのきし：防御が終われば待機に戻る ${JSON.stringify(st)} ${d2}`);
+      if (W === 390) await p.screenshot({ path: path.join(OUT, `guard_released_${W}.jpg`), quality: 85 });
+
+      // メタルスライム：見えている間は1ターンに2歩逃げる・攻撃しない・逃走のコマ
+      await setup(p, [{ type: 'wisp', dx: 1, dy: 0 }], { px: 2, py: 2 });
+      const w0 = await probe(p);
+      await p.evaluate(() => { TS.UI.lockUntil = 0; }); await p.keyboard.press('Space'); await p.waitForTimeout(60);
+      const wfx = await fxNow(p), w1 = await probe(p), px = await p.evaluate(() => [TS.UI.S.run.player.x, TS.UI.S.run.player.y]);
+      const dist = Math.max(Math.abs(w1.en[0][2] - px[0]), Math.abs(w1.en[0][3] - px[1])), wea = wfx.find((f) => f.t === 'eact');
+      chk(dist === 3 && w1.hp === w0.hp && w1.turn === w0.turn + 1 && wea && wea.sprite === 'wisp', `${W} メタルスライム：1ターンで2歩逃げる（距離1→${dist}）・攻撃しない・逃走のコマ ${JSON.stringify(wea)}`);
+      const wi = await p.evaluate(() => { const e = TS.UI.S.run.enemies[0]; return { hp: e.hp, maxhp: e.maxhp }; });
+      chk(wi.maxhp >= 3 && wi.maxhp <= 5, `${W} メタルスライム：HP ${wi.maxhp}（3〜5）`);
+      await p.waitForTimeout(700);
+
+      // ベビーサタン：3行動目に たけのまわり3×3を予告 → 次の行動で発動のコマ
+      await setup(p, [{ type: 'imp', dx: 3, dy: 0 }]);
+      let ch = null;
+      for (let i = 0; i < 4 && !ch; i++) { await key(p, 'Space', 900); ch = await p.evaluate(() => { const e = TS.UI.S.run.enemies[0], p = TS.UI.S.run.player; return e.charge ? { n: e.charge.tiles.length, around: e.charge.tiles.every((t) => Math.abs(t.x - p.x) <= 1 && Math.abs(t.y - p.y) <= 1) } : null; }); }
+      chk(ch && ch.around && ch.n >= 4, `${W} ベビーサタン：たけのまわり3×3を予告 ${JSON.stringify(ch)}`);
+      if (W === 390) await p.screenshot({ path: path.join(OUT, `imp-blaze_${W}.jpg`), quality: 85 });
+      await p.evaluate(() => { TS.UI.lockUntil = 0; }); await p.keyboard.press('Space'); await p.waitForTimeout(40);
+      const bea = (await fxNow(p)).find((f) => f.t === 'eact');
+      chk(bea && bea.sprite === 'imp' && bea.dur === 360, `${W} ベビーサタン：発動のコマ ${JSON.stringify(bea)}`);
+      await p.waitForTimeout(1000);
+
+      // ホイミスライム：傷ついた仲間を最大HPの3割回復（回復のコマ）
+      await setup(p, [{ type: 'jelly', dx: 3, dy: 0 }, { type: 'turtle', dx: 3, dy: 2, hold: 99 }]);
+      const tmax = await p.evaluate(() => { const t = TS.UI.S.run.enemies[1]; t.hp = Math.round(t.maxhp * 0.3); return [t.hp, t.maxhp]; });
+      await p.evaluate(() => { TS.UI.lockUntil = 0; }); await p.keyboard.press('Space'); await p.waitForTimeout(60);
+      const hea = (await fxNow(p)).find((f) => f.t === 'eact'), th = (await probe(p)).en[1][1];
+      chk(th === Math.min(tmax[1], tmax[0] + Math.round(tmax[1] * 0.3)) && hea && hea.sprite === 'jelly', `${W} ホイミスライム：仲間を回復（${tmax[0]}→${th}／${tmax[1]}）・回復のコマ ${JSON.stringify(hea)}`);
+      await p.waitForTimeout(900);
+
+      // おどるほうせき：盗む前に倒すと、ゴールドを1つ落とす
+      await setup(p, [{ type: 'thief', dx: 1, dy: 0, hold: 99, hp: 1 }]);
+      for (let i = 0; i < 6; i++) { await key(p, 'ArrowRight', 600); if (!(await p.evaluate(() => TS.UI.S.run.enemies.length))) break; }
+      const g = await p.evaluate(() => { const r = TS.UI.S.run; return { left: r.enemies.length, gold: r.floorItems.filter((f) => f.gold).map((f) => [f.x - r.player.x, f.y - r.player.y, f.gold]) }; });
+      chk(!g.left && g.gold.length === 1 && g.gold[0][0] === 1 && g.gold[0][1] === 0, `${W} おどるほうせき：盗む前に倒すとゴールドを落とす ${JSON.stringify(g)}`);
+      await p.waitForTimeout(600);
     });
   }
   console.log(`\n${ok} OK / ${ng} NG`);
