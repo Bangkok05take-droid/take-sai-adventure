@@ -213,25 +213,26 @@
     // ---- 章の報酬（ボスを倒すと現れる装備） ----
     // 2026年10月（報酬の見直し）：げっこうの盾（moon_shield）→ ファントムシールド、りゅうきしの剣（dragon_sword）→ 真魔剛竜剣 にまとめた（save.js の RENAME_V6）。
     // 新しい報酬の絵は後で届く予定。それまではコードで描いた絵（icon・tint）
-    croc_axe:      { name: 'クロコダインの斧', type: 'weapon', atk: 16, sell: 560, icon: 'axe', tint: 'iron',
+    // 2026年10月：ボスの戦利品（章の報酬・竜人王バランの報酬）と竜の紋章は売れない（noSell。町・旅商人とも。sell は展示室のお礼の計算に残す）
+    croc_axe:      { name: 'クロコダインの斧', type: 'weapon', atk: 16, sell: 560, noSell: true, icon: 'axe', tint: 'iron',
       desc: '獣王クロコダインの大きな斧。重い一撃が魅力。第1章の報酬。' },
-    iceflame_shield: { name: '氷炎の盾', type: 'shield', def: 15, sell: 560, icon: 'shield', tint: 'iceflame',
+    iceflame_shield: { name: '氷炎の盾', type: 'shield', def: 15, sell: 560, noSell: true, icon: 'shield', tint: 'iceflame',
       desc: '半分が氷、半分が炎でできた盾。第2章の報酬。' },
     // 2026年10月：「ファントムシールド」から「漆黒の盾」へ名前だけ変更（内部ID・能力値・絵はそのまま）
-    phantom_shield: { name: '漆黒の盾', type: 'shield', def: 17, sell: 620, icon: 'shield', tint: 'moon',
+    phantom_shield: { name: '漆黒の盾', type: 'shield', def: 17, sell: 620, noSell: true, icon: 'shield', tint: 'moon',
       desc: '銀の縁と紫の宝石に、幻影の意匠が刻まれた黒い盾。第3章の報酬。' },
-    shinma_sword:  { name: '真魔剛竜剣', type: 'weapon', atk: 24, sell: 760, icon: 'sword', tint: 'dragon',
+    shinma_sword:  { name: '真魔剛竜剣', type: 'weapon', atk: 24, sell: 760, noSell: true, icon: 'sword', tint: 'dragon',
       desc: '竜をかたどった金色の鍔と赤い宝石の剣。第4章の報酬。' },
     /* 2026年10月：装備の「勇者の剣・勇者の盾」を「覇者の剣・覇者の盾」へ（名前と絵だけ。IDは hero_sword・hero_shield のまま。
      * 能力値・売値・強化・入手（第5章ミストバーンの初回報酬）は変えない）。絵は ChatGPT 制作のドット絵（assets/items-boss/hasha-*）。
      * 「勇者の剣・勇者の盾」は別IDのお宝（hero_sword_relic・hero_shield_relic）になった */
-    hero_sword:    { name: '覇者の剣', type: 'weapon', atk: 27, sell: 900, icon: 'sword', tint: 'hero',
+    hero_sword:    { name: '覇者の剣', type: 'weapon', atk: 27, sell: 900, noSell: true, icon: 'sword', tint: 'hero',
       desc: '金の翼飾りと紫の宝石をあしらった剣。第5章の報酬。' },
     // ドラゴニックオーラの盾（2026年10月）：防御+22。通常の鍛冶屋で+8まで強化できる。入手は地下40階の裏ボス（まだ無い）。
     // 売値は未決定なので、決まるまで売れない（noSell）。絵は受け取った素材を縮めただけ（assets/items-boss/dragonic-aura-shield.png）
     dragonic_shield: { name: 'ドラゴニックオーラの盾', type: 'shield', def: 22, sell: 0, noSell: true, icon: 'shield', tint: 'hero',
       desc: '竜の気をまとう盾。' },
-    hero_shield:   { name: '覇者の盾', type: 'shield', def: 19, sell: 860, icon: 'shield', tint: 'hero',
+    hero_shield:   { name: '覇者の盾', type: 'shield', def: 19, sell: 860, noSell: true, icon: 'shield', tint: 'hero',
       desc: '金の翼飾りと紫の宝石をあしらった盾。第5章の報酬。' },
     // ---- ボスに備える道具（持っているだけで効く護符・お香） ----
     water_charm:   { name: 'みずがみの護符', type: 'charm', effect: 'fireice', price: 300, sell: 100, icon: 'charm', tint: 'water',
@@ -270,7 +271,7 @@
     sunken_crown:  { name: '水の都の王冠', type: 'treasure', sell: 560, icon: 'crown', tint: 'blue', depth: 16,
       desc: '水没した都に沈んでいた古い王冠。' },
     // 展示室8番目の旧「大ナマズの大真珠」（river_pearl）→ 氷炎結晶。売値は以前のまま
-    iceflame_crystal: { name: '氷炎結晶', type: 'treasure', sell: 900, icon: 'gem', tint: 'prism',
+    iceflame_crystal: { name: '氷炎結晶', type: 'treasure', sell: 900, noSell: true, icon: 'gem', tint: 'prism',
       desc: '青い氷と赤橙の炎が一つになった結晶。フレイザードを倒すと手に入る。第2章の報酬。' },
     giant_crystal: { name: '大すいしょう', type: 'treasure', sell: 700, icon: 'gem', tint: 'crystal', depth: 21,
       desc: '洞窟を照らしていた大きなすいしょう。' },
@@ -298,13 +299,13 @@
     life_necklace: { name: '命つなぎの首飾り', type: 'accessory', acc: 'revive', sell: 800, icon: 'lifeneck',
       desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（首飾りはなくなる）。' },
     // ボスの報酬のアクセサリー。atk・def：装備している間だけ攻撃力・防御力に足す
-    phantom_mask:  { name: 'ファントムマスク', type: 'accessory', acc: 'hunger', def: 5, sell: 900, icon: 'mask',
+    phantom_mask:  { name: 'ファントムマスク', type: 'accessory', acc: 'hunger', def: 5, sell: 900, noSell: true, icon: 'mask',
       desc: '装備している間、歩いても休んでも満腹度が減らない（今の満腹度は回復しない）。防御力+5。第3章の報酬。' },
     // 2026年10月（v3）：アクセサリーの竜の紋章は、赤い橋の向こう岸で拾う品（D.VILLAGE_PICKUPS）。バランの報酬ではなくなった。
     // お宝の紋章とは別の品（お宝の紋章は、まだゲームに無い）
-    dragon_crest:  { name: '竜の紋章', type: 'accessory', acc: 'revive', atk: 5, sell: 1000, icon: 'crest',
+    dragon_crest:  { name: '竜の紋章', type: 'accessory', acc: 'revive', atk: 5, sell: 1000, noSell: true, icon: 'crest',
       desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（紋章はなくなる）。攻撃力+5。金のペンダントに青い竜の紋章。' },
-    demon_robe:    { name: '大魔王のローブ', type: 'accessory', acc: 'deep', sell: 1500, icon: 'robe',
+    demon_robe:    { name: '大魔王のローブ', type: 'accessory', acc: 'deep', sell: 1500, noSell: true, icon: 'robe',
       desc: '装備して出発すると、21階から探索を始められる（1階からも選べる）。大魔王バーンを倒した証。' },
     wish_orb:      { name: '願いの宝珠', type: 'orb', sell: 0, noSell: true, noStore: true, icon: 'orb',
       desc: '遺跡の奥に眠っていた宝珠。村へ持ち帰ろう！' },
@@ -597,8 +598,11 @@
     ],
     /* なくしたボスの報酬の買い戻し（2026年10月）：1個の値段は、報酬をくれたボスで決まる（同じボスの品は同じ値段）。
      * 対象は章の報酬の品（D.CHAPTERS[c].reward.items、G.buybackPrice）。最終章の報酬（大魔王のローブ）は大魔王バーン。
-     * 竜人王バランの報酬・アクセサリーの竜の紋章（橋の向こうで拾う）・黄金の象などのくり返し出る品・素材は対象外（未指定） */
+     * 竜人王バランの報酬・黄金の象などのくり返し出る品・素材は対象外（未指定）。竜の紋章は下の buybackItems */
     buyback: { croc: 1000, flame: 2000, kill: 3000, baran: 4000, mist: 5000, vearn: 6000 },
+    /* ボスの章の報酬のほかに買い戻せる品（2026年10月）：竜の紋章（橋の向こうで拾う・竜人王バランの報酬）。
+     * 一度手に入れていて、今は持っていない（復活でなくなった・置いてきた等）ときに並ぶ。何度でも買える。値段は仮 */
+    buybackItems: { dragon_crest: { price: 5000, note: '一度手に入れた竜の紋章' } },
   };
   /* 商人の呼鈴（2026年10月確定）：町の建設・改修（村の発展の一覧 D.FACILITIES の施設と飾り）をすべて終えると、
    * こもれびの家（村の発展）で寄付できるようになる。1,000G 寄付するたびに1個。

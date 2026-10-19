@@ -3179,11 +3179,45 @@ test('旅商人の買い取り：お宝の分類で町で売れる品だけ、�
   // 端数は切り捨て（仮のお宝で確かめる）
   D.ITEMS._odd = { name: 'テスト', type: 'treasure', sell: 75 }; eq(G.merchantSellPrice({ id: '_odd', uid: -1 }), 37); delete D.ITEMS._odd;
   // 町の売値は今までどおり
-  eq(G.sellPrice(crown), 2000); assert(G.canSell(G.makeItem(S, 'hero_sword')), 'weapons still sell in town');
+  eq(G.sellPrice(crown), 2000); assert(G.canSell(G.makeItem(S, 'bronze_sword')), 'weapons still sell in town');
   // 保存・読み込み直しでも売ったまま
   const L = SV.deserialize(SV.serialize(S)); eq(L.run.runGold, 230); assert(!L.run.bag.some((i) => i.uid === lotus.uid));
 });
 
+test('ボスの戦利品と竜の紋章は売れない（町・旅商人とも）。展示室のお礼は今までどおり（2026年10月）', () => {
+  const S = G.newState(); S.village.funds = 0;
+  const loot = new Set(D.DRAGON_KING.rewards); for (const C of Object.values(D.CHAPTERS)) for (const id of C.reward.items) loot.add(id);
+  loot.add('dragon_crest');
+  eq([...loot].sort().join(), 'croc_axe,croc_tear,demon_robe,dragon_crest,dragonic_shield,hero_shield,hero_sword,iceflame_crystal,iceflame_shield,phantom_mask,phantom_shield,shinma_sword');
+  for (const id of loot) { const it = G.makeItem(S, id); S.village.bag.push(it);
+    assert(!G.canSell(it) && G.sellPrice(it) === 0 && !G.merchantBuysItem(it), id + ' unsellable');
+    const r = G.sell(S, it.uid); assert(!r.ok, id + ' sell refused'); assert(S.village.bag.includes(it)); }
+  eq(S.village.funds, 0);
+  // 強化しても売れない
+  const sw = G.makeItem(S, 'hero_sword'); sw.plus = 3; assert(!G.canSell(sw) && G.sellPrice(sw) === 0);
+  // 展示室のお礼は売値の設定（sell）から：氷炎結晶 900 × 30%
+  eq(Math.floor(D.ITEMS.iceflame_crystal.sell * D.MUSEUM_THANKS), 270);
+});
+test('竜の紋章：なくしたら旅商人から買える（拾ったことがあり、今は持っていないとき。何度でも。値段は仮）', () => {
+  eq(G.buybackPrice('dragon_crest').price, D.MERCHANT.buybackItems.dragon_crest.price);
+  const S = findMerchant(8300, 3, 13), r = S.run, V = S.village;
+  const has = () => G.buybackList(S).some((x) => x.id === 'dragon_crest');
+  V.story.found = V.story.found || {};
+  assert(!has(), 'never obtained');
+  V.story.found.dragon_crest = true;          // 村の橋の向こうで拾った
+  assert(has(), 'lost after pickup');
+  const c = G.makeItem(S, 'dragon_crest'); V.storage.push(c); assert(!has(), 'in storage'); V.storage.pop();
+  r.bag.push(c); assert(!has(), 'in bag'); r.bag.pop();
+  // 竜人王バランの報酬で拾った記録だけでも買える
+  delete V.story.found.dragon_crest; V.bossObtained = { dragon_crest: true }; assert(has(), 'obtained from Dragon King');
+  // 買う：探索中のお金から先に
+  r.runGold = D.MERCHANT.buybackItems.dragon_crest.price; const n = r.bag.length;
+  const res = G.merchantBuyback(S, 'dragon_crest'); assert(res.ok, res.msg);
+  eq(r.bag.length, n + 1); eq(r.runGold, 0); assert(!has(), 'held again');
+  // 復活で使ってなくなれば、また買える
+  r.bag = r.bag.filter((i) => i.id !== 'dragon_crest'); assert(has(), 'again after use');
+  const L = SV.deserialize(SV.serialize(S)); assert(G.buybackList(L).some((x) => x.id === 'dragon_crest'), 'after reload');
+});
 test('旅商人の素材：値段は4段階に固定（琥珀1000・青銅2000・すいしょう3000・金ぱく4000）。ばらつきなし', () => {
   eq(JSON.stringify(D.MERCHANT.goods.map((g) => [g.id, g.price])), JSON.stringify([['amber_shard', 1000], ['bronze_shard', 2000], ['crystal_shard', 3000], ['gold_leaf', 4000]]));
   eq(D.MERCHANT.priceSpread, 0);
@@ -3193,7 +3227,7 @@ test('なくしたボスの報酬の買い戻し：対象と値段（ボスご�
   const want = { croc_tear: 1000, croc_axe: 1000, iceflame_shield: 2000, iceflame_crystal: 2000, phantom_shield: 3000, phantom_mask: 3000,
     shinma_sword: 4000, hero_sword: 5000, hero_shield: 5000, demon_robe: 6000 };
   for (const [id, pr] of Object.entries(want)) eq(G.buybackPrice(id).price, pr, id);
-  for (const id of ['dragon_crest', 'golden_elephant', 'hero_sword_relic', 'hero_shield_relic', 'amber_shard', 'dragonic_shield', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
+  for (const id of ['golden_elephant', 'hero_sword_relic', 'hero_shield_relic', 'amber_shard', 'dragonic_shield', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
   const S = findMerchant(8300, 3, 13), r = S.run, V = S.village;
   const ids = () => G.buybackList(S).map((x) => x.id).sort().join();
   // 倒しただけ・未入手：出ない

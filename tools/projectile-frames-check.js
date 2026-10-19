@@ -1,4 +1,4 @@
-// 飛び道具の二重表示の修正（ZIP projectile_frames_fix_v1）の確認：node tools/projectile-frames-check.js [出力フォルダ]（既定 docs/monster-sprites-v1/projectile/）
+// 飛び道具の二重表示の修正（ZIP projectile_frames_fix_v1）と、まほうつかいの火の玉を手の先から出す変更の確認：node tools/projectile-frames-check.js [出力フォルダ]（既定 docs/monster-sprites-v1/projectile/）
 // 確かめること（PCのブラウザ、幅360・390・430。画像は390）：
 //  リリパット・ベビーサタンの発動のコマに矢・火の玉が描かれていない。飛び道具は発動のコマに切り替わると同時に1回だけ、弓・伸ばした手の先から出る
 //  左右反転したときは、出る位置も反転。準備 → 発動で足元・倍率は同じ（体の位置や大きさが急に変わらない）
@@ -11,7 +11,7 @@ const PORT = 8829;
 const srv = http.createServer((q, r) => { let f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0])); if (f.endsWith('/')) f += 'index.html';
   fs.readFile(f, (e, d) => { if (e) { r.writeHead(404); r.end(); return; } r.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg' }[path.extname(f)] || 'application/octet-stream' }); r.end(d); }); }).listen(PORT);
 let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(c ? 'OK' : 'NG', m); };
-const NAME = { monkey: 'リリパット', imp: 'ベビーサタン' };
+const NAME = { monkey: 'リリパット', imp: 'ベビーサタン', shaman: 'まほうつかい' };
 
 async function boot(p) {
   await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
@@ -44,12 +44,12 @@ const setup = (p, type, dx) => p.evaluate(([type, dx]) => { const S = TS.UI.S, r
     await boot(p);
     // 絵：最初の3コマは前と同じ、発動のコマだけ。足元・倍率はほかのコマと同じ
     const art = await p.evaluate(() => { const out = {};
-      for (const k of ['monkey', 'imp']) { const E = TS.Sprites.art.enemySheet[k], bb = (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let x0 = 99, y0 = 99, x1 = -1, y1 = -1;
+      for (const k of ['monkey', 'imp', 'shaman']) { const E = TS.Sprites.art.enemySheet[k], bb = (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let x0 = 99, y0 = 99, x1 = -1, y1 = -1;
         for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } return [x0, y0, x1, y1]; };
         out[k] = { prep: bb(E.prep), act: bb(E.act), same: E.prep.logical === E.act.logical && E.prep.footY === E.act.footY, muzzle: E.muzzle }; }
       return out; });
-    for (const [k, v] of Object.entries(art)) chk(v.same && v.prep[3] === 83 && v.act[3] === 83 && Math.abs(v.prep[1] - v.act[1]) <= 7 && v.muzzle, `${W} ${NAME[k]}：準備と発動の倍率・足元が同じ（足元の行 ${v.prep[3]}・${v.act[3]}、頭 ${v.prep[1]}→${v.act[1]}）・発射位置 ${v.muzzle} ${JSON.stringify(v)}`);
-    for (const type of ['monkey', 'imp']) for (const dx of [3, -3]) {
+    for (const [k, v] of Object.entries(art)) chk(v.same && v.prep[3] === 83 && v.act[3] === 83 && (k === 'shaman' || Math.abs(v.prep[1] - v.act[1]) <= 7) && v.muzzle, `${W} ${NAME[k]}：準備と発動の倍率・足元が同じ（足元の行 ${v.prep[3]}・${v.act[3]}、頭 ${v.prep[1]}→${v.act[1]}）・発射位置 ${v.muzzle} ${JSON.stringify(v)}`);
+    for (const type of ['monkey', 'imp', 'shaman']) for (const dx of [3, -3]) {
       await setup(p, type, dx);
       await p.waitForTimeout(250);
       let got = null;
@@ -68,7 +68,7 @@ const setup = (p, type, dx) => p.evaluate(([type, dx]) => { const S = TS.UI.S, r
       const d = got.darts[0], off = { x: d.from.x - got.e[0], y: d.from.y - got.e[1] };
       chk(got.darts.length === 1 && got.ea && d.delay === got.ea.prep, `${W} ${NAME[type]}（たけの${side}）：飛び道具は1回だけ、発動のコマに切り替わる時（${d.delay}ms）に出る`);
       chk(got.ea.flip === (dx > 0) && want && Math.abs(off.x - want.x) < 1e-9 && Math.abs(off.y - want.y) < 1e-9 && Math.sign(off.x) === -Math.sign(dx),
-        `${W} ${NAME[type]}（たけの${side}）：発射位置は${type === 'monkey' ? '弓' : '手の先'}（マスの中心から x${off.x.toFixed(2)}・y${off.y.toFixed(2)} マス、たけの方）・反転 ${got.ea.flip}`);
+        `${W} ${NAME[type]}（たけの${side}）：発射位置は${type === 'monkey' ? '弓' : type === 'shaman' ? '杖を持つ手の先（杖の先の火の玉）' : '手の先'}（マスの中心から x${off.x.toFixed(2)}・y${off.y.toFixed(2)} マス、たけの方）・反転 ${got.ea.flip}`);
       // 時間を止めて描く：準備・発動の始まり・飛んでいる途中
       const frames = [];
       for (const ms of [70, 141, 190, 240]) {
@@ -93,10 +93,10 @@ const setup = (p, type, dx) => p.evaluate(([type, dx]) => { const S = TS.UI.S, r
     chk(!errs.length, `${W} エラーなし ${errs.join(' / ')}`);
     await ctx.close();
   }
-  // 390 の切り出しを1枚に（行：リリパット右・左、ベビーサタン右・左。列：70・141・190・240ms）
+  // 390 の切り出しを1枚に（行：リリパット右・左、ベビーサタン右・左、まほうつかい右・左。列：70・141・190・240ms）
   try {
     const rows = [];
-    for (const type of ['monkey', 'imp']) for (const s of ['right', 'left']) {
+    for (const type of ['monkey', 'imp', 'shaman']) for (const s of ['right', 'left']) {
       const fs4 = [70, 141, 190, 240].map((ms) => path.join(OUT, `${type}_${s}_${ms}.png`));
       const row = path.join(OUT, `_row_${type}_${s}.png`);
       execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...fs4.flatMap((f) => ['-i', f]), '-filter_complex', '[0][1][2][3]hstack=4,pad=iw+0:ih+8:0:0:0x202020', row]);

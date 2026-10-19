@@ -504,6 +504,8 @@
   /* 対象の品と値段：章の報酬の品（D.CHAPTERS[c].reward.items）。値段は報酬をくれたボス（D.MERCHANT.buyback）。値段の決まっていないボスは対象外 */
   G.buybackPrice = function (id) {
     for (const C of Object.values(D.CHAPTERS)) if (C.reward.items.includes(id) && D.MERCHANT.buyback[C.boss]) return { boss: C.boss, price: D.MERCHANT.buyback[C.boss] };
+    const X = (D.MERCHANT.buybackItems || {})[id];   // 竜の紋章など、章の報酬でない品（boss なし）
+    if (X) return { boss: null, price: X.price, note: X.note };
     return null;
   };
   G.markBossObtained = function (V, id) { if (G.buybackPrice(id)) { V.bossObtained = V.bossObtained || {}; V.bossObtained[id] = true; } };
@@ -536,6 +538,13 @@
       const bp = G.buybackPrice(id);
       if (!bp || out.some((x) => x.id === id) || !(V.bossObtained || {})[id] || G.holdsItem(S, id)) continue;
       out.push({ id, boss: bp.boss, price: bp.price });
+    }
+    // 竜の紋章など：入手履歴（竜人王バランの報酬を拾った）か、村で拾ったことがあれば（D.VILLAGE_PICKUPS）
+    const found = (V.story || {}).found || {};
+    for (const id of Object.keys(D.MERCHANT.buybackItems || {})) {
+      const bp = G.buybackPrice(id), pk = Object.keys(D.VILLAGE_PICKUPS || {}).find((k) => D.VILLAGE_PICKUPS[k].item === id);
+      if (out.some((x) => x.id === id) || !((V.bossObtained || {})[id] || (pk && found[pk])) || G.holdsItem(S, id)) continue;
+      out.push({ id, boss: null, price: bp.price, note: bp.note });
     }
     return out;
   };

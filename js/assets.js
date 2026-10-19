@@ -195,7 +195,7 @@
         jelly: { file: 'healslime', kind: 'heal', face: null, body: 40 },
         statue: { file: 'living_statue', kind: 'attack', face: 'L', body: 64 },
         bat: { file: 'dracky', kind: 'attack', face: 'R', body: 40 },   // ドラキー：最初の ZIP では切れていたので、再送（ZIP dracky_fix_v1）の絵
-        shaman: { file: 'mage', kind: 'attack', face: 'R', body: 40 },
+        shaman: { file: 'mage', kind: 'attack', face: 'R', body: 40, muzzle: [67, 56] },   // 杖を持つ手の先（杖の先の火の玉の中心。絵の火の玉に重ねて飛ばす）
         lizard: { file: 'bubble_slime', kind: 'attack', face: 'R', body: 40 },
         thief: { file: 'dancing_jewel', kind: 'steal', face: null, body: 40 },
         golem: { file: 'golem', kind: 'attack', face: 'L', body: 64 },

@@ -2307,8 +2307,8 @@
       // なくしたボスの報酬の買い戻し（入手履歴があって、今は持っていない品だけ）
       const lost = G.buybackList(UI.S);
       if (lost.length) {
-        html += `<h3>なくした品</h3><p class="note">ボスの報酬で、一度手に入れたのに今は持っていない品を売ってくれます（強化は付いていない新しい品）。</p><div class="list">`;
-        html += lost.map((g) => { const d = D.ITEMS[g.id]; return `<button class="row buyback" data-id="${g.id}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(d.name)}<small>${esc(D.ENEMIES[g.boss].name)}の報酬</small></span><span class="pr">${g.price}G</span></button>`; }).join('');
+        html += `<h3>なくした品</h3><p class="note">ボスの報酬と竜の紋章で、一度手に入れたのに今は持っていない品を売ってくれます（強化は付いていない新しい品）。</p><div class="list">`;
+        html += lost.map((g) => { const d = D.ITEMS[g.id]; return `<button class="row buyback" data-id="${g.id}"><img src="${SP.iconURL(d)}" alt=""><span class="nm">${esc(d.name)}<small>${esc(g.boss ? D.ENEMIES[g.boss].name + 'の報酬' : g.note)}</small></span><span class="pr">${g.price}G</span></button>`; }).join('');
         html += '</div>';
       }
       // お宝の買い取り（町の売値の半額。お宝の分類で、町で売れる品だけ）
@@ -2331,7 +2331,7 @@
       else if (w.total < g.price) why = 'お金が足りません（あと' + (g.price - w.total) + 'G）。';
       const payRun = Math.min(w.run, g.price), payV = g.price - payRun;
       const html = `<div class="detail-head"><img src="${SP.iconURL(d)}" alt=""><div><b>${esc(d.name)}</b></div></div><p>${esc(d.desc)}</p>
-        <div class="kv"><span>個数</span><span>1個（強化なし）</span><span>値段</span><span>${g.price}G（${esc(D.ENEMIES[g.boss].name)}の報酬）</span>
+        <div class="kv"><span>個数</span><span>1個（強化なし）</span><span>値段</span><span>${g.price}G（${esc(g.boss ? D.ENEMIES[g.boss].name + 'の報酬' : g.note)}）</span>
         <span>支払い</span><span>探索中のお金 ${payRun}G${payV ? '＋村の資金 ' + payV + 'G' : ''}</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
         ${why ? `<p class="warnbox">${esc(why)}</p>` : '<p class="note">ターンは進みません。</p>'}`;
       let done = false;
