@@ -2027,7 +2027,7 @@ test('30階の時空の亀裂の行き先：真大魔王バーンを倒す前は
   const keep = D.HIDDEN_DUNGEON; D.HIDDEN_DUNGEON = null; try { eq(G.crackState(S), 'hiddenNotReady'); } finally { D.HIDDEN_DUNGEON = keep; }
   S.village.story.defeated.truevearn = false; S.run.player.x = S.run.crack.x; S.run.player.y = S.run.crack.y; G.act(S, { type: 'descend' }); eq(S.run.floor, 31);
 });
-test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂から31階へ。31〜35階は部屋が広い（面積約2倍）・帰還の祠なし・32〜34階は強敵・35階に竜人王バラン → 帰還口。読み込み直しても隠しダンジョンのまま', () => {
+test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂から31階へ。31〜34階は部屋の数が約2倍（大きさは同じ）・道具も増える・帰還の祠なし・32〜34階は強敵（仮）・35階に竜人王バラン（ボス部屋は本編と同じ）→ 帰還口。読み込み直しても隠しダンジョンのまま', () => {
   const H = D.HIDDEN_DUNGEON;
   const S = toBossFloor(6, 979); defeatBoss(S); G.commitRescue(S);
   S.village.story.defeated.truevearn = true; S.village.story.endingDone = true;
@@ -2035,14 +2035,19 @@ test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂か
   S.run.player.x = S.run.crack.x; S.run.player.y = S.run.crack.y;
   const r0 = G.act(S, { type: 'descend' }); assert(r0.events.some((e) => e.t === 'hiddenEnter'));
   const run = S.run; eq(run.floor, 31); assert(run.hidden); eq(G.maxFloor(run), 35);
-  // 部屋の大きさ：本編（同じ階・同じ種）と比べて、部屋の平均の面積がおよそ2倍
+  // 部屋の数：本編（同じ種）と比べておよそ2倍。部屋の大きさ（平均の面積）は同じくらい。通路は幅1マスのまま（形の検査）。階段・全部の床へ行ける
   const avg = (m) => m.rooms.reduce((a, r) => a + r.w * r.h, 0) / m.rooms.length;
-  let hid = 0, base = 0;
-  for (let seed = 1; seed <= 60; seed++) {
-    hid += avg(DG.generate(31, R.create(seed), { hidden: true }).map);
-    base += avg(DG.generate(31, R.create(seed), {}).map);
+  let hid = 0, base = 0, ah = 0, ab = 0;
+  for (let seed = 1; seed <= 80; seed++) {
+    const gh = DG.generate(31, R.create(seed), { hidden: true }), gb = DG.generate(31, R.create(seed), {});
+    hid += gh.map.rooms.length; base += gb.map.rooms.length; ah += avg(gh.map); ab += avg(gb.map);
+    assert(TS.DungeonCheck.shapeOk(gh.map) && TS.DungeonCheck.connected(gh.map), 'shape/connected ' + seed);
+    const dd = DG.distances(gh.map, gh.start.x, gh.start.y); assert(dd[gh.stairs.y * gh.map.w + gh.stairs.x] >= 0, 'stairs reachable ' + seed);
   }
-  const ratio = hid / base; assert(ratio >= 1.8 && ratio <= 2.6, 'room area about 2x: ' + ratio.toFixed(2));
+  const ratio = hid / base; assert(ratio >= 1.8 && ratio <= 2.2, 'room count about 2x: ' + ratio.toFixed(2));
+  const sz = ah / ab; assert(sz >= 0.9 && sz <= 1.1, 'room size same: ' + sz.toFixed(2));
+  // 道具・お金は部屋の数に合わせて増やす（本編の魔王の城より多い）
+  const FD = G.F(run), FB = D.floorFor(6, 31); assert(FD.itemCount[0] > FB.itemCount[1] && FD.goldCount[0] > FB.goldCount[0], 'more items');
   eq(run.map.w + 'x' + run.map.h, D.HIDDEN_MAP.w + 'x' + D.HIDDEN_MAP.h);
   const L0 = SV.deserialize(SV.serialize(S)); assert(L0.run.hidden && L0.run.floor === 31 && G.F(L0.run).hidden, 'hidden kept after reload');
   // 31〜34階：帰還の祠なし。32〜34階は強敵（同じ敵が本編より強い）。入口から全部の床・階段へ行ける
@@ -2061,18 +2066,83 @@ test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂か
     goDown(S);
   }
   eq(seen.join(), '31,32,33,34');
-  // 35階：竜人王バラン（部屋の大きいボス部屋）。帰還の祠なし。倒すと帰還口、品の報酬は無い
+  // 35階：竜人王バラン（ボス部屋は本編と同じ大きさ。部屋の数の倍率は使わない）。帰還の祠なし。倒すと帰還口
   eq(run.floor, 35); const b = run.enemies.find((e) => e.boss); eq(b && b.type, 'dragonbaran'); assert(!run.returnPoint);
-  eq(run.bossFight.w * run.bossFight.h, 21 * 21, 'big arena');
-  const items0 = run.floorItems.length;
+  eq(run.bossFight.w * run.bossFight.h, 15 * 15, 'normal arena'); eq(run.map.w + 'x' + run.map.h, D.MAP.w + 'x' + D.MAP.h);
+  // 報酬：真魔剛竜剣を持っている（装備中）・竜の盾は倉庫にある → どちらも出さない。竜の紋章は村で拾い済みで今は持っていない → 出す
+  run.bag = run.bag.filter((i) => i.id !== 'shinma_sword' && i.id !== 'dragonic_shield' && i.id !== 'dragon_crest');
+  S.village.storage = S.village.storage.filter((i) => !['shinma_sword', 'dragonic_shield', 'dragon_crest'].includes(i.id));
+  const sw = G.makeItem(S, 'shinma_sword'); run.bag.push(sw); G.act(S, { type: 'equip', uid: sw.uid });
+  S.village.storage.push(G.makeItem(S, 'dragonic_shield')); S.village.story.found = { dragon_crest: true };
   defeatBoss(S);
   assert(run.portal && S.village.story.defeated.dragonbaran, 'portal after dragon king');
-  eq(run.floorItems.filter((f) => f.item && f.item.bossReward).length, 0, 'no item reward yet');
+  eq(run.floorItems.filter((f) => f.item && f.item.bossReward).map((f) => f.item.id).join(), 'dragon_crest', 'only the item not owned');
   run.player.x = run.portal.x; run.player.y = run.portal.y; G.act(S, { type: 'returnHome' });
   assert(run.over || !S.run || S.run.over, 'returned');
   // 本編（真大魔王バーンを倒す前）の31階は、隠しダンジョンではない
   const M = toBossFloor(6, 980); defeatBoss(M); G.commitRescue(M); M.run.player.x = M.run.crack.x; M.run.player.y = M.run.crack.y; G.act(M, { type: 'descend' });
   assert(M.run.floor === 31 && !M.run.hidden && !G.F(M.run).hidden && M.run.map.w === D.MAP.w, 'main 31F is not hidden');
+});
+test('竜人王バランの報酬：持っていない品だけ。床に落ちたまま（未回収）・村で拾う前の竜の紋章・展示室は所有扱い。2回目は重ならない', () => {
+  const S = G.newState(), V = S.village; G.depart(S, 5); const run = S.run;
+  run.bag = []; V.storage = []; V.bag = [];
+  eq(G.dragonKingRewards(S).join(), 'shinma_sword,dragonic_shield', 'crest waits in the village (not picked yet)');
+  V.story.found = { dragon_crest: true };
+  eq(G.dragonKingRewards(S).join(), 'shinma_sword,dragonic_shield,dragon_crest');
+  V.bag.push(G.makeItem(S, 'shinma_sword'));
+  run.floorItems.push({ x: 1, y: 1, item: Object.assign(G.makeItem(S, 'dragonic_shield'), { bossReward: true }) });   // 前回の未回収（帰還時に届く）
+  eq(G.dragonKingRewards(S).join(), 'dragon_crest');
+  run.bag.push(G.makeItem(S, 'dragon_crest'));
+  eq(G.dragonKingRewards(S).length, 0, 'all owned: nothing');
+  eq(D.DRAGON_KING.materials.length, 0, 'materials not decided yet');
+});
+test('竜人王バランの戦い方：ドルオーラ（一直線→後半は十字）・なぎ払い（まわり8マス）・突進（離れて一直線）・通常攻撃。どれも予告→発動→隙。後半はオーラで強く', () => {
+  const S = newRun(3301, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);
+  const run = S.run, K = D.DRAGON_KING, p = run.player;
+  const mk = (x, y) => { const b = G.makeEnemy(run, 'dragonbaran', x, y); b.boss = true; b.awake = true; b.hold = 0; run.enemies = [b]; run.bossFight = { x: 2, y: 2, w: 20, h: 12, engaged: true }; return b; };
+  p.hp = p.maxhp = 99999;
+  // ドルオーラ：一直線上・2マス
+  let b = mk(10, 5); p.x = 12; p.y = 5; G.updateVision(run); b.cds = { rush: 9, sweep: 9 };
+  G.act(S, { type: 'wait' });
+  assert(b.charge && b.charge.fx === 'doloura' && b.charge.tiles.some((t) => t.x === 12 && t.y === 5) && b.charge.tiles.every((t) => t.y === 5), 'doloura line telegraph');
+  p.y = 6; const hp0 = p.hp; G.act(S, { type: 'wait' });   // 列の外へよける
+  eq(p.hp, hp0, 'dodged doloura'); eq(b.rest, K.doloura.rest, 'rest after doloura');
+  // なぎ払い：隣
+  b = mk(10, 5); p.x = 11; p.y = 5; b.cds = { doloura: 9, rush: 9 }; G.updateVision(run);
+  G.act(S, { type: 'wait' }); assert(b.charge && b.charge.fx === 'sweep' && b.charge.tiles.length === 8, 'sweep telegraph 8 tiles');
+  p.x = 12; const hp1 = p.hp; G.act(S, { type: 'wait' }); eq(p.hp, hp1, 'one step away dodges the sweep'); eq(b.rest, K.sweep.rest);
+  // 突進：離れて一直線（3マス以上）
+  b = mk(5, 5); p.x = 12; p.y = 5; b.cds = { doloura: 9, sweep: 9 }; G.updateVision(run);
+  G.act(S, { type: 'wait' }); assert(b.charge && b.charge.kind === 'rush', 'rush telegraph');
+  const hp2 = p.hp; G.act(S, { type: 'wait' }); assert(p.hp < hp2, 'rush hits when staying'); eq(b.rest, K.rush.rest);
+  // 通常攻撃：技が待ち中で隣
+  b = mk(10, 5); p.x = 11; p.y = 5; b.cds = { doloura: 9, rush: 9, sweep: 9 }; G.updateVision(run);
+  const r3 = G.act(S, { type: 'wait' }); assert(!b.charge && r3.events.some((e) => (e.t === 'hit' && e.target === 'player') || e.t === 'miss'), 'normal attack (hit or miss)');
+  // 後半：HP半分以下でオーラ（攻撃力が上がる）・ドルオーラは十字・待ち時間が短い・予告と隙は残る
+  b = mk(10, 5); const atk0 = b.atk; b.hp = Math.floor(b.maxhp * 0.5); p.x = 12; p.y = 5; b.cds = { rush: 9, sweep: 9 }; G.updateVision(run);
+  G.act(S, { type: 'wait' });
+  assert(b.enraged && b.atk > atk0 && b.charge && b.charge.fx === 'doloura', 'enraged doloura');
+  assert(b.charge.tiles.some((t) => t.x === 10 && t.y !== 5) && b.charge.tiles.some((t) => t.y === 5), 'cross');
+  eq(b.cds.doloura, K.doloura.cd[1], 'shorter cooldown');
+  p.x = 11; p.y = 6; const hp4 = p.hp; G.act(S, { type: 'wait' }); eq(p.hp, hp4, 'diagonal dodges the cross'); eq(b.rest, K.doloura.rest, 'rest remains in phase 2');
+});
+test('商人の呼鈴の寄付：村の発展（施設と飾り）をすべて建てるまで寄付できない。開いたら1000Gで1個（何度でも）', () => {
+  const S = G.newState(), V = S.village; V.funds = 2500;
+  assert(!G.bellDonationOpen(S), 'closed at first');
+  for (const f of D.FACILITIES.slice(0, -1)) V.built[f.id] = true;
+  assert(!G.bellDonationOpen(S), 'closed until the last one');
+  V.built[D.FACILITIES[D.FACILITIES.length - 1].id] = true;
+  assert(G.bellDonationOpen(S), 'open when all built');
+  assert(G.donateForBell(S).ok && G.donateForBell(S).ok); eq(V.funds, 500); eq(V.bag.filter((i) => i.id === 'merchant_bell').length, 2);
+  // 隠しアイテム・会話・お宝の収集は条件に入れない
+  eq(Object.keys(V.story.found || {}).length, 0); eq(Object.keys(V.donated || {}).length, 0);
+});
+test('ワーンの食堂：完成の会話はワーンの指定の文。古い食堂名（サイの食堂）は残っていない', () => {
+  const fs = require('fs'), path = require('path');
+  const src = ['js/ui.js', 'js/data.js', 'js/village.js', 'js/story.js', 'js/game.js'].map((f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')).join('\n');
+  assert(!src.includes('サイの食堂'), 'no old name');
+  assert(src.includes("['waan', 'お待たせ！ ワーンの食堂ができたよ！\\n冒険に行く前は、ちゃんと食べていってね！\\n元気が出る料理を作ってあげる！！']"), 'line');
+  eq(D.FACILITIES.find((f) => f.id === 'diner').name, 'ワーンの食堂');
 });
 test('冒頭の会話：大魔王は地下33階へ封じる', () => {
   assert(D.STORY.intro.some((l) => l[1].includes('地下33階へ封じる')) || JSON.stringify(D.STORY).includes('地下33階へ封じる'));
@@ -3061,14 +3131,10 @@ test('商人の呼鈴：歩いて行ける安全な空きマスに商人が現�
   run.merchant = { x: 4, y: 4, stock: [], met: false, called: true }; const lotus = G.makeItem(S, 'golden_lotus'); run.bag.push(lotus);
   assert(G.merchantSell(S, lotus.uid).ok);
 });
-test('商人の呼鈴の寄付：街のイベントのコンプリートの判定が決まるまで寄付できない。開いたら1000Gで1個（何度でも）', () => {
-  const S = G.newState(), V = S.village; V.funds = 2500;
-  assert(!G.bellDonationOpen(S) && !G.donateForBell(S).ok, 'closed while the condition is undecided');
-  const keep = D.BELL.unlock; D.BELL.unlock = () => true;
-  try {
-    assert(G.donateForBell(S).ok && G.donateForBell(S).ok); eq(V.funds, 500); eq(V.bag.filter((i) => i.id === 'merchant_bell').length, 2);
-    assert(!G.donateForBell(S).ok, 'not enough money'); eq(V.funds, 500);
-  } finally { D.BELL.unlock = keep; }
+test('商人の呼鈴の寄付：お金が足りないと寄付できない。呼鈴は倉庫に入れられるが売れない', () => {
+  const S = G.newState(), V = S.village; V.funds = 500;
+  for (const f of D.FACILITIES) V.built[f.id] = true;
+  assert(!G.donateForBell(S).ok, 'not enough money'); eq(V.funds, 500);
   assert(G.canStore(G.makeItem(S, 'merchant_bell')) && !G.canSell(G.makeItem(S, 'merchant_bell')));
 });
 

@@ -9,6 +9,7 @@ fs.mkdirSync(OUT, { recursive: true });
 
 let passed = 0, failed = 0, CUR = null;
 async function test(name, fn) {
+  if (process.env.ONLY && !name.includes(process.env.ONLY)) return;   // 調べるときだけ：名前に ONLY を含むテストだけ流す
   try { await fn(); passed++; console.log('  ok  ' + name); }
   catch (e) { failed++; try { await CUR.screenshot({ path: path.join(OUT, 'FAIL_' + failed + '.png') }); } catch (_) {} console.log('  NG  ' + name + '\n      ' + String(e.stack || e).split('\n').slice(0, 3).join('\n      ')); }
 }
@@ -1570,6 +1571,10 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   });
 
   await test('場面の音楽：タイトル（操作後にファンファーレ1回）→村→施設の開閉→ヤナイの記録・像→ダンジョン→階の移動・道具・メニュー→ミュート→裏に回す→ボス→帰還→読み込み直し', async () => {
+    // いちばん上の画面を閉じる：開くまで待つ（最大3秒）。開かなければ、どの場面か分かるように止める
+    // 開いている画面をすべて閉じる。閉じる途中のムービー（暗転の間は入力を止めるため一覧に残る）は、消えるまで待つ
+    const closeAllQ = async (q) => { for (let i = 0; i < 100 && await q.evaluate(() => { const m = TS.UI.modals[TS.UI.modals.length - 1]; if (m) m.close(); return TS.UI.modals.length; }); i++) await q.waitForTimeout(50); };
+    const closeTopQ = async (q) => { for (let i = 0; i < 30 && !(await q.evaluate(() => TS.UI.modals.length)); i++) await q.waitForTimeout(100); const ok = await q.evaluate(() => { const m = TS.UI.modals[TS.UI.modals.length - 1]; if (!m) return false; m.close(); return true; }); if (!ok) throw new Error('閉じる画面が開いていない（' + await q.evaluate(() => TS.UI.screen) + '）'); };
     const { ctx: c2, p: q } = await mk(phone);
     try {
       const FIXT = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-cleared.json'), 'utf8');
@@ -1588,16 +1593,17 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       assert(await same('__f'), 'fanfare not restarted by another tap');
       // つづきから → 村の曲（ファンファーレはフェードして切り替わる）
       await q.tap('#btn-continue'); await q.waitForTimeout(300); await talkThrough();
-      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await closeAllQ(q);
       await q.waitForTimeout(700);
       c = await cur(); assert(c.id === 'village' && c.bgm && !c.timer, 'village music ' + JSON.stringify(c));
       await keep('__v');
-      for (const fac of ['shop', 'storage', 'develop']) { await q.tap(`.fac[data-fac="${fac}"]`); await q.waitForTimeout(200); await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close()); await q.waitForTimeout(100); }
+      // 施設のボタン：開くまで待ってから閉じる（決まった時間だけ待つと、開く前に閉じようとして失敗することがあった）
+      for (const fac of ['shop', 'storage', 'develop']) { await q.tap(`.fac[data-fac="${fac}"]`); for (let i = 0; i < 30 && !(await q.evaluate(() => TS.UI.modals.length)); i++) await q.waitForTimeout(100); await closeTopQ(q); await q.waitForTimeout(100); }
       assert(await same('__v'), 'village music continues across facilities');
       // ヤナイの記録・記念像：ヤナイのテーマ → 閉じると村の曲
       await q.evaluate(() => TS.UI.debug.showRecords()); await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'yanai' && c.bgm, 'yanai theme for records ' + JSON.stringify(c));
-      await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close()); await q.waitForTimeout(800);
+      await closeTopQ(q); await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'village', 'back to village after records ' + JSON.stringify(c));
       await q.evaluate(() => TS.UI.debug.statueTalk()); await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'yanai', 'yanai theme at statue ' + JSON.stringify(c));
@@ -1605,7 +1611,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       c = await cur(); assert(c.id === 'village', 'back to village after statue ' + JSON.stringify(c));
       // 出発 → ダンジョンの曲
       await q.tap('.fac.depart'); await q.waitForTimeout(200); await q.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await q.waitForTimeout(200); await q.click('text=出発する'); await q.waitForTimeout(300); await talkThrough();
-      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await closeAllQ(q);
       await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer, 'dungeon music ' + JSON.stringify(c));
       await keep('__d');
@@ -1632,15 +1638,15 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
         while (r.floor < G.maxFloor(r) - 1) { r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
         r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); });
       await q.waitForTimeout(1200); await talkThrough();
-      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await closeAllQ(q);
       // ボスの階に着いただけ：探索の曲のまま（同じ再生が続く）。ボス部屋に入るとボス戦の新しい曲（以前の合成ループは使わない）
       c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer && c.scene === 'dungeon', 'dungeon music on the boss floor before the fight ' + JSON.stringify(c));
       await q.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let y = A.y; while (!TS.Dungeon.passable(r.map, A.x - 1, y)) y++; r.player.x = A.x - 1; r.player.y = y; TS.Game.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'right' }); });
       await q.waitForTimeout(800); await talkThrough();
-      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await closeAllQ(q);
       // クロコダインの登場ムービー（いま閉じた＝スキップ）のあとに、戦いの前の会話が開くので、それも進める
       await q.waitForTimeout(600); await talkThrough();
-      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await closeAllQ(q);
       c = await cur(); assert(c.id === 'boss' && c.bgm && !c.timer && c.scene === 'boss', 'boss music after entering ' + JSON.stringify(c));
       // メニューの開閉・部屋から出ても、ボス戦の曲は最初から流し直さない
       await keep('__b');
@@ -1650,7 +1656,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       // 帰還の巻物で村へ → 村の曲（ボス曲は止まる）
       await q.evaluate(() => { const r = TS.UI.S.run, it = r.bag.find((i) => i.id === 'return_scroll'); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'use', uid: it.uid }); });
       await q.waitForTimeout(1800); await talkThrough();
-      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await closeAllQ(q);
       await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'village' && !c.timer, 'village after return ' + JSON.stringify(c));
       // 読み込み直して「つづきから」：ファンファーレ → 村の曲。ボスの進行・所持品はそのまま
@@ -1658,7 +1664,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.reload(); await q.waitForTimeout(800);
       await q.touchscreen.tap(20, 20); await q.waitForTimeout(300);
       await q.tap('#btn-continue'); await q.waitForTimeout(300); await talkThrough();
-      while (await q.evaluate(() => TS.UI.modals.length)) await q.evaluate(() => TS.UI.modals[TS.UI.modals.length - 1].close());
+      await closeAllQ(q);
       await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'village', 'village after reload ' + JSON.stringify(c));
       eq2(await q.evaluate(() => JSON.stringify({ v: TS.UI.S.village.bag.map((i) => i.id), st: TS.UI.S.village.story.chapter, f: TS.UI.S.village.funds })), before, 'save intact');

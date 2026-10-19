@@ -53,13 +53,37 @@
     flames: [[98, 222], [407, 208], [615, 208], [925, 222], [70, 512], [70, 800], [953, 512], [953, 800], [408, 1222], [615, 1222]],
   };
   /* 隠しダンジョン（2026年10月確定）：真大魔王バーンを倒したあと、30階の時空の亀裂から入る。
-   * 31階から始まり、35階の竜人王バランまで。31〜35階は部屋が大きい（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul）。帰還の祠は無い。
+   * 31階から始まり、35階の竜人王バランまで。31〜34階は部屋の数が本編の約2倍（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul、仮）。帰還の祠は無い。
    * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜人王バランを倒したあとの帰還口
-   *  strong：強敵の階と、敵の強さ（HP・攻撃）・経験値の倍率（強敵の絵はまだ無いので、今の魔王の城の敵を強くしている） */
-  D.HIDDEN_DUNGEON = { from: 31, to: 35, boss: 'dragonbaran', name: '時空の狭間', strong: { floors: [32, 33, 34], mul: 1.35, exp: 1.6 } };
-  /* 隠しダンジョンの地図：部屋の面積が本編の約2倍（縦横それぞれ約1.5倍）。区画を大きくし、部屋の大きさの下限も上げる。
-   * 本編（D.MAP）：区画 11×8、部屋 横4〜8・縦3〜5／隠しダンジョン：区画 15×11、部屋 横6〜12・縦4〜8 */
-  D.HIDDEN_MAP = { cols: 3, rows: 3, cellW: 15, cellH: 11, roomW: 6, roomH: 4 };
+   *  strong：強敵の階と、敵の強さ（HP・攻撃）・経験値の倍率。**仮**：専用の強敵（ドラゴン・シルバーデビルなど）の絵・能力が届くまで、
+   *    今の魔王の城の敵を強くしているだけ（完成の仕様ではない）
+   *  counts：部屋が約2倍になった分の配置数（仮。本編の魔王の城は 道具5〜7・お金3〜4・敵6〜7）。道具とお金は約2倍、敵は約1.5倍 */
+  D.HIDDEN_DUNGEON = { from: 31, to: 35, boss: 'dragonbaran', name: '時空の狭間', strong: { floors: [32, 33, 34], mul: 1.35, exp: 1.6 },
+    counts: { items: [10, 14], gold: [6, 8], enemies: [9, 11] } };
+  /* 竜人王バラン（隠しダンジョン35階）の戦い方（2026年10月：技の種類は確定。**数値はすべて調整案（仮）**）。
+   *  通常攻撃：隣なら殴る（ほかの技が使えないとき）
+   *  ドルオーラ：一直線（壁まで）を予告して放つ。列の外へ出ればかわせる。後半は縦横の十字
+   *  なぎ払い：隣にいると、まわり8マスを予告して振り抜く。1マス離れればかわせる
+   *  突進：離れた所から一直線に予告して突っこむ。横へずれればかわせる。たけに当たるか壁で止まる
+   *  どの技も予告してから次の行動で発動し、そのあとに隙（rest：動けないターン）がある。
+   *  HPが enrageAt 以下でドラゴニックオーラが強まる：攻撃力 aura 倍・待ち時間が短く・ドルオーラが十字に。予告と隙は後半も残す
+   *  mult：攻撃力に対する倍率（通常攻撃は1.0）。cd：使ったあとの待ち（[前半, 後半]）。rest：発動後の隙のターン数
+   *  rewards：所有していない品だけ出す（装備中・持ち物・倉庫・村のかばん・床に落ちたまま・展示室・村で拾う前の竜の紋章を所有扱い）
+   *  materials：撃破するたびに各1個の専用強化素材（名前・種類数は未定なので空） */
+  D.DRAGON_KING = {
+    enrageAt: 0.5, aura: 1.15,
+    doloura: { mult: 2.2, rest: 2, cd: [6, 5], minDist: 2 },
+    sweep: { mult: 1.6, rest: 1, cd: [4, 3] },
+    rush: { mult: 1.8, rest: 2, cd: [7, 5], minDist: 3, maxDist: 8 },
+    rewards: ['shinma_sword', 'dragonic_shield', 'dragon_crest'],
+    materials: [],
+  };
+  /* 隠しダンジョンの地図（2026年10月修正）：部屋の数を本編の約2倍に。部屋の大きさ・通路の幅は本編と同じ。
+   * 本編（D.MAP）：区画 3×3＝9、そのうち通路の分かれ道 0〜3 → 部屋 6〜9（平均7.5）、地図 33×24
+   * 隠しダンジョン：区画 4×4＝16、通路の分かれ道 0〜2 → 部屋 14〜16（平均15）、地図 44×32。追加の通路も少し多め（extra）
+   * 下り階段を探す探索が長くなる。ボス部屋（35階）はこの倍率を使わない（本編と同じボス部屋）。
+   * 調整案：重い・長すぎるなら 4×3（12区画・分かれ道 0〜1 → 部屋 11〜12、約1.5倍） */
+  D.HIDDEN_MAP = { cols: 4, rows: 4, cellW: 11, cellH: 8, hubs: [0, 2], extra: [2, 5] };
   D.HIDDEN_MAP.w = D.HIDDEN_MAP.cols * D.HIDDEN_MAP.cellW;
   D.HIDDEN_MAP.h = D.HIDDEN_MAP.rows * D.HIDDEN_MAP.cellH;
   // 以前の版のボス配置（更新前から続いている探索だけが使う）
@@ -397,7 +421,7 @@
     const base = demonFloor(f, D.CHAPTERS[D.FINAL_CHAPTER]), strong = H.strong.floors.includes(f);
     return Object.assign({}, base, { areaName: H.name, hidden: true, returnPoint: false,
       enemies: strong ? [['darkknight', 3], ['guard', 3], ['imp', 2], ['golem', 2], ['wisp', 1]] : base.enemies,
-      enemyCount: strong ? [9, 11] : [8, 10], itemCount: [7, 9], goldCount: [4, 6],
+      enemyCount: H.counts.enemies, itemCount: H.counts.items, goldCount: H.counts.gold,
       enemyMul: strong ? H.strong.mul : 1, expMul: strong ? H.strong.exp : 1 });
   }
   D.hiddenFloor = (f) => floorCache['hidden:' + f] || (floorCache['hidden:' + f] = hiddenFloor(f));
@@ -526,9 +550,11 @@
      * 竜人王バランの報酬・アクセサリーの竜の紋章（橋の向こうで拾う）・黄金の象などのくり返し出る品・素材は対象外（未指定） */
     buyback: { croc: 1000, flame: 2000, kill: 3000, baran: 4000, mist: 5000, vearn: 6000 },
   };
-  /* 商人の呼鈴（2026年10月）：街のイベントをコンプリートしたあと、こもれびの家（村の発展）に寄付すると1個もらえる。
-   * 「街のイベントのコンプリート」の判定はまだ決まっていない → unlock が null のあいだは寄付できない（G.bellDonationOpen）。 */
-  D.BELL = { donation: 1000, unlock: null };
+  /* 商人の呼鈴（2026年10月確定）：町の建設・改修（村の発展の一覧 D.FACILITIES の施設と飾り）をすべて終えると、
+   * こもれびの家（村の発展）で寄付できるようになる。1,000G 寄付するたびに1個。
+   * 隠しアイテムの発見・会話の閲覧・お宝の収集そのものは条件に入れない（建設に必要な寄贈などの条件は、各施設の解放条件のまま）。
+   * 一覧は別のチャットで見直し中なので、D.FACILITIES に入っている項目をその時の対象にする（足し引きすると自動で変わる） */
+  D.BELL = { donation: 1000, unlock: (S) => D.FACILITIES.every((f) => !!(S.village.built && S.village.built[f.id])) };
   // 床に落ちているお金（浅い階は控えめ、深いほど多い）
   D.goldAmount = (floor, r) => Math.round((8 + r * 12) * (1 + 0.28 * (floor - 1)));
 

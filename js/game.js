@@ -509,6 +509,18 @@
     if ((V.donated || {})[id]) return true;
     return false;
   };
+  /* 竜人王バランの報酬（D.DRAGON_KING.rewards）のうち、所有していない品。
+   * 所有＝装備中・持ち物・倉庫・村のかばん・床に落ちたまま（未回収・帰還時に倉庫へ届く品）・展示室（G.holdsItem）。
+   * アクセサリーの竜の紋章は、村の赤い橋の向こうでまだ拾っていない間も「未回収」として出さない（あとで二重に手に入らないように） */
+  G.dragonKingRewards = function (S) {
+    const st = S.village.story || {}, found = st.found || {};
+    return D.DRAGON_KING.rewards.filter((id) => {
+      if (G.holdsItem(S, id)) return false;
+      const pk = Object.keys(D.VILLAGE_PICKUPS || {}).find((k) => D.VILLAGE_PICKUPS[k].item === id);
+      if (pk && !found[pk]) return false;
+      return true;
+    });
+  };
   /* 買い戻せる品：入手履歴があって、今は持っていない品。ボスを倒しただけで、まだ受け取っていない品は対象にしない */
   G.buybackList = function (S) {
     const V = S.village, out = [];
@@ -935,10 +947,13 @@
       return;
     }
     if (e.type === D.HIDDEN_DUNGEON.boss) {
-      // 竜人王バラン（隠しダンジョン35階）：倒すと帰還口。報酬の品はまだ決まっていない（出さない）
+      // 竜人王バラン（隠しダンジョン35階）：所有していない報酬の品だけ出す（重ねない）＋専用強化素材を各1個（種類は未定）→ 帰還口
       st.defeated[e.type] = true;
+      const gifts = G.dragonKingRewards(S);
+      for (const id of gifts) drop(id);
+      for (const id of D.DRAGON_KING.materials) drop(id);
       openPortal();
-      G.log(run, E.name + 'を倒した！ 光る帰還口が開いた。村へ帰ろう。');
+      G.log(run, E.name + 'を倒した！' + (gifts.length ? ' ' + gifts.map((id) => D.ITEMS[id].name).join('と') + 'が残された。' : '') + ' 光る帰還口が開いた。村へ帰ろう。');
       ev.push({ t: 'bossDown', boss: e.type });
       return;
     }

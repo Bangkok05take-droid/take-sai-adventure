@@ -705,7 +705,7 @@
   const BUILD_TALK = {
     storage2: [['sai', '倉庫が広くなったよ！灯りも増えて、村がにぎやかになってきた。'], ['take', 'お宝をたくさん預けられるね。']],
     smith1: [['sai', '鍛冶屋さんと屋台が来てくれたよ！夕方はいい匂いがするね。'], ['take', '装備を鍛えて、もっと奥まで行けそうだ！']],
-    diner: [['sai', '食堂を開いたよ！出発の前に、私の料理を食べていってね。'], ['take', 'サイのガパオ、楽しみだなあ。']],
+    diner: [['waan', 'お待たせ！ ワーンの食堂ができたよ！\n冒険に行く前は、ちゃんと食べていってね！\n元気が出る料理を作ってあげる！！']],   // 2026年10月指定の文
     museum: [['sai', '展示室ができたよ。珍しいお宝はここに飾れるんだ。'], ['take', '売るか飾るか、迷っちゃうね。']],
     storage3: [['sai', '倉庫を増築したよ。二階もあるんだ。'], ['take', 'これで深い階のお宝もしまえるね。']],
     smith2: [['sai', '鍛冶屋さん、大きな炉に大喜びだったよ。'], ['take', '+5まで鍛えられるのか…！']],
@@ -980,7 +980,7 @@
       : `<b>帰還の巻物を無料で1枚借りられます。</b><small>${sc.full ? '持ち物がいっぱいです。1枠空けると受け取れます。' : '冒険1回につき1枚。下のボタンで受け取れます。'}</small>`) + '</div></div>';
     const notes = [];
     if (V.meal) notes.push([DP_ICON.fork, `${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）`]);
-    else if (V.diner) notes.push([DP_ICON.fork, '食堂の料理で、冒険の準備を。']);
+    else if (V.diner) notes.push([DP_ICON.fork, 'ワーンの食堂の料理で、冒険の準備を。']);
     if (!w) notes.push([DP_ICON.fist, '武器なし：素手で出発します。']);
     if (G.canDeepStart(UI.S)) notes.push([DP_ICON.compass, `大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。`]);
     if (notes.length) html += '<div class="dp-rule"><i></i></div><div class="dp-notes">' + notes.map(([i, t]) => `<p>${i}<span>${t}</span></p>`).join('') + '</div>';
@@ -1905,6 +1905,9 @@
         setTimeout(() => AU.sfx('bolt'), PH.gather + fly);   // 当たる音
         return PH.gather + fly;   // 命中の数字・点滅はこの時間に合わせる
       }
+      // 竜人王バラン：ドルオーラ（金色の光の帯）・なぎ払い（まわりへの衝撃）。突進は 'rush'
+      case 'doloura': RD.addFx({ t: 'flamewave', tiles, color: '#ffd040', dur: 560 }); FXm.shake(RD, 3, 260); AU.sfx('bolt'); return;
+      case 'sweep': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#9ad8ff', dur: 380 }); AU.sfx('hit'); return;
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
       case 'palm': // 真大魔王バーン：速く重い打撃と強い衝撃
         RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffb0f0', dur: 380 });
@@ -2438,7 +2441,7 @@
       const decor = Object.values(V.decor || {}).filter(Boolean).length;
       // サイのあいさつは村の発展に合わせて変わる
       const hello = decor >= 4 ? 'おかえり！村のみんなも、たけの帰りを待ってたよ。'
-        : V.diner ? 'おかえり、たけ！食堂でごはんができてるよ。'
+        : V.diner ? 'おかえり、たけ！ワーンの食堂でごはんができてるよ。'
           : V.smithLv ? 'おかえり！鍛冶屋さんも、たけの装備を見たがってたよ。'
             : V.stage >= 2 ? 'おかえり、たけ！倉庫もちゃんと空けてあるよ。' : 'おかえり、たけ！';
       const lines = [['sai', hello + (res.gold ? '　' + res.gold + 'Gも持って帰ってきたんだね。' : '')]];

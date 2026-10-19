@@ -284,6 +284,50 @@
     }
     return false;
   };
-  // 竜人王バラン（隠しダンジョン35階）：戦い方は通常のバランと同じ（専用の行動はまだ決まっていない）
-  AI.dragonbaran = (S, e, ev, sees, H) => AI.baran(S, e, ev, sees, H);
+  /* ---------------- 竜人王バラン（隠しダンジョン35階の裏ボス） ----------------
+   * 数値は D.DRAGON_KING（調整案）。強い技はどれも予告 → 次の行動で発動 → 隙（rest）。
+   * 隣：なぎ払い（まわり8マス）。待ち中なら通常攻撃（false を返すと、いつもどおり隣なら攻撃・離れていれば近づく）。
+   * 一直線上で離れている：遠ければ突進、そうでなければドルオーラ（一直線。後半は十字）。 */
+  AI.dragonbaran = function (S, e, ev, sees, H) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], K = D.DRAGON_KING;
+    if (!aware(run, e, sees)) return false;
+    const cd = tick(e);
+    if (!e.enraged && e.hp <= e.maxhp * K.enrageAt) {
+      e.enraged = true; e.atk = Math.round(e.atk * K.aura);
+      say(run, E.name + 'のドラゴニックオーラが強まった！ 技の間隔が短くなり、ドルオーラが十字に広がる！');
+      ev.push({ t: 'warn', msg: 'ドラゴニックオーラが強まった！' });
+    }
+    const ph = e.enraged ? 1 : 0, d = H.cheb(e, p), a = aligned(e, p);
+    // なぎ払い：隣にいるとき
+    if (H.adjacent(run, e, p) && !cd.sweep) {
+      const tiles = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && DG.passable(run.map, e.x + dx, e.y + dy)) tiles.push({ x: e.x + dx, y: e.y + dy });
+      H.startCharge(S, e, ev, tiles, K.sweep.mult, K.sweep.rest, 'が竜の爪を大きく振りかぶった！ まわりをなぎ払う！（1マス離れよう）'); e.charge.fx = 'sweep';
+      cd.sweep = K.sweep.cd[ph];
+      return true;
+    }
+    if (a && !H.adjacent(run, e, p)) {
+      // 突進：遠くから一直線に
+      if (!cd.rush && d >= K.rush.minDist && d <= K.rush.maxDist) {
+        const tiles = H.lineTiles(run, e, a[0], a[1], 12);
+        if (tiles.some((t) => t.x === p.x && t.y === p.y)) {
+          H.startCharge(S, e, ev, tiles, K.rush.mult, K.rush.rest, 'が竜の翼を広げた！ 一直線に突進してくる！（横へよけよう）'); e.charge.fx = 'rush'; e.charge.kind = 'rush';
+          cd.rush = K.rush.cd[ph];
+          return true;
+        }
+      }
+      // ドルオーラ：一直線（後半は縦横の十字）
+      if (!cd.doloura && d >= K.doloura.minDist) {
+        let tiles = H.lineTiles(run, e, a[0], a[1], 12);
+        if (e.enraged) { tiles = []; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) tiles = tiles.concat(H.lineTiles(run, e, dx, dy, 12)); }
+        if (tiles.some((t) => t.x === p.x && t.y === p.y)) {
+          H.startCharge(S, e, ev, tiles, K.doloura.mult, K.doloura.rest, e.enraged ? 'の両手に竜闘気が集まる！ ドルオーラが十字に放たれる！（線の外へ）' : 'の両手に竜闘気が集まる！ ドルオーラが一直線に放たれる！（列の外へ）');
+          e.charge.fx = 'doloura';
+          cd.doloura = K.doloura.cd[ph];
+          return true;
+        }
+      }
+    }
+    return false;   // 通常攻撃（隣）か、近づく
+  };
 })(globalThis.TS = globalThis.TS || {});

@@ -15,7 +15,7 @@
   function generate(floor, rng, opts) {
     opts = opts || { boss: !!D.LEGACY_BOSS_FLOORS[floor], returnPoint: D.RETURN_POINT_FLOORS.includes(floor) };
     if (opts.throne) return generateThroneFloor();
-    if (opts.boss) return generateBossFloor(rng, opts.hidden);
+    if (opts.boss) return generateBossFloor(rng);   // ボス部屋は隠しダンジョンでも本編と同じ（部屋の数の倍率は使わない）
     for (let attempt = 0; attempt < 80; attempt++) {
       const g = tryGenerate(floor, rng, opts);
       if (g) return g;
@@ -23,14 +23,14 @@
     return fallbackFloor(floor, rng, opts);
   }
 
-  // 隠しダンジョン（opts.hidden）は部屋の大きい地図（D.HIDDEN_MAP：区画と部屋の下限を大きく）
+  // 隠しダンジョン（opts.hidden）は部屋の数が多い地図（D.HIDDEN_MAP：区画の数を増やす。部屋の大きさは同じ）
   const mapDef = (opts) => (opts && opts.hidden ? D.HIDDEN_MAP : D.MAP);
   function tryGenerate(floor, rng, opts) {
     const M = mapDef(opts), w = M.w, h = M.h;
     const tiles = new Array(w * h).fill(WALL);
     const n = M.cols * M.rows;
     const isRoom = new Array(n).fill(true);
-    const hubCount = R.int(rng, 0, 3);
+    const hubCount = R.int(rng, M.hubs ? M.hubs[0] : 0, M.hubs ? M.hubs[1] : 3);
     const order = R.shuffle(rng, [...Array(n).keys()]);
     for (let i = 0; i < hubCount; i++) isRoom[order[i]] = false;
     const rooms = [], cells = [];
@@ -39,7 +39,7 @@
       let r;
       if (isRoom[idx]) {
         // 区画の左上に1マス、右下に2マス以上の余白（隣の部屋との間に3マス以上＝通路が曲がれる）
-        const rw = R.int(rng, M.roomW || 4, M.cellW - 3), rh = R.int(rng, M.roomH || 3, M.cellH - 3);
+        const rw = R.int(rng, 4, M.cellW - 3), rh = R.int(rng, 3, M.cellH - 3);
         const rx = R.int(rng, ox + 1, ox + M.cellW - 2 - rw), ry = R.int(rng, oy + 1, oy + M.cellH - 2 - rh);
         r = { id: rooms.length, x: rx, y: ry, w: rw, h: rh };
         rooms.push(r);
@@ -66,7 +66,7 @@
       const k = R.pick(rng, nb); visited[k] = true; tree.push([c, k]); stack.push(k);
     }
     const extra = [];
-    for (let i = 0, m = R.int(rng, 1, 3); i < m; i++) {
+    for (let i = 0, m = R.int(rng, M.extra ? M.extra[0] : 1, M.extra ? M.extra[1] : 3); i < m; i++) {
       const c = R.int(rng, 0, n - 1), k = R.pick(rng, neighbors(c));
       if (!tree.concat(extra).some((e) => (e[0] === c && e[1] === k) || (e[0] === k && e[1] === c))) extra.push([c, k]);
     }
@@ -153,20 +153,16 @@
     return finishFloor(floor, rng, { w, h, tiles, rooms }, opts);
   }
 
-  /* 10階：小さな前室と、守護者のいる大広間。
-   * 隠しダンジョン（hidden）の35階は部屋の大きい版：前室 7×7、大広間 21×21（面積は約2倍）。左の通路から右へ入るのは同じ */
-  function generateBossFloor(rng, hidden) {
-    const M = hidden ? D.HIDDEN_MAP : D.MAP, w = M.w, h = M.h;
+  // 10階：小さな前室と、守護者のいる大広間（隠しダンジョン35階の竜人王バランも同じ形）
+  function generateBossFloor(rng) {
+    const M = D.MAP, w = M.w, h = M.h;
     const tiles = new Array(w * h).fill(WALL);
-    const rooms = hidden ? [
-      { id: 0, x: 2, y: 13, w: 7, h: 7 },
-      { id: 1, x: 17, y: 6, w: 21, h: 21 },
-    ] : [
+    const rooms = [
       { id: 0, x: 2, y: 9, w: 5, h: 5 },
       { id: 1, x: 13, y: 4, w: 15, h: 15 },
     ];
     for (const r of rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) tiles[y * w + x] = FLOOR;
-    const cy = hidden ? 16 : 11, a = rooms[0], b = rooms[1];
+    const cy = 11, a = rooms[0], b = rooms[1];
     for (let x = a.x + a.w; x < b.x; x++) tiles[cy * w + x] = CORR;
     const map = { w, h, tiles, rooms, boss: true };
     return { map, start: { x: a.x + 1, y: cy }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: b.x + (b.w >> 1), y: b.y + (b.h >> 1) } };

@@ -254,7 +254,7 @@ body.calm .hpwrap.hurt .bar { animation: none; }
 .talk { display: flex; gap: 10px; align-items: flex-start; }
 .talk img { width: 72px; height: 72px; image-rendering: pixelated; background: linear-gradient(#f6e6c6, #e8cfa0); border-radius: 10px; border: 1.5px solid var(--accent); flex: none; }
 .talk .who { font-weight: bold; color: var(--accent); margin-bottom: 2px; }
-.talk .txt { font-size: 18px; line-height: 1.6; min-height: 3.2em; }
+.talk .txt { font-size: 18px; line-height: 1.6; min-height: 3.2em; white-space: pre-line; }   /* 指定の文の改行（\n）をそのまま見せる */
 .help h3 { margin: 10px 0 4px; font-size: 17px; color: var(--accent); }
 .help ul { margin: 0; padding-left: 1.2em; }
 .help li { margin-bottom: 3px; }
