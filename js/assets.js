@@ -183,7 +183,7 @@
      *    小型12体（本体40px）はその 40/64＝0.625 倍になる（全コマ同じ倍率。武器を振り上げても体の大きさは変わらない）。
      *  kind：技のコマの種類（attack・steal 盗み・heal 回復・escape 逃走）。face：技のコマが向いている向き（R 右・L 左・null 正面）。
      *    たけが反対側にいるときは左右を反転して描く（絵は変えない）。
-     *  ドラキー（bat）は ZIP が途中で切れていて絵が届いていない。届くまで今のコードの絵（ヤミコウモリの絵） */
+     *  ドラキー（bat）は最初の ZIP が途中で切れていたので、再送の ZIP（dracky_fix_v1）の絵を使う */
     enemySheets: {
       dir: 'assets/enemies/normal/', frame: 96, foot: [48, 84], bodyRef: 64, takeBody: 47,
       map: {
@@ -193,7 +193,7 @@
         root: { file: 'stump', kind: 'attack', face: 'R', body: 40 },
         jelly: { file: 'healslime', kind: 'heal', face: null, body: 40 },
         statue: { file: 'living_statue', kind: 'attack', face: 'L', body: 64 },
-        // bat: { file: 'dracky', kind: 'attack', face: null, body: 40 },   // 絵が届いていない（ZIP の途中で切れていた）
+        bat: { file: 'dracky', kind: 'attack', face: 'R', body: 40 },   // ドラキー：最初の ZIP では切れていたので、再送（ZIP dracky_fix_v1）の絵
         shaman: { file: 'mage', kind: 'attack', face: 'R', body: 40 },
         lizard: { file: 'bubble_slime', kind: 'attack', face: 'R', body: 40 },
         thief: { file: 'dancing_jewel', kind: 'steal', face: null, body: 40 },

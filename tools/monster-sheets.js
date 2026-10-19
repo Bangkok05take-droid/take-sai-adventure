@@ -76,7 +76,6 @@ const hold = (p, ms) => p.waitForTimeout(ms);
           if (!loaded) { c.img = null; c.dw = c.dh = TILE * (src === 'enemies' ? 2 : src === 'bosses' ? 3 : 1); c.note = '読み込めなかった'; continue; }
           const img = SP.s.enemy[s][0]; c.img = img; c.dw = c.dh = (img.logical || img.width) * DOT;
           if (src === 'sheet') c.foot = img.footY / img.height;
-          if (c.id === 'bat') { c.note = '絵が未着・仮（コードの絵）'; c.tiles = 1; }   // ドラキー：ZIP が途中で切れていて絵が届いていない   // コマの足元（たけと同じ高さにそろえる）
           if (src === 'sheet') c.bodyDots = Math.round(img.bodyH);
           c.note = src === 'sheet' ? '専用（ChatGPT・4コマ）' : src === 'enemies' ? '専用（ChatGPT ' + img.width + '×' + img.height + '）' : src === 'bosses' ? (c.id === 'dragonbaran' ? '借用・仮（バランの絵）' : E.clone ? '本体の絵を借用' : '専用（見本の絵 ' + img.width + '×' + img.height + '）') : '仮（コードの絵 ' + img.width + '×' + img.height + '）';
           c.tiles = (img.logical || img.width) / 32;

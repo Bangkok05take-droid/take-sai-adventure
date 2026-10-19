@@ -355,8 +355,10 @@
     statue: { name: 'うごくせきぞう',   hp: 40,  atk: 13, def: 6, exp: 28,  ai: 'telegraph', sprite: 'statue', base: 8, heavy: 2.2,
       tip: '隣にいると拳を振りかぶり、次の行動で強打する。離れればかわせる。' },
     bat:    { name: 'ドラキー', hp: 30,  atk: 17, def: 3, exp: 30,  ai: 'fast',    sprite: 'bat', base: 11, tip: '1ターンに2回動く。' },
-    shaman: { name: 'まほうつかい',   hp: 38,  atk: 14, def: 4, exp: 38,  ai: 'support', sprite: 'shaman', base: 12, heal: 0.4,
-      tip: '傷ついた仲間を回復する。先に倒すか眠らせよう。' },
+    /* まほうつかい（2026年10月）：回復をやめ、距離を取って攻撃魔法（火の玉）を撃つ。旧・苔の祈祷師の回復（ai: support、heal 0.4）は使わない。
+     * shoot・range は仮（攻撃力14の1.2倍・一直線4マス）。keep：たけとこの距離以内で撃てないときは、近づかずに1歩離れる */
+    shaman: { name: 'まほうつかい',   hp: 38,  atk: 14, def: 4, exp: 38,  ai: 'magic', sprite: 'shaman', base: 12, shoot: 17, range: 4, keep: 2, shot: '火の玉',
+      tip: '距離を取って、離れた所から火の玉の呪文を撃つ。角を使ってかわすか、近づいて倒そう。' },
     lizard: { name: 'バブルスライム',     hp: 50,  atk: 22, def: 6, exp: 48,  ai: 'poison',  sprite: 'lizard', base: 16, tip: '噛まれると毒になる。薬草・解毒の葉で治る。' },
     thief:  { name: 'おどるほうせき',   hp: 45,  atk: 16, def: 5, exp: 42,  ai: 'thief',   sprite: 'thief', base: 17,
       tip: '探索中のお金を盗んで逃げる。倒せば取り返せる。' },

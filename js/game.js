@@ -1829,6 +1829,8 @@
       enemyAttack(S, e, Math.round(E.shoot * (1 + D.ENEMY_SCALE.atk * k)), ev, true);
       return;
     }
+    // 距離を取る敵（まほうつかい）：撃てない位置で、たけが keep マス以内なら、近づかずに1歩離れる（離れられなければ、いつもどおり動く）
+    if (E.keep && sees && cheb(e, p) <= E.keep && stepAway(run, e)) return;
     if (E.ai === 'erratic' && R.chance(run.rng, 0.35)) { randomStep(run, e); return; }
     moveEnemy(run, e);
     // 速い敵はもう1歩（攻撃はしない）

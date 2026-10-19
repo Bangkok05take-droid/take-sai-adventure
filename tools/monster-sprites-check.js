@@ -1,9 +1,9 @@
 // 通常の敵15種の絵（ZIP monster_sprites_v1）の確認と録画：node tools/monster-sprites-check.js [出力フォルダ]（既定 docs/monster-sprites-v1/）
 // 確かめること（PCのブラウザ、幅360・390・430。390は録画）：
-//  絵：14種は4コマ（96×96）を読み込み、本体の高さは大型3体＝たけと同じ47ドット・小型＝約29ドット（0.625倍）。足元はたけと同じ高さ。ドラキーは絵が無いのでコードの絵
+//  絵：15種とも4コマ（96×96）を読み込み、本体の高さは大型3体＝たけと同じ47ドット・小型＝約29ドット（0.625倍）。足元はたけと同じ高さ（ドラキーは再送の ZIP の絵）
 //  技のコマ：近接攻撃・射撃・予告の大技・盗み・回復の演出は、ゲームの判定（1回だけ）のあとに見た目だけ。ターンは1回分しか進まず、HPの変化も1回分
 //  当たりの表示（数字）は技の発動のコマに合わせて出る（準備のコマの間は出ない）。相手が反対側なら技のコマを左右反転
-// 録画（幅390、そのままの速さと半分の速さ）：motion/idle・melee・ranged・telegraph・steal_heal
+// 録画（幅390、そのままの速さと半分の速さ）：motion/idle・melee・ranged・telegraph・steal_heal（盗みと、まほうつかいが離れる）
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..'), OUT = process.argv[2] || path.join(ROOT, 'docs', 'monster-sprites-v1'), MOT = path.join(OUT, 'motion');
@@ -67,11 +67,9 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
     await clip('idle', async (p) => {
       const info = await p.evaluate(() => { const SP = TS.Sprites, A = TS.ASSETS.enemySheets, out = {};
         for (const [k, cfg] of Object.entries(A.map)) { const E = SP.art.enemySheet[k]; out[k] = E ? { n: 4, w: E.prep.width, logical: E.prep.logical, body: Math.round(E.prep.bodyH * 10) / 10, foot: E.prep.footY, idleSame: TS.Sprites.s.enemy[k][0] === E.idle[0], kind: E.kind } : null; }
-        out.bat = { code: !SP.art.enemySheet.bat && SP.s.enemy.bat[0].width === 32 };
         return out; });
       const big = ['statue', 'golem', 'darkknight'];
       for (const [k, v] of Object.entries(info)) {
-        if (k === 'bat') { chk(v.code, `${W} ドラキー：絵が届いていないので、今までのコードの絵（32×32）`); continue; }
         chk(v && v.w === 96 && v.idleSame && v.foot === 84 && Math.abs(v.body - (big.includes(k) ? 47 : 29.4)) < 0.2, `${W} ${k}：4コマ・足元84・本体${v && v.body}ドット（${big.includes(k) ? 'たけと同じ47' : 'たけの0.625倍＝29.4'}） ${JSON.stringify(v)}`);
       }
       await setup(p, [{ type: 'frog', dx: -2, dy: -1, hold: 99 }, { type: 'turtle', dx: -1, dy: -1, hold: 99 }, { type: 'monkey', dx: 0, dy: -1, hold: 99 }, { type: 'root', dx: 1, dy: -1, hold: 99 }, { type: 'jelly', dx: 2, dy: -1, hold: 99 },
@@ -87,7 +85,7 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
 
     // ---------- 近接攻撃：準備 → 発動、数字は発動に合わせる・ターンは1回分 ----------
     await clip('melee', async (p) => {
-      for (const [type, dx] of [['frog', 1], ['frog', -1], ['turtle', 1], ['root', -1], ['lizard', 1], ['darkknight', 1]]) {
+      for (const [type, dx] of [['frog', 1], ['frog', -1], ['bat', 1], ['bat', -1], ['turtle', 1], ['root', -1], ['lizard', 1], ['darkknight', 1]]) {
         await setup(p, [{ type, dx, dy: 0 }]);
         await p.waitForTimeout(300);
         const s0 = await probe(p);
@@ -102,7 +100,7 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
           if (s1.hp < a.hp) break;
         }
         const ea = fx.find((f) => f.t === 'eact'), num = fx.find((f) => f.t === 'num'), ln = fx.find((f) => f.t === 'lunge');
-        // 敵は たけ の dx 側にいて、たけ（-dx の向き）を攻撃する。絵の向き：スライム＝左、ぐんたいガニ・きりかぶおばけ・バブルスライム＝右
+        // 敵は たけ の dx 側にいて、たけ（-dx の向き）を攻撃する。絵の向き：スライム＝左、ドラキー・ぐんたいガニ・きりかぶおばけ・バブルスライム＝右
         const wantFlip = type === 'darkknight' ? null : type === 'frog' ? dx < 0 : dx > 0;
         if (type === 'darkknight') chk(!ea || ea.prep === 0 || true, `${W} あくまのきし：隣では予告の大技（準備のコマ）`);
         else chk(ea && ea.prep === 140 && ln && ln.delay === 140 && (!num || num.delay >= 140), `${W} ${type}：準備140ms → 発動で踏み込み・数字は発動から ${JSON.stringify(fx)}`);
@@ -113,7 +111,7 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
 
     // ---------- 射撃：リリパット（矢）・ベビーサタン（火の玉）・メタルスライム（旧の光の矢。技のコマなし） ----------
     await clip('ranged', async (p) => {
-      for (const [type, dx] of [['monkey', 3], ['monkey', -3], ['imp', 3], ['wisp', 3]]) {
+      for (const [type, dx] of [['monkey', 3], ['monkey', -3], ['shaman', 3], ['shaman', -3], ['imp', 3], ['wisp', 3]]) {
         await setup(p, [{ type, dx, dy: 0 }]);
         await p.waitForTimeout(300);
         let fx = [], shot = false;
@@ -127,7 +125,7 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
         }
         const ea = fx.find((f) => f.t === 'eact'), dt = fx.find((f) => f.t === 'dart'), num = fx.find((f) => f.t === 'num');
         if (type === 'wisp') chk(shot && !ea && dt.delay === 120, `${W} メタルスライム：技のコマ（逃走）は撃つ動作に使わない（旧の射撃のまま・のけぞり） ${JSON.stringify(fx)}`);
-        else chk(shot && ea && dt.delay === 140 && (!num || num.delay >= 290) && ea.flip === (dx > 0), `${W} ${type}：準備 → 発動で${type === 'imp' ? '火の玉' : '矢'}が飛ぶ・数字は届いたとき・向き ${JSON.stringify(fx)}`);
+        else chk(shot && ea && dt.delay === 140 && (!num || num.delay >= 290) && ea.flip === (dx > 0), `${W} ${type}：準備 → 発動で${type === 'monkey' ? '矢' : '火の玉'}が飛ぶ・数字は届いたとき・向き ${JSON.stringify(fx)}`);
       }
     });
 
@@ -159,11 +157,12 @@ const fxNow = (p) => p.evaluate(() => TS.Render.fx.filter((f) => f.t === 'eact' 
       const s1 = await probe(p), st = fx.find((f) => f.t === 'eact');
       chk(st && st.sprite === 'thief' && s0.gold - s1.gold === 75, `${W} おどるほうせき：盗みは1回（500→${s1.gold}G）・盗む動作のコマを逃げる前の場所に ${JSON.stringify(st)}`);
       await p.waitForTimeout(900);
-      await setup(p, [{ type: 'shaman', dx: 2, dy: 0 }, { type: 'turtle', dx: 2, dy: 1, hold: 99, hp: 5 }]);
-      for (let i = 0; i < 4; i++) { await p.evaluate(() => { TS.UI.lockUntil = 0; }); await p.keyboard.press('Space'); await p.waitForTimeout(40); fx = await fxNow(p); if (fx.some((f) => f.t === 'eact')) break; await p.waitForTimeout(600); }
-      const hl = fx.find((f) => f.t === 'eact');
-      chk(hl && hl.sprite === 'shaman' && hl.prep === hl.dur, `${W} まほうつかい：回復（旧の処理）は準備のコマだけ（発動のコマは火の玉なので使わない） ${JSON.stringify(hl)}`);
-      await p.waitForTimeout(900);
+      // まほうつかい：回復しない。隣に来られると離れる（殴らない）
+      await setup(p, [{ type: 'shaman', dx: 1, dy: 0 }, { type: 'turtle', dx: 2, dy: 1, hold: 99, hp: 5 }]);
+      const t0 = await probe(p);
+      await key(p, 'Space', 900);
+      const t1 = await probe(p), mg = t1.en.find((x) => x[0] === 'shaman'), tt = t1.en.find((x) => x[0] === 'turtle');
+      chk(Math.abs(mg[2] - (await p.evaluate(() => TS.UI.S.run.player.x))) >= 2 && tt[1] === 5 && t1.hp === t0.hp, `${W} まほうつかい：隣に来られると離れる・仲間を回復しない ${JSON.stringify(t1.en)}`);
     });
   }
   console.log(`\n${ok} OK / ${ng} NG`);

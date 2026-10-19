@@ -1225,15 +1225,15 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
 
   await test('通常の敵の画像の差し替え：TS.ASSETS.enemies に書いた敵だけ画像に替わる（2コマを分ける）。書かない敵は今の絵のまま（15種のシートの絵も読み込み直しても同じ）', async () => {
     const r = await p.evaluate(() => new Promise((done) => {
-      // ドラキー（bat）は絵が届いていないので、今はコードの絵。ここに仮の絵を書いたときだけ替わる
-      const SP = TS.Sprites, keep = SP.s.enemy.bat;
+      // 通常の敵15種はシートの絵。コードの絵のままの敵（以前の版のボス・守護獅子 lion）に仮の絵を書いたときだけ替わる
+      const SP = TS.Sprites, keep = SP.s.enemy.lion;
       const c = document.createElement('canvas'); c.width = 128; c.height = 64;
       const g = c.getContext('2d'); g.fillStyle = '#3a8a3a'; g.fillRect(20, 30, 24, 30); g.fillStyle = '#8ad04a'; g.fillRect(84, 28, 24, 32);
-      TS.ASSETS.enemies = Object.assign({}, TS.ASSETS.enemies, { bat: c.toDataURL() });
+      TS.ASSETS.enemies = Object.assign({}, TS.ASSETS.enemies, { lion: c.toDataURL() });
       SP.loadArt(() => {
-        const f = SP.s.enemy.bat, t = SP.s.enemy.turtle;
+        const f = SP.s.enemy.lion, t = SP.s.enemy.turtle;
         const out = { art: !!f[0].art, w: f[0].width, two: f[0] !== f[1], turtleSheet: !!(t[0].sheet && t[0].width === 96 && SP.enemyAction('turtle', 'act')) };
-        delete TS.ASSETS.enemies.bat; delete SP.art.enemies.bat; SP.s.enemy.bat = keep;
+        delete TS.ASSETS.enemies.lion; delete SP.art.enemies.lion; SP.s.enemy.lion = keep;
         done(out);
       });
     }));

@@ -1,0 +1,76 @@
+[
+  {
+    "asset": "dracky",
+    "name": "ドラキー",
+    "frameSize": [
+      96,
+      96
+    ],
+    "sheetSize": [
+      384,
+      96
+    ],
+    "idleHeight": 40,
+    "relativeToTake": 0.625,
+    "states": [
+      "idle_a",
+      "idle_b",
+      "attack_prepare",
+      "attack"
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "rect": [
+          0,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 1,
+        "rect": [
+          96,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 2,
+        "rect": [
+          192,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      },
+      {
+        "index": 3,
+        "rect": [
+          288,
+          0,
+          96,
+          96
+        ],
+        "anchor": [
+          48,
+          84
+        ]
+      }
+    ]
+  }
+]

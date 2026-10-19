@@ -470,13 +470,23 @@ test('ドラキー（旧・ヤミコウモリ）は1ターンに2歩動く', () 
   G.act(S, { type: 'wait' });
   eq(e.x, 13, 'two steps'); eq(e.acts, 1, 'one action');
 });
-test('苔の祈祷師は傷ついた仲間を回復する', () => {
-  const S = newRun(76); bigRoomFloor(S);
-  const ally = realEnemy(S, 'jelly', 18, 10, 12); ally.hp = 5;
-  const sh = realEnemy(S, 'shaman', 15, 10, 12);
-  ally.sleep = 50;
+test('まほうつかい（旧・苔の祈祷師）は回復しない。距離を取り、一直線4マス以内から火の玉を撃つ。隣に来られると1歩離れる', () => {
+  const S = newRun(76); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 500;
+  const ally = realEnemy(S, 'jelly', 18, 10, 12); ally.hp = 5; ally.sleep = 50;
+  // 一直線3マス：撃つ（回復はしない）
+  const sh = realEnemy(S, 'shaman', p.x + 3, p.y, 12);
+  let hp0 = p.hp, shots = 0;
+  for (let i = 0; i < 6; i++) { const r = G.act(S, { type: 'wait' }); if (r.events.some((e) => e.t === 'dart')) shots++; }
+  eq(ally.hp, 5, 'no heal'); assert(shots >= 4, 'casts from range ' + shots); assert(run.log.some((l) => l.includes('まほうつかいの火の玉')), 'fireball message');
+  assert(Math.max(Math.abs(sh.x - p.x), Math.abs(sh.y - p.y)) >= 2, 'stays at a distance');
+  // 隣に来られる：1歩離れる（殴らない）
+  sh.x = p.x + 1; sh.y = p.y; hp0 = p.hp;
+  const r = G.act(S, { type: 'wait' });
+  assert(Math.max(Math.abs(sh.x - p.x), Math.abs(sh.y - p.y)) >= 2 && !r.events.some((e) => e.t === 'lunge'), 'steps away instead of melee');
+  // 撃てない位置（桂馬の位置・2マス）：近づかずに離れる
+  sh.x = p.x + 2; sh.y = p.y + 1; const d0 = 2;
   G.act(S, { type: 'wait' });
-  assert(ally.hp > 5, 'healed ' + ally.hp);
+  assert(Math.max(Math.abs(sh.x - p.x), Math.abs(sh.y - p.y)) >= d0, 'does not close in ' + JSON.stringify([sh.x - p.x, sh.y - p.y]));
 });
 test('毒：かかると毎ターン減り自然回復しない。治った直後は再びかからない。薬草で治る', () => {
   const S = newRun(77); bigRoomFloor(S);
