@@ -943,7 +943,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
         if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); return d; } } });
     await p.tap(`#dpad [data-dir="${dir}"]`); await p.waitForTimeout(250);
     assert(await p.isVisible('.modal h2:has-text("帰還口")'), 'portal prompt');
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(1500);   // 帰還口：金の魔法陣の演出（約1秒）→ 村
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(300);   // 帰還の結果
     assert(await p.isVisible('.talk'), 'chapter clear talk');
     await closeTalk();
@@ -1052,7 +1052,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       for (const [d, [dx, dy]] of Object.entries(G.DIRS)) { const x = r.portal.x - dx, y = r.portal.y - dy;
         if (G.canStep(r.map, x, y, dx, dy) && !G.enemyAt(r, x, y) && !G.itemAt(r, x, y)) { r.player.x = x; r.player.y = y; G.updateVision(r); return d; } } });
     await p.tap(`#dpad [data-dir="${dir}"]`); await p.waitForTimeout(250);
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(700);
+    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(1500);   // 帰還口：金の魔法陣の演出（約1秒）→ 村
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(300);
     await closeTalk();
     assert(await p.isVisible('.modal h2:has-text("エンディング")'), 'ending');

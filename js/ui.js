@@ -1363,6 +1363,7 @@
 
   function onKey(e) {
     if (UI.screen === 'title') return;
+    if (UI.portalGoing) { e.preventDefault(); return; }   // 帰還口の演出の間は受けない
     const top = topModal();
     if (top) {
       if (e.key === 'Escape') { top.close(); e.preventDefault(); }
@@ -1418,13 +1419,14 @@
   /* 場面転換の黒い幕（UI.cover）。33階の真大魔王バーン（D.BOSS_ARRIVAL）のように、着いた直後にムービーを流す階では、
    * 階段を降りる前に今の階を黒へ暗転し、黒のまま次の階を作ってムービーへつなぐ（操作できる33階の画面・ボス戦を一瞬も見せない）。
    * ムービーが始まる（movieOverlay が黒のまま引き継ぐ）か、ムービーにならなかったときに外す */
-  function cover(ms) {
+  // delay：暗くなり始めるまでの時間（その間も、透明なまま画面の操作を止める。帰還口の演出）
+  function cover(ms, delay) {
     if (UI.cover) return UI.cover;
     const c = document.createElement('div');
     c.className = 'scene-cover';
     c.style.opacity = ms ? '0' : '1';   // ms が0：すぐ黒（読み込み直したとき）
     document.body.appendChild(c);
-    if (ms) { c.getBoundingClientRect(); c.style.transition = `opacity ${ms}ms ease`; c.style.opacity = '1'; }
+    if (ms) { c.getBoundingClientRect(); c.style.transition = `opacity ${ms}ms ease ${delay || 0}ms`; c.style.opacity = '1'; }
     for (const t of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click']) c.addEventListener(t, (e) => e.stopPropagation());
     UI.cover = c;
     return c;
@@ -1719,7 +1721,7 @@
     // 探索の終わり：帰還は魔法陣の光を見せてから村へ（少し長め）。倒れたときは短く
     // 倒れたとき：ボス戦の曲などを止める（結果の画面のあと、村の曲になる）。帰還は村の曲へ切りかわるまで今の曲のまま
     if (S.run && S.run.over && S.run.result && S.run.result.type === 'dead') AU.stopBgm(0.8);
-    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, res.events.some((e) => e.t === 'return') ? 760 : (fxD ? fxD + 450 : 350)); return; }   // 倒れたときは命中を見せてから
+    if (S.run && S.run.over) { stopHold(); setTimeout(handleRunOver, UI.portalFade ? 0 : res.events.some((e) => e.t === 'return') ? 760 : (fxD ? fxD + 450 : 350)); return; }   // 倒れたときは命中を見せてから
     if (res.floorChanged) {
       RD.clearFx();
       stopHold(); AU.playBgm(G.dungeonBgm(S.run)); if (!UI.cover) toast('地下' + S.run.floor + '階');
@@ -1924,8 +1926,9 @@
         // 商人の呼鈴：この階のどこかに旅商人が現れた（すぐには取引画面を開かない。探して会いに行く）
         case 'merchantCalled': AU.sfx('levelup'); toast('チリン…この階のどこかに旅商人が現れた！'); break;
         // 帰還（成立したときだけ）：足元に青緑の魔法陣と光の柱 → 村へ
-        case 'return': RD.addFx({ t: 'circle', x: e.x !== undefined ? e.x : p.x, y: e.y !== undefined ? e.y : p.y, dur: 720 }); AU.sfx('return'); break;
-        case 'portal': AU.sfx('levelup'); toast('帰還口が開いた！', 'levelup'); break;
+        case 'return': if (UI.portalFade) break;   // 帰還口：演出は portalReturn で済んでいる
+          RD.addFx({ t: 'circle', x: e.x !== undefined ? e.x : p.x, y: e.y !== undefined ? e.y : p.y, dur: 720 }); AU.sfx('return'); break;
+        case 'portal': RD.portalShown = run.portal && { key: run.seed + ':' + run.floor + ':' + run.portal.x + ',' + run.portal.y, t0: performance.now() + throwD }; AU.sfx('levelup'); toast('帰還口が開いた！', 'levelup'); break;
         default: break;
       }
     }
@@ -2095,8 +2098,29 @@
       : `<p>帰還の祠がある。ここから村へ帰れます。</p><p>持ち物 ${run.bag.length}個・探索中のお金 ${run.runGold}G を持ち帰れます。</p><p class="note">先に進めば、もっと良いお宝があるかもしれません。帰還の巻物は残ります（帰還すると消えます）。</p>`;
     modal({ title: portal ? '帰還口' : '帰還の祠', html, buttons: [
       { label: portal ? 'まだ残る' : '先に進む' },
-      { label: '村へ帰る', cls: 'primary', onClick: () => { setTimeout(() => { UI.lockUntil = 0; doAct({ type: 'returnHome' }); }, 0); } },
+      { label: '村へ帰る', cls: 'primary', onClick: () => { setTimeout(() => { if (portal) { portalReturn(); return; } UI.lockUntil = 0; doAct({ type: 'returnHome' }); }, 0); } },
     ] });
+  }
+  /* 帰還口（金の魔法陣）から帰る演出：0〜0.25秒 魔法陣が明るく → 0.25〜0.65秒 光の柱・たけが薄くなる → 0.65〜0.95秒 暗転 →
+   * 今までの帰還の処理（returnHome を1回だけ）→ 村で0.35秒かけて明るく。演出の間は入力を受けない（敵・満腹度も進まない）。
+   * 帰還の処理はここから1回だけ呼ぶ（描画ループからは呼ばない）。途中で読み込み直しても、まだ帰っていないので帰還口の上に立ったまま */
+  UI.PORTAL_GO = { pillar: 250, dark: 650, end: 950, fadeIn: 350 };
+  function portalReturn() {
+    const run = UI.S.run, P = UI.PORTAL_GO;
+    if (!run || run.over || UI.portalGoing || !G.onPortal(run)) return;
+    UI.portalGoing = true;
+    stopHold();
+    UI.lockUntil = performance.now() + 60000;
+    closeAllModals();
+    RD.addFx({ t: 'portalgo', dur: P.end + 200 });
+    AU.sfx('return');
+    cover(P.end - P.dark, P.dark);   // すぐ透明な覆いで操作を止め、0.65秒から暗くする
+    setTimeout(() => {
+      UI.lockUntil = 0;
+      UI.portalFade = true;
+      doAct({ type: 'returnHome' });
+      if (!UI.S.run || !UI.S.run.over) { UI.portalGoing = false; UI.portalFade = false; RD.clearFx(); uncover(P.fadeIn); }   // 帰れなかった（念のため）：元に戻す
+    }, P.end);
   }
 
   function footAction() {
@@ -2505,6 +2529,8 @@
     const res = G.finishRun(S);
     save();
     showScreen('village');
+    // 帰還口の演出のあと：暗いところから村へ（0.35秒）
+    if (UI.portalFade) { UI.portalFade = false; UI.portalGoing = false; uncover(UI.PORTAL_GO.fadeIn); }
     if (!res) return;
     if (res.type === 'dead') {
       talk([

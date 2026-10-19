@@ -160,7 +160,8 @@
      *  throneBg：地下30階・大魔王バーンの玉座の間の背景（1024×1536。玉座・柱・旗・炎も描かれている。マスとの対応は js/data.js の D.THRONE_ROOM）
      *  crack：時空の亀裂（透過PNG。背景には焼きこまず、状態に応じて別に描く）
      * 読み込めなければ、今までのタイルの絵と仮の亀裂の絵で描く */
-    rooms: { throneBg: 'assets/rooms/throne-room.webp', crack: 'assets/rooms/time-crack.png' },
+    // goldCircle：ボス撃破後の帰還口（金の魔法陣。ZIP gold_return_circle_v1 の 128px 版。元の 64・96px は assets/reference/gold_return_circle_v1/）
+    rooms: { throneBg: 'assets/rooms/throne-room.webp', crack: 'assets/rooms/time-crack.png', goldCircle: 'assets/rooms/gold-circle.png' },
     /* 技の演出の絵（assets/fx/）。描き直しはしない。
      *  kaiserPhoenix：大魔王バーンのカイザーフェニックス（下向きに飛ぶ火の鳥。tools/make-kaiser-phoenix.py で余白を切り、縮小）。
      *    攻撃の向きに合わせてゲームで回す。読み込めなければ今までの炎の帯の演出 */

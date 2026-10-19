@@ -9,6 +9,57 @@
 
   RD.addFx = function (f) { return TS.FX ? TS.FX.add(RD, f) : (f.t0 = performance.now(), RD.fx.push(f), f); };
   RD.clearFx = function () { RD.fx = []; };
+  /* ボス撃破後の帰還口：金の魔法陣（assets/rooms/gold-circle.png）。床の上・道具とキャラクターの下に、横長のまま描く（回転させない）。
+   * 幅は約1.3マス、中心はマスの中心。出現（RD.portalShown から0.45秒）：透明→表示・0.8→1.0倍。待機：2秒周期で不透明度0.7〜1.0、
+   * 小さな金の粒（5個）が上へ流れて消える。帰る演出（fx portalgo）の最初の0.25秒は明るくなる。操作の判定は今までどおり1マス */
+  RD.GOLD_CIRCLE = { w: 1.3, appear: 450, period: 2000, motes: 5 };
+  RD.drawGoldCircle = function (g, run, ox, oy, ts, k, now) {
+    const pos = run.portal, m = run.map;
+    if (!pos || !run.explored[pos.y * m.w + pos.x]) return;
+    const img = SP.art.rooms && SP.art.rooms.goldCircle, C = RD.GOLD_CIRCLE;
+    const cx = ox + (pos.x + 0.5) * ts, cy = oy + (pos.y + 0.5) * ts;
+    const key = run.seed + ':' + run.floor + ':' + pos.x + ',' + pos.y, sh = RD.portalShown;
+    const ap = sh && sh.key === key ? Math.min(1, (now - sh.t0) / C.appear) : 1;   // 開いた直後だけ出現の動き（読み込み直したときは最初から表示）
+    const go = RD.fx.find((f) => f.t === 'portalgo'), gt = go ? (now - go.t0) / 1000 : -1;
+    let alpha = 0.85 + 0.15 * Math.sin(now / C.period * Math.PI * 2);   // 0.7〜1.0
+    alpha *= ap;
+    const sc = 0.8 + 0.2 * ap, w = ts * C.w * sc;
+    if (img) {
+      const h = w * img.height / img.width;
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.globalAlpha = Math.min(1, alpha); g.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+      // 帰る演出：0〜0.25秒で明るく（金色を足す。白一色にはしない）、そのあとも明るいまま
+      if (gt >= 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55 * Math.min(1, gt / 0.25); g.drawImage(img, cx - w / 2, cy - h / 2, w, h); g.globalCompositeOperation = 'source-over'; }
+      g.globalAlpha = 1; g.imageSmoothingEnabled = false;
+    } else {   // 絵が読めないとき：金の楕円の線
+      g.strokeStyle = 'rgba(255,214,90,' + alpha.toFixed(3) + ')'; g.lineWidth = 2 * k;
+      g.beginPath(); g.ellipse(cx, cy, w / 2, w * 0.28, 0, 0, Math.PI * 2); g.stroke();
+    }
+    // 金の粒：魔法陣の上から上へ流れて消える（出現の間は少しだけ）
+    const n = ap < 1 ? 3 : C.motes;
+    for (let i = 0; i < n; i++) {
+      const per = 1600 + i * 170, a = ((now + i * 487) % per) / per, x = cx + (((i * 37) % 11) / 10 - 0.5) * w * 0.7, y = cy - a * ts * 0.9;
+      g.globalAlpha = (1 - a) * 0.9 * ap; g.fillStyle = i % 2 ? '#ffe9a8' : '#ffd24a';
+      g.fillRect(Math.round(x - k), Math.round(y - k), Math.max(1, Math.round(2 * k)), Math.max(1, Math.round(2 * k)));
+    }
+    g.globalAlpha = 1;
+  };
+  /* 帰る演出の光の柱（0.25〜0.65秒）：たけを包む細い半透明の金・クリーム色の柱と、上る粒。キャラクターの前に重ねる */
+  RD.drawPortalPillar = function (g, cx, footY, ts, k, t, now) {
+    if (t < 0.2) return;
+    const a = t < 0.35 ? (t - 0.2) / 0.15 : t < 0.65 ? 1 : Math.max(0, 1 - (t - 0.65) / 0.3);
+    const w = ts * 0.62, h = ts * 2.6, top = footY - h;
+    g.globalCompositeOperation = 'lighter';
+    const gr = g.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
+    gr.addColorStop(0, 'rgba(255,200,80,0)'); gr.addColorStop(0.5, 'rgba(255,236,170,' + (0.42 * a).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,200,80,0)');
+    g.fillStyle = gr; g.fillRect(cx - w / 2, top, w, h);
+    for (let i = 0; i < 8; i++) {
+      const per = 520 + i * 60, p = ((now + i * 211) % per) / per, x = cx + (((i * 53) % 13) / 12 - 0.5) * w * 0.8, y = footY - p * h;
+      g.globalAlpha = a * (1 - p); g.fillStyle = i % 2 ? '#fff0c0' : '#ffd860';
+      g.fillRect(Math.round(x - k), Math.round(y - k), Math.max(1, Math.round(2 * k)), Math.max(1, Math.round(3 * k)));
+    }
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  };
   RD.stepDur = 110; // 1マス分の移動を見せる時間（UIが歩き・ダッシュに合わせて設定）
 
   // ---- 移動の補間（描画だけ。ターン処理とは独立） ----
@@ -279,7 +330,7 @@
     const special = (pos, img) => { if (pos && run.explored[pos.y * m.w + pos.x]) g.drawImage(img, ox + pos.x * ts, oy + pos.y * ts, ts, ts); };
     special(run.stairs, SP.tiles.stairs);
     special(run.returnPoint, SP.tiles.returnPoint[fr(600, 2)]);
-    if (run.portal) special(run.portal, SP.tiles.portal[fr(180, 3)]);
+    if (run.portal) RD.drawGoldCircle(g, run, ox, oy, ts, k, now);
     /* 時空の亀裂（30階：大魔王バーン撃破後、版3の探索の35階：真大魔王バーン撃破後）。素材の絵（assets/rooms/time-crack.png）を、
      * 足元のマスの下端にそろえて縦長に立てる（約2.4マスの高さ。上は玉座の段・壁にかかる）。撃破後ムービーの間は出さない（ムービーで亀裂が開く） */
     const crackImg = SP.art.rooms && SP.art.rooms.crack;
@@ -501,7 +552,12 @@
       shadow(sx + ts / 2, sy + fly + ts * 0.92, ts * (fly ? 0.24 : 0.3));
       // 見本から作った絵（52×64、足元そろえ）は1マスより背が高いので、足元をマスの下端に合わせて描く
       const drawP = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, 0) : g.drawImage(img, sx, sy, ts, ts);
+      // 帰還口から帰る演出（portalgo）：光の柱の間に、たけが薄くなる
+      const pgo = RD.fx.find((f) => f.t === 'portalgo'), pgt = pgo ? (now - pgo.t0) / 1000 : 0;
+      if (pgo) g.globalAlpha = pgt < 0.25 ? 1 : Math.max(0.12, 1 - (pgt - 0.25) / 0.4 * 0.88);
       drawP();
+      g.globalAlpha = 1;
+      if (pgo) RD.drawPortalPillar(g, sx + ts / 2, sy + ts * 0.86, ts, k, pgt, now);
       if (hurt) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55; drawP(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
       // たけの状態異常のしるし（毒＝しずく、拘束＝鎖）
       { const st = []; if (p.poison) st.push('poison'); if (p.bound > 0) st.push('bound'); if (st.length) RD.drawStatus(g, st, sx + ts / 2, sy + ts - (set.art ? 66 : 34) * k, k, now); }
