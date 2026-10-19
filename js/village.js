@@ -234,12 +234,7 @@
     // 寺院の基壇のまわりの石段の影
     P.rect(7 * T, 4 * T - 2, 6 * T, 2, '#5a2a1a');
     // 広場の床の飾り：コンパスの紋（噴水がないとき）
-    // 船着き場から像へまっすぐ続く参道（明るい石と金茶のふち）
-    for (let y = 13 * T; y < 20 * T; y++) for (let x = 9 * T - 4; x < 11 * T + 4; x++) {
-      if (x < 9 * T - 2 || x >= 11 * T + 2) P.set(x, y, '#b89a62');
-      else if (x < 9 * T || x >= 11 * T) P.set(x, y, '#d8b874');
-      else { const c = P.get(x, y); if (c) P.set(x, y, sh(c, 0.1)); }
-    }
+    // （2026年10月：像と噴水の間の参道の2本のふち線と、明るい石の帯はやめた。広場の床のまま）
     if (!lv.decor.fountain) {
       const cx = 10 * T, cy = 17 * T + 16;
       for (let y = -22; y <= 22; y++) for (let x = -22; x <= 22; x++) {
@@ -856,12 +851,9 @@
     const props = new SP.Pix(MW * T, MH * T);
     const propAt = [];
     const putPot = (x, y, fl) => { pot(props, x * T + 16, y * T + 30, fl); propAt.push([x, y]); };
-    putPot(6, 6, [C.pink, '#ffffff']); putPot(13, 6, ['#ffe070', C.pink]);   // 鍛冶屋・展示室の絵と重ならないよう1マス内側へ（以前は (5,6)・(14,6)）   // 像の両わきの鉢は、素材の像の灯籠と花壇に置きかえた
-    putPot(0, 16, [C.pink]);   // 店の入口 (1,15) の前をあけるため、左の草地へ（以前は (1,16)）
-    putPot(19, 16, ['#ffe070']);   // 食堂の屋根に隠れないよう右の草地へ（以前は (18,16)） putPot(5, 20, [C.pink, '#ffffff']); putPot(14, 20, ['#ffe070', C.pink]);
-    // 庭の鉢：(5,13) は三毛猫の場所なので、像の左わき (8,12) へ
-    // 庭の鉢：(14,13) は倉庫の足元、(14,19) はワーンの場所になったので、像の右わき (11,12) と (14,17) へ
-    if (lv.decor.garden) { putPot(8, 12, [C.pink]); putPot(11, 12, ['#ffe070']); putPot(5, 19, [C.pink, '#ffffff']); putPot(14, 17, [C.pink]); }
+    /* 植木鉢（コードで描いた赤い鉢）と、村の発展「蓮の庭」で増える鉢は、2026年10月にやめた（デザインを新しくするか、なしにするかは未定）。
+     * 置いていた場所：(6,6)・(13,6)・(0,16)・(19,16)、蓮の庭で (8,12)・(11,12)・(5,19)・(14,17)。新しい絵が届いたら putPot の代わりに置く */
+    void putPot;
     // 長いす・木箱・花壇（入口と通り道はあける）
     const bench = (x, y) => { const X = x * T + 3, Y = y * T + 26; props.rect(X, Y - 10, 26, 4, '#b8834e'); props.rect(X, Y - 10, 26, 1, '#e0b07a'); props.rect(X, Y - 15, 26, 3, '#9a6a3a'); props.rect(X + 2, Y - 6, 2, 6, C.woodD); props.rect(X + 22, Y - 6, 2, 6, C.woodD); propAt.push([x, y]); };
     // 長いす：素材の絵は2マス幅（寺院の前の2つと、広場の左の木陰の1つ）。読み込めなければ1マスの長いす
@@ -877,11 +869,8 @@
       for (let i = 0; i < 12; i++) { const h = hash(x, y, i + 30), fx = X + 5 + (h % 22), fy = Y + 7 + ((h >> 6) % 12); props.set(fx, fy, cols[i % cols.length]); props.set(fx + 1, fy, cols[i % cols.length]); props.set(fx, fy + 1, sh(cols[i % cols.length], -0.3)); }
       propAt.push([x, y]);
     };
-    // 花壇：像へ続く参道の両わき（素材の絵は2マス幅）。読み込めなければ1マスずつの花壇
-    for (const [x, cols] of [[7, [C.pink, '#ffffff']], [11, ['#ffe070', C.pink]]]) {
-      const o = artProp('flowerbed', (x + 1) * T, 14 * T - 2);
-      if (o) { add(o); block(x, 13, 2, 1); } else { bed(x, 13, cols); bed(x + 1, 13, cols); }
-    }
+    // 花壇（像と噴水の間の両わき、(7〜8,13)・(11〜12,13)）は2026年10月にやめた（デザインを新しくするか、なしにするかは未定）。bed は新しい花壇を置くときのために残す
+    void bed;
     // （以前の (15,10)・(18,10)・(1,10) の木箱と樽は、倉庫と店の絵に木箱・樽があり、屋根の陰に隠れて重なるのでやめた）
     const lamps = [[6, 8], [13, 8]];   // 鍛冶屋・展示室の絵の角に重ならないよう1マス内側へ（以前は (5,8)・(14,8)）
     if (lv.stage >= 2 || lv.decor.lanterns) lamps.push([5, 16], [14, 16]);

@@ -621,7 +621,8 @@
     { id: 'storage4', kind: 'facility', name: '大倉庫（30枠）', price: 4000, desc: '倉庫が30枠に。', req: ['storage3', 'floor20'] },
     { id: 'smith3', kind: 'facility', name: '黄金の炉（+8）', price: 7000, mats: { crystal_shard: 3, gold_leaf: 2 }, desc: '強化の上限が+8になる。', req: ['smith2'] },
     { id: 'lanterns', kind: 'decor', name: '灯籠の並木', price: 300, desc: '道ぞいに灯籠が並び、夕暮れの村が明るくなる。', req: [] },
-    { id: 'garden', kind: 'decor', name: '蓮の庭', price: 400, desc: '花壇と蓮が増える。', req: ['storage2'] },
+    // 蓮の庭：2026年10月、増えていた植木鉢（コードの絵）をやめた。新しい花壇のデザインを置くまで、建てても見た目は変わらない（建てた記録・呼鈴の条件はそのまま）
+    { id: 'garden', kind: 'decor', name: '蓮の庭', price: 400, desc: '村に花壇が増える（花壇の新しいデザインを準備中）。', req: ['storage2'] },
     { id: 'stalls', kind: 'decor', name: '屋台通り', price: 700, desc: '水路ぞいに色とりどりの屋台が並ぶ。', req: ['smith1'] },
     // 2026年10月：解放は通常のバラン（第4章）を倒した後（以前は地下10階に到達）。値段は同じ。すでに建てた橋はそのまま
     { id: 'bridge', kind: 'decor', name: '水路の赤い橋', price: 900, desc: '水路に赤い橋がかかる。', req: ['baran'] },
