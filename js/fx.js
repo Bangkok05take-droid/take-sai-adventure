@@ -65,7 +65,7 @@
   // 通常の敵の撃破：縦につぶれながら白く消える（短く）
   FX.draw.die = function (g, f, a, v) {
     const SP = TS.Sprites, fr = SP.s.enemy[f.sprite]; if (!fr) return;
-    const img = fr[0], dw = v.ts * img.width / 32, x = cx(v, f.x) - dw / 2, foot = v.oy + (f.y + 1) * v.ts;
+    const img = fr[0], dw = v.ts * (img.logical || img.width) / 32, x = cx(v, f.x) - dw / 2, foot = v.oy + (f.y + 1) * v.ts;
     const h = dw * (1 - a * 0.8);
     g.globalAlpha = 1 - a; g.drawImage(SP.tinted(img, '#ffffff'), x + dw * a * 0.15, foot - h, dw * (1 - a * 0.3), h);
     g.globalAlpha = 1;
@@ -290,7 +290,7 @@
   // 残像（キルバーンの分身の入れ替わり）
   FX.draw.afterimage = function (g, f, a, v) {
     const SP = TS.Sprites, fr = SP.s.enemy[f.sprite]; if (!fr) return;
-    const img = fr[0], dw = v.ts * img.width / 32;
+    const img = fr[0], dw = v.ts * (img.logical || img.width) / 32;
     g.globalAlpha = 0.45 * (1 - a); g.drawImage(SP.tinted(img, '#b8a0ff'), cx(v, f.x) - dw / 2, v.oy + (f.y + 1) * v.ts - dw, dw, dw); g.globalAlpha = 1;
   };
   // 剣閃（バラン）：予告の列にそって鋭い光の線

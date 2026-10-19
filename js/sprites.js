@@ -1355,7 +1355,8 @@
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
     for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {
       const n = Math.max(1, Math.round(img.width / img.height)), w = img.width / n;
-      const fr = [0, 1].map((i) => { const c = document.createElement('canvas'); c.width = w; c.height = img.height; c.getContext('2d').drawImage(img, Math.min(i, n - 1) * w, 0, w, img.height, 0, 0, w, img.height); c.art = true; return c; });
+      const sc = (A.enemyArtScale && A.enemyArtScale[k]) || 1;   // 細かく持っている絵：画面では枠の大きさ（logical）として扱う
+      const fr = [0, 1].map((i) => { const c = document.createElement('canvas'); c.width = w; c.height = img.height; c.getContext('2d').drawImage(img, Math.min(i, n - 1) * w, 0, w, img.height, 0, 0, w, img.height); c.art = true; if (sc > 1) c.logical = w / sc; return c; });
       SP.art.enemies[k] = fr;
     });
     if (!left) end();

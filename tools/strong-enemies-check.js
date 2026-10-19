@@ -28,10 +28,14 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       const out = {};
       for (const s of spec) { const e = G.makeEnemy(r, s.type, r.player.x + s.dx, r.player.y + s.dy); e.awake = true; if (s.sleep) e.sleep = 99; if (s.disguised) e.disguised = true; if (s.hp) e.hp = s.hp; e.cds = {}; r.enemies.push(e); out[s.key || s.type] = e.id; }
       G.updateVision(r); r.explored.fill(1); TS.UI.lockUntil = 0; return { room: [room.w, room.h], ids: out }; }, spec);
-    // 1. 見た目の一覧（仮）：6種（ミミックは化けた姿と正体）
-    const L = await setup([{ type: 'dragon', dx: 2, dy: 0, sleep: 1 }, { type: 'silverdevil', dx: 3, dy: 0, sleep: 1 }, { type: 'gigantes', dx: 4, dy: 0, sleep: 1 },
-      { type: 'bombrock', dx: 2, dy: 1, sleep: 1 }, { type: 'madhand', dx: 3, dy: 1, sleep: 1 }, { type: 'mimic', dx: 4, dy: 1, sleep: 1 }, { type: 'mimic', key: 'mimic2', dx: 5, dy: 1, sleep: 1, disguised: 1 }]);
-    await p.waitForTimeout(400);
+    // 1. 見た目の一覧：6種を隣どうしに並べ、間に道具（やくそう）と本物の宝箱・化けたミミックも置く（隣のマスが見えるか）
+    const L = await setup([{ type: 'dragon', dx: 2, dy: 0 }, { type: 'silverdevil', dx: 3, dy: 0 }, { type: 'gigantes', dx: 4, dy: 0 },
+      { type: 'bombrock', dx: 2, dy: 1 }, { type: 'mimic', dx: 3, dy: 1 }, { type: 'madhand', dx: 4, dy: 1 }, { type: 'mimic', key: 'mimic2', dx: 5, dy: 1, disguised: 1 }]);
+    const art = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game;
+      r.floorItems.push({ x: r.player.x + 1, y: r.player.y + 1, item: G.makeItem(S, 'herb') }, { x: r.player.x + 5, y: r.player.y, item: G.makeItem(S, 'golden_lotus') });
+      const out = {}; for (const k of ['dragon', 'silverdevil', 'gigantes', 'bombrock', 'mimic', 'madhand']) { const f = TS.Sprites.enemyFrames(k)[0]; out[k] = { art: !!f.art, logical: f.logical, w: f.width }; } return out; });
+    await p.waitForTimeout(500);
+    chk(Object.values(art).every((a) => a.art && a.logical === 64 && a.w === 192), `${w} 6種とも新しい絵（枠64・3倍の細かさ） ${JSON.stringify(art)}`);
     chk(L.room[0] >= 6, `${w} 大きい部屋 ${JSON.stringify(L.room)}`);
     await shot('1_lineup');
     // 2. ドラゴンの炎：間の敵（ギガンテス）で止まる。たけには届かない

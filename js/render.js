@@ -317,7 +317,8 @@
       const frames = SP.enemyFrames(D.ENEMIES[e.type].sprite);
       const img = frames[e.sleep ? 0 : (Math.floor(now / (D.ENEMIES[e.type].ai === 'fast' ? 160 : 420) + e.id) % frames.length)];
       const hit = hitFx(e.x, e.y, 'enemy', now);
-      const big = img.width / TILE;
+      const big = (img.logical || img.width) / TILE;   // 細かく持っている絵（隠しダンジョンの強敵）は枠の大きさで（占有は1マスのまま）
+      if (img.logical) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; }
       const dw = ts * big;
       const isClone = !!D.ENEMIES[e.type].clone;
       // ボスの立っているマス（当たり判定）を足元の円で示す
@@ -340,6 +341,7 @@
       if (img.art && e.charge) { g.globalAlpha = 0.25 + 0.25 * Math.sin(now / 120); g.drawImage(SP.tinted(img, '#ff2a2a'), sx + (ts - dw) / 2 + shake, sy + ts - dw - lift, dw, dw); g.globalAlpha = 1; }
       if (isClone && G.hasCharm(run, 'truesight')) badge(g, '幻', sx + ts / 2, sy + ts - dw * 0.55, ts, k, '#c8f0ff', '#102040');
       if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
+      g.imageSmoothingEnabled = false;
       if (e.charge) badge(g, '！', sx + ts / 2, sy + ts - dw - ts * 0.05, ts, k, '#ff5050', '#400');
       else if (e.rest > 0) { g.font = `bold ${Math.round(ts * 0.3)}px sans-serif`; g.fillStyle = '#bde0ff'; g.fillText('…', sx + ts * 0.65, sy + ts * 0.2); }
       // 状態異常のしるし（眠り＝月、鈍足＝砂時計）。頭の上に横に並べ、重ならないようにする
@@ -527,7 +529,7 @@
         for (const t of f.tiles) g.fillRect(ox + t.x * ts + pad, oy + t.y * ts + pad, ts - pad * 2, ts - pad * 2);
       } else if (f.t === 'bossdie') { // ボスの撃破：白く光りながら床へ沈んで消え、光の粒が立ちのぼる
         const fr = SP.s.enemy[f.sprite]; if (!fr) continue;
-        const img = fr[0], dw = ts * img.width / TILE, x = ox + (f.x + 0.5) * ts - dw / 2, foot = oy + (f.y + 1) * ts, top = foot - dw;
+        const img = fr[0], dw = ts * (img.logical || img.width) / TILE, x = ox + (f.x + 0.5) * ts - dw / 2, foot = oy + (f.y + 1) * ts, top = foot - dw;
         g.save(); g.beginPath(); g.rect(x - ts, top - ts, dw + 2 * ts, foot - top + ts); g.clip();
         const sink = a * a * dw * 0.55;
         g.globalAlpha = Math.max(0, 1 - a * 1.1); g.drawImage(img, x, top + sink, dw, dw);

@@ -165,7 +165,14 @@
     /* 通常の敵（assets/enemies/）：見本の一覧画像から tools/extract-enemies.py で作る透過PNG。まだ素材が無いので空。
      * 1コマは 64×64（足の裏 y=60、足元の中央 x=32）、待機2コマなら横に並べた 128×64。キーは js/data.js の敵の sprite 名。
      * 書いた敵だけ画像に替わり、書かない敵は今までのコードで描いた絵のまま。必要な素材の一覧は docs/ENEMY_ART.md */
-    enemies: {},
+    enemies: {
+      /* 隠しダンジョンの強敵6種（2026年10月、ChatGPT制作。assets/reference/strong-enemies-v1/ を tools/make-strong-enemies.py で
+       * 余白を切って縮小。描き直しはしない）。細かい絵なので枠の3倍（192×192・足の裏 y=180・中央 x=96）で持つ（enemyArtScale）。
+       * 1枚の静止画（歩きのコマは無い）。ミミックは正体を現した姿（化けている間は床の宝箱の絵） */
+      dragon: 'assets/enemies/dragon.png', silverdevil: 'assets/enemies/silverdevil.png', gigantes: 'assets/enemies/gigantes.png',
+      bombrock: 'assets/enemies/bombrock.png', mimic: 'assets/enemies/mimic.png', madhand: 'assets/enemies/madhand.png',
+    },
     enemyBox: { w: 64, h: 64, foot: 60 },
+    enemyArtScale: { dragon: 3, silverdevil: 3, gigantes: 3, bombrock: 3, mimic: 3, madhand: 3 },   // 枠（64×64）の何倍の細かさで持っているか
   };
 })(globalThis.TS = globalThis.TS || {});
