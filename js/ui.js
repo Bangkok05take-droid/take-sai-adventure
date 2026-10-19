@@ -1850,7 +1850,10 @@
           const framed = sh && enemyActFx(sh, 'attack', Math.sign(e.to.x - e.from.x), EA.prep, EA.prep + EA.act);
           if (sh && !framed) RD.addFx({ t: 'aim', id: sh.id, dx: Math.sign(e.to.x - e.from.x), dy: Math.sign(e.to.y - e.from.y), dur: 220 });
           const dd = framed ? EA.prep : sh ? 120 : 0;
-          RD.addFx({ t: 'dart', from: e.from, to: e.to, dur: 300, delay: dd }); AU.sfx('dart');
+          // 発動のコマに切り替わると同時に、弓・手の先（muzzle）から1回だけ飛ばす（絵の発動のコマには矢・火の玉が無い）
+          const sp = framed && D.ENEMIES[sh.type].sprite, mz = framed && SP.enemyMuzzle(sp, SP.enemyFlip(sp, Math.sign(e.to.x - e.from.x)));
+          const from = mz ? { x: e.from.x + mz.x, y: e.from.y + mz.y } : e.from;
+          RD.addFx({ t: 'dart', from, to: e.to, dur: 300, delay: dd }); AU.sfx('dart');
           hitD = Math.max(hitD, dd + 150);   // 当たり・ミスの表示は、矢が届いた時（判定はゲーム側で1回だけ済んでいる）
           break;
         }

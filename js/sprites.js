@@ -1259,6 +1259,14 @@
   // 技のコマを、たけ（相手）のいる横の向きに合わせるか：dx は相手の方向（-1 左・1 右）。絵が正面（face なし）なら反転しない
   // phase 'guard'：防御のポーズの向き（guardFace）で判定する
   SP.enemyFlip = (sprite, dx, phase) => { const ES = SP.art.enemySheet && SP.art.enemySheet[sprite], face = ES && (phase === 'guard' ? ES.guardFace : ES.face); return !!(face && dx && (dx < 0 ? 'L' : 'R') !== face); };
+  /* 発動のコマの飛び道具を出す位置：敵のマスの中心からのずれ（マス単位）。絵と同じ倍率・足元（render.js の敵の描き方と同じ式）。
+   * flip のときは左右を反転。muzzle の無い絵は null（マスの中心から） */
+  SP.enemyMuzzle = (sprite, flip) => {
+    const ES = SP.art.enemySheet && SP.art.enemySheet[sprite], c = ES && ES.act;
+    if (!ES || !ES.muzzle || !c) return null;
+    const T = 32, L = c.logical / T, F = c.width, mx = flip ? F - 1 - ES.muzzle[0] : ES.muzzle[0];
+    return { x: L * ((mx + 0.5) / F - 0.5), y: 0.5 - 1 / T - L * c.footY / F + L * (ES.muzzle[1] + 0.5) / F };
+  };
   SP.enemyFrames = (sprite) => SP.s.enemy[sprite] || placeholderFrames(sprite) || SP.s.enemy.frog;
 
   const urlCache = {};
@@ -1382,7 +1390,7 @@
       const F = ES.frame, sc = ES.takeBody / ES.bodyRef;
       const fr = [0, 1, 2, 3].map((i) => { const c = document.createElement('canvas'); c.width = c.height = F; c.getContext('2d').drawImage(img, i * F, 0, F, F, 0, 0, F, F);
         c.art = true; c.sheet = true; c.logical = F * sc; c.footY = ES.foot[1]; c.bodyH = cfg.body * sc; return c; });
-      SP.art.enemySheet[k] = Object.assign(SP.art.enemySheet[k] || {}, { idle: [fr[0], fr[1]], prep: fr[2], act: fr[3], kind: cfg.kind, face: cfg.face, flip: {} });
+      SP.art.enemySheet[k] = Object.assign(SP.art.enemySheet[k] || {}, { idle: [fr[0], fr[1]], prep: fr[2], act: fr[3], kind: cfg.kind, face: cfg.face, muzzle: cfg.muzzle || null, flip: {} });
     });
     // 防御のポーズ（あくまのきし）：1枚 96×96。ほかのコマと同じ倍率・足元（腰を落とした姿なので、待機の高さに引き伸ばさない）
     if (ES) for (const [k, cfg] of Object.entries(ES.map || {})) if (cfg.guard) load(ES.dir + cfg.guard + '.png', (img) => {

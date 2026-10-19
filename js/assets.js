@@ -189,7 +189,8 @@
       map: {
         frog: { file: 'slime', kind: 'attack', face: 'L', body: 40 },
         turtle: { file: 'army_crab', kind: 'attack', face: 'R', body: 40 },
-        monkey: { file: 'liliput', kind: 'attack', face: 'R', body: 40 },
+        // muzzle：発動のコマで飛び道具を出す位置（コマの中のドット。右向きの絵で。反転したときは同じように反転）。ZIP projectile_frames_fix_v1 の発動のコマは矢・火の玉を描いていない
+        monkey: { file: 'liliput', kind: 'attack', face: 'R', body: 40, muzzle: [62, 60] },   // 弓
         root: { file: 'stump', kind: 'attack', face: 'R', body: 40 },
         jelly: { file: 'healslime', kind: 'heal', face: null, body: 40 },
         statue: { file: 'living_statue', kind: 'attack', face: 'L', body: 64 },
@@ -202,7 +203,7 @@
         guard: { file: 'restless_armour', kind: 'attack', face: 'L', body: 40 },
         // guard：防御のポーズ（ZIP demon_knight_guard_v1。96×96・足元48,84・本体60px＝腰を落とした姿。同じ倍率のまま。盾は右向き＝guardFace）
         darkknight: { file: 'demon_knight', kind: 'attack', face: 'L', body: 64, guard: 'demon_knight_guard', guardFace: 'R', guardBody: 60 },
-        imp: { file: 'baby_satan', kind: 'attack', face: 'R', body: 40 },
+        imp: { file: 'baby_satan', kind: 'attack', face: 'R', body: 40, muzzle: [64, 66] },   // 伸ばした手の先
       },
     },
     enemyBox: { w: 64, h: 64, foot: 60 },
