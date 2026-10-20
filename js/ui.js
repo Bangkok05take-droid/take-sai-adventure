@@ -1985,9 +1985,10 @@
       case 'sweep': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#9ad8ff', dur: 380 }); AU.sfx('hit'); return;
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
       // 真大魔王バーン：カラミティエンド（まわり1マス）・カラミティウォール（まわり3マス）。正式の演出の絵は後で届く予定（それまでの仮）
-      case 'calamityEnd': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffe0a0', dur: 420 }); FXm.shake(RD, 5, 320); AU.sfx('hit'); return;
-      case 'stanceCounter': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#fff2b0', dur: 380 }); FXm.shake(RD, 5, 300); AU.sfx('hit'); return;   // 天地魔闘の構えの反撃（仮。絵はChatGPT担当）
-      case 'calamityWall': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#d8a0ff', dur: 520 }); FXm.shake(RD, 4, 360); AU.sfx('bolt'); return;
+      // 演出はコードで描く（js/fx.js の cslash・cwall・ccounter。ChatGPT のデザイン見本の方向性に合わせた仮の版。個別のコマの絵が届いたら差し替え）
+      case 'calamityEnd': if (!b) break; RD.addFx({ t: 'cslash', tiles, c: { x: b.x, y: b.y }, dur: 560 }); FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
+      case 'stanceCounter': if (!b) break; RD.addFx({ t: 'ccounter', c: { x: b.x, y: b.y }, p: { x: p.x, y: p.y }, dur: 480 }); FXm.shake(RD, 6, 320); AU.sfx('hit'); return;
+      case 'calamityWall': if (!b) break; RD.addFx({ t: 'cwall', tiles, c: { x: b.x, y: b.y }, step: 110, rise: 260, dur: 110 * 2 + 260 * 1.6 }); FXm.shake(RD, 4, 420); AU.sfx('bolt'); return;
       case 'palm': // 真大魔王バーン：速く重い打撃と強い衝撃
         RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffb0f0', dur: 380 });
         FXm.shake(RD, 4, 300); AU.sfx('hit'); return;

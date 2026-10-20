@@ -534,10 +534,9 @@
       if (isClone && G.hasCharm(run, 'truesight')) badge(g, '幻', sx + ts / 2, sy + ts - dw * 0.55, ts, k, '#c8f0ff', '#102040');
       if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, ty0, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       g.imageSmoothingEnabled = false;
-      // 天地魔闘の構え（e.stance）：金色の光の輪と「構」の印（仮の見た目。エフェクトの絵は ChatGPT の素材待ち）
+      // 天地魔闘の構え（e.stance）：控えめな三方向の光（js/fx.js の stanceAura）と「構」の印（構えのポーズの絵は届いたら使う）
       if (e.stance > 0) {
-        g.strokeStyle = `rgba(255,220,120,${0.55 + 0.35 * Math.sin(now / 140)})`; g.lineWidth = k * 2;
-        g.beginPath(); g.ellipse(sx + ts / 2, ty0 + dw * 0.55, dw * 0.5, dw * 0.55, 0, 0, Math.PI * 2); g.stroke();
+        if (TS.FX && TS.FX.stanceAura) TS.FX.stanceAura(g, sx + ts / 2, ty0 + dw * 0.5, ts, k, now);
         badge(g, '構', sx + ts / 2, bodyTop - ts * 0.05, ts, k, '#ffe08a', '#402800');
       }
       if (e.charge) badge(g, '！', sx + ts / 2, bodyTop - ts * 0.05, ts, k, '#ff5050', '#400');

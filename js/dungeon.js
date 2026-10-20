@@ -16,6 +16,7 @@
     opts = opts || { boss: !!D.LEGACY_BOSS_FLOORS[floor], returnPoint: D.RETURN_POINT_FLOORS.includes(floor) };
     if (opts.throne) return generateThroneFloor();
     if (opts.room) return generateRoomFloor(opts.room);   // 背景の絵で作るボス部屋（通常バラン戦 D.BARAN_ROOM）
+    if (opts.arenaOnly) return generateArenaFloor();   // 33階・真大魔王バーン：正方形の決戦場だけ（前室・通路なし）
     if (opts.boss) return generateBossFloor(rng);   // ボス部屋は隠しダンジョンでも本編と同じ（部屋の数の倍率は使わない）
     for (let attempt = 0; attempt < 80; attempt++) {
       const g = tryGenerate(floor, rng, opts);
@@ -171,6 +172,17 @@
     for (let y = b.y + b.h; y < a.y; y++) tiles[y * w + cx] = CORR;
     const map = { w, h, tiles, rooms, boss: true };
     return { map, start: { x: cx, y: a.y + 2 }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: cx, y: b.y + (b.h >> 1) } };
+  }
+  /* 33階・真大魔王バーン（配置の版4。2026年10月21日【確定】）：正方形の決戦場（15×15）だけ。前室・通路は無い。
+   * 広間の位置・大きさは共通の形と同じ（x9〜23・y1〜15）。たけは今までの到着位置（入口の列で、広間の下の端から3マス上・上向き）、
+   * ボスは広間の中央。rooms[0] がこの広間（ボス部屋で、たけの最初の部屋）。map.arenaOnly：最初に置く道具は無し（G.enterFloor） */
+  function generateArenaFloor() {
+    const M = D.MAP, w = M.w, h = M.h;
+    const tiles = new Array(w * h).fill(WALL);
+    const b = { id: 0, x: 9, y: 1, w: 15, h: 15 }, cx = b.x + (b.w >> 1);
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) tiles[y * w + x] = FLOOR;
+    const map = { w, h, tiles, rooms: [b], boss: true, arenaOnly: true };
+    return { map, start: { x: cx, y: b.y + b.h - 4 }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: cx, y: b.y + (b.h >> 1) } };
   }
   /* 背景の絵で作るボス部屋（D.BARAN_ROOM など）。下の前室・通路（rooms[0]、最初の道具を置く）から上の広間（rooms[1]、ボス部屋）へ。
    * 玉座・壇・柱・炎の台・縁は壁（絵に描かれていて、通れない）。map.bg：描くときの背景の定義の名前 */

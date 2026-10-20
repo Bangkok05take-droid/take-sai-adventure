@@ -3693,5 +3693,31 @@ test('真大魔王バーン：天地魔闘の構え。2マス以内で構え、�
     G._damageEnemy(S, b, 10, [], 'x', 'enemy'); eq(b.hp, h - 10); eq(p.hp, ph); }
 });
 
+test('33階・真大魔王バーン（版4）：正方形の決戦場（15×15）だけ。前室・通路なし・最初に置く道具なし。たけは広間の下の端から3マス上（上向き）、ボスは中央。着いたら戦い。撃破後も白い異空間で帰還口は広間の床', () => {
+  const S = G.newState(), st = S.village.story; st.introDone = true; S.village.seenIntro = true; st.chapter = 6;
+  for (const k of ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn']) st.defeated[k] = true;
+  st.introSeen = { truevearn: true, truevearnAwaken: true };
+  assert(departWithScroll(S, 3301).ok); const r = S.run; r.final.skip.vearn = true;
+  let ev = [];
+  while (r.floor < 33) { const t = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = t.x; r.player.y = t.y; ev = G.act(S, { type: 'descend' }).events; }
+  const m = r.map, A = r.bossFight;
+  assert(m.arenaOnly && m.rooms.length === 1, 'arena only');
+  eq(A.w + 'x' + A.h, '15x15');
+  let floorN = 0; for (let i = 0; i < m.tiles.length; i++) if (DG.passable(m, i % m.w, Math.floor(i / m.w))) floorN++;
+  eq(floorN, 15 * 15, 'no corridor or antechamber');
+  eq(r.floorItems.filter((f) => f.item).length, 0, 'no items placed');
+  const b = r.enemies.find((e) => e.boss); eq(b.type, 'truevearn');
+  eq(b.x + ',' + b.y, (A.x + 7) + ',' + (A.y + 7), 'boss at center');
+  eq(r.player.x + ',' + r.player.y + ',' + r.player.dir, (A.x + 7) + ',' + (A.y + A.h - 4) + ',up', 'take position');
+  assert(A.engaged, 'battle starts on arrival');
+  eq(G.themeOf(r), 'void');
+  // 撃破：帰還口は広間の床・白い異空間のまま
+  b.hp = 1; b.stance = 0; b.charge = null; b.hold = 5; r.player.x = b.x; r.player.y = b.y + 1;
+  for (let i = 0; i < 10 && r.enemies.some((e) => e.boss); i++) G.act(S, { type: 'move', dir: 'up' });
+  assert(r.portal && G.inArena(r, r.portal.x, r.portal.y), 'portal in the arena'); eq(G.themeOf(r), 'void');
+  // ほかのボス（例：第1章15階）は今までどおり前室つき
+  const S2 = newRun(3302); goToFloor(S2, D.CHAPTERS[1] ? 15 : 15); if (S2.run.map.boss) assert(!S2.run.map.arenaOnly && S2.run.map.rooms.length === 2, 'other boss rooms unchanged');
+});
+
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

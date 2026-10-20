@@ -313,7 +313,9 @@
     // 隠しダンジョン：部屋の大きい地図（D.HIDDEN_MAP）。帰還の祠は無い
     // 通常バラン戦（第4章）：背景の絵の部屋（D.BARAN_ROOM。下の通路から入る）。竜人王バラン（隠しダンジョン）には使わない
     const room = Fdef.boss === 'baran' ? D.BARAN_ROOM_LAYOUT || 'BARAN_ROOM' : null;
-    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, room, hidden: !!Fdef.hidden, returnPoint: !Fdef.hidden && !Fdef.boss && !throne && rpFloors.includes(floor) });
+    // 33階・真大魔王バーン（版4）：正方形の決戦場だけ（前室・通路・最初に置く道具なし）。倒したあとに来ても同じ形。版3の35階は以前の形のまま
+    const arenaOnly = throne && !throne30 && G.layoutOf(run) >= 4;
+    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, arenaOnly, room, hidden: !!Fdef.hidden, returnPoint: !Fdef.hidden && !Fdef.boss && !throne && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す
     run.map = gen.map;
@@ -346,8 +348,8 @@
     if (gen.stairs) occupied.push(gen.stairs);
     if (gen.returnPoint) occupied.push(gen.returnPoint);
 
-    // 道具
-    const nItems = R.int(rng, F.itemCount[0], F.itemCount[1]);
+    // 道具（33階の決戦場には置かない。持ってきた道具は使える）
+    const nItems = run.map.arenaOnly ? 0 : R.int(rng, F.itemCount[0], F.itemCount[1]);
     for (let i = 0; i < nItems; i++) {
       const room = F.boss ? run.map.rooms[0] : null;
       const pos = DG.freeTile(run.map, rng, occupied, room);
@@ -1759,7 +1761,7 @@
     if (!A || A.engaged || !F.boss || !(D.BOSS_ARRIVAL && D.BOSS_ARRIVAL[F.boss]) || G.layoutOf(run) < 4) return false;
     // 入口から3マス入った所（ボスとの間は4マス。戦いの始まりに、ボスが画面に入る距離）。
     // 下の入口（2026年10月20日からの形）：入口の列で、広間の下の端から3マス上。以前の形（左の入口）：入口の行で、左の端から3マス右
-    const below = p.y >= A.y + A.h;
+    const below = p.y >= A.y + A.h || !!run.map.arenaOnly;   // 決戦場だけの33階：たけはもう広間の中（同じ位置・上向き）
     const x = below ? Math.max(A.x, Math.min(A.x + A.w - 1, p.x)) : Math.min(A.x + 3, A.x + A.w - 1);
     const y = below ? Math.max(A.y, A.y + A.h - 4) : p.y >= A.y && p.y < A.y + A.h ? p.y : A.y + (A.h >> 1);
     const spot = DG.passable(run.map, x, y) && !G.enemyAt(run, x, y) ? { x, y } : G.arenaCenter(run, [run.enemies.find((e) => e.boss)]);

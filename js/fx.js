@@ -449,5 +449,81 @@
     g.restore();
   };
 
+  /* ---- 真大魔王バーンの技（2026年10月21日。演出の方向性はデザイン見本どおり：金白の光に黒紫の縁。白い床に埋もれないよう暗い輪郭を付ける）。
+   * 見た目だけ。コマ数・時間は攻撃の回数やターンとは無関係で、当たりはゲーム側で1回だけ決まっている（範囲＝予告のマス） ---- */
+  const DARK = '#2a0a3c', MID = '#7a3cc8', GOLD = '#ffd870', CORE = '#fffbe8';
+  // 黒紫の縁 → 金 → 白の芯、の3重の線
+  const glowStroke = (g, v, w, path) => {
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.strokeStyle = DARK; g.lineWidth = v.k * w * 2.2; path(); g.stroke();
+    g.strokeStyle = GOLD; g.lineWidth = v.k * w * 1.2; path(); g.stroke();
+    g.strokeStyle = CORE; g.lineWidth = v.k * w * 0.5; path(); g.stroke();
+  };
+  // カラミティエンド：バーンのまわり1マス（8マス）を、上 → 右 → 下 → 左 と時計回りに斬撃が走る（残像が回る）
+  FX.draw.cslash = function (g, f, a, v) {
+    const x = cx(v, f.c.x), y = cy(v, f.c.y) - v.ts * 0.1, R = v.ts * 1.0;
+    tileFill(g, v, f.tiles, '#f0d8ff', 0.45 * (1 - a));
+    const head = -Math.PI / 2 + ease(Math.min(1, a / 0.75)) * Math.PI * 2;   // 上から時計回りに1周
+    for (let i = 0; i < 5; i++) {   // 残像（後ろほど薄く細い）
+      const h = head - i * 0.32, tail = h - 0.9, al = (a < 0.7 ? 1 : (1 - a) / 0.3) * (1 - i * 0.18);
+      if (h < -Math.PI / 2 + 0.05) continue;
+      g.globalAlpha = Math.max(0, al);
+      glowStroke(g, v, 6 - i * 0.9, () => { g.beginPath(); g.arc(x, y, R + i * v.k * 2, Math.max(-Math.PI / 2, tail), h); });
+    }
+    // 刃先のきらめき
+    g.globalAlpha = 1 - a; g.fillStyle = CORE;
+    const hx = x + Math.cos(head) * R, hy = y + Math.sin(head) * R;
+    g.beginPath(); g.moveTo(hx, hy - 10 * v.k); g.lineTo(hx + 3 * v.k, hy); g.lineTo(hx, hy + 10 * v.k); g.lineTo(hx - 3 * v.k, hy); g.fill();
+    g.globalAlpha = 1;
+  };
+  // カラミティウォール：バーンの足元から外へ、1マスずつ順に地面から衝撃波の壁が噴き上がる（3マス先まで。内側も範囲）
+  FX.draw.cwall = function (g, f, a, v) {
+    const el = a * f.dur, step = f.step, rise = f.rise;
+    for (const t of f.tiles) {
+      const r = Math.max(Math.abs(t.x - f.c.x), Math.abs(t.y - f.c.y)), t0 = (r - 1) * step, e = (el - t0) / rise;
+      if (e < 0 || e > 1.6) continue;
+      const k = Math.min(1, e), fade = e > 1 ? 1 - (e - 1) / 0.6 : 1;
+      const bx = v.ox + t.x * v.ts, by = v.oy + (t.y + 0.92) * v.ts, w = v.ts, hgt = v.ts * (0.5 + 0.9 * Math.sin(k * Math.PI * 0.5));
+      // 床の光（予告のマスと同じ所だけ）
+      g.globalAlpha = 0.4 * fade; g.fillStyle = '#e8c8ff'; g.fillRect(bx, by - v.ts * 0.92, w, v.ts);
+      // 地面から立ち上がるとげの壁（黒紫の縁 → 紫 → 金の芯）
+      const sp = 3;
+      for (let i = 0; i < sp; i++) {
+        const s = rnd(f.seed + t.x * 31 + t.y * 17, i), px = bx + w * (0.18 + 0.32 * i) + (s - 0.5) * w * 0.1, ph = hgt * (0.65 + 0.35 * s) * (i === 1 ? 1.15 : 1);
+        g.globalAlpha = fade;
+        for (const [col, ww] of [[DARK, 0.2], [MID, 0.14], [GOLD, 0.08], [CORE, 0.03]]) {
+          g.fillStyle = col; g.beginPath(); g.moveTo(px - w * ww, by); g.lineTo(px, by - ph); g.lineTo(px + w * ww, by); g.closePath(); g.fill();
+        }
+      }
+    }
+    g.globalAlpha = 1;
+  };
+  // 天地魔闘の構えの反撃：はね返した瞬間の強い閃光（バーンとたけの間に金の×と光の放射）
+  FX.draw.ccounter = function (g, f, a, v) {
+    const bx = cx(v, f.c.x), by = cy(v, f.c.y) - v.ts * 0.3, px = cx(v, f.p.x), py = cy(v, f.p.y) - v.ts * 0.2;
+    if (a < 0.25 && !FX.calm()) { g.globalAlpha = 0.5 * (1 - a / 0.25); g.fillStyle = '#fff8e0'; g.fillRect(0, 0, g.canvas.width, g.canvas.height); }   // 画面の閃光（控えめでは出さない）
+    g.globalAlpha = a < 0.55 ? 1 : (1 - a) / 0.45;
+    for (let i = 0; i < 3; i++) {   // 三方向の光が強く伸びる
+      const ang = -Math.PI / 2 + i * Math.PI * 2 / 3, L = v.ts * (0.6 + 1.4 * ease(a));
+      glowStroke(g, v, 4, () => { g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + Math.cos(ang) * L, by + Math.sin(ang) * L); });
+    }
+    const L2 = v.ts * 0.55 * (0.6 + 0.4 * ease(a));   // たけに当たる×の斬撃
+    glowStroke(g, v, 4.5, () => { g.beginPath(); g.moveTo(px - L2, py - L2); g.lineTo(px + L2, py + L2); g.moveTo(px + L2, py - L2); g.lineTo(px - L2, py + L2); });
+    g.globalAlpha = 1;
+  };
+  // 天地魔闘の構えの間の印（render.js から毎フレーム）：控えめな三方向の光（上・左下・右下）がゆっくり明滅
+  FX.stanceAura = function (g, x, y, ts, k, now) {
+    const pulse = 0.8 + 0.2 * Math.sin(now / 260);
+    g.save(); g.globalAlpha = pulse;
+    const v = { k };
+    for (let i = 0; i < 3; i++) {
+      const ang = -Math.PI / 2 + i * Math.PI * 2 / 3, r0 = ts * 0.55, r1 = ts * (0.85 + 0.06 * Math.sin(now / 200 + i));
+      const ex = x + Math.cos(ang) * r1, ey = y + Math.sin(ang) * r1;
+      glowStroke(g, v, 2.2, () => { g.beginPath(); g.moveTo(x + Math.cos(ang) * r0, y + Math.sin(ang) * r0); g.lineTo(ex, ey); });
+      g.fillStyle = CORE; g.beginPath(); g.moveTo(ex, ey - 4 * k); g.lineTo(ex + 1.5 * k, ey); g.lineTo(ex, ey + 4 * k); g.lineTo(ex - 1.5 * k, ey); g.fill();
+    }
+    g.restore();
+  };
+
   TS.FX = FX;
 })(globalThis.TS = globalThis.TS || {});
