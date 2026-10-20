@@ -1031,7 +1031,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       let ev = [];
       while (S.run.floor < 33) { const r = S.run, to = r.stairs || r.crack; r.player.x = to.x; r.player.y = to.y; if (r.floor === 32) { r.player.hp = 100; r.player.poison = 5; } ev = G.act(S, { type: 'descend' }).events; seen.push(S.run.floor); }
       const r = S.run, b = r.enemies.find((e) => e.boss);
-      b.hp = 5; b.hold = 3; b.cds = { ring: 9, palm: 9, flame: 9 };
+      b.hp = 5; b.hold = 3; b.cds = { end: 9, wall: 9, phoenix: 9 };
       // 33階に着いた直後に覚醒ムービー（歩いてボス部屋に入らなくてよい）
       return { seen, boss: b.type, intro: ev.some((e) => e.t === 'bossIntro') && r.bossFight.intro === 'pending', inArena: G.inArena(r, r.player.x, r.player.y) }; });
     assert(floors.seen.join() === '31,32,33' && floors.boss === 'truevearn' && floors.intro && floors.inArena, 'to 33F ' + JSON.stringify(floors));

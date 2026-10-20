@@ -118,6 +118,15 @@
     mimic: { count: [1, 2] },
     spawn: [['dragon', 2], ['silverdevil', 2], ['gigantes', 2], ['bombrock', 2], ['madhand', 3], ['darkknight', 1], ['imp', 1]],
   };
+  /* 真大魔王バーン（最終決戦）の技（2026年10月21日。**数値はすべて仮の調整案**。技の動きは js/bossai.js の AI.truevearn）。
+   *  どの技も予告1ターン（範囲が光る → 次の行動で発動）。発動のあとの隙は無い（rest 0）。cd：使ったあとの待ち（行動の回数）[前半, HP enrageAt 未満]
+   *  end：カラミティエンド（まわり1マス・防御無視）、wall：カラミティウォール（まわり radius マス・防御無視）、phoenix：カイザーフェニックス（3列・攻撃力×mult） */
+  D.TRUEVEARN = {
+    enrageAt: 0.4,
+    end: { name: 'カラミティエンド', dmg: [120, 150], cd: [3, 2] },
+    wall: { name: 'カラミティウォール', dmg: [80, 100], radius: 3, cd: [2, 2] },
+    phoenix: { mult: 2.6, cd: [3, 2] },
+  };
   /* 竜人王バラン（隠しダンジョン35階）の戦い方（2026年10月：技の種類は確定。**数値はすべて調整案（仮）**）。
    *  通常攻撃：隣なら殴る（ほかの技が使えないとき）
    *  ドルオーラ：一直線（壁まで）を予告して放つ。列の外へ出ればかわせる。後半は縦横の十字
@@ -458,7 +467,7 @@
     mist_clone: { name: 'ミストバーン', hp: 1, atk: 22, def: 0, exp: 0, ai: 'clone', sprite: 'mist', noScale: true, clone: true },
     vearn:  { name: '大魔王バーン', hp: 900, atk: 44, def: 20, exp: 1500, ai: 'boss', sprite: 'vearn', noScale: true, arena: 'throne', big: true },
     // arena 'void'：融合と覚醒の舞台（登場ムービーの白い異空間）。白い床・白い霧・空席の水晶の玉座（js/render.js の drawVoidBg）
-    truevearn: { name: '真大魔王バーン', hp: 1200, atk: 48, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'void', big: true },
+    truevearn: { name: '真大魔王バーン', hp: 1800, atk: 65, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'void', big: true },
   };
   D.POISON = { chance: 0.4, turns: 8, guard: 15, dmgRate: 0.025 }; // 毒：最大HPの2.5%を毎ターン。治った後しばらくかからない
   D.ENEMY_SCALE = { hp: 0.12, atk: 0.08, exp: 0.12 }; // 出現し始めた階から1階ごとの上昇率

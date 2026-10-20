@@ -1936,7 +1936,7 @@
   }
 
   /* 予告していた攻撃の発動。演出は予告と同じマス（e.tiles）の上だけに出し、安全なマスを隠さない。
-   * 画面の揺れは強い技（クロコダインの斧・真大魔王バーンの天地の掌）だけ、控えめに。 */
+   * 画面の揺れは強い技（クロコダインの斧・真大魔王バーンのカラミティエンド・ウォール）だけ、控えめに。 */
   /* カイザーフェニックスの間合い（ms）：光が集まる gather → 飛ぶ fly（距離で変わる：1マス flyPerTile、flyMin〜flyMax）→ 当たる閃光 impact。
    * 全体でおよそ0.8〜1.2秒（調整値） */
   UI.PHOENIX = { gather: 320, flyPerTile: 95, flyMin: 300, flyMax: 560, impact: 260 };
@@ -1983,6 +1983,9 @@
       case 'doloura': RD.addFx({ t: 'flamewave', tiles, color: '#ffd040', dur: 560 }); FXm.shake(RD, 3, 260); AU.sfx('bolt'); return;
       case 'sweep': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#9ad8ff', dur: 380 }); AU.sfx('hit'); return;
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
+      // 真大魔王バーン：カラミティエンド（まわり1マス）・カラミティウォール（まわり3マス）。正式の演出の絵は後で届く予定（それまでの仮）
+      case 'calamityEnd': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffe0a0', dur: 420 }); FXm.shake(RD, 5, 320); AU.sfx('hit'); return;
+      case 'calamityWall': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#d8a0ff', dur: 520 }); FXm.shake(RD, 4, 360); AU.sfx('bolt'); return;
       case 'palm': // 真大魔王バーン：速く重い打撃と強い衝撃
         RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffb0f0', dur: 380 });
         FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
@@ -2445,7 +2448,7 @@
       <span>武器</span><span>${w ? esc(G.itemName(w)) : 'なし'}</span><span>盾</span><span>${sh ? esc(G.itemName(sh)) : 'なし'}</span>
       <span>回復・食料</span><span>${heal}個</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
       <p class="note">準備の間は時間が止まっています（敵は動きません）。「道具を確認」で装備の付け替えや回復ができます。</p>
-      <div class="warnbox">真大魔王バーン：天地の掌（周り8マス）・滅びの炎（3列）・魔界の炎（輪）。どれも予告を見てからかわせる。</div>`,
+      <div class="warnbox">真大魔王バーン：カラミティエンド（周り1マス）・カラミティウォール（周り3マス）・カイザーフェニックス（3列）。どれも予告の次のターンに発動し、防御を無視する大技もある。</div>`,
       onClose: () => { UI.prepOpen = false; },
       buttons: [
         { label: '道具を確認', onClick: () => { UI.prepHold = true; setTimeout(() => { UI.prepHold = false; openItems(); }, 0); } },

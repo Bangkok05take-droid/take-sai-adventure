@@ -3628,5 +3628,39 @@ test('ベビーサタン：5行動ごとに、たけのまわり3×3を予告し
   eq(b.cds.blaze, 5 - 1 >= 0 ? b.cds.blaze : 0);   // 待ち時間がある
 });
 
+test('真大魔王バーン：カラミティエンド（まわり1マス）・カラミティウォール（まわり3マス）は予告1ターン→次の行動で防御無視の固定ダメージ。カイザーフェニックスは隣でも3列。隙は無い。魔界の炎の輪は無い', () => {
+  const TV = D.TRUEVEARN;
+  const setupTV = (seed) => { const S = newRun(seed); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;
+    const b = realEnemy(S, 'truevearn', p.x + 1, p.y, 33); b.aware = true; return { S, run, p, b }; };
+  // 隣：カラミティエンドを予告（まわり8マス）→ 次の行動で発動。防御を上げても固定の幅
+  { const { S, run, p, b } = setupTV(911); p.def = 999;
+    const r1 = G.act(S, { type: 'wait' }), tele = r1.events.find((e) => e.t === 'telegraph' && e.id === b.id);
+    assert(tele && tele.tiles.length === 8 && b.charge && b.charge.kind === 'fixedDmg' && b.charge.label === 'カラミティエンド', 'end telegraph');
+    const hp0 = p.hp; G.act(S, { type: 'wait' }); const dmg = hp0 - p.hp;
+    assert(dmg >= TV.end.dmg[0] && dmg <= TV.end.dmg[1], 'end dmg ' + dmg);
+    assert(!b.rest, 'no rest after big move');
+    // すぐ次の技（隙なし）：発動の次の行動で、フェニックスかウォールの予告
+    G.act(S, { type: 'wait' });
+    assert(b.charge && (b.charge.fx === 'firebird' || b.charge.label === 'カラミティウォール'), 'next move right away ' + JSON.stringify(b.charge && b.charge.fx)); }
+  // 3マス先：カラミティウォール（まわり3マス）。範囲の外へ出ればかわせる
+  { const { S, run, p, b } = setupTV(912); b.x = p.x + 3; b.y = p.y + 2; b.cds = { end: 9, phoenix: 9 }; G.updateVision(run);
+    G.act(S, { type: 'wait' });
+    assert(b.charge && b.charge.label === 'カラミティウォール' && b.charge.tiles.some((t) => t.x === p.x && t.y === p.y), 'wall telegraph');
+    const hp0 = p.hp; G.act(S, { type: 'wait' }); const dmg = hp0 - p.hp;
+    assert(dmg >= TV.wall.dmg[0] && dmg <= TV.wall.dmg[1], 'wall dmg ' + dmg); }
+  { const { S, run, p, b } = setupTV(913); b.x = p.x + 3; b.y = p.y + 2; b.cds = { end: 9, phoenix: 9 }; G.updateVision(run);
+    G.act(S, { type: 'wait' }); const hp0 = p.hp; b.x = p.x + 3; b.y = p.y + 2;
+    G.act(S, { type: 'move', dir: 'left' });
+    eq(p.hp, hp0, 'wall dodged by leaving the range'); }
+  // 隣（カラミティエンドが待ち）：カイザーフェニックスの3列
+  { const { S, run, p, b } = setupTV(914); b.cds = { end: 9, wall: 9 };
+    G.act(S, { type: 'wait' });
+    assert(b.charge && b.charge.fx === 'firebird' && b.charge.tiles.some((t) => t.x === p.x && t.y === p.y), 'phoenix from adjacent');
+    const ys = new Set(b.charge.tiles.map((t) => t.y)); eq(ys.size, 3, 'three lines'); }
+  // 古い技（天地の掌・滅びの炎・魔界の炎の輪）は使わない
+  { const { S, run, b } = setupTV(915); for (let i = 0; i < 30; i++) G.act(S, { type: 'wait' });
+    assert(!run.log.some((l) => /天地の掌|滅びの炎|魔界の炎/.test(l)), 'no old moves'); }
+});
+
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

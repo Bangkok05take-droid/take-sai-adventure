@@ -249,40 +249,44 @@
   };
 
   /* ---------------- 真大魔王バーン（最終決戦。版4は33階・版3は35階） ----------------
-   * 天地の掌：隣で周囲8マスを予告（2マス離れればかわせる）、そのあと2ターンの隙。
-   * 滅びの炎：直線とその両どなりの3列を予告。魔界の炎：たけを中心に2マス先の輪に印（その場か外へ）。HP4割で加速。 */
+   * 2026年10月21日：技を入れ替えた（数値は D.TRUEVEARN。**どれも仮の調整案**）。どの技も「予告（範囲が光る）→ 次の行動で発動」。発動のあとの隙は無い。
+   *  カラミティエンド：隣にいると、まわり1マス（8マス）。防御を無視して D.TRUEVEARN.end.dmg（120〜150）
+   *  カラミティウォール：3マス以内にいると、まわり3マス（7×7）。防御を無視して 80〜100。1回の移動では外へ出られない
+   *  カイザーフェニックス：8方向の直線上にいれば、隣からでも撃つ。たけへの直線と、その両どなりの3列（以前の滅びの炎の範囲）。攻撃力×mult
+   *  以前の「天地の掌」「魔界の炎の輪」「滅びの炎」は無し。HPが enrageAt 以下で待ち時間が短くなる */
   AI.truevearn = function (S, e, ev, sees, H) {
-    const run = S.run, p = run.player, E = D.ENEMIES[e.type];
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], TV = D.TRUEVEARN;
     if (!aware(run, e, sees)) return false;
     const cd = tick(e);
-    const enraged = e.hp < e.maxhp * 0.4;
+    const enraged = e.hp < e.maxhp * TV.enrageAt, ph = enraged ? 1 : 0;
     if (enraged && !e.enraged) { e.enraged = true; say(run, E.name + 'の力がさらに高まった！ 攻撃の間隔が短くなる！'); }
-    if (cd.ring == null) cd.ring = 3;
-    if (!cd.ring && !run.hazards.length) {
-      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === 2 && !(p.x + dx === e.x && p.y + dy === e.y)) H.addHazard(run, p.x + dx, p.y + dy, 'fire', 2, e.atk * 1.0, '魔界の炎', 0.4);
-      say(run, '！ ' + E.name + 'が魔界の炎で輪を描いた！（輪の内側か外側へ）');
-      ev.push({ t: 'telegraph', id: e.id, tiles: [], msg: '魔界の炎の輪！' });
-      cd.ring = enraged ? 4 : 5;
+    const d = H.cheb(e, p), a = aligned(e, p);
+    const fixed = (tiles, key, msg, fx) => {   // 防御を無視する技（ダメージは発動のときに決める）
+      H.startCharge(S, e, ev, tiles, 0, 0, msg); e.charge.kind = 'fixedDmg'; e.charge.fx = fx; e.charge.dmg = TV[key].dmg; e.charge.label = TV[key].name;
+      cd[key] = TV[key].cd[ph];
       return true;
-    }
-    if (H.adjacent(run, e, p) && !cd.palm) {
-      H.startCharge(S, e, ev, H.areaTiles(run, e, 1), 2.0, 2, 'が両手に力をためた！ 周りすべてを打つ！（2マス離れよう）'); e.charge.fx = 'palm'; // 演出の種類（見た目だけ）
-      cd.palm = enraged ? 3 : 4;
-      return true;
-    }
-    const a = aligned(e, p), d = H.cheb(e, p);
-    if (!cd.flame && a && d >= 2) {
+    };
+    if (H.adjacent(run, e, p) && !cd.end) return fixed(H.areaTiles(run, e, 1), 'end', 'が手刀に闘気を集めた！ カラミティエンド！（まわり1マス）', 'calamityEnd');
+    if (a && !cd.phoenix) {
       const center = H.lineTiles(run, e, a[0], a[1], 12);
       if (center.some((t) => t.x === p.x && t.y === p.y)) {
-        // 進む向きに対して両どなりの列も
+        // 進む向きに対して両どなりの列も（3列）
         const px = -a[1], py = a[0], tiles = center.slice();
         for (const s of [1, -1]) for (const t of center) { const x = t.x + px * s, y = t.y + py * s; if (DG.passable(run.map, x, y) && !tiles.some((o) => o.x === x && o.y === y)) tiles.push({ x, y }); }
-        H.startCharge(S, e, ev, tiles, 1.8, 1, 'が滅びの炎を放とうとしている！ 3列まとめて焼きはらう！'); e.charge.fx = 'doomflame'; // 演出の種類（見た目だけ）
-        cd.flame = enraged ? 3 : 4;
+        H.startCharge(S, e, ev, tiles, TV.phoenix.mult, 0, 'の手に巨大な不死鳥が生まれた！ カイザーフェニックス！（3列）'); e.charge.fx = 'firebird';
+        cd.phoenix = TV.phoenix.cd[ph];
         return true;
       }
     }
-    return false;
+    if (d <= TV.wall.radius && !cd.wall) return fixed(H.areaTiles(run, e, TV.wall.radius), 'wall', 'のまわりに闘気の壁が広がる！ カラミティウォール！（まわり3マス）', 'calamityWall');
+    return false;   // 通常攻撃（隣）か、近づく
+  };
+  // 防御を無視する技の発動（カラミティエンド・カラミティウォール）：範囲にいれば c.dmg の幅でダメージ
+  RES.fixedDmg = function (S, e, ev, c, H) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type];
+    ev.push({ t: 'blast', id: e.id, tiles: c.tiles, fx: c.fx });
+    if (c.tiles.some((t) => t.x === p.x && t.y === p.y)) H.damagePlayer(S, e, R.int(run.rng, c.dmg[0], c.dmg[1]), ev, E.name + 'の' + c.label, { big: true });
+    else { G.log(run, E.name + 'の' + c.label + 'をかわした！'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
   /* ---------------- 竜人王バラン（隠しダンジョン35階の裏ボス） ----------------
    * 数値は D.DRAGON_KING（調整案）。強い技はどれも予告 → 次の行動で発動 → 隙（rest）。
