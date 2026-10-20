@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "boss_id": "croc",
+  "image": "crocodine_room.png",
+  "size": [
+    1024,
+    1536
+  ],
+  "throne_baked_in": true,
+  "collision_mask_included": false,
+  "integration_verified": false,
+  "sha256": "381145e3c58d7059b5034251b962e7fbe3ced31c5806d203b89531a9bc9df0d5"
+}
