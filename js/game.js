@@ -312,7 +312,7 @@
     const throne30 = throne && floor === FF.vearn;
     // 隠しダンジョン：部屋の大きい地図（D.HIDDEN_MAP）。帰還の祠は無い
     // 通常バラン戦（第4章）：背景の絵の部屋（D.BARAN_ROOM。下の通路から入る）。竜人王バラン（隠しダンジョン）には使わない
-    const room = Fdef.boss === 'baran' ? 'BARAN_ROOM' : null;
+    const room = Fdef.boss === 'baran' ? D.BARAN_ROOM_LAYOUT || 'BARAN_ROOM' : null;
     const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, room, hidden: !!Fdef.hidden, returnPoint: !Fdef.hidden && !Fdef.boss && !throne && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す

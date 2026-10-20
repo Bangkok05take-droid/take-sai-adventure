@@ -178,7 +178,7 @@
     const T = D[name], w = T.w, h = T.h;
     const tiles = new Array(w * h).fill(WALL);
     const rooms = [Object.assign({ id: 0 }, T.corridor), Object.assign({ id: 1 }, T.hall)];
-    for (const r of rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) tiles[y * w + x] = FLOOR;
+    for (const r of rooms.concat(T.floors || [])) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) tiles[y * w + x] = FLOOR;   // floors：部屋ではない通路の床
     const map = { w, h, tiles, rooms, boss: true, bg: name };
     const hl = T.hall;
     return { map, start: { x: T.start.x, y: T.start.y }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: hl.x + (hl.w >> 1), y: hl.y + (hl.h >> 1) } };

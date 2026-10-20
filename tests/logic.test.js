@@ -2825,7 +2825,7 @@ test('通常バラン戦の部屋（D.BARAN_ROOM）：背景の絵どおり。�
   eq(m.bg, 'BARAN_ROOM'); eq(m.w + 'x' + m.h, '19x34'); eq(b.type, 'baran');
   eq(A.x + ',' + A.y + ',' + A.w + ',' + A.h, '2,10,15,17'); eq(run.player.x + ',' + run.player.y, '9,32');
   checkBottomEntry(run, 'baran');
-  // 左の旧入口（絵の y 約857〜927 → 行17〜18）は壁。広間の左右の外はすべて壁
+  // 左の旧入口（閉じた版の絵。絵の y 約800〜959 → 行16〜19）は壁。広間の左右の外はすべて壁
   for (let y = A.y; y < A.y + A.h; y++) { assert(!DG.passable(m, A.x - 1, y) && !DG.passable(m, A.x + A.w, y), 'side walls ' + y); }
   // 玉座の壇（広間の上）は壁
   for (let x = 0; x < m.w; x++) for (let y = 0; y < A.y; y++) assert(!DG.passable(m, x, y), 'dais is wall');
@@ -2844,6 +2844,31 @@ test('通常バラン戦の部屋（D.BARAN_ROOM）：背景の絵どおり。�
   const L = SV.deserialize(SV.serialize(S)); eq(L.run.map.bg, 'BARAN_ROOM'); eq(L.run.map.h, 34);
   // 竜人王バラン（隠しダンジョン）には使わない
   eq(DG.generate(35, R.create(5), { boss: true }).map.bg, undefined);
+});
+test('通常バラン戦：前室を足した版（D.BARAN_ROOM_EXT、確認用）。座標・倍率は同じ・前室5×3から通路を上へ・入室で1回だけ。ふだんは前室なしの版', () => {
+  const B = D.BARAN_ROOM, E = D.BARAN_ROOM_EXT;
+  eq(D.BARAN_ROOM_LAYOUT, 'BARAN_ROOM', 'live layout until the seam is finished');
+  eq(E.tile, B.tile); eq(E.imgX, B.imgX); eq(E.imgY, B.imgY); eq(JSON.stringify(E.hall), JSON.stringify(B.hall)); eq(JSON.stringify(E.throne), JSON.stringify(B.throne));
+  eq(B.throne.h, 160); eq(B.throne.foot, 398);
+  assert(E.imgY + E.tile * E.h >= E.imgH && E.imgY + E.tile * (E.h - 1) < E.imgH, 'map height covers the extended picture');
+  D.BARAN_ROOM_LAYOUT = 'BARAN_ROOM_EXT';
+  try {
+    const S = toBossFloor(4, 2150), run = S.run, m = run.map, A = run.bossFight;
+    eq(m.bg, 'BARAN_ROOM_EXT'); eq(m.w + 'x' + m.h, '19x40'); eq(run.player.x + ',' + run.player.y, '9,38');
+    checkBottomEntry(run, 'baran ext');
+    // 前室（5×3）・通路（3マス幅）・出口側（3マス幅）。その外は壁
+    const pass = (x, y) => DG.passable(m, x, y);
+    for (let y = 34; y <= 36; y++) { for (let x = 7; x <= 11; x++) assert(pass(x, y), 'antechamber ' + x + ',' + y); assert(!pass(6, y) && !pass(12, y), 'antechamber walls ' + y); }
+    for (const y of [27, 30, 33, 37, 38]) { for (let x = 8; x <= 10; x++) assert(pass(x, y), 'corridor ' + x + ',' + y); assert(!pass(7, y) && !pass(11, y), 'corridor walls ' + y); }
+    for (let x = 0; x < m.w; x++) assert(!pass(x, 39), 'bottom row wall');
+    for (const f of run.floorItems) assert(f.x >= 7 && f.x <= 11 && f.y >= 34 && f.y <= 36, 'items in the antechamber');
+    // 入口から上へ12歩で広間（登場ムービーは1回）
+    let intro = 0;
+    for (let i = 0; i < 12; i++) intro += G.act(S, { type: 'move', dir: 'up' }).events.filter((e) => e.t === 'bossIntro').length;
+    eq(run.player.y, A.y + A.h - 1); eq(intro, 1);
+    G.finishBossIntro(S); defeatBoss(S);
+    assert(run.portal && G.inArena(run, run.portal.x, run.portal.y), 'portal in the hall');
+  } finally { D.BARAN_ROOM_LAYOUT = 'BARAN_ROOM'; }
 });
 console.log('クロコダインの登場ムービー（2026年10月）');
 test('登場ムービー：クロコダイン（フレイザード・バランも同じ仕組み）。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {

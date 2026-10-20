@@ -290,7 +290,14 @@
     const pp = lerpPos('p', p.x, p.y, now);
     // 強いボスの攻撃だけ、画面を少し揺らす（「演出：控えめ」では揺らさない）
     const shk = TS.FX ? TS.FX.shakeOffset(RD, now, k) : [0, 0];
-    const ox = Math.round(W / 2 - (pp.x + 0.5) * ts) + shk[0], oy = Math.round(H / 2 - (pp.y + 0.5) * ts) + shk[1];
+    let ox = Math.round(W / 2 - (pp.x + 0.5) * ts) + shk[0], oy = Math.round(H / 2 - (pp.y + 0.5) * ts) + shk[1];
+    /* 背景の絵の部屋（30階の玉座の間・通常バラン戦）：絵の外（黒）が画面に出ないよう、絵の上下の端で見る位置を止める
+     * （たけが入口・前室のような絵の端にいるとき、たけは画面の中央より下に見える）。絵が画面より小さい向きは止めない */
+    const bgCam = m.throne ? D.THRONE_ROOM : m.bg ? D[m.bg] : null;
+    if (bgCam) {
+      const sc = ts / bgCam.tile, top = oy - bgCam.imgY * sc, bot = top + bgCam.imgH * sc;
+      if (bgCam.imgH * sc >= H) { if (bot < H) oy += Math.round(H - bot); else if (top > 0) oy -= Math.round(top); }
+    }
     const x0 = Math.max(0, Math.floor(-ox / ts)), x1 = Math.min(m.w - 1, Math.ceil((W - ox) / ts));
     const y0 = Math.max(0, Math.floor(-oy / ts)), y1 = Math.min(m.h - 1, Math.ceil((H - oy) / ts));
     const L = getLayer(run);
