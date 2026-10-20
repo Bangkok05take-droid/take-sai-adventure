@@ -1838,7 +1838,8 @@
       case 'flee': {    // メタルスライム：見えている間は steps 歩、たけから逃げる。攻撃しない。追いこまれたらその場に
         if (sees) {
           let moved = 0;
-          for (let i = 0; i < (E.steps || 1); i++) { if (!stepAway(run, e)) break; moved++; }
+          const fm = fleeMap(run);
+          for (let i = 0; i < (E.steps || 1); i++) { if (!fleeStep(run, e, fm)) break; moved++; }
           e.tx = e.ty = null;   // 見えなくなったら、たけの方ではなく、うろうろする
           if (moved) ev.push({ t: 'eanim', id: e.id, kind: 'escape', dx: Math.sign(e.x - p.x) });
           return;
@@ -1936,6 +1937,43 @@
   }
 
   // プレイヤーから離れる方向へ1歩
+  /* 逃げ回る敵（メタルスライム）の逃げ道の地図。たけからの歩数（8方向・角は通れない）を -1.2 倍して、まわりから
+   * 「1歩につき +1」でならす（よくある「逃げの地図」）。下り坂へ進むと、遠くへ逃げつつ、部屋の隅で追いつめられても
+   * 壁ぞい・たけの横をすり抜けて広い方へ出られる。壁と未到達のマスは Infinity */
+  function fleeMap(run) {
+    const m = run.map, W = m.w, H = m.h, p = run.player, d = new Float32Array(W * H).fill(Infinity);
+    const q = [p.y * W + p.x]; d[q[0]] = 0;
+    for (let h = 0; h < q.length; h++) {
+      const i = q[h], x = i % W, y = (i / W) | 0;
+      for (const [dx, dy] of STEP8) { const nx = x + dx, ny = y + dy, j = ny * W + nx;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || d[j] !== Infinity || !G.canStep(m, x, y, dx, dy)) continue;
+        d[j] = d[i] + 1; q.push(j); }
+    }
+    const f = new Float32Array(W * H);
+    for (let i = 0; i < f.length; i++) f[i] = d[i] === Infinity ? Infinity : -1.2 * d[i];
+    for (let pass = 0; pass < 24; pass++) {
+      let changed = false;
+      for (const i of q) { const x = i % W, y = (i / W) | 0;
+        for (const [dx, dy] of STEP8) { const nx = x + dx, ny = y + dy, j = ny * W + nx;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H || f[j] === Infinity || !G.canStep(m, x, y, dx, dy)) continue;
+          if (f[j] + 1 < f[i]) { f[i] = f[j] + 1; changed = true; } } }
+      if (!changed) break;
+    }
+    return { f, W };
+  }
+  // 逃げの地図で1歩（下り坂だけ。同じ高さなら、たけから遠い方）。動けなければ false
+  function fleeStep(run, e, fm) {
+    const p = run.player, { f, W } = fm;
+    let best = null, bv = f[e.y * W + e.x], bd = -1;
+    for (const [dx, dy] of STEP8) {
+      const nx = e.x + dx, ny = e.y + dy;
+      if (!G.canStep(run.map, e.x, e.y, dx, dy) || blockedForEnemy(run, nx, ny) || (nx === p.x && ny === p.y)) continue;
+      const v = f[ny * W + nx], dd = cheb({ x: nx, y: ny }, p);
+      if (v < bv - 1e-6 || (best && Math.abs(v - bv) < 1e-6 && dd > bd)) { bv = v; bd = dd; best = [nx, ny]; }
+    }
+    if (!best) return false;
+    return stepTo(run, e, best[0], best[1]);
+  }
   function stepAway(run, e) {
     const p = run.player;
     let best = null, bd = cheb(e, p);

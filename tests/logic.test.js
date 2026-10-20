@@ -3425,8 +3425,20 @@ test('メタルスライム：HP3〜5・見えている間は2歩逃げて攻撃
   const m = realEnemy(S, 'wisp', p.x + 1, p.y, 22); m.hp = 99; const hp0 = p.hp;
   const r = G.act(S, { type: 'wait' });
   eq(Math.max(Math.abs(m.x - p.x), Math.abs(m.y - p.y)), 3, 'two steps away'); eq(p.hp, hp0, 'no attack'); assert(r.events.some((e) => e.t === 'eanim' && e.kind === 'escape'));
-  // 追いこまれたら、その場にとどまる（攻撃もしない）
-  m.x = 2; m.y = 2; p.x = 3; p.y = 3; G.updateVision(run); G.act(S, { type: 'wait' }); eq(m.x + ',' + m.y, '2,2', 'cornered'); eq(p.hp, hp0);
+  // 部屋の隅に追いつめられても、壁ぞい・たけの横をすり抜けて広い方へ逃げる（2026年10月。以前は隅にとどまった）
+  m.x = 2; m.y = 2; p.x = 3; p.y = 3; G.updateVision(run); G.act(S, { type: 'wait' });
+  assert(!(m.x === 2 && m.y === 2), 'slips out of the corner ' + m.x + ',' + m.y); eq(p.hp, hp0);
+  G.act(S, { type: 'wait' }); assert(Math.max(Math.abs(m.x - p.x), Math.abs(m.y - p.y)) >= 3, 'clear of take next turn ' + m.x + ',' + m.y);
+  // 何手か追いかけても、隅で止まらずに逃げ続ける（たけが毎手1歩追う）
+  m.x = 21; m.y = 13; p.x = 19; p.y = 11; G.updateVision(run);
+  let near = 0;
+  for (let i = 0; i < 12; i++) { const dx = Math.sign(m.x - p.x), dy = Math.sign(m.y - p.y); const nx = p.x + dx, ny = p.y + dy;
+    if (!(nx === m.x && ny === m.y) && DG.passable(run.map, nx, ny)) { p.x = nx; p.y = ny; } G.updateVision(run); G.act(S, { type: 'wait' });
+    if (Math.max(Math.abs(m.x - p.x), Math.abs(m.y - p.y)) <= 1) near++; }
+  assert(near <= 1, 'keeps running, adjacent ' + near + ' times'); eq(p.hp, hp0);
+  // 本当に逃げ場がない（行き止まりの1マス）なら、その場にとどまる（攻撃しない）
+  { const t = run.map.tiles; t.fill(DG.WALL); t[5 * run.map.w + 5] = DG.FLOOR; t[5 * run.map.w + 6] = DG.FLOOR; p.x = 5; p.y = 5; m.x = 6; m.y = 5; G.updateVision(run);
+    G.act(S, { type: 'wait' }); eq(m.x + ',' + m.y, '6,5', 'dead end'); eq(p.hp, hp0); bigRoomFloor(S); run.enemies.push(m); }
   // 通常攻撃のダメージ：ミス・1・2 だけ
   const seen = new Set();
   for (let i = 0; i < 300; i++) { m.hp = 99; m.x = p.x + 1; m.y = p.y; m.sleep = 50; const before = m.hp; G.act(S, { type: 'move', dir: 'right' }); seen.add(before - m.hp); }
