@@ -1,12 +1,13 @@
 // 真大魔王バーン（33階）の手ごたえの目安：node tools/truevearn-balance.js [回数]
 // 実際のゲームの処理（G.act）で戦わせる。たけ：Lv40・最大HP264・覇者の剣+8（攻78）・覇者の盾+3（防22）・いのちの霊薬3個（全回復）。祈りで全回復した状態から
 // たけの動き（簡易AI）：HPが減ったら霊薬（1ターン）。予告の範囲にいれば、範囲の外の隣のマスへ（無ければ攻撃）。それ以外は隣なら攻撃、離れていれば近づく
-//   「よけない」：予告を無視して殴り続ける（上限の目安）
+//   天地魔闘の構えのあいだは殴らずにその場で待つ（よけるAI。STANCE=leave なら離れる）
+//   「よけない」：予告も構えも無視して殴り続ける（上限の目安）
 const TS = require('../tests/load'); const { Data: D, Game: G, Dungeon: DG } = TS;
 const N = +(process.argv[2] || 200);
-// 調整の試し：TV='{"hp":1500,"atk":55,"wallCd":[3,2],"endCd":[3,2],"phMult":2.4,"phCd":[3,2]}' のように上書き
+// 調整の試し：TV='{"hp":1500,"atk":55,"wallCd":[3,2],"endCd":[3,2],"phMult":2.4,"phCd":[3,2],"stCd":[8,6],"stActs":4}' のように上書き
 if (process.env.TV) { const o = JSON.parse(process.env.TV), E = D.ENEMIES.truevearn, T = D.TRUEVEARN;
-  if (o.hp) E.hp = o.hp; if (o.atk) E.atk = o.atk; if (o.wallCd) T.wall.cd = o.wallCd; if (o.endCd) T.end.cd = o.endCd; if (o.phMult) T.phoenix.mult = o.phMult; if (o.phCd) T.phoenix.cd = o.phCd; }
+  if (o.hp) E.hp = o.hp; if (o.atk) E.atk = o.atk; if (o.wallCd) T.wall.cd = o.wallCd; if (o.endCd) T.end.cd = o.endCd; if (o.phMult) T.phoenix.mult = o.phMult; if (o.phCd) T.phoenix.cd = o.phCd; if (o.stCd) T.stance.cd = o.stCd; if (o.stActs) T.stance.maxActs = o.stActs; }
 const ONLY = process.env.ONLY_DODGE;
 function setup(seed) {
   const S = G.newState(), st = S.village.story; st.introDone = true; S.village.seenIntro = true; st.chapter = 6;
@@ -43,10 +44,20 @@ function fight(seed, dodge, healAt) {
         const dd = Math.max(Math.abs(x - b.x), Math.abs(y - b.y)); if (dd < bd) { bd = dd; best = d; } }
       if (best) act = { type: 'move', dir: best };
     }
+    // 天地魔闘の構え：殴らずに離れる（よけるAIだけ。予告の範囲には入らない）
+    if (!act && dodge && b.stance > 0 && process.env.STANCE !== 'leave') act = { type: 'wait' };   // 既定：構えのあいだは殴らずに待つ（STANCE=leave：離れる）
+    if (!act && dodge && b.stance > 0) {
+      let best = null, bd = -1;
+      for (const [d, [dx, dy]] of DIRS) { const x = p.x + dx, y = p.y + dy;
+        if (!G.canStep(r.map, p.x, p.y, dx, dy) || G.enemyAt(r, x, y) || danger.has(x + ',' + y)) continue;
+        const dd = Math.max(Math.abs(x - b.x), Math.abs(y - b.y)); if (dd > bd) { bd = dd; best = d; } }
+      act = best ? { type: 'move', dir: best } : { type: 'wait' };
+    }
     if (!act) {
       const dx = Math.sign(b.x - p.x), dy = Math.sign(b.y - p.y);
       const d = Object.keys(G.DIRS).find((k) => G.DIRS[k][0] === dx && G.DIRS[k][1] === dy);
-      act = { type: 'move', dir: d };   // 隣なら攻撃（移動の向きに敵）
+      const adj = Math.max(Math.abs(b.x - p.x), Math.abs(b.y - p.y)) <= 1;
+      act = dodge && !adj && danger.has((p.x + dx) + ',' + (p.y + dy)) ? { type: 'wait' } : { type: 'move', dir: d };   // 隣なら攻撃（移動の向きに敵）。よけるAIは予告のマスへは近づかない
     }
     G.act(S, act); turns++;
     if (p.hp < hp0) taken += hp0 - p.hp;

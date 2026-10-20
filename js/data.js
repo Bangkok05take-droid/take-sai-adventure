@@ -126,6 +126,9 @@
     end: { name: 'カラミティエンド', dmg: [120, 150], cd: [3, 2] },
     wall: { name: 'カラミティウォール', dmg: [80, 100], radius: 3, cd: [2, 2] },
     phoenix: { mult: 2.6, cd: [3, 2] },
+    // 天地魔闘の構え：たけが range マス以内なら構える（攻撃しない）。構えている間にたけの攻撃が当たると、そのダメージの reflect 倍を返す（防御無視。バーンは無傷）。
+    //   たけが breakAt マス以上離れると構えを解き、カイザーフェニックスを予告する。maxActs 行動で構えを解く。cd：構えを解いてから次に構えるまで
+    stance: { name: '天地魔闘の構え', range: 2, reflect: 3, breakAt: 3, maxActs: 4, cd: [8, 6] },
   };
   /* 竜人王バラン（隠しダンジョン35階）の戦い方（2026年10月：技の種類は確定。**数値はすべて調整案（仮）**）。
    *  通常攻撃：隣なら殴る（ほかの技が使えないとき）
@@ -467,7 +470,7 @@
     mist_clone: { name: 'ミストバーン', hp: 1, atk: 22, def: 0, exp: 0, ai: 'clone', sprite: 'mist', noScale: true, clone: true },
     vearn:  { name: '大魔王バーン', hp: 900, atk: 44, def: 20, exp: 1500, ai: 'boss', sprite: 'vearn', noScale: true, arena: 'throne', big: true },
     // arena 'void'：融合と覚醒の舞台（登場ムービーの白い異空間）。白い床・白い霧・空席の水晶の玉座（js/render.js の drawVoidBg）
-    truevearn: { name: '真大魔王バーン', hp: 1800, atk: 65, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'void', big: true },
+    truevearn: { name: '真大魔王バーン', hp: 1700, atk: 60, def: 21, exp: 3000, ai: 'boss', sprite: 'truevearn', noScale: true, arena: 'void', big: true },
   };
   D.POISON = { chance: 0.4, turns: 8, guard: 15, dmgRate: 0.025 }; // 毒：最大HPの2.5%を毎ターン。治った後しばらくかからない
   D.ENEMY_SCALE = { hp: 0.12, atk: 0.08, exp: 0.12 }; // 出現し始めた階から1階ごとの上昇率

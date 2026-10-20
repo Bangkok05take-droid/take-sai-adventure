@@ -3631,7 +3631,7 @@ test('ベビーサタン：5行動ごとに、たけのまわり3×3を予告し
 test('真大魔王バーン：カラミティエンド（まわり1マス）・カラミティウォール（まわり3マス）は予告1ターン→次の行動で防御無視の固定ダメージ。カイザーフェニックスは隣でも3列。隙は無い。魔界の炎の輪は無い', () => {
   const TV = D.TRUEVEARN;
   const setupTV = (seed) => { const S = newRun(seed); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;
-    const b = realEnemy(S, 'truevearn', p.x + 1, p.y, 33); b.aware = true; return { S, run, p, b }; };
+    const b = realEnemy(S, 'truevearn', p.x + 1, p.y, 33); b.aware = true; b.cds = { stance: 99 }; return { S, run, p, b }; };
   // 隣：カラミティエンドを予告（まわり8マス）→ 次の行動で発動。防御を上げても固定の幅
   { const { S, run, p, b } = setupTV(911); p.def = 999;
     const r1 = G.act(S, { type: 'wait' }), tele = r1.events.find((e) => e.t === 'telegraph' && e.id === b.id);
@@ -3643,23 +3643,54 @@ test('真大魔王バーン：カラミティエンド（まわり1マス）・�
     G.act(S, { type: 'wait' });
     assert(b.charge && (b.charge.fx === 'firebird' || b.charge.label === 'カラミティウォール'), 'next move right away ' + JSON.stringify(b.charge && b.charge.fx)); }
   // 3マス先：カラミティウォール（まわり3マス）。範囲の外へ出ればかわせる
-  { const { S, run, p, b } = setupTV(912); b.x = p.x + 3; b.y = p.y + 2; b.cds = { end: 9, phoenix: 9 }; G.updateVision(run);
+  { const { S, run, p, b } = setupTV(912); b.x = p.x + 3; b.y = p.y + 2; b.cds = { end: 9, phoenix: 9, stance: 99 }; G.updateVision(run);
     G.act(S, { type: 'wait' });
     assert(b.charge && b.charge.label === 'カラミティウォール' && b.charge.tiles.some((t) => t.x === p.x && t.y === p.y), 'wall telegraph');
     const hp0 = p.hp; G.act(S, { type: 'wait' }); const dmg = hp0 - p.hp;
     assert(dmg >= TV.wall.dmg[0] && dmg <= TV.wall.dmg[1], 'wall dmg ' + dmg); }
-  { const { S, run, p, b } = setupTV(913); b.x = p.x + 3; b.y = p.y + 2; b.cds = { end: 9, phoenix: 9 }; G.updateVision(run);
+  { const { S, run, p, b } = setupTV(913); b.x = p.x + 3; b.y = p.y + 2; b.cds = { end: 9, phoenix: 9, stance: 99 }; G.updateVision(run);
     G.act(S, { type: 'wait' }); const hp0 = p.hp; b.x = p.x + 3; b.y = p.y + 2;
     G.act(S, { type: 'move', dir: 'left' });
     eq(p.hp, hp0, 'wall dodged by leaving the range'); }
   // 隣（カラミティエンドが待ち）：カイザーフェニックスの3列
-  { const { S, run, p, b } = setupTV(914); b.cds = { end: 9, wall: 9 };
+  { const { S, run, p, b } = setupTV(914); b.cds = { end: 9, wall: 9, stance: 99 };
     G.act(S, { type: 'wait' });
     assert(b.charge && b.charge.fx === 'firebird' && b.charge.tiles.some((t) => t.x === p.x && t.y === p.y), 'phoenix from adjacent');
     const ys = new Set(b.charge.tiles.map((t) => t.y)); eq(ys.size, 3, 'three lines'); }
   // 古い技（天地の掌・滅びの炎・魔界の炎の輪）は使わない
   { const { S, run, b } = setupTV(915); for (let i = 0; i < 30; i++) G.act(S, { type: 'wait' });
     assert(!run.log.some((l) => /天地の掌|滅びの炎|魔界の炎/.test(l)), 'no old moves'); }
+});
+
+test('真大魔王バーン：天地魔闘の構え。2マス以内で構え、構えている間は攻撃しない。攻撃するとダメージの3倍が防御無視で返る（バーンは無傷）。3マス以上離れると構えを解いてカイザーフェニックスを予告。4行動で解ける', () => {
+  const ST = D.TRUEVEARN.stance;
+  const setupST = (seed) => { const S = newRun(seed); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;
+    const b = realEnemy(S, 'truevearn', p.x + 1, p.y, 33); b.aware = true; b.cds = {}; return { S, run, p, b }; };
+  // 構える（攻撃しない・予告もしない）
+  { const { S, run, p, b } = setupST(921); const hp0 = p.hp;
+    const r = G.act(S, { type: 'wait' });
+    eq(b.stance, ST.maxActs); assert(!b.charge, 'no telegraph while taking the stance'); assert(p.hp >= hp0, 'no attack');
+    assert(r.events.some((e) => e.t === 'stance'), 'stance event');
+    // 構えている間に攻撃：当たれば、そのダメージの3倍が返る。バーンのHPは減らない
+    const bhp = b.hp; let got = null;
+    for (let i = 0; i < 6 && !got && b.stance > 0; i++) { const h = p.hp; const rr = G.act(S, { type: 'move', dir: 'right' }); const hit = rr.events.find((e) => e.t === 'hit' && e.target === 'player'); if (hit) got = { n: hit.n, lost: h - p.hp }; }
+    assert(got, 'countered');
+    eq(b.hp, bhp, 'vearn takes no damage in the stance');
+    const E = D.ENEMIES.truevearn, base = Math.round(G.playerAtk(run) * 1.15 - E.def * 0.7);
+    assert(got.n >= 3 && got.n <= Math.max(3, base * 3 + 3) && got.n % 3 === 0, 'reflect is 3x the attack ' + JSON.stringify(got) + ' base ' + base); }
+  // 構えている間、近くで待つだけなら攻撃してこない。maxActs 行動で構えを解く
+  { const { S, run, p, b } = setupST(922); G.act(S, { type: 'wait' }); const hp0 = p.hp; let n = 0;
+    while (b.stance > 0 && n < 10) { G.act(S, { type: 'wait' }); n++; }
+    eq(n, ST.maxActs, 'stance lasts maxActs'); assert(p.hp >= hp0, 'no attack while in the stance'); }
+  // 3マス以上離れると、構えを解いてカイザーフェニックス（たけに向けて3列・予告1ターン）
+  { const { S, run, p, b } = setupST(923); G.act(S, { type: 'wait' }); eq(b.stance, ST.maxActs);
+    p.x = b.x - 3; p.y = b.y + 1; G.updateVision(run);
+    G.act(S, { type: 'wait' });
+    eq(b.stance, 0); assert(b.charge && b.charge.fx === 'firebird' && b.charge.tiles.some((t) => t.x === p.x && t.y === p.y), 'phoenix after leaving');
+    assert(run.log.some((l) => l.includes('構えを解いた')), 'log'); }
+  // ほかの敵の攻撃は、はね返さない
+  { const { S, run, p, b } = setupST(924); G.act(S, { type: 'wait' }); const h = b.hp, ph = p.hp;
+    G._damageEnemy(S, b, 10, [], 'x', 'enemy'); eq(b.hp, h - 10); eq(p.hp, ph); }
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

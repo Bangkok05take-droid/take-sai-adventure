@@ -1,6 +1,7 @@
 // 真大魔王バーン（33階）の技（2026年10月21日）：予告1ターン → 次の行動で発動、の見え方と動きの確認（PCのブラウザ、幅360・390・430）
 //   node tools/truevearn-moves-check.js [出力フォルダ]（既定 docs/truevearn-moves-v1/）
 //   カラミティエンド（隣・まわり1マス）・カラミティウォール（まわり3マス）・カイザーフェニックス（隣でも3列）を、実際のゲームの処理（TS.UI.doAct の足踏み）で出させる。
+//   天地魔闘の構え（構える・攻撃するとはね返る・離れるとカイザーフェニックス）も確かめる。
 //   技の絵（エフェクト）は ChatGPT の素材が届くまで仮（ui.js の blast 'calamityEnd'・'calamityWall'、フェニックスは今の炎の鳥）
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -13,9 +14,9 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
 const closeAll = (p) => p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });
 // 技ごとの置き方：たけとボスの位置（広間の左上からのずれ）・使えない技の待ち
 const MOVES = [
-  { key: 'end', label: 'カラミティエンド', b: [7, 6], p: [7, 7], cds: { wall: 9, phoenix: 9 }, n: 8 },
-  { key: 'wall', label: 'カラミティウォール', b: [7, 6], p: [9, 9], cds: { end: 9, phoenix: 9 }, n: 48 },
-  { key: 'phoenix', label: 'カイザーフェニックス', b: [7, 6], p: [7, 7], cds: { end: 9, wall: 9 } },
+  { key: 'end', label: 'カラミティエンド', b: [7, 6], p: [7, 7], cds: { wall: 9, phoenix: 9, stance: 99 }, n: 8 },
+  { key: 'wall', label: 'カラミティウォール', b: [7, 6], p: [9, 9], cds: { end: 9, phoenix: 9, stance: 99 }, n: 48 },
+  { key: 'phoenix', label: 'カイザーフェニックス', b: [7, 6], p: [7, 7], cds: { end: 9, wall: 9, stance: 99 } },
 ];
 (async () => {
   const b = await chromium.launch();
@@ -51,6 +52,27 @@ const MOVES = [
       const dmg = hp0 - after.hp, rng = M.key === 'end' ? [120, 150] : M.key === 'wall' ? [80, 100] : [1, 999];
       chk(dmg >= rng[0] && dmg <= rng[1] && !after.rest, `${W} ${M.label}：次の行動で発動・ダメージ ${dmg}（隙なし）`);
     }
+    // 天地魔闘の構え：隣で構える → 攻撃するとはね返る（3倍）→ 3マス離れると構えを解いてカイザーフェニックスの予告
+    await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight, bo = r.enemies.find((e) => e.boss); bo.x = A.x + 7; bo.y = A.y + 6; bo.charge = null; bo.stance = 0; bo.cds = {};
+      r.player.x = bo.x; r.player.y = bo.y + 1; r.player.dir = 'up'; r.player.hp = 9999; TS.Game.updateVision(r); });
+    await p.evaluate(() => TS.UI.doAct({ type: 'wait' })); await p.waitForTimeout(600); await closeAll(p);
+    const st = await p.evaluate(() => { const bo = TS.UI.S.run.enemies.find((e) => e.boss); return { stance: bo.stance, charge: !!bo.charge }; });
+    chk(st.stance === 4 && !st.charge, `${W} 天地魔闘の構え（攻撃も予告もしない） ${JSON.stringify(st)}`);
+    await p.screenshot({ path: path.join(OUT, `stance_${W}.jpg`), quality: 85 });
+    let ctr = null;
+    for (let i = 0; i < 6 && !ctr; i++) {
+      const h0 = await p.evaluate(() => ({ p: TS.UI.S.run.player.hp, b: TS.UI.S.run.enemies.find((e) => e.boss).hp }));
+      await p.evaluate(() => TS.UI.doAct({ type: 'move', dir: 'up' })); await p.waitForTimeout(140);
+      const h1 = await p.evaluate(() => ({ p: TS.UI.S.run.player.hp, b: TS.UI.S.run.enemies.find((e) => e.boss).hp, log: TS.UI.S.run.log.slice(-3).join(' ') }));
+      if (h1.log.includes('はね返した')) { ctr = { lost: +(/反撃！ たけは(\d+)のダメージ/.exec(h1.log) || [0, 0])[1], boss: h0.b - h1.b }; await p.screenshot({ path: path.join(OUT, `stance-counter_${W}.jpg`), quality: 85 }); }
+      await p.waitForTimeout(500); await closeAll(p);
+    }
+    chk(ctr && ctr.lost > 0 && ctr.lost % 3 === 0 && ctr.boss === 0, `${W} 構えに攻撃：3倍のダメージが返る・バーンは無傷 ${JSON.stringify(ctr)}`);
+    await p.evaluate(() => { const r = TS.UI.S.run, bo = r.enemies.find((e) => e.boss); bo.stance = 4; r.player.x = bo.x; r.player.y = bo.y + 3; r.player.hp = 9999; TS.Game.updateVision(r); });
+    await p.evaluate(() => TS.UI.doAct({ type: 'wait' })); await p.waitForTimeout(700); await closeAll(p);
+    const lv = await p.evaluate(() => { const r = TS.UI.S.run, bo = r.enemies.find((e) => e.boss), c = bo.charge; return { stance: bo.stance, fx: c && c.fx, hit: !!c && c.tiles.some((t) => t.x === r.player.x && t.y === r.player.y) }; });
+    chk(lv.stance === 0 && lv.fx === 'firebird' && lv.hit, `${W} 3マス離れると構えを解いてカイザーフェニックスの予告 ${JSON.stringify(lv)}`);
+    await p.screenshot({ path: path.join(OUT, `stance-leave_${W}.jpg`), quality: 85 });
     chk(!errs.length, `${W} エラーなし ${errs.join(' / ')}`);
     await ctx.close();
   }

@@ -1884,6 +1884,7 @@
         case 'eanim': { const en = run.enemies.find((q) => q.id === e.id); if (en) enemyActFx(en, e.kind, e.dx, UI.ENEMY_ACT.prep, UI.ENEMY_ACT.prep + UI.ENEMY_ACT.act); break; }
         // あくまのきしが盾を構えた（ポーズは render.js が e.guard で出す）
         case 'eguard': AU.sfx('bump'); break;
+        case 'stance': AU.sfx('bump'); break;   // 天地魔闘の構え（構えの見た目は render.js が e.stance で出す）
         case 'steal': {
           // おどるほうせき：盗む動作のコマを、逃げる前の場所に残して見せる（盗みはゲーム側で1回だけ済んでいる）
           const th = e.id !== undefined && { id: e.id, x: e.from.x, y: e.from.y, type: (run.enemies.find((q) => q.id === e.id) || {}).type || 'thief' };
@@ -1985,6 +1986,7 @@
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
       // 真大魔王バーン：カラミティエンド（まわり1マス）・カラミティウォール（まわり3マス）。正式の演出の絵は後で届く予定（それまでの仮）
       case 'calamityEnd': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffe0a0', dur: 420 }); FXm.shake(RD, 5, 320); AU.sfx('hit'); return;
+      case 'stanceCounter': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#fff2b0', dur: 380 }); FXm.shake(RD, 5, 300); AU.sfx('hit'); return;   // 天地魔闘の構えの反撃（仮。絵はChatGPT担当）
       case 'calamityWall': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#d8a0ff', dur: 520 }); FXm.shake(RD, 4, 360); AU.sfx('bolt'); return;
       case 'palm': // 真大魔王バーン：速く重い打撃と強い衝撃
         RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffb0f0', dur: 380 });
@@ -2448,7 +2450,7 @@
       <span>武器</span><span>${w ? esc(G.itemName(w)) : 'なし'}</span><span>盾</span><span>${sh ? esc(G.itemName(sh)) : 'なし'}</span>
       <span>回復・食料</span><span>${heal}個</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
       <p class="note">準備の間は時間が止まっています（敵は動きません）。「道具を確認」で装備の付け替えや回復ができます。</p>
-      <div class="warnbox">真大魔王バーン：カラミティエンド（周り1マス）・カラミティウォール（周り3マス）・カイザーフェニックス（3列）。どれも予告の次のターンに発動し、防御を無視する大技もある。</div>`,
+      <div class="warnbox">真大魔王バーン：カラミティエンド（周り1マス）・カラミティウォール（周り3マス）・カイザーフェニックス（3列）。どれも予告の次のターンに発動し、防御を無視する大技もある。天地魔闘の構えのあいだに攻撃すると3倍で返され、離れるとカイザーフェニックスが来る。</div>`,
       onClose: () => { UI.prepOpen = false; },
       buttons: [
         { label: '道具を確認', onClick: () => { UI.prepHold = true; setTimeout(() => { UI.prepHold = false; openItems(); }, 0); } },

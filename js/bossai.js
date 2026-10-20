@@ -253,7 +253,8 @@
    *  カラミティエンド：隣にいると、まわり1マス（8マス）。防御を無視して D.TRUEVEARN.end.dmg（120〜150）
    *  カラミティウォール：3マス以内にいると、まわり3マス（7×7）。防御を無視して 80〜100。1回の移動では外へ出られない
    *  カイザーフェニックス：8方向の直線上にいれば、隣からでも撃つ。たけへの直線と、その両どなりの3列（以前の滅びの炎の範囲）。攻撃力×mult
-   *  以前の「天地の掌」「魔界の炎の輪」「滅びの炎」は無し。HPが enrageAt 以下で待ち時間が短くなる */
+   *  天地魔闘の構え：2マス以内で構える（攻撃しない・最大4行動）。構えている間にたけの攻撃が当たると3倍にしてはね返す。3マス以上離れると構えを解いてカイザーフェニックス
+ *  以前の「天地の掌」「魔界の炎の輪」「滅びの炎」は無し。HPが enrageAt 以下で待ち時間が短くなる */
   AI.truevearn = function (S, e, ev, sees, H) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type], TV = D.TRUEVEARN;
     if (!aware(run, e, sees)) return false;
@@ -266,18 +267,32 @@
       cd[key] = TV[key].cd[ph];
       return true;
     };
-    if (H.adjacent(run, e, p) && !cd.end) return fixed(H.areaTiles(run, e, 1), 'end', 'が手刀に闘気を集めた！ カラミティエンド！（まわり1マス）', 'calamityEnd');
-    if (a && !cd.phoenix) {
-      const center = H.lineTiles(run, e, a[0], a[1], 12);
-      if (center.some((t) => t.x === p.x && t.y === p.y)) {
-        // 進む向きに対して両どなりの列も（3列）
-        const px = -a[1], py = a[0], tiles = center.slice();
-        for (const s of [1, -1]) for (const t of center) { const x = t.x + px * s, y = t.y + py * s; if (DG.passable(run.map, x, y) && !tiles.some((o) => o.x === x && o.y === y)) tiles.push({ x, y }); }
-        H.startCharge(S, e, ev, tiles, TV.phoenix.mult, 0, 'の手に巨大な不死鳥が生まれた！ カイザーフェニックス！（3列）'); e.charge.fx = 'firebird';
-        cd.phoenix = TV.phoenix.cd[ph];
-        return true;
+    // カイザーフェニックス：向き a の直線（12マス）と、その両どなりの列（3列）
+    const phoenix = (a, msg) => {
+      const center = H.lineTiles(run, e, a[0], a[1], 12), px = -a[1], py = a[0], tiles = center.slice();
+      for (const s of [1, -1]) for (const t of center) { const x = t.x + px * s, y = t.y + py * s; if (DG.passable(run.map, x, y) && !tiles.some((o) => o.x === x && o.y === y)) tiles.push({ x, y }); }
+      H.startCharge(S, e, ev, tiles, TV.phoenix.mult, 0, msg + 'カイザーフェニックス！（3列）'); e.charge.fx = 'firebird';
+      cd.phoenix = TV.phoenix.cd[ph];
+      return true;
+    };
+    // 天地魔闘の構え（e.stance＝構えていられる残りの行動）。構えている間は攻撃しない。反撃は js/game.js の damageEnemy
+    const ST = TV.stance;
+    if (e.stance > 0) {
+      if (d >= ST.breakAt) {   // 離れた：構えを解いて、たけの方へ（いちばん近い8方向）カイザーフェニックス
+        e.stance = 0;
+        const ang = Math.round(Math.atan2(p.y - e.y, p.x - e.x) / (Math.PI / 4)) * Math.PI / 4;
+        return phoenix([Math.round(Math.cos(ang)), Math.round(Math.sin(ang))], 'は構えを解いた！ 手に巨大な不死鳥が生まれた！ ');
       }
+      if (--e.stance > 0) { say(run, E.name + 'は' + ST.name + 'をとっている……（攻撃するとはね返される）'); return true; }
+      say(run, E.name + 'は構えを解いた。');
+    } else if (!cd.stance && d <= ST.range) {
+      e.stance = ST.maxActs; cd.stance = ST.cd[ph] + ST.maxActs;
+      say(run, E.name + 'は' + ST.name + 'をとった！ 攻撃するとはね返される！ 離れると……');
+      ev.push({ t: 'stance', id: e.id });
+      return true;
     }
+    if (H.adjacent(run, e, p) && !cd.end) return fixed(H.areaTiles(run, e, 1), 'end', 'が手刀に闘気を集めた！ カラミティエンド！（まわり1マス）', 'calamityEnd');
+    if (a && !cd.phoenix && H.lineTiles(run, e, a[0], a[1], 12).some((t) => t.x === p.x && t.y === p.y)) return phoenix(a, 'の手に巨大な不死鳥が生まれた！ ');
     if (d <= TV.wall.radius && !cd.wall) return fixed(H.areaTiles(run, e, TV.wall.radius), 'wall', 'のまわりに闘気の壁が広がる！ カラミティウォール！（まわり3マス）', 'calamityWall');
     return false;   // 通常攻撃（隣）か、近づく
   };

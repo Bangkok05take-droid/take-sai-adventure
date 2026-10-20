@@ -882,6 +882,14 @@
    * 防御中のあくまのきし（e.guard）：受けるダメージが defend.cut 倍（最低1） */
   function damageEnemy(S, e, dmg, ev, msg, kind) {
     const run = S.run, E = D.ENEMIES[e.type], nm = E.name;
+    // 天地魔闘の構え（真大魔王バーン e.stance）：たけの攻撃（直接・投げる・杖や巻物）は当たらず、そのダメージの reflect 倍を防御無視ではね返す。ほかの敵の攻撃（kind 'enemy'）は対象外
+    if (e.stance > 0 && kind !== 'enemy') {
+      const ST = D.TRUEVEARN.stance, n = Math.max(1, Math.round(dmg * ST.reflect));
+      G.log(run, nm + 'の' + ST.name + '！ たけの攻撃をはね返した！');
+      ev.push({ t: 'blast', id: e.id, tiles: [{ x: run.player.x, y: run.player.y }], fx: 'stanceCounter' });
+      damagePlayer(S, e, n, ev, nm + 'の反撃', { big: true });
+      return;
+    }
     if (E.metal) {
       if (kind === 'magic') { G.log(run, nm + 'には効かなかった！'); ev.push({ t: 'miss', x: e.x, y: e.y }); return; }
       if (kind !== 'metal') { dmg = 1; msg = nm + 'に1のダメージ。'; }
@@ -1808,7 +1816,7 @@
     if (e.guard > 0) e.guard--;   // あくまのきしの防御：自分の行動のたびに1減る（0で終わり）
     // 眠り（眠ると予告中の攻撃も中断される）
     if (e.sleep > 0) {
-      if (e.charge) { e.charge = null; G.log(run, E.name + 'の構えがとけた。'); }
+      if (e.charge || e.stance) { e.charge = null; e.stance = 0; G.log(run, E.name + 'の構えがとけた。'); }
       if (e.sleep > 1000) { // 休眠中のきりかぶおばけ：近づくと起きる
         if (cheb(e, p) <= 2) { e.sleep = 0; G.log(run, E.name + 'が目を覚ました！'); }
         return;
@@ -2142,7 +2150,7 @@
     } else if (target) {
       const dmg = calcDamage(run.rng, atk, target.def);
       G.log(run, E.name + 'の炎は' + D.ENEMIES[target.type].name + 'に当たって止まった！');
-      damageEnemy(S, target, dmg, ev, D.ENEMIES[target.type].name + 'に' + dmg + 'のダメージ。');
+      damageEnemy(S, target, dmg, ev, D.ENEMIES[target.type].name + 'に' + dmg + 'のダメージ。', 'enemy');
     } else G.log(run, E.name + 'の炎は届かなかった。');
     return true;
   }
