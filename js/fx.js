@@ -525,5 +525,28 @@
     g.restore();
   };
 
+  /* 真大魔王バーンの技の演出のコマ（ZIP truevearn_effects_v1。assets/fx/truevearn/）。256×256 の中心を、指定のマスの中心（＋縦のずれ）に合わせて
+   * size マスの大きさで描く。コマは時間で順に切り替えるだけ（コマ数は攻撃の回数やターンとは無関係。当たりはゲーム側で1回だけ）。
+   * f.frames：TS.Sprites.fxFrames のキー、f.from：使う最初のコマ、f.c：中心のマス、f.size：描く大きさ（マス）、f.dy：縦のずれ（マス）、f.flash：最初に画面を短く光らせる */
+  FX.draw.vfxFrames = function (g, f, a, v) {
+    const fr = TS.Sprites && TS.Sprites.fxFrames(f.frames); if (!fr) return;
+    const list = fr.slice(f.from || 0), i = Math.min(list.length - 1, Math.floor(a * list.length)), img = list[i];
+    if (f.tiles) tileFill(g, v, f.tiles, '#e8d0ff', 0.3 * (1 - a));   // 実際に当たるマス（予告と同じ範囲）を薄く
+    if (f.flash && a < 0.2 && !FX.calm()) { g.globalAlpha = 0.45 * (1 - a / 0.2); g.fillStyle = '#fff8e0'; g.fillRect(0, 0, g.canvas.width, g.canvas.height); }
+    const W = v.ts * f.size, x = cx(v, f.c.x) - W / 2, y = cy(v, f.c.y) + (f.dy || 0) * v.ts - W / 2;
+    g.globalAlpha = i === list.length - 1 ? Math.min(1, (1 - a) * list.length) : 1;   // 最後のコマで消えていく
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(img, x, y, W, W);
+    g.imageSmoothingEnabled = false; g.globalAlpha = 1;
+  };
+  // 天地魔闘の構えの間：控えめな光（tenchi_mato の 00）をバーンの後ろに（render.js から毎フレーム。絵が無ければコードで描く三方向の光）
+  FX.stanceGlow = function (g, x, y, ts, k, now) {
+    const fr = TS.Sprites && TS.Sprites.fxFrames('tenchiMato');
+    if (!fr) { FX.stanceAura(g, x, y, ts, k, now); return; }
+    const W = ts * 3;
+    g.save(); g.globalAlpha = 0.8 + 0.15 * Math.sin(now / 300); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(fr[0], x - W / 2, y - W / 2, W, W); g.restore();
+  };
+
   TS.FX = FX;
 })(globalThis.TS = globalThis.TS || {});

@@ -1878,13 +1878,13 @@
           toast(e.msg); AU.sfx('warn');
           if (/霧/.test(e.msg)) RD.addFx({ t: 'darkfog', x: p.x, y: p.y, dur: 800 });   // ミストバーンの暗い霧
           break;
-        case 'telegraph': toast('！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;
+        case 'telegraph': toast(e.name ? e.name : '！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;   // name：技名だけを出す技（真大魔王バーン）
         case 'blast': { const dl = blastFx(e, run, p); if (dl) hitD = Math.max(hitD, dl); break; }   // 飛ぶ技：たけへの命中の表示は届いてから
         // メタルスライムが逃げた：逃走のコマ（見た目だけ）
         case 'eanim': { const en = run.enemies.find((q) => q.id === e.id); if (en) enemyActFx(en, e.kind, e.dx, UI.ENEMY_ACT.prep, UI.ENEMY_ACT.prep + UI.ENEMY_ACT.act); break; }
         // あくまのきしが盾を構えた（ポーズは render.js が e.guard で出す）
         case 'eguard': AU.sfx('bump'); break;
-        case 'stance': AU.sfx('bump'); break;   // 天地魔闘の構え（構えの見た目は render.js が e.stance で出す）
+        case 'stance': toast(e.name || '天地魔闘の構え', 'danger'); AU.sfx('bump'); break;   // 天地魔闘の構え：技名だけ（構えのポーズと光は render.js が e.stance で出す）
         case 'steal': {
           // おどるほうせき：盗む動作のコマを、逃げる前の場所に残して見せる（盗みはゲーム側で1回だけ済んでいる）
           const th = e.id !== undefined && { id: e.id, x: e.from.x, y: e.from.y, type: (run.enemies.find((q) => q.id === e.id) || {}).type || 'thief' };
@@ -1985,10 +1985,19 @@
       case 'sweep': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#9ad8ff', dur: 380 }); AU.sfx('hit'); return;
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
       // 真大魔王バーン：カラミティエンド（まわり1マス）・カラミティウォール（まわり3マス）。正式の演出の絵は後で届く予定（それまでの仮）
-      // 演出はコードで描く（js/fx.js の cslash・cwall・ccounter。ChatGPT のデザイン見本の方向性に合わせた仮の版。個別のコマの絵が届いたら差し替え）
-      case 'calamityEnd': if (!b) break; RD.addFx({ t: 'cslash', tiles, c: { x: b.x, y: b.y }, dur: 560 }); FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
-      case 'stanceCounter': if (!b) break; RD.addFx({ t: 'ccounter', c: { x: b.x, y: b.y }, p: { x: p.x, y: p.y }, dur: 480 }); FXm.shake(RD, 6, 320); AU.sfx('hit'); return;
-      case 'calamityWall': if (!b) break; RD.addFx({ t: 'cwall', tiles, c: { x: b.x, y: b.y }, step: 110, rise: 260, dur: 110 * 2 + 260 * 1.6 }); FXm.shake(RD, 4, 420); AU.sfx('bolt'); return;
+      // 真大魔王バーンの技：ChatGPT の演出のコマ（assets/fx/truevearn/。FX.draw.vfxFrames）。コマが読めないときだけ、コードで描く仮の演出（cslash・cwall・ccounter）。二重には描かない
+      case 'calamityEnd': if (!b) break;
+        if (SP.fxFrames('calamityEnd')) RD.addFx({ t: 'vfxFrames', frames: 'calamityEnd', tiles, c: { x: b.x, y: b.y }, size: 3.6, dy: -0.1, dur: 4 * 120 });
+        else RD.addFx({ t: 'cslash', tiles, c: { x: b.x, y: b.y }, dur: 560 });
+        FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
+      case 'calamityWall': if (!b) break;
+        if (SP.fxFrames('calamityWall')) RD.addFx({ t: 'vfxFrames', frames: 'calamityWall', tiles, c: { x: b.x, y: b.y }, size: 7, dy: 0, dur: 4 * 120 });
+        else RD.addFx({ t: 'cwall', tiles, c: { x: b.x, y: b.y }, step: 110, rise: 260, dur: 110 * 2 + 260 * 1.6 });
+        FXm.shake(RD, 4, 420); AU.sfx('bolt'); return;
+      case 'stanceCounter': if (!b) break;   // 天地魔闘の構えの反撃：01 → 02 → 03（00 は構えの間の光）
+        if (SP.fxFrames('tenchiMato')) RD.addFx({ t: 'vfxFrames', frames: 'tenchiMato', from: 1, c: { x: b.x, y: b.y }, size: 3.4, dy: -0.35, flash: true, dur: 3 * 140 });
+        else RD.addFx({ t: 'ccounter', c: { x: b.x, y: b.y }, p: { x: p.x, y: p.y }, dur: 480 });
+        FXm.shake(RD, 6, 320); AU.sfx('hit'); return;
       case 'palm': // 真大魔王バーン：速く重い打撃と強い衝撃
         RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#ffb0f0', dur: 380 });
         FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
@@ -2451,7 +2460,7 @@
       <span>武器</span><span>${w ? esc(G.itemName(w)) : 'なし'}</span><span>盾</span><span>${sh ? esc(G.itemName(sh)) : 'なし'}</span>
       <span>回復・食料</span><span>${heal}個</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
       <p class="note">準備の間は時間が止まっています（敵は動きません）。「道具を確認」で装備の付け替えや回復ができます。</p>
-      <div class="warnbox">真大魔王バーン：カラミティエンド（周り1マス）・カラミティウォール（周り3マス）・カイザーフェニックス（3列）。どれも予告の次のターンに発動し、防御を無視する大技もある。天地魔闘の構えのあいだに攻撃すると3倍で返され、離れるとカイザーフェニックスが来る。</div>`,
+      <div class="warnbox">真大魔王バーン：カラミティエンド・カラミティウォール・カイザーフェニックス・天地魔闘の構え</div>`,
       onClose: () => { UI.prepOpen = false; },
       buttons: [
         { label: '道具を確認', onClick: () => { UI.prepHold = true; setTimeout(() => { UI.prepHold = false; openItems(); }, 0); } },

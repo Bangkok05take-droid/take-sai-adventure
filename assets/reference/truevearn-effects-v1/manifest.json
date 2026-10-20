@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "status": "art assets; game integration not tested",
+  "effects": {
+    "calamity_end": {
+      "frames": [
+        {
+          "file": "calamity_end/00.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "calamity_end/01.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "calamity_end/02.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "calamity_end/03.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        }
+      ],
+      "sheet": "calamity_end/sheet.png",
+      "frame_order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "anchor_note": "initial geometric center; Claude must verify alignment to boss tile; do not independently trim frames"
+    },
+    "calamity_wall": {
+      "frames": [
+        {
+          "file": "calamity_wall/00.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "calamity_wall/01.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "calamity_wall/02.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "calamity_wall/03.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        }
+      ],
+      "sheet": "calamity_wall/sheet.png",
+      "frame_order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "anchor_note": "initial geometric center; Claude must verify alignment to boss tile; do not independently trim frames"
+    },
+    "tenchi_mato": {
+      "frames": [
+        {
+          "file": "tenchi_mato/00.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "tenchi_mato/01.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "tenchi_mato/02.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        },
+        {
+          "file": "tenchi_mato/03.png",
+          "size": [
+            256,
+            256
+          ],
+          "anchor": [
+            128,
+            128
+          ]
+        }
+      ],
+      "sheet": "tenchi_mato/sheet.png",
+      "frame_order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "anchor_note": "initial geometric center; Claude must verify alignment to boss tile; do not independently trim frames"
+    }
+  },
+  "character": {
+    "file": "truevearn_stance/stance_96.png",
+    "size": [
+      96,
+      96
+    ],
+    "foot_anchor": [
+      48,
+      90
+    ],
+    "note": "match visible body height and foot anchor with existing idle sprite in game; no change to collider"
+  }
+}

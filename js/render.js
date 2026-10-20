@@ -505,6 +505,8 @@
       else if (eact && SP.enemyAction(kind, 'prep')) img = SP.enemyAction(kind, now - eact.t0 - (eact.delay || 0) < eact.prep ? 'prep' : 'act', eact.flip);
       // 防御中（あくまのきし e.guard）：防御のポーズ。盾をたけの方へ向ける。防御が終われば待機に戻る
       else if (e.guard > 0 && SP.enemyAction(kind, 'guard')) img = SP.enemyAction(kind, 'guard', SP.enemyFlip(kind, Math.sign(p.x - e.x) || (G.DIRS[e.dir] || [0])[0], 'guard'));
+      // 天地魔闘の構え（e.stance）：専用のポーズの絵（待機の絵と同じ大きさ・足元）。構えが終われば e.stance が 0 になり、待機の絵に戻る（読み込み直しでも同じ）
+      if (e.stance > 0 && SP.bossPose(kind, 'stance')) img = SP.bossPose(kind, 'stance');
       const hit = hitFx(e.x, e.y, 'enemy', now);
       const big = (img.logical || img.width) / TILE;   // 細かく持っている絵（隠しダンジョンの強敵・通常の敵15種）は枠の大きさで（占有は1マスのまま）
       if (img.logical && !img.sheet) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; }   // 通常の敵15種は最近傍（ドット絵のまま）
@@ -527,6 +529,8 @@
         if (e.charge) shake += Math.round(Math.sin(now / 35) * k);
         else if (!hit && !e.sleep && !img.sheet) lift = (Math.floor(now / 520 + e.id) % 2) * Math.round(k);   // 待機の2コマがある絵は上下させない
       }
+      // 天地魔闘の構えの間：控えめな光（tenchi_mato の 00）を体の後ろに
+      if (e.stance > 0 && TS.FX && TS.FX.stanceGlow) TS.FX.stanceGlow(g, sx + ts / 2, ty0 + dw * 0.55, ts, k, now);
       if (isClone) g.globalAlpha = 0.78 + 0.18 * Math.sin(now / 160 + e.id);
       g.drawImage(img, sx + (ts - dw) / 2 + shake, ty0 - lift, dw, dw);
       g.globalAlpha = 1;
@@ -534,11 +538,6 @@
       if (isClone && G.hasCharm(run, 'truesight')) badge(g, '幻', sx + ts / 2, sy + ts - dw * 0.55, ts, k, '#c8f0ff', '#102040');
       if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, ty0, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       g.imageSmoothingEnabled = false;
-      // 天地魔闘の構え（e.stance）：控えめな三方向の光（js/fx.js の stanceAura）と「構」の印（構えのポーズの絵は届いたら使う）
-      if (e.stance > 0) {
-        if (TS.FX && TS.FX.stanceAura) TS.FX.stanceAura(g, sx + ts / 2, ty0 + dw * 0.5, ts, k, now);
-        badge(g, '構', sx + ts / 2, bodyTop - ts * 0.05, ts, k, '#ffe08a', '#402800');
-      }
       if (e.charge) badge(g, '！', sx + ts / 2, bodyTop - ts * 0.05, ts, k, '#ff5050', '#400');
       else if (e.rest > 0) { g.font = `bold ${Math.round(ts * 0.3)}px sans-serif`; g.fillStyle = '#bde0ff'; g.fillText('…', sx + ts * 0.65, sy + ts * 0.2); }
       // 状態異常のしるし（眠り＝月、鈍足＝砂時計）。頭の上に横に並べ、重ならないようにする

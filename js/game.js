@@ -887,7 +887,7 @@
     // 天地魔闘の構え（真大魔王バーン e.stance）：たけの攻撃（直接・投げる・杖や巻物）は当たらず、そのダメージの reflect 倍を防御無視ではね返す。ほかの敵の攻撃（kind 'enemy'）は対象外
     if (e.stance > 0 && kind !== 'enemy') {
       const ST = D.TRUEVEARN.stance, n = Math.max(1, Math.round(dmg * ST.reflect));
-      G.log(run, nm + 'の' + ST.name + '！ たけの攻撃をはね返した！');
+      G.log(run, nm + 'の' + ST.name + '！');
       ev.push({ t: 'blast', id: e.id, tiles: [{ x: run.player.x, y: run.player.y }], fx: 'stanceCounter' });
       damagePlayer(S, e, n, ev, nm + 'の反撃', { big: true });
       return;
@@ -2030,10 +2030,12 @@
     }
     return out;
   }
-  function startCharge(S, e, ev, tiles, mult, rest, msg) {
+  // name：技名だけを出す技（真大魔王バーン。画面に技の説明文は出さない。範囲の予告はそのまま）
+  function startCharge(S, e, ev, tiles, mult, rest, msg, name) {
     const run = S.run, E = D.ENEMIES[e.type];
     e.charge = { tiles, mult, rest };
     e.dir = G.dirOf(run.player.x - e.x, run.player.y - e.y) || e.dir;
+    if (name) { G.log(run, '！ ' + E.name + '：' + name); ev.push({ t: 'telegraph', id: e.id, tiles, msg: E.name + '：' + name, name }); return; }
     G.log(run, '！ ' + E.name + msg + '（赤いマスから離れよう）');
     ev.push({ t: 'telegraph', id: e.id, tiles, msg: E.name + msg });
   }

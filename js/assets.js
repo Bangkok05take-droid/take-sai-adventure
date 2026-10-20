@@ -168,6 +168,15 @@
      *  kaiserPhoenix：大魔王バーンのカイザーフェニックス（下向きに飛ぶ火の鳥。tools/make-kaiser-phoenix.py で余白を切り、縮小）。
      *    攻撃の向きに合わせてゲームで回す。読み込めなければ今までの炎の帯の演出 */
     fx: { kaiserPhoenix: 'assets/fx/kaiser-phoenix.png' },
+    /* 真大魔王バーンの技の演出のコマ（ZIP truevearn_effects_v1。tools/make-truevearn-fx.py が assets/reference/truevearn-effects-v1/ からそのまま写す）。
+     * 各4コマ・256×256 透過・中心が基準（切り抜かない）。全部そろっていればコマで描き、そろわなければ js/fx.js のコードで描く仮の演出 */
+    fxFrames: {
+      calamityEnd: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_end_' + i + '.png'),
+      calamityWall: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_wall_' + i + '.png'),
+      tenchiMato: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/tenchi_mato_' + i + '.png'),
+    },
+    /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
+    bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },
     /* 通常の敵（assets/enemies/）：見本の一覧画像から tools/extract-enemies.py で作る透過PNG。まだ素材が無いので空。
      * 1コマは 64×64（足の裏 y=60、足元の中央 x=32）、待機2コマなら横に並べた 128×64。キーは js/data.js の敵の sprite 名。
      * 書いた敵だけ画像に替わり、書かない敵は今までのコードで描いた絵のまま。必要な素材の一覧は docs/ENEMY_ART.md */

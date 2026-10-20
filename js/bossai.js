@@ -253,25 +253,26 @@
    *  カラミティエンド：隣にいると、まわり1マス（8マス）。防御を無視して D.TRUEVEARN.end.dmg（120〜150）
    *  カラミティウォール：3マス以内にいると、まわり3マス（7×7）。防御を無視して 80〜100。1回の移動では外へ出られない
    *  カイザーフェニックス：8方向の直線上にいれば、隣からでも撃つ。たけへの直線と、その両どなりの3列（以前の滅びの炎の範囲）。攻撃力×mult
-   *  天地魔闘の構え：2マス以内で構える（攻撃しない・最大4行動）。構えている間にたけの攻撃が当たると3倍にしてはね返す。3マス以上離れると構えを解いてカイザーフェニックス
+   *  画面には技名だけを出す（技の説明文は出さない。範囲の予告はそのまま。startCharge の name）
+ *  天地魔闘の構え：2マス以内で構える（攻撃しない・最大4行動）。構えている間にたけの攻撃が当たると3倍にしてはね返す。3マス以上離れると構えを解いてカイザーフェニックス
  *  以前の「天地の掌」「魔界の炎の輪」「滅びの炎」は無し。HPが enrageAt 以下で待ち時間が短くなる */
   AI.truevearn = function (S, e, ev, sees, H) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type], TV = D.TRUEVEARN;
     if (!aware(run, e, sees)) return false;
     const cd = tick(e);
     const enraged = e.hp < e.maxhp * TV.enrageAt, ph = enraged ? 1 : 0;
-    if (enraged && !e.enraged) { e.enraged = true; say(run, E.name + 'の力がさらに高まった！ 攻撃の間隔が短くなる！'); }
+    if (enraged && !e.enraged) { e.enraged = true; say(run, E.name + 'の力がさらに高まった！'); }
     const d = H.cheb(e, p), a = aligned(e, p);
-    const fixed = (tiles, key, msg, fx) => {   // 防御を無視する技（ダメージは発動のときに決める）
-      H.startCharge(S, e, ev, tiles, 0, 0, msg); e.charge.kind = 'fixedDmg'; e.charge.fx = fx; e.charge.dmg = TV[key].dmg; e.charge.label = TV[key].name;
+    const fixed = (tiles, key, fx) => {   // 防御を無視する技（ダメージは発動のときに決める）
+      H.startCharge(S, e, ev, tiles, 0, 0, '', TV[key].name); e.charge.kind = 'fixedDmg'; e.charge.fx = fx; e.charge.dmg = TV[key].dmg; e.charge.label = TV[key].name;
       cd[key] = TV[key].cd[ph];
       return true;
     };
     // カイザーフェニックス：向き a の直線（12マス）と、その両どなりの列（3列）
-    const phoenix = (a, msg) => {
+    const phoenix = (a) => {
       const center = H.lineTiles(run, e, a[0], a[1], 12), px = -a[1], py = a[0], tiles = center.slice();
       for (const s of [1, -1]) for (const t of center) { const x = t.x + px * s, y = t.y + py * s; if (DG.passable(run.map, x, y) && !tiles.some((o) => o.x === x && o.y === y)) tiles.push({ x, y }); }
-      H.startCharge(S, e, ev, tiles, TV.phoenix.mult, 0, msg + 'カイザーフェニックス！（3列）'); e.charge.fx = 'firebird';
+      H.startCharge(S, e, ev, tiles, TV.phoenix.mult, 0, '', 'カイザーフェニックス'); e.charge.fx = 'firebird';
       cd.phoenix = TV.phoenix.cd[ph];
       return true;
     };
@@ -281,19 +282,20 @@
       if (d >= ST.breakAt) {   // 離れた：構えを解いて、たけの方へ（いちばん近い8方向）カイザーフェニックス
         e.stance = 0;
         const ang = Math.round(Math.atan2(p.y - e.y, p.x - e.x) / (Math.PI / 4)) * Math.PI / 4;
-        return phoenix([Math.round(Math.cos(ang)), Math.round(Math.sin(ang))], 'は構えを解いた！ 手に巨大な不死鳥が生まれた！ ');
+        say(run, E.name + 'は構えを解いた。');
+        return phoenix([Math.round(Math.cos(ang)), Math.round(Math.sin(ang))]);
       }
-      if (--e.stance > 0) { say(run, E.name + 'は' + ST.name + 'をとっている……（攻撃するとはね返される）'); return true; }
+      if (--e.stance > 0) return true;   // 構えたまま（説明の文は出さない）
       say(run, E.name + 'は構えを解いた。');
     } else if (!cd.stance && d <= ST.range) {
       e.stance = ST.maxActs; cd.stance = ST.cd[ph] + ST.maxActs;
-      say(run, E.name + 'は' + ST.name + 'をとった！ 攻撃するとはね返される！ 離れると……');
-      ev.push({ t: 'stance', id: e.id });
+      say(run, E.name + '：' + ST.name);
+      ev.push({ t: 'stance', id: e.id, name: ST.name });
       return true;
     }
-    if (H.adjacent(run, e, p) && !cd.end) return fixed(H.areaTiles(run, e, 1), 'end', 'が手刀に闘気を集めた！ カラミティエンド！（まわり1マス）', 'calamityEnd');
-    if (a && !cd.phoenix && H.lineTiles(run, e, a[0], a[1], 12).some((t) => t.x === p.x && t.y === p.y)) return phoenix(a, 'の手に巨大な不死鳥が生まれた！ ');
-    if (d <= TV.wall.radius && !cd.wall) return fixed(H.areaTiles(run, e, TV.wall.radius), 'wall', 'のまわりに闘気の壁が広がる！ カラミティウォール！（まわり3マス）', 'calamityWall');
+    if (H.adjacent(run, e, p) && !cd.end) return fixed(H.areaTiles(run, e, 1), 'end', 'calamityEnd');
+    if (a && !cd.phoenix && H.lineTiles(run, e, a[0], a[1], 12).some((t) => t.x === p.x && t.y === p.y)) return phoenix(a);
+    if (d <= TV.wall.radius && !cd.wall) return fixed(H.areaTiles(run, e, TV.wall.radius), 'wall', 'calamityWall');
     return false;   // 通常攻撃（隣）か、近づく
   };
   // 防御を無視する技の発動（カラミティエンド・カラミティウォール）：範囲にいれば c.dmg の幅でダメージ
