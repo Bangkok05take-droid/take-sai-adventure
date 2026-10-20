@@ -175,6 +175,7 @@
       g.drawImage(thImg, dx + T.throne.cx * sc - tw / 2, dy + T.throne.foot * sc - th, tw, th);
       g.imageSmoothingEnabled = false;
     }
+    if (T.underVoid) return;   // 透明な所は白い異空間。下の端をなじませる帯・炎の明かりは要らない
     const fy = dy + (T.imgH - 110) * sc, gr = g.createLinearGradient(0, fy, 0, dy + T.imgH * sc);
     gr.addColorStop(0, TH.bg + '00'); gr.addColorStop(1, TH.bg);
     g.fillStyle = gr; g.fillRect(dx, fy, T.imgW * sc, 110 * sc);
@@ -252,7 +253,7 @@
     }
     // 空席の水晶の玉座：ボス部屋の上の縁の外、中央（通れないマスの上に立つ。当たり判定は無い）
     const A = run.bossFight || m.rooms[1] || m.rooms[0];
-    if (A) {
+    if (A && !(m.bg && D[m.bg] && D[m.bg].underVoid)) {   // パーツ方式のプレビュー（上部の絵に玉座がある）では描かない
       const tw = 64 * k * 1.25, th = 88 * k * 1.25, cx = ox + (A.x + A.w / 2) * ts, by = oy + A.y * ts + ts * 0.15;
       const halo = g.createRadialGradient(cx, by - th * 0.55, 0, cx, by - th * 0.55, th * 0.8);
       halo.addColorStop(0, 'rgba(200,230,255,0.55)'); halo.addColorStop(1, 'rgba(200,230,255,0)');
@@ -324,7 +325,11 @@
       for (let i = 0; i < todo.length; i++) { if (i >= 12 && performance.now() - t0 > 7) break; paintTile(run, L, todo[i][0], todo[i][1]); }
     }
     // 見える範囲を1回で転送
-    if (throneBg) drawThroneBg(g, throneBg, ox, oy, ts, W, H, now, TH, bgDef);
+    if (throneBg) {
+      // underVoid：透明な所に、今の白い異空間（霧・白い床）を先に描く（真大魔王バーンの部屋のパーツ方式のプレビュー）
+      if (bgDef.underVoid && voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
+      drawThroneBg(g, throneBg, ox, oy, ts, W, H, now, TH, bgDef);
+    }
     else if (voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
     else g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
     // 動く地形：たいまつ・階段・帰還の祠・帰還口

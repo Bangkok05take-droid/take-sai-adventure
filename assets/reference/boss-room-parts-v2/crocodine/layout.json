@@ -1,0 +1,52 @@
+{
+  "canvas": [
+    1024,
+    1600
+  ],
+  "tile_size_fraction": [
+    808,
+    15
+  ],
+  "arena_origin": [
+    108,
+    352
+  ],
+  "regions": {
+    "arena": [
+      108.0,
+      352.0,
+      916.0,
+      1160.0
+    ],
+    "corridor": [
+      485.06666666666666,
+      1160.0,
+      538.9333333333333,
+      1321.6
+    ],
+    "antechamber": [
+      377.3333333333333,
+      1321.6,
+      646.6666666666666,
+      1537.0666666666666
+    ]
+  },
+  "grid_sizes": [
+    [
+      15,
+      15
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      5,
+      4
+    ]
+  ],
+  "bottom_closed": true,
+  "rounding": "Round each shared boundary once; do not round tile size before accumulating.",
+  "floor_layer_coverage_verified": true,
+  "surrounds_ready_to_place": false
+}

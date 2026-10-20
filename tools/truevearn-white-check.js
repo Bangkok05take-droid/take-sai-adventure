@@ -2,7 +2,9 @@
 //   node tools/truevearn-white-check.js [出力フォルダ]（既定 docs/truevearn-room-v1/）。覚醒ムービーは見た扱い（着くと、下の入口の列で広間の下の端から3マス上）
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
-const ROOT = path.join(__dirname, '..'), OUT = process.argv[2] || path.join(ROOT, 'docs', 'truevearn-room-v1');
+// PREVIEW=parts：パーツ方式のプレビュー（D.TRUEVEARN_ROOM_PREVIEW。絵は docs/truevearn-room-v1/preview/composite.png。本番では使わない）で同じことを確かめる（既定の出力 docs/truevearn-room-v1/preview/）
+const PV = process.env.PREVIEW === 'parts', PV_IMG = 'docs/truevearn-room-v1/preview/composite.png';
+const ROOT = path.join(__dirname, '..'), OUT = process.argv[2] || path.join(ROOT, 'docs', 'truevearn-room-v1', PV ? 'preview' : '');
 fs.mkdirSync(OUT, { recursive: true });
 const PORT = 8837;
 const srv = http.createServer((q, r) => { let f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0])); if (f.endsWith('/')) f += 'index.html';
@@ -16,16 +18,27 @@ const closeAll = (p) => p.evaluate(() => { while (TS.UI.modals.length) TS.UI.mod
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.route('**/*.mp4', (route) => route.fulfill({ status: 404, body: '' }));
     await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
-    await p.evaluate(() => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village, st = V.story; st.introDone = true; V.seenIntro = true; st.chapter = 6;
+    await p.evaluate((PV) => { localStorage.clear(); if (PV) TS.Data.TRUEVEARN_ROOM_LAYOUT = 'TRUEVEARN_ROOM_PREVIEW'; const G = TS.Game, S = G.newState(), V = S.village, st = V.story; st.introDone = true; V.seenIntro = true; st.chapter = 6;
       for (const k of ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn']) st.defeated[k] = true;
       st.introSeen = { truevearn: true, truevearnAwaken: true };
       G.depart(S, 6161); const r = S.run; r.final.skip.vearn = true;
       while (r.floor < 33) { const t = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = t.x; r.player.y = t.y; G.act(S, { type: 'descend' }); }
-      r.player.hp = r.player.maxhp = 9999; r.player.lvl = 30; TS.Save.save(S); });
-    await p.reload(); await p.waitForTimeout(700); await p.tap('#btn-continue'); await p.waitForTimeout(900); await closeAll(p);
-    const a = await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; return { floor: r.floor, theme: TS.Game.F(r).theme, p: [r.player.x, r.player.y], A }; });
+      r.player.hp = r.player.maxhp = 9999; r.player.lvl = 30; TS.Save.save(S); }, PV);
+    await p.reload(); await p.waitForTimeout(700);
+    if (PV) await p.evaluate(async (src) => { const im = new Image(); im.src = src; await im.decode(); TS.Sprites.art.rooms.truevearnPreview = im; }, PV_IMG);
+    await p.tap('#btn-continue'); await p.waitForTimeout(900); await closeAll(p);
+    const a = await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; return { floor: r.floor, theme: TS.Game.F(r).theme, bg: r.map.bg || null, p: [r.player.x, r.player.y], A }; });
+    chk(PV ? a.bg === 'TRUEVEARN_ROOM_PREVIEW' : !a.bg, `${W} ${PV ? 'パーツ方式のプレビュー' : '本番（コードで描く白い異空間）'} ${a.bg}`);
     chk(a.floor === 33 && a.theme === 'void' && a.p[1] === a.A.y + a.A.h - 4 && a.p[0] === a.A.x + (a.A.w >> 1), `${W} 33階の白い異空間に着くと、広間の下の端から3マス上（下の入口の列） ${JSON.stringify(a)}`);
     await p.screenshot({ path: path.join(OUT, `white-arrive_${W}.jpg`), quality: 85 });
+    if (PV) {   // 上（玉座・上部の絵との境目）と下（通路・前室）の見え方
+      for (const [n, dy] of [['top', 1], ['ante', 20]]) {
+        await p.evaluate((dy) => { const r = TS.UI.S.run, A = r.bossFight, bo = r.enemies.find((e) => e.boss); bo.hold = 99; r.player.x = A.x + (A.w >> 1) - 2; r.player.y = A.y + dy - 1; r.explored.fill(1); TS.Game.updateVision(r); }, dy);
+        await p.waitForTimeout(500);
+        await p.screenshot({ path: path.join(OUT, `white-${n}_${W}.jpg`), quality: 85 });
+      }
+      await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; r.player.x = A.x + (A.w >> 1); r.player.y = A.y + A.h - 4; TS.Game.updateVision(r); });
+    }
     // 戦闘中：ボスの前で、3×3の予告（見た目だけ。ターンは進めない）
     await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight, bo = r.enemies.find((e) => e.boss); A.engaged = true; A.intro = 'done';
       bo.x = A.x + 7; bo.y = A.y + 6; bo.hold = 99; r.player.x = A.x + 7; r.player.y = A.y + 10; r.player.dir = 'up';

@@ -87,6 +87,11 @@
   });
   // 通常バラン戦で使う部屋：前室を足した背景が仕上がるまでは D.BARAN_ROOM（確認用の画面は tools/baran-room-check.js が D.BARAN_ROOM_EXT に切り替える）
   D.BARAN_ROOM_LAYOUT = 'BARAN_ROOM';
+  /* 真大魔王バーンの部屋（33階）：パーツ方式（ZIP boss_room_parts_v2）の**プレビュー用**。本番では使わない（D.TRUEVEARN_ROOM_LAYOUT が null）。
+   * 地図は今の共通の形のまま（広間15×15・通路1×3・前室5×4）。絵の座標：1マス＝785/15、広間の左上(9,1)＝(120,385)。
+   * 絵（docs/truevearn-room-v1/preview/composite.png、1024×1600。tools/make-truevearn-preview.py）は床の外が透明で、そこには今の白い異空間（霧）を描く（underVoid） */
+  D.TRUEVEARN_ROOM_PREVIEW = { bg: 'truevearnPreview', tile: 785 / 15, imgX: 120 - 785 / 15 * 9, imgY: 385 - 785 / 15, imgW: 1024, imgH: 1600, flames: [], underVoid: true };
+  D.TRUEVEARN_ROOM_LAYOUT = null;   // プレビューのときだけ 'TRUEVEARN_ROOM_PREVIEW'（tools/truevearn-white-check.js が切り替える）
   /* 隠しダンジョン（2026年10月確定）：真大魔王バーンを倒したあと、30階の時空の亀裂から入る。
    * 31階から始まり、35階の竜人王バランまで。31〜34階は部屋の数が本編の約2倍（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul、仮）。帰還の祠は無い。
    * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜人王バランを倒したあとの帰還口

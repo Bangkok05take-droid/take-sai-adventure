@@ -320,6 +320,7 @@
     // ボスの部屋の見た目（地域）は、作ったときのものを地図に残す。最終章のボスは倒すと階の定義からボスが外れ、地域が変わってしまうため
     //（例：33階の白い異空間が、真大魔王バーンを倒した直後に魔王の城の見た目になっていた）。見た目だけで、判定には使わない
     if (Fdef.boss) run.map.theme = Fdef.theme;
+    if (Fdef.boss === 'truevearn' && D.TRUEVEARN_ROOM_LAYOUT && G.layoutOf(run) >= 4) run.map.bg = D.TRUEVEARN_ROOM_LAYOUT;   // プレビューだけ（本番は null）
     run.stairs = gen.stairs;
     run.returnPoint = gen.returnPoint;
     run.crack = null;
