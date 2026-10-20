@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "pose": "front-facing tenchi mato",
+  "status": "game integration not yet verified",
+  "files": [
+    {
+      "file": "truevearn_stance_front_192.png",
+      "size": [
+        192,
+        192
+      ],
+      "foot_anchor_initial": [
+        95,
+        174
+      ],
+      "anchor_status": "visual estimate; align with existing idle feet in engine"
+    },
+    {
+      "file": "truevearn_stance_front_384.png",
+      "size": [
+        384,
+        384
+      ],
+      "foot_anchor_initial": [
+        189,
+        349
+      ],
+      "anchor_status": "visual estimate; align with existing idle feet in engine"
+    }
+  ]
+}
