@@ -18,7 +18,7 @@ const closeAll = (p) => p.evaluate(() => { while (TS.UI.modals.length) TS.UI.mod
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.route('**/*.mp4', (route) => route.fulfill({ status: 404, body: '' }));
     await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
-    await p.evaluate((PV) => { localStorage.clear(); if (PV) TS.Data.TRUEVEARN_ROOM_LAYOUT = 'TRUEVEARN_ROOM_PREVIEW'; const G = TS.Game, S = G.newState(), V = S.village, st = V.story; st.introDone = true; V.seenIntro = true; st.chapter = 6;
+    await p.evaluate((PV) => { localStorage.clear(); if (PV) TS.Data.BOSS_ROOM_PREVIEW = { truevearn: 'TRUEVEARN_ROOM_PREVIEW' }; const G = TS.Game, S = G.newState(), V = S.village, st = V.story; st.introDone = true; V.seenIntro = true; st.chapter = 6;
       for (const k of ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn']) st.defeated[k] = true;
       st.introSeen = { truevearn: true, truevearnAwaken: true };
       G.depart(S, 6161); const r = S.run; r.final.skip.vearn = true;

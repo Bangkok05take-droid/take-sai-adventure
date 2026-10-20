@@ -66,9 +66,9 @@ README の指示どおり、画像は歪めず、背景はまだ組み込んで�
 新しい背景が届くまで、33階は今までどおりコードで描く白い異空間です（撃破後も白い異空間のまま・白い床の帰還魔法陣の下敷きは残しています）。
 
 ## パーツ方式のプレビュー（ZIP boss_room_parts_v2、2026年10月20日）
-**本番には使っていません**（`D.TRUEVEARN_ROOM_LAYOUT` は null。33階は今までどおり）。確認用の画面だけを作りました。
+**本番には使っていません**（`D.BOSS_ROOM_PREVIEW` は空。33階は今までどおり）。確認用の画面だけを作りました。
 - 素材：`assets/reference/boss-room-parts-v2/`（3部屋の床レイヤー・床タイル・上部・左右の見本・layout.json。元絵とテンプレートは別に保管済みなので除いた）。
-- 合成：`python3 -I tools/make-truevearn-preview.py` → `docs/truevearn-room-v1/preview/composite.png`
+- 合成：`python3 -I tools/make-boss-room-preview.py truevearn` → `docs/truevearn-room-v1/preview/composite.png`
   - 上部（玉座込み、原点0,0）＋床レイヤー＋左右の縁の見本（広間の左右に縦にくり返し）。床の外は透明で、ゲームでは今の白い異空間（霧）が見える。
 - **床レイヤーと通れるマス**：ピクセルで照合して、ずれ 0px（通れるのに透明 0・通れないのに不透明 0）。`preview/coverage.txt`
 - 継ぎ目・不足の印：`preview/seams.jpg`

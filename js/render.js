@@ -175,7 +175,7 @@
       g.drawImage(thImg, dx + T.throne.cx * sc - tw / 2, dy + T.throne.foot * sc - th, tw, th);
       g.imageSmoothingEnabled = false;
     }
-    if (T.underVoid) return;   // 透明な所は白い異空間。下の端をなじませる帯・炎の明かりは要らない
+    if (T.under) return;   // パーツ方式のプレビュー：透明な所は今の描き方。下の端をなじませる帯・炎の明かりは要らない
     const fy = dy + (T.imgH - 110) * sc, gr = g.createLinearGradient(0, fy, 0, dy + T.imgH * sc);
     gr.addColorStop(0, TH.bg + '00'); gr.addColorStop(1, TH.bg);
     g.fillStyle = gr; g.fillRect(dx, fy, T.imgW * sc, 110 * sc);
@@ -253,7 +253,7 @@
     }
     // 空席の水晶の玉座：ボス部屋の上の縁の外、中央（通れないマスの上に立つ。当たり判定は無い）
     const A = run.bossFight || m.rooms[1] || m.rooms[0];
-    if (A && !(m.bg && D[m.bg] && D[m.bg].underVoid)) {   // パーツ方式のプレビュー（上部の絵に玉座がある）では描かない
+    if (A && !(m.bg && D[m.bg] && D[m.bg].under)) {   // パーツ方式のプレビュー（上部の絵に玉座がある）では描かない
       const tw = 64 * k * 1.25, th = 88 * k * 1.25, cx = ox + (A.x + A.w / 2) * ts, by = oy + A.y * ts + ts * 0.15;
       const halo = g.createRadialGradient(cx, by - th * 0.55, 0, cx, by - th * 0.55, th * 0.8);
       halo.addColorStop(0, 'rgba(200,230,255,0.55)'); halo.addColorStop(1, 'rgba(200,230,255,0)');
@@ -318,7 +318,8 @@
     const throneBg = bgDef && SP.art.rooms && SP.art.rooms[bgDef.bg || 'throneBg'];
     const voidBg = theme === 'void';   // 33階・真大魔王バーンの白い異空間（タイルは描かず drawVoidBg）
     const todo = [];
-    if (!throneBg && !voidBg) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!L.drawn[y * m.w + x] && known(run, L, x, y, reach)) todo.push([x, y]);
+    const underTiles = !!(throneBg && bgDef.under === 'tiles');   // パーツ方式のプレビュー：床の外にその地域のタイル
+    if ((!throneBg || underTiles) && !voidBg) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!L.drawn[y * m.w + x] && known(run, L, x, y, reach)) todo.push([x, y]);
     if (todo.length) {
       todo.sort((a, b) => Math.max(Math.abs(a[0] - p.x), Math.abs(a[1] - p.y)) - Math.max(Math.abs(b[0] - p.x), Math.abs(b[1] - p.y)));
       const t0 = performance.now();
@@ -326,8 +327,9 @@
     }
     // 見える範囲を1回で転送
     if (throneBg) {
-      // underVoid：透明な所に、今の白い異空間（霧・白い床）を先に描く（真大魔王バーンの部屋のパーツ方式のプレビュー）
-      if (bgDef.underVoid && voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
+      // under：透明な所に、今の描き方を先に描く（パーツ方式のプレビュー。'void'＝白い異空間、'tiles'＝その地域のタイル）
+      if (bgDef.under === 'void' && voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
+      if (underTiles) g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
       drawThroneBg(g, throneBg, ox, oy, ts, W, H, now, TH, bgDef);
     }
     else if (voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
@@ -437,6 +439,7 @@
     // 床の危険（炎・氷・罠・雷）：色つきの印と、発動までにたけが動ける回数の数字。霧の中でも見える
     if (run.hazards && run.hazards.length) {
       const HC = { fire: [255, 110, 40], ice: [110, 210, 255], trap: [200, 90, 255], bolt: [255, 230, 80] };
+      const hzOutline = !!(m.bg && D[m.bg] && D[m.bg].hazardOutline);   // フレイザードの部屋（氷と溶岩の絵）だけ
       g.textAlign = 'center'; g.font = `bold ${Math.round(ts * 0.42)}px sans-serif`;
       for (const h of run.hazards) {
         if (!run.explored[h.y * run.map.w + h.x]) continue;   // まだ見ていない場所の印は描かない（暗い所に数字だけ並ぶのを防ぐ）
@@ -445,6 +448,7 @@
         g.fillRect(x + k, y + k, ts - 2 * k, ts - 2 * k);
         g.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},0.95)`; g.lineWidth = k;
         g.strokeRect(x + 1.5 * k, y + 1.5 * k, ts - 3 * k, ts - 3 * k);
+        if (hzOutline) { g.strokeStyle = 'rgba(15,10,20,0.85)'; g.strokeRect(x + 0.5 * k, y + 0.5 * k, ts - k, ts - k); }   // 氷・溶岩の絵の上でも分かる暗い外枠
         if (h.name === '魔法陣の炎') { // 大魔王バーンの魔法陣（マスの中だけに描く）
           g.strokeStyle = `rgba(255,200,120,${0.75 + 0.2 * Math.sin(now / 160)})`; g.lineWidth = k;
           g.beginPath(); g.arc(x + ts / 2, y + ts / 2, ts * 0.36, 0, Math.PI * 2); g.stroke();
