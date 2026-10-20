@@ -1,4 +1,4 @@
-# ボス部屋の背景と、今のボスの階（共通の形）の通れるマスを照合する：python3 -I tools/boss-room-fit.py <croc|truevearn>
+# ボス部屋の背景と、今のボスの階（共通の形）の通れるマスを照合する：python3 -I tools/boss-room-fit.py <croc|truevearn|flame>
 # 画像は歪めない（縦横同じ倍率）。広間15×15の横幅を、絵の広間の床の横幅（実測）に合わせて1マスの大きさを決める。
 #  今の共通の形（js/dungeon.js generateBossFloor）：広間 x9〜23・y1〜15、通路 x16・y16〜18（1マス幅）、前室 x14〜18・y19〜22、入口 (16,21)、ボス (16,8)
 # 出力（docs/<部屋>-room-v1/）：
@@ -15,6 +15,9 @@ ROOMS = {
   # 真大魔王バーン（ZIP truevearn_room_v1、1024×1536）。床の実測：広間 x120〜905・y385〜1035（遠近で下ほど少し広い台形）、通路 x455〜555、前室 x385〜640・y1210〜1390、入口 y1395〜
   'truevearn': dict(src='assets/reference/truevearn-room-v1/truevearn_room.png', out='docs/truevearn-room-v1', boss='assets/bosses/truevearn.png', top='透明な玉座・壇',
                     floor=[(120, 385, 905, 1035), (455, 1035, 555, 1210), (385, 1210, 640, 1390), (455, 1395, 555, 1536)]),
+  # フレイザード（ZIP flazzard_room_v1、1024×1536）。床の実測：広間 x150〜868・y365〜1050（左は氷・右は溶岩の縁）、通路 x450〜575、前室 x345〜695・y1235〜1395、入口 x450〜563・y1395〜
+  'flame': dict(src='assets/reference/flazzard-room-v1/flazzard_room.png', out='docs/flazzard-room-v1', boss='assets/bosses/flame.png', top='氷と炎の玉座・壇',
+                floor=[(150, 365, 868, 1050), (450, 1050, 575, 1235), (345, 1235, 695, 1395), (450, 1395, 563, 1536)]),
 }
 R = ROOMS[sys.argv[1]]
 SRC, OUT = os.path.join(ROOT, R['src']), os.path.join(ROOT, R['out']); os.makedirs(OUT, exist_ok=True)

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "boss_id": "flame",
+  "image": "flazzard_room.png",
+  "size": [
+    1024,
+    1536
+  ],
+  "throne_baked_in": true,
+  "terrain_effects_added": false,
+  "collision_mask_included": false,
+  "integration_verified": false,
+  "sha256": "163d0e55e2b3d131e4a8f96f1b05e0ca0dd5a814dd7c6af1c3125e4adf9183fe"
+}
