@@ -125,7 +125,7 @@
     enrageAt: 0.4,
     end: { name: 'カラミティエンド', dmg: [120, 150], cd: [3, 2] },
     wall: { name: 'カラミティウォール', dmg: [80, 100], radius: 3, cd: [2, 2] },
-    phoenix: { mult: 2.6, cd: [3, 2] },
+    phoenix: { mult: 2, cd: [3, 2] },
     // 天地魔闘の構え：たけが range マス以内なら構える（攻撃しない）。構えている間にたけの攻撃が当たると、そのダメージの reflect 倍を返す（防御無視。バーンは無傷）。
     //   たけが breakAt マス以上離れると構えを解き、カイザーフェニックスを予告する。maxActs 行動で構えを解く。cd：構えを解いてから次に構えるまで
     stance: { name: '天地魔闘の構え', range: 2, reflect: 3, breakAt: 3, maxActs: 4, cd: [8, 6] },
