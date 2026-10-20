@@ -317,6 +317,9 @@
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す
     run.map = gen.map;
+    // ボスの部屋の見た目（地域）は、作ったときのものを地図に残す。最終章のボスは倒すと階の定義からボスが外れ、地域が変わってしまうため
+    //（例：33階の白い異空間が、真大魔王バーンを倒した直後に魔王の城の見た目になっていた）。見た目だけで、判定には使わない
+    if (Fdef.boss) run.map.theme = Fdef.theme;
     run.stairs = gen.stairs;
     run.returnPoint = gen.returnPoint;
     run.crack = null;
@@ -1695,6 +1698,8 @@
   G.adjacent = adjacent;
 
   // ---------- ボス部屋 ----------
+  // 描くときの地域：地図に残した見た目（ボスの部屋）を優先。無ければ階の定義
+  G.themeOf = (run) => (run.map && run.map.theme) || G.F(run).theme;
   G.inArena = (run, x, y) => { const A = run && run.bossFight; return !!A && x >= A.x && x < A.x + A.w && y >= A.y && y < A.y + A.h; };
   // 部屋から出られない敵：ボス本人と、ボスが呼んだ敵・分身
   const confined = (run, e) => !!(run.bossFight && (e.boss || e.summoned));

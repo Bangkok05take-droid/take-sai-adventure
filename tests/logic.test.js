@@ -2811,6 +2811,9 @@ test('33階・真大魔王バーン：着いた直後の登場ムービーのと
   const A = r.bossFight, p = r.player, b = r.enemies.find((e) => e.boss);
   assert(res.events.some((e) => e.t === 'bossIntro'), 'arrival intro');
   eq(p.y, A.y + A.h - 4); eq(p.x, A.x + (A.w >> 1)); eq(p.dir, 'up'); eq(Math.abs(b.y - p.y), 4, 'four tiles to the boss');
+  // 倒したあとも部屋の見た目は白い異空間のまま（階の定義からボスが外れても、地図に残した見た目を使う）
+  eq(G.themeOf(r), 'void'); G.finishBossIntro(S); defeatBoss(S); eq(G.themeOf(r), 'void', 'still the white void after the defeat');
+  eq(G.themeOf(SV.deserialize(SV.serialize(S)).run), 'void', 'after reload');
 });
 test('通常バラン戦の部屋（D.BARAN_ROOM）：背景の絵どおり。広間15×17・下の通路3×6から入る・左の旧入口は壁・玉座の壇は壁・入室で1回だけ', () => {
   const B = D.BARAN_ROOM;

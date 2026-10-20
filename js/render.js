@@ -27,7 +27,15 @@
     if (img) {
       const h = w * img.height / img.width;
       g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      // 白い床（33階・白い異空間）：魔法陣が床の金の模様にまぎれないよう、控えめな暗い金の下敷きの影と、少し濃い色で描く（形は変えない）
+      const white = G.themeOf(run) === 'void';
+      if (white) {
+        g.globalAlpha = 0.5 * ap; g.fillStyle = 'rgba(90,60,10,0.45)';
+        g.beginPath(); g.ellipse(cx, cy + h * 0.04, w * 0.5, h * 0.52, 0, 0, Math.PI * 2); g.fill();
+        g.filter = 'brightness(0.7) saturate(1.4)';
+      }
       g.globalAlpha = Math.min(1, alpha); g.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+      g.filter = 'none';
       // 帰る演出：0〜0.25秒で明るく（金色を足す。白一色にはしない）、そのあとも明るいまま
       if (gt >= 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55 * Math.min(1, gt / 0.25); g.drawImage(img, cx - w / 2, cy - h / 2, w, h); g.globalCompositeOperation = 'source-over'; }
       g.globalAlpha = 1; g.imageSmoothingEnabled = false;
@@ -138,7 +146,7 @@
     return false;
   }
   function paintTile(run, L, x, y) {
-    const theme = G.F(run).theme;
+    const theme = G.themeOf(run);
     const r = TS.Tiles.paint(run, L, x, y, theme);
     if (r.torch) L.torches.push({ x, y });
     if (r.water) L.water.push({ x, y });
@@ -278,7 +286,7 @@
   RD.drawDungeon = function (canvas, S, now) {
     const run = S.run;
     const { g, W, H, dpr } = fit(canvas);
-    const theme = G.F(run).theme;
+    const theme = G.themeOf(run);
     const TH = SP.themeColors[theme];
     g.fillStyle = TH.bg; g.fillRect(0, 0, W, H);
     // 1マスの大きさ：横9.5マス・縦7.5マス程度が見えるように。16px刻みにしてドットの乱れを抑える

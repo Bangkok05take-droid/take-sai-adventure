@@ -5,8 +5,8 @@
 README の指示どおり、画像は歪めず、ゲームにも組み込んでいません（クロコダインの部屋は今までどおり）。ChatGPT で直すための寸法を下にまとめました。
 
 - 元の素材：`assets/reference/crocodine-room-v1/`
-- 重ねた図：`docs/crocodine-room-v1/overlay-current.jpg`（`python3 -I tools/crocodine-room-overlay.py`）
-- 目標の寸法の図：`docs/crocodine-room-v1/target-layout.jpg`（`python3 -I tools/crocodine-room-target.py`）
+- 重ねた図：`docs/crocodine-room-v1/overlay-current.jpg`（`python3 -I tools/boss-room-fit.py croc`）
+- 目標の寸法の図：`docs/crocodine-room-v1/target-layout.jpg`（`python3 -I tools/boss-room-fit.py croc`）
 
 ## 絵の実測（通れそうに見える床）
 | 場所 | 絵の座標（px） | 大きさ |

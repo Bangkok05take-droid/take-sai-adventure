@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "boss_id": "truevearn",
+  "image": "truevearn_room.png",
+  "width": 1024,
+  "height": 1536,
+  "throne_baked_in": true,
+  "collision_mask_included": false,
+  "integration_verified": false,
+  "sha256": "98ced64efae7f4769fdddbd4231afc5869504d2529f5297011b0d4c5f0b52a2d"
+}
