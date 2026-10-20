@@ -92,7 +92,7 @@ test('多数のシードで各章のボスの階まで：入口から階段・�
       if (f > 1) goDown(S);
       const run = S.run, m = run.map, p = run.player;
       eq(run.floor, f);
-      eq(run.map.w, D.MAP.w);
+      eq(run.map.w, run.map.bg ? D[run.map.bg].w : D.MAP.w);   // 通常バラン戦は背景の絵の部屋（D.BARAN_ROOM）
       const dist = DG.distances(m, p.x, p.y);
       const reach = (o) => dist[o.y * m.w + o.x] >= 0;
       assert(DG.passable(m, p.x, p.y), 'player on wall');
@@ -1897,7 +1897,7 @@ function toBossFloor(ch, seed) {
   return S;
 }
 // 通路の、部屋の入口の1つ手前のマス（部屋の外）
-// dir：部屋へ入る向き、out：部屋から通路へ出る向き（30階の玉座の間は下の通路から上へ入る。ほかのボス部屋は左の通路から右へ）
+// dir：部屋へ入る向き、out：部屋から通路へ出る向き（2026年10月20日から、どのボス部屋も下の通路から上へ。以前の形の地図は左から右へ）
 function doorOutside(run) {
   const A = run.bossFight;
   for (let y = A.y; y < A.y + A.h; y++) { const x = A.x - 1; if (TS.Dungeon.passable(run.map, x, y)) return { x, y, dir: 'right', out: 'left' }; }
@@ -1955,15 +1955,15 @@ test('全ボス：入室前は部屋の中央で待ち（移動・攻撃・特�
 });
 test('戦いの前のボスには、投げる・杖・ねむり草・雷鳴の巻物・体当たりが効かない（道具・杖の回数・ターンは減らない）', () => {
   const S = toBossFloor(1, 931), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
-  // ボスと同じ行の通路（入口の手前）。ボスが見える
-  run.player.x = A.x - 1; run.player.y = b.y; G.updateVision(run);
-  assert(TS.Dungeon.passable(run.map, run.player.x, run.player.y), 'door row');
+  // ボスと同じ列の通路（入口の手前。2026年10月20日から下の入口）。ボスが見える
+  const dr = doorOutside(run); run.player.x = dr.x; run.player.y = dr.y; G.updateVision(run);
+  assert(TS.Dungeon.passable(run.map, run.player.x, run.player.y) && dr.x === b.x, 'door below the boss');
   const add = (id, extra) => { const it = G.makeItem(S, id, extra); run.bag.push(it); return it; };
   const herb = add('herb'), staff = add('thunder_staff', { charges: 3 }), grass = add('sleep_incense'), scroll = add('fire_charm');
   const turn0 = run.turn, hp0 = b.hp, n0 = run.bag.length;
-  let r = G.act(S, { type: 'throw', uid: herb.uid, dir: 'right' });
+  let r = G.act(S, { type: 'throw', uid: herb.uid, dir: 'up' });
   assert(!r.consumed && run.bag.includes(herb) && r.events.some((e) => e.t === 'warn' && e.msg.includes('部屋に入ってから')), 'throw blocked');
-  r = G.act(S, { type: 'use', uid: staff.uid, dir: 'right' });
+  r = G.act(S, { type: 'use', uid: staff.uid, dir: 'up' });
   assert(!r.consumed && staff.charges === 3, 'staff blocked, charges kept');
   r = G.act(S, { type: 'use', uid: grass.uid });
   assert(!r.consumed && run.bag.includes(grass) && !b.sleep, 'sleep blocked');
@@ -1971,8 +1971,8 @@ test('戦いの前のボスには、投げる・杖・ねむり草・雷鳴の�
   assert(!r.consumed && run.bag.includes(scroll), 'scroll blocked');
   eq(run.turn, turn0); eq(b.hp, hp0); eq(run.bag.length, n0); assert(!A.engaged);
   // 入室すれば効く
-  G.act(S, { type: 'move', dir: 'right' }); G.finishBossIntro(S); assert(A.engaged);
-  r = G.act(S, { type: 'use', uid: staff.uid, dir: 'right' });
+  G.act(S, { type: 'move', dir: 'up' }); G.finishBossIntro(S); assert(A.engaged);
+  r = G.act(S, { type: 'use', uid: staff.uid, dir: 'up' });
   assert(r.consumed && staff.charges === 2, 'staff works after the start');
 });
 test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部屋の中だけ）→ ローブ1回・階段・帰還口なし・ティウの救援 → 35階の真大魔王バーン（入室で肉体返還の場面→祈りで全回復→戦い）→ 帰還口。どちらも再登場しない', () => {
@@ -2750,13 +2750,108 @@ test('旧セーブの移行（v5→v6）：げっこうの盾→ファントム�
   const N = G.newState(); N.version = 5; const NL = SV.deserialize(JSON.stringify(N)); assert(!NL.village.giftNotice); eq(NL.village.storage.length, 0);
 });
 
+console.log('ボス部屋の入口を下に統一（2026年10月20日）');
+// 入口（たけの出発点）から広間までの道：下から上へ入るか。広間の左・右・上の縁の外に通れるマスがないか
+function checkBottomEntry(run, tag) {
+  const A = run.bossFight, m = run.map, p = run.player;
+  assert(p.y >= A.y + A.h, tag + ' start below the arena ' + JSON.stringify([p, A]));
+  for (let y = A.y - 1; y <= A.y + A.h; y++) for (let x = A.x - 1; x <= A.x + A.w; x++) {
+    if (G.inArena(run, x, y) || !DG.passable(m, x, y)) continue;
+    assert(y === A.y + A.h, tag + ' opening only on the bottom edge ' + x + ',' + y);
+  }
+  const dist = DG.distances(m, p.x, p.y);
+  for (let y = A.y; y < A.y + A.h; y++) for (let x = A.x; x < A.x + A.w; x++) if (DG.passable(m, x, y)) assert(dist[y * m.w + x] >= 0, tag + ' arena reachable');
+  const b = run.enemies.find((e) => e.boss);
+  if (b) { assert(G.inArena(run, b.x, b.y), tag + ' boss in arena'); assert(b.y < p.y && Math.abs(b.y - (A.y + (A.h >> 1))) <= 1, tag + ' boss at the center, deeper than the entrance'); }
+}
+test('全ボスの部屋：下の前室・通路から上へ入る（章のボス・大魔王バーン・真大魔王バーン・竜人王バラン）。ボスは奥の中央・入室で1回だけ開始・報酬と帰還口は広間の床', () => {
+  for (const ch of [1, 2, 3, 4, 5, 6]) {
+    const S = toBossFloor(ch, 2100 + ch), run = S.run, b = run.enemies.find((e) => e.boss);
+    checkBottomEntry(run, 'ch' + ch + ' ' + b.type);
+    // 入口から上へ歩いて入室：入室の1歩で登場ムービー（または開始）が1回だけ
+    const dr = doorOutside(run); eq(dr.dir, 'up', 'enter upward ch' + ch);
+    run.player.x = dr.x; run.player.y = dr.y; G.updateVision(run);
+    const r = G.act(S, { type: 'move', dir: 'up' });
+    eq(r.events.filter((e) => e.t === 'bossIntro' || e.t === 'bossStart').length, 1, 'once on entry ch' + ch);
+    G.finishBossIntro(S); assert(run.bossFight.engaged);
+    const r2 = G.act(S, { type: 'wait' }); assert(!r2.events.some((e) => e.t === 'bossIntro' || e.t === 'bossStart'), 'not again ch' + ch);
+    // 倒すと、報酬と帰還口（30階の大魔王バーンは時空の亀裂）は広間の通れる床
+    defeatBoss(S);
+    for (const o of run.floorItems.filter((f) => f.item && f.item.bossReward).concat(run.portal ? [run.portal] : [], run.crack ? [run.crack] : []))
+      assert(G.inArena(run, o.x, o.y) && DG.passable(run.map, o.x, o.y), 'reward/portal on the arena floor ch' + ch + ' ' + JSON.stringify(o));
+  }
+  // 真大魔王バーン（33階）と竜人王バラン（隠しダンジョン35階）：同じ形（広間15×15・下の前室）
+  for (const boss of ['truevearn', 'dragonbaran']) {
+    const g = DG.generate(33, R.create(77), { boss: true });
+    const A = g.map.rooms[1];
+    eq(A.w + 'x' + A.h, '15x15'); assert(g.start.y > A.y + A.h, boss + ' start below');
+  }
+  // 以前の形（左の入口）で作った階は、保存された地図のまま（読み込み直しても変えない）
+  const S = toBossFloor(1, 2190), run = S.run, raw = JSON.parse(SV.serialize(S));
+  raw.run.map.tiles = raw.run.map.tiles.map(() => DG.WALL);
+  const old = { a: { x: 2, y: 9, w: 5, h: 5 }, b: { x: 13, y: 4, w: 15, h: 15 } }, W = raw.run.map.w;
+  for (const r of [old.a, old.b]) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) raw.run.map.tiles[y * W + x] = DG.FLOOR;
+  for (let x = 7; x < 13; x++) raw.run.map.tiles[11 * W + x] = DG.CORR;
+  raw.run.map.rooms = [Object.assign({ id: 0 }, old.a), Object.assign({ id: 1 }, old.b)];
+  raw.run.bossFight = { x: 13, y: 4, w: 15, h: 15, engaged: false }; raw.run.player.x = 3; raw.run.player.y = 11;
+  raw.run.enemies = raw.run.enemies.filter((e) => e.boss).map((e) => Object.assign(e, { x: 20, y: 11 }));
+  const L = SV.deserialize(JSON.stringify(raw));
+  eq(L.run.map.rooms[1].x, 13, 'old left-entry map kept'); eq(L.run.player.x + ',' + L.run.player.y, '3,11');
+  const d = doorOutside(L.run); eq(d.dir, 'right'); L.run.player.x = d.x; L.run.player.y = d.y; G.updateVision(L.run);
+  const rr = G.act(L, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro'), 'old map still starts the fight');
+});
+test('33階・真大魔王バーン：着いた直後の登場ムービーのとき、たけは下の入口の列で広間の下の端から3マス上（上向き。ボスまで4マス）', () => {
+  const S = G.newState(), st = S.village.story; st.introDone = true; S.village.seenIntro = true; st.chapter = 6;
+  for (const k of ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn']) st.defeated[k] = true;
+  st.introSeen = { truevearn: true };
+  assert(departWithScroll(S, 6161).ok); const r = S.run; r.final.skip.vearn = true;
+  while (r.floor < 32) { const t = r.stairs || r.crack; r.player.x = t.x; r.player.y = t.y; G.act(S, { type: 'descend' }); }
+  r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y;
+  const res = G.act(S, { type: 'descend' }); eq(r.floor, 33);
+  const A = r.bossFight, p = r.player, b = r.enemies.find((e) => e.boss);
+  assert(res.events.some((e) => e.t === 'bossIntro'), 'arrival intro');
+  eq(p.y, A.y + A.h - 4); eq(p.x, A.x + (A.w >> 1)); eq(p.dir, 'up'); eq(Math.abs(b.y - p.y), 4, 'four tiles to the boss');
+});
+test('通常バラン戦の部屋（D.BARAN_ROOM）：背景の絵どおり。広間15×17・下の通路3×6から入る・左の旧入口は壁・玉座の壇は壁・入室で1回だけ', () => {
+  const B = D.BARAN_ROOM;
+  eq(B.hall.w + 'x' + B.hall.h, '15x17'); eq(B.corridor.w + 'x' + B.corridor.h, '3x6');
+  // マスと絵：広間の床（絵の x 約97〜843・y500〜1345）・下の通路（柱の内側 x400〜537）
+  const px = (c) => B.imgX + B.tile * c, py = (r) => B.imgY + B.tile * r;
+  assert(Math.abs(py(B.hall.y) - 500) < 0.5 && Math.abs(py(B.hall.y + B.hall.h) - 1345) < 0.5, 'hall rows');
+  assert(px(B.hall.x) > 90 && px(B.hall.x) < 110 && px(B.hall.x + B.hall.w) > 830 && px(B.hall.x + B.hall.w) < 850, 'hall cols');
+  assert(Math.abs(px(B.corridor.x) - 400) < 8 && Math.abs(px(B.corridor.x + B.corridor.w) - 537) < 10, 'corridor cols ' + px(B.corridor.x) + ' ' + px(B.corridor.x + B.corridor.w));
+  assert(py(B.h) >= B.imgH - B.tile, 'map within the picture');
+  const S = toBossFloor(4, 2140), run = S.run, A = run.bossFight, m = run.map, b = run.enemies.find((e) => e.boss);
+  eq(m.bg, 'BARAN_ROOM'); eq(m.w + 'x' + m.h, '19x34'); eq(b.type, 'baran');
+  eq(A.x + ',' + A.y + ',' + A.w + ',' + A.h, '2,10,15,17'); eq(run.player.x + ',' + run.player.y, '9,32');
+  checkBottomEntry(run, 'baran');
+  // 左の旧入口（絵の y 約857〜927 → 行17〜18）は壁。広間の左右の外はすべて壁
+  for (let y = A.y; y < A.y + A.h; y++) { assert(!DG.passable(m, A.x - 1, y) && !DG.passable(m, A.x + A.w, y), 'side walls ' + y); }
+  // 玉座の壇（広間の上）は壁
+  for (let x = 0; x < m.w; x++) for (let y = 0; y < A.y; y++) assert(!DG.passable(m, x, y), 'dais is wall');
+  // 道具（前室）・入口から歩いて入室：上へ5歩で通路の上の端、6歩目で広間（登場ムービーは1回だけ）
+  for (const f of run.floorItems) assert(DG.passable(m, f.x, f.y), 'item on floor');
+  let intro = 0;
+  for (let i = 0; i < 6; i++) { const r = G.act(S, { type: 'move', dir: 'up' }); intro += r.events.filter((e) => e.t === 'bossIntro').length; }
+  eq(run.player.y, A.y + A.h - 1); eq(intro, 1); eq(A.intro, 'pending');
+  G.finishBossIntro(S); assert(A.engaged);
+  // ボスは広間の中央（列9・行18）。大技の予告は広間の中だけ
+  eq(b.x + ',' + b.y, '9,18');
+  defeatBoss(S);
+  assert(run.portal && G.inArena(run, run.portal.x, run.portal.y) && DG.passable(m, run.portal.x, run.portal.y), 'portal on the hall floor');
+  for (const f of run.floorItems.filter((f) => f.item && f.item.bossReward)) assert(G.inArena(run, f.x, f.y), 'reward in hall');
+  // 保存・読み込み直しでも同じ部屋
+  const L = SV.deserialize(SV.serialize(S)); eq(L.run.map.bg, 'BARAN_ROOM'); eq(L.run.map.h, 34);
+  // 竜人王バラン（隠しダンジョン）には使わない
+  eq(DG.generate(35, R.create(5), { boss: true }).map.bg, undefined);
+});
 console.log('クロコダインの登場ムービー（2026年10月）');
 test('登場ムービー：クロコダイン（フレイザード・バランも同じ仕組み）。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
   eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'kill', 'baran', 'mist', 'vearn', 'truevearn']));
   const S = toBossFloor(1, 1401), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
   const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
   const t0 = run.turn, pos = [b.x, b.y, b.hp];
-  const r = G.act(S, { type: 'move', dir: 'right' });
+  const r = G.act(S, { type: 'move', dir: door.dir });
   assert(r.events.some((e) => e.t === 'bossIntro') && !r.events.some((e) => e.t === 'bossStart'));
   eq(A.intro, 'pending'); assert(!A.engaged); eq(run.turn, t0 + 1, 'entry move is one turn');
   // 保存して読み込み直しても pending のまま（HP・位置はそのまま）
@@ -2778,11 +2873,11 @@ test('登場ムービー：クロコダイン（フレイザード・バラン�
   eq(JSON.stringify(SV.deserialize(JSON.stringify(old)).village.story.introSeen), '{}');
   // フレイザード（第2章）も入室で登場ムービー
   { const T = toBossFloor(2, 1412), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
-    const rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'flame') && !T.run.bossFight.engaged, 'flazzard intro');
+    const rr = G.act(T, { type: 'move', dir: dr.dir }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'flame') && !T.run.bossFight.engaged, 'flazzard intro');
     const ev = G.finishBossIntro(T); eq(ev.filter((e) => e.t === 'bossStart').length, 1); assert(T.village.story.introSeen.flame); }
   // キルバーン（第3章）も入室で登場ムービー
   { const T = toBossFloor(3, 1413), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
-    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'kill') && !T.run.bossFight.engaged, 'killvearn intro');
+    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: dr.dir }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'kill') && !T.run.bossFight.engaged, 'killvearn intro');
     eq(G.act(T, { type: 'wait' }).consumed, false, 'no action during the movie'); eq(T.run.player.hp, hp0, 'no damage during the movie');
     eq(G.finishBossIntro(T).length, 0, 'the safety path already started the fight once'); assert(T.run.bossFight.engaged && T.village.story.introSeen.kill);
     eq(T.run.log.filter((l) => l.includes('との戦いが始まった')).length, 1, 'battle starts once'); }
@@ -2792,7 +2887,7 @@ test('登場ムービー：クロコダイン（フレイザード・バラン�
     eq(T.run.player.hp, hp0); const ev = G.finishBossIntro(T); eq(ev.filter((e) => e.t === 'bossStart').length, 1); eq(G.finishBossIntro(T).length, 0, 'once'); assert(T.village.story.introSeen.vearn); }
   // ミストバーン（第5章）も入室で登場ムービー
   { const T = toBossFloor(5, 1415), dr = doorOutside(T.run); T.run.player.x = dr.x; T.run.player.y = dr.y; G.updateVision(T.run);
-    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: 'right' }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'mist') && !T.run.bossFight.engaged, 'mistvearn intro');
+    const hp0 = T.run.player.hp, rr = G.act(T, { type: 'move', dir: dr.dir }); assert(rr.events.some((e) => e.t === 'bossIntro' && e.boss === 'mist') && !T.run.bossFight.engaged, 'mistvearn intro');
     eq(T.run.player.hp, hp0); const ev = G.finishBossIntro(T); eq(ev.filter((e) => e.t === 'bossStart').length, 1); eq(G.finishBossIntro(T).length, 0, 'once'); assert(T.village.story.introSeen.mist); }
 });
 
@@ -2919,7 +3014,7 @@ test('バランの登場ムービー：第4章30階の玉座の部屋に初め�
   const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
   for (let i = 0; i < 5; i++) { const r = G.act(S, { type: 'wait' }); assert(!r.events.some((e) => e.t === 'bossIntro')); }
   const pos = [b.x, b.y, b.hp], t0 = run.turn;
-  const r = G.act(S, { type: 'move', dir: 'right' });
+  const r = G.act(S, { type: 'move', dir: door.dir });
   assert(r.events.filter((e) => e.t === 'bossIntro' && e.boss === 'baran').length === 1 && A.intro === 'pending' && !A.engaged);
   eq(run.turn, t0 + 1, 'entry move only');
   const ev = G.finishBossIntro(S);
@@ -2928,7 +3023,7 @@ test('バランの登場ムービー：第4章30階の玉座の部屋に初め�
   assert(S.village.story.introSeen.baran && !S.village.story.defeated.baran && !run.floorItems.some((f) => f.item && f.item.bossReward), 'no reward or defeat flag');
   // 同じ戦闘の中で部屋を出入りしても流れない
   run.player.x = door.x; run.player.y = door.y; G.act(S, { type: 'wait' });
-  const r2 = G.act(S, { type: 'move', dir: 'right' }); assert(!r2.events.some((e) => e.t === 'bossIntro'));
+  const r2 = G.act(S, { type: 'move', dir: door.dir }); assert(!r2.events.some((e) => e.t === 'bossIntro'));
 });
 
 console.log('装備のセット・竜の紋章・ローブ・2回行動（2026年10月）');

@@ -148,14 +148,23 @@
 
   /* 30階の玉座の間の背景：絵の 64px を1マス（ts）に拡大・縮小して、見える範囲だけ転送する。
    * 細かい絵なので、ここだけなめらかに拡大する。絵の下端（入口の通路の先）は背景色へなじませる。炎の位置にゆらぐ明かりを重ねる */
-  function drawThroneBg(g, img, ox, oy, ts, W, H, now, TH) {
-    const T = D.THRONE_ROOM, sc = ts / T.tile;
+  // T：絵とマスの対応（D.THRONE_ROOM・D.BARAN_ROOM）。T.throne があれば、玉座の絵を壇の上に重ねる（当たり判定は無い）
+  function drawThroneBg(g, img, ox, oy, ts, W, H, now, TH, T) {
+    T = T || D.THRONE_ROOM;
+    const sc = ts / T.tile;
     const dx = ox - T.imgX * sc, dy = oy - T.imgY * sc;
     const sx = Math.max(0, -dx / sc), sy = Math.max(0, -dy / sc);
     const sw = Math.min(T.imgW, (W - dx) / sc) - sx, sh = Math.min(T.imgH, (H - dy) / sc) - sy;
     if (sw > 0 && sh > 0) {
       g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
       g.drawImage(img, sx, sy, sw, sh, dx + sx * sc, dy + sy * sc, sw * sc, sh * sc);
+      g.imageSmoothingEnabled = false;
+    }
+    const thImg = T.throne && SP.art.rooms && SP.art.rooms[T.throne.img];
+    if (thImg) {
+      const th = T.throne.h * sc, tw = th * thImg.width / thImg.height;
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.drawImage(thImg, dx + T.throne.cx * sc - tw / 2, dy + T.throne.foot * sc - th, tw, th);
       g.imageSmoothingEnabled = false;
     }
     const fy = dy + (T.imgH - 110) * sc, gr = g.createLinearGradient(0, fy, 0, dy + T.imgH * sc);
@@ -288,7 +297,9 @@
     const reach = TS.Tiles.isWaterTheme(theme) ? 2 : 1;
     // 新しく見えたマスを描く。重くならないよう1フレームの時間に上限を設け、たけに近いマスから描く
     // 30階の玉座の間：背景の絵をそのまま敷く（タイルは描かない。通れる所・壁は D.THRONE_ROOM の地図のとおり）
-    const throneBg = m.throne && SP.art.rooms && SP.art.rooms.throneBg;
+    // 通常バラン戦の部屋（m.bg：D.BARAN_ROOM）も同じように背景の絵を敷く
+    const bgDef = m.throne ? D.THRONE_ROOM : m.bg ? D[m.bg] : null;
+    const throneBg = bgDef && SP.art.rooms && SP.art.rooms[bgDef.bg || 'throneBg'];
     const voidBg = theme === 'void';   // 33階・真大魔王バーンの白い異空間（タイルは描かず drawVoidBg）
     const todo = [];
     if (!throneBg && !voidBg) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!L.drawn[y * m.w + x] && known(run, L, x, y, reach)) todo.push([x, y]);
@@ -298,7 +309,7 @@
       for (let i = 0; i < todo.length; i++) { if (i >= 12 && performance.now() - t0 > 7) break; paintTile(run, L, todo[i][0], todo[i][1]); }
     }
     // 見える範囲を1回で転送
-    if (throneBg) drawThroneBg(g, throneBg, ox, oy, ts, W, H, now, TH);
+    if (throneBg) drawThroneBg(g, throneBg, ox, oy, ts, W, H, now, TH, bgDef);
     else if (voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
     else g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
     // 動く地形：たいまつ・階段・帰還の祠・帰還口

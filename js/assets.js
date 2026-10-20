@@ -161,7 +161,9 @@
      *  crack：時空の亀裂（透過PNG。背景には焼きこまず、状態に応じて別に描く）
      * 読み込めなければ、今までのタイルの絵と仮の亀裂の絵で描く */
     // goldCircle：ボス撃破後の帰還口（金の魔法陣。ZIP gold_return_circle_v1 の 128px 版。元の 64・96px は assets/reference/gold_return_circle_v1/）
-    rooms: { throneBg: 'assets/rooms/throne-room.webp', crack: 'assets/rooms/time-crack.png', goldCircle: 'assets/rooms/gold-circle.png' },
+    // baranBg・baranThrone：通常バラン戦の部屋（941×1672）と玉座（ZIP baran_room_assets_v1。作り方は tools/make-baran-room.py、マスとの対応は D.BARAN_ROOM）
+    rooms: { throneBg: 'assets/rooms/throne-room.webp', crack: 'assets/rooms/time-crack.png', goldCircle: 'assets/rooms/gold-circle.png',
+      baranBg: 'assets/rooms/baran-room.webp', baranThrone: 'assets/rooms/baran-throne.png' },
     /* 技の演出の絵（assets/fx/）。描き直しはしない。
      *  kaiserPhoenix：大魔王バーンのカイザーフェニックス（下向きに飛ぶ火の鳥。tools/make-kaiser-phoenix.py で余白を切り、縮小）。
      *    攻撃の向きに合わせてゲームで回す。読み込めなければ今までの炎の帯の演出 */

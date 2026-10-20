@@ -906,13 +906,14 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       return { talk: !!document.querySelector('.talk'), engaged: A.engaged, center: Math.max(Math.abs(b.x - (A.x + (A.w >> 1))), Math.abs(b.y - (A.y + (A.h >> 1)))), song: TS.Music.current && TS.Music.current.id, bgm: TS.Audio.bgmName }; });
     assert(!arrive.talk && !arrive.engaged && arrive.center <= 1 && arrive.bgm === 'dungeon', 'waiting on arrival ' + JSON.stringify(arrive));
     // 入口の手前（通路）からダッシュで入る：部屋に入った所でダッシュが止まり、戦闘開始の表示・会話・ボス戦の曲・HPバー
-    await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let y = A.y; while (!TS.Dungeon.passable(r.map, A.x - 1, y)) y++; r.player.x = A.x - 3; r.player.y = y; TS.Game.updateVision(r); });
+    // 2026年10月20日から、ボス部屋は下の前室・通路から上へ入る
+    await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let x = A.x; while (!TS.Dungeon.passable(r.map, x, A.y + A.h)) x++; r.player.x = x; r.player.y = A.y + A.h + 2; r.player.dir = 'up'; TS.Game.updateVision(r); });
     await shot('17a_boss_waiting');
-    const before = await p.evaluate(() => TS.UI.S.run.player.x);
+    const before = await p.evaluate(() => TS.UI.S.run.player.y);
     await p.tap('#b-dash'); await p.waitForTimeout(100);
     // ボスが見えた所でダッシュは一度止まる（以前からの決まり）。押し直して進む
     // 部屋に入ると、まずクロコダインの登場ムービー（2026年10月）。ムービー中は戦いが始まらず、スキップすると一度だけ戦闘開始
-    for (let k = 0; k < 6 && !(await p.$('.movie')) && !(await p.$('.talk')); k++) { await p.tap('#dpad [data-dir="right"]'); for (let i = 0; i < 12 && !(await p.$('.movie')); i++) await p.waitForTimeout(80); }
+    for (let k = 0; k < 6 && !(await p.$('.movie')) && !(await p.$('.talk')); k++) { await p.tap('#dpad [data-dir="up"]'); for (let i = 0; i < 12 && !(await p.$('.movie')); i++) await p.waitForTimeout(80); }
     const mv = await p.evaluate(() => { const r = TS.UI.S.run; return { movie: !!document.querySelector('.movie'), intro: r.bossFight.intro, engaged: r.bossFight.engaged, inRoom: TS.Game.inArena(r, r.player.x, r.player.y), hold: TS.Audio.bgmHold }; });
     assert(mv.movie && mv.intro === 'pending' && !mv.engaged && mv.inRoom && mv.hold, 'crocodine intro movie on entering the room ' + JSON.stringify(mv));
     await shot('17m_boss_movie');
@@ -923,8 +924,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     for (let i = 0; i < 30 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.talk'), 'boss intro talk on entering the room ' + await p.evaluate(() => { const r = TS.UI.S.run; return JSON.stringify({ p: [r.player.x, r.player.y], A: r.bossFight, dash: document.getElementById('b-dash').getAttribute('aria-pressed'), modal: document.querySelector('#modal-root').textContent.slice(0, 80), log: r.log ? r.log.slice(-3) : null }); }));
     assert(await p.isVisible('.who:has-text("クロコダイン")'), 'boss speaks');
-    const ent = await p.evaluate(() => { const r = TS.UI.S.run; return { x: r.player.x, inRoom: TS.Game.inArena(r, r.player.x, r.player.y), engaged: r.bossFight.engaged, bgm: TS.Audio.bgmName, song: TS.Music.current && TS.Music.current.id }; });
-    assert(ent.inRoom && ent.engaged && ent.x === (await p.evaluate(() => TS.UI.S.run.bossFight.x)) && ent.bgm === 'boss', 'dash stopped at the first room tile, boss music ' + JSON.stringify(ent) + ' from ' + before);
+    const ent = await p.evaluate(() => { const r = TS.UI.S.run; return { x: r.player.y, inRoom: TS.Game.inArena(r, r.player.x, r.player.y), engaged: r.bossFight.engaged, bgm: TS.Audio.bgmName, song: TS.Music.current && TS.Music.current.id }; });
+    assert(ent.inRoom && ent.engaged && ent.x === (await p.evaluate(() => { const A = TS.UI.S.run.bossFight; return A.y + A.h - 1; })) && ent.bgm === 'boss', 'dash stopped at the first room tile, boss music ' + JSON.stringify(ent) + ' from ' + before);
     await closeTalk();
     await p.evaluate(() => { const b = document.getElementById('b-dash'); if (TS.UI.S.settings.dash || (b && /オン/.test(b.textContent))) b.click(); });
     await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, b = r.enemies.find((e) => e.boss); b.hp = 5; b.cds = { rush: 9, axe: 9 }; r.player.x = b.x - 1; r.player.y = b.y; r.player.hp = r.player.maxhp = 900; G.updateVision(r); });
@@ -1645,7 +1646,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await closeAllQ(q);
       // ボスの階に着いただけ：探索の曲のまま（同じ再生が続く）。ボス部屋に入るとボス戦の新しい曲（以前の合成ループは使わない）
       c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer && c.scene === 'dungeon', 'dungeon music on the boss floor before the fight ' + JSON.stringify(c));
-      await q.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let y = A.y; while (!TS.Dungeon.passable(r.map, A.x - 1, y)) y++; r.player.x = A.x - 1; r.player.y = y; TS.Game.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'right' }); });
+      await q.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let x = A.x; while (!TS.Dungeon.passable(r.map, x, A.y + A.h)) x++; r.player.x = x; r.player.y = A.y + A.h; TS.Game.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'up' }); });
       await q.waitForTimeout(800); await talkThrough();
       await closeAllQ(q);
       // クロコダインの登場ムービー（いま閉じた＝スキップ）のあとに、戦いの前の会話が開くので、それも進める

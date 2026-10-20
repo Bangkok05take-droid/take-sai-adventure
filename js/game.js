@@ -311,7 +311,9 @@
     const throne = !Fdef.hidden && G.finalV3(run) && Object.values(FF).includes(floor);   // 隠しダンジョンの階は別（玉座の間ではない）
     const throne30 = throne && floor === FF.vearn;
     // 隠しダンジョン：部屋の大きい地図（D.HIDDEN_MAP）。帰還の祠は無い
-    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, hidden: !!Fdef.hidden, returnPoint: !Fdef.hidden && !Fdef.boss && !throne && rpFloors.includes(floor) });
+    // 通常バラン戦（第4章）：背景の絵の部屋（D.BARAN_ROOM。下の通路から入る）。竜人王バラン（隠しダンジョン）には使わない
+    const room = Fdef.boss === 'baran' ? 'BARAN_ROOM' : null;
+    const gen = DG.generate(floor, rng, { boss: !!Fdef.boss || throne, throne: throne30, room, hidden: !!Fdef.hidden, returnPoint: !Fdef.hidden && !Fdef.boss && !throne && rpFloors.includes(floor) });
     run.hazards = []; run.fog = 0; run.sense = 0;   // 気配察知は階を移ると切れる
     run.player.half = 0;   // 2回行動の途中は、階を移ると数え直す
     run.map = gen.map;
@@ -1741,10 +1743,13 @@
   G.arriveBossFloor = function (S, ev) {
     const run = S.run, A = run.bossFight, F = G.F(run), p = run.player;
     if (!A || A.engaged || !F.boss || !(D.BOSS_ARRIVAL && D.BOSS_ARRIVAL[F.boss]) || G.layoutOf(run) < 4) return false;
-    // 入口から3マス入った所（ボスとの間は4マス。戦いの始まりに、ボスが画面に入る距離）
-    const y = p.y >= A.y && p.y < A.y + A.h ? p.y : A.y + (A.h >> 1), x = Math.min(A.x + 3, A.x + A.w - 1);
+    // 入口から3マス入った所（ボスとの間は4マス。戦いの始まりに、ボスが画面に入る距離）。
+    // 下の入口（2026年10月20日からの形）：入口の列で、広間の下の端から3マス上。以前の形（左の入口）：入口の行で、左の端から3マス右
+    const below = p.y >= A.y + A.h;
+    const x = below ? Math.max(A.x, Math.min(A.x + A.w - 1, p.x)) : Math.min(A.x + 3, A.x + A.w - 1);
+    const y = below ? Math.max(A.y, A.y + A.h - 4) : p.y >= A.y && p.y < A.y + A.h ? p.y : A.y + (A.h >> 1);
     const spot = DG.passable(run.map, x, y) && !G.enemyAt(run, x, y) ? { x, y } : G.arenaCenter(run, [run.enemies.find((e) => e.boss)]);
-    p.x = spot.x; p.y = spot.y; p.dir = 'right';
+    p.x = spot.x; p.y = spot.y; p.dir = below ? 'up' : 'right';
     G.updateVision(run);
     checkBossRoom(S, ev);
     return true;

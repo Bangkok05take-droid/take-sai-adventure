@@ -15,6 +15,7 @@
   function generate(floor, rng, opts) {
     opts = opts || { boss: !!D.LEGACY_BOSS_FLOORS[floor], returnPoint: D.RETURN_POINT_FLOORS.includes(floor) };
     if (opts.throne) return generateThroneFloor();
+    if (opts.room) return generateRoomFloor(opts.room);   // 背景の絵で作るボス部屋（通常バラン戦 D.BARAN_ROOM）
     if (opts.boss) return generateBossFloor(rng);   // ボス部屋は隠しダンジョンでも本編と同じ（部屋の数の倍率は使わない）
     for (let attempt = 0; attempt < 80; attempt++) {
       const g = tryGenerate(floor, rng, opts);
@@ -153,19 +154,34 @@
     return finishFloor(floor, rng, { w, h, tiles, rooms }, opts);
   }
 
-  // 10階：小さな前室と、守護者のいる大広間（隠しダンジョン35階の竜人王バランも同じ形）
+  /* ボスの階（章のボス・真大魔王バーン・竜人王バラン・以前の版のボス）：守護者のいる大広間と、その下の小さな前室。
+   * ボス部屋の共通方針（2026年10月20日）：画面の下の前室から通路を上へ進んで広間へ入り、奥のボスへ向かう。
+   * 以前は左の前室から右へ入っていた（その形で作った階は、保存された地図のまま。新しく作る階から下の入口）。
+   *  広間 15×15（x9〜23・y1〜15）、通路 x16・y16〜18（3マス）、前室 5×4（x14〜18・y19〜22）。入口は前室の (16,21)。
+   *  広間の真ん中の列から入るので、ボス（広間の中央）までは以前と同じ7マス */
   function generateBossFloor(rng) {
     const M = D.MAP, w = M.w, h = M.h;
     const tiles = new Array(w * h).fill(WALL);
     const rooms = [
-      { id: 0, x: 2, y: 9, w: 5, h: 5 },
-      { id: 1, x: 13, y: 4, w: 15, h: 15 },
+      { id: 0, x: 14, y: 19, w: 5, h: 4 },
+      { id: 1, x: 9, y: 1, w: 15, h: 15 },
     ];
     for (const r of rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) tiles[y * w + x] = FLOOR;
-    const cy = 11, a = rooms[0], b = rooms[1];
-    for (let x = a.x + a.w; x < b.x; x++) tiles[cy * w + x] = CORR;
+    const a = rooms[0], b = rooms[1], cx = b.x + (b.w >> 1);
+    for (let y = b.y + b.h; y < a.y; y++) tiles[y * w + cx] = CORR;
     const map = { w, h, tiles, rooms, boss: true };
-    return { map, start: { x: a.x + 1, y: cy }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: b.x + (b.w >> 1), y: b.y + (b.h >> 1) } };
+    return { map, start: { x: cx, y: a.y + 2 }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: cx, y: b.y + (b.h >> 1) } };
+  }
+  /* 背景の絵で作るボス部屋（D.BARAN_ROOM など）。下の前室・通路（rooms[0]、最初の道具を置く）から上の広間（rooms[1]、ボス部屋）へ。
+   * 玉座・壇・柱・炎の台・縁は壁（絵に描かれていて、通れない）。map.bg：描くときの背景の定義の名前 */
+  function generateRoomFloor(name) {
+    const T = D[name], w = T.w, h = T.h;
+    const tiles = new Array(w * h).fill(WALL);
+    const rooms = [Object.assign({ id: 0 }, T.corridor), Object.assign({ id: 1 }, T.hall)];
+    for (const r of rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) tiles[y * w + x] = FLOOR;
+    const map = { w, h, tiles, rooms, boss: true, bg: name };
+    const hl = T.hall;
+    return { map, start: { x: T.start.x, y: T.start.y }, stairs: null, returnPoint: null, startRoom: 0, bossPos: { x: hl.x + (hl.w >> 1), y: hl.y + (hl.h >> 1) } };
   }
 
   /* 地下30階・大魔王バーンの玉座の間（D.THRONE_ROOM）。下の入口から中央の通路を上へ進み、広間へ入る。
