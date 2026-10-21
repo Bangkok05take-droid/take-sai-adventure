@@ -444,16 +444,18 @@
     elephant: { name: '夢見の黄金象', hp: 720, atk: 36, def: 17, exp: 600, ai: 'boss', sprite: 'elephant', noScale: true, drop: 'wish_orb', repeatDrop: 'dream_crown',
       pattern: { stomp: 2, stompMult: 1.7, line: 6, lineMult: 2.0, every: 4, summon: 'wisp', summonEvery: 9, summonMax: 2, enrage: 0.5 } },
     // ---- 最終章の31階より下 ----
-    /* あくまのきし：予告の大技のあとは、2行動のあいだ攻撃を休んで盾で防御（受けるダメージ半分）。ふだんも隣で20%、攻撃の代わりに防御（次の行動まで半分）。
-     *  defend：after 大技のあとの防御の行動数、chance ふだんの防御の確率、cut 受けるダメージの倍率。専用の防御ポーズの絵はまだ無い（待機の絵に盾の印） */
-    darkknight: { name: 'あくまのきし', hp: 150, atk: 44, def: 20, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
-      defend: { after: 2, chance: 0.2, cut: 0.5 },
-      tip: '斧を振りかぶってから強打する。そのあとは盾で守りを固める（ダメージ半分）。ときどき盾を構えて攻撃を受け止める。' },
+    /* あくまのきし：予告の大技のあとは、2行動のあいだ攻撃を休んで盾で防御（受けるダメージ40%）。ふだんも隣で20%、攻撃の代わりに防御（次の行動まで40%）。
+     *  defend：after 大技のあとの防御の行動数、chance ふだんの防御の確率、cut 受けるダメージの倍率。専用の防御ポーズの絵はまだ無い（待機の絵に盾の印）
+     *  2026年10月21日：ふだんの防御 20 → 17、防御中の受けるダメージ 50% → 40%（ふだんは柔らかく、盾の上からは硬く） */
+    darkknight: { name: 'あくまのきし', hp: 150, atk: 44, def: 17, exp: 150, ai: 'telegraph', sprite: 'darkknight', base: 31, heavy: 2.0,
+      defend: { after: 2, chance: 0.2, cut: 0.4 },
+      tip: '斧を振りかぶってから強打する。そのあとは盾で守りを固める（ダメージが大きく減る）。ときどき盾を構えて攻撃を受け止める。' },
     /* ---- 隠しダンジョンの強敵（2026年10月：動きは確定。能力値・数値はすべて**仮**＝D.STRONG の調整案。専用の絵はChatGPT側） ----
      * 絵が届くまでは、今の敵の絵に色を重ねた仮の見た目（js/sprites.js の SP.PLACEHOLDER）。base 31：深さによる強化は31階から */
     dragon:      { name: 'ドラゴン',         hp: 190, atk: 46, def: 20, exp: 230, ai: 'breath', sprite: 'dragon', base: 31,
       tip: '一直線に炎を吐く。炎は最初に当たった相手で止まるので、間にほかの敵がいれば盾になる。' },
-    silverdevil: { name: 'シルバーデビル',   hp: 110, atk: 34, def: 16, exp: 200, ai: 'double', sprite: 'silverdevil', base: 31,
+    // シルバーデビル：2026年10月21日 攻撃 34 → 30
+    silverdevil: { name: 'シルバーデビル',   hp: 110, atk: 30, def: 16, exp: 200, ai: 'double', sprite: 'silverdevil', base: 31,
       tip: '1回の手番に2回動く。離れていれば2歩、隣なら2回攻撃。' },
     gigantes:    { name: 'ギガンテス',       hp: 320, atk: 58, def: 26, exp: 300, ai: 'melee', sprite: 'gigantes', base: 31,
       tip: 'HP・攻撃・防御がとても高い。ひたすら近づいて殴ってくる。' },

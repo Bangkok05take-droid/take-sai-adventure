@@ -3598,7 +3598,7 @@ test('おどるほうせき：盗む前に倒すと、その階のお金の山1�
   const g0 = run.runGold; for (let i = 0; i < 20 && run.enemies.includes(t2); i++) G.act(S, { type: 'move', dir: 'right' });
   eq(run.runGold, g0 + stolen, 'refund all'); assert(!run.floorItems.some((f) => f.gold), 'no extra gold');
 });
-test('あくまのきし：大技のあとは2行動のあいだ防御（ダメージ半分）してから動く。ふだんも隣で20%防御（次の行動まで半分）', () => {
+test('あくまのきし：大技のあとは2行動のあいだ防御（ダメージ40%）してから動く。ふだんも隣で20%防御（次の行動まで40%）。ふだんの防御は17', () => {
   const S = newRun(904); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;
   const k = realEnemy(S, 'darkknight', p.x + 1, p.y, 31);
   // 大技を予告させる（防御の確率は0にして確かめる）
@@ -3613,8 +3613,10 @@ test('あくまのきし：大技のあとは2行動のあいだ防御（ダメ�
   D.ENEMIES.darkknight.defend.chance = 1; k.charge = null; k.rest = 0; k.guard = 0;
   const r = G.act(S, { type: 'wait' }); assert(r.events.some((e) => e.t === 'eguard') && k.guard === 1 && !k.charge, 'guards instead of attacking');
   D.ENEMIES.darkknight.defend.chance = ch;
-  // 半分の計算（防御中）
-  const atk = 120; k.guard = 1; const hp1 = k.hp; const evs = []; G._damageEnemy(S, k, atk, evs, 'x'); eq(hp1 - k.hp, 60, 'half damage');
+  // 防御中は受けるダメージ40%（2026年10月21日 50% → 40%）。ふだんの防御 20 → 17
+  eq(D.ENEMIES.darkknight.defend.cut, 0.4); eq(D.ENEMIES.darkknight.def, 17);
+  const atk = 120; k.guard = 1; const hp1 = k.hp; const evs = []; G._damageEnemy(S, k, atk, evs, 'x'); eq(hp1 - k.hp, 48, '40% damage');
+  eq(D.ENEMIES.silverdevil.atk, 30, 'silver devil atk 34 -> 30');
 });
 test('ベビーサタン：5行動ごとに、たけのまわり3×3を予告して炎（攻撃力×1.6）。予告の外へ出ればかわせる。ふだんは火の玉', () => {
   const S = newRun(905); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;
