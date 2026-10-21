@@ -1,5 +1,5 @@
 // 通常ダンジョンの地域の背景（ZIP dungeon_7themes_art_v1）の組み込みプレビュー：node tools/dungeon-art-preview.js [地域] [出力フォルダ]
-//   既定は brick（レンガの回廊、2階）。出力は docs/dungeon-art-v1/<地域>/。本番の設定（D.DUNGEON_ART）は変えない（この確認の間だけ切り替える）
+//   既定は brick（レンガの回廊、2階）。出力は docs/dungeon-art-v1/<地域>/。before＝コードの絵・after＝素材の絵に、この確認の間だけ切り替える（本番の設定 D.DUNGEON_ART はファイルのまま）
 //   PCのブラウザ、幅360・390・430。同じ階・同じ場所を「今の絵」と「素材の絵」で撮る：部屋の中・細い通路・部屋の四隅・床の道具・攻撃の予告
 //   階全体の絵（地形だけ）も1枚：overview_<before|after>.png
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
