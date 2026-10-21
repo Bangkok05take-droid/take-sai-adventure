@@ -1286,6 +1286,8 @@
   // 持っているだけで効く護符
   G.hasCharm = (run, effect) => !!effect && run.bag.some((it) => G.def(it).type === 'charm' && G.def(it).effect === effect);
   // 装備しているアクセサリーの効果（持っているだけでは効かない。装備枠は1つ）
+  // 大魔王のローブ（2026年10月21日）：装備している間、状態異常（毒・闇の糸の拘束）を受けない。ただしマドハンドにはつかまれる
+  G.robeGuard = (run) => { const a = G.equipped(run.bag, 'accessory'); return !!(a && a.id === 'demon_robe'); };
   G.hasAcc = (run, key) => { const a = G.equipped(run.bag, 'accessory'); return !!(a && G.def(a).acc === key); };
 
   /* 道具を使う。fromFloor が true なら、バッグではなく足元に落ちている道具を使う（バッグの中身は変わらない。
@@ -2229,6 +2231,7 @@
     if (E.ai === 'poison' && !p.poison && !p.poisonGuard && R.chance(run.rng, D.POISON.chance)) {
       if (G.hasAcc(run, 'poison')) { G.log(run, '毒よけの指輪が毒を防いだ！'); return; }
       if (G.sets(run).all3) { G.log(run, '竜の気が毒をはねのけた！'); return; }   // 3点セット：新しい状態異常を受けない
+      if (G.robeGuard(run)) { G.log(run, '大魔王のローブが毒をはねのけた！'); return; }
       p.poison = D.POISON.turns;
       G.log(run, 'たけは毒におかされた！（やくそう・どくけしそうで治る）');
       ev.push({ t: 'warn', msg: '毒になった！' });

@@ -3829,5 +3829,30 @@ test('読み込むと、保存してあった階の敵の能力を今のデー�
   eq(L.run.enemies.find((e) => e.boss).atk, 999, 'boss unchanged');
 });
 
+test('大魔王のローブ：装備している間、毒・闇の糸の拘束を受けない（2026年10月21日）。マドハンドにはつかまれる', () => {
+  const S = newRun(5151); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 9999;
+  const robe = G.makeItem(S, 'demon_robe'); run.bag.push(robe); G.act(S, { type: 'equip', uid: robe.uid }); assert(G.robeGuard(run), 'robe on');
+  // 毒：毒の敵に何度殴られても毒にならない
+  const pc = D.POISON.chance; D.POISON.chance = 1;
+  const pe = Object.keys(D.ENEMIES).find((k) => D.ENEMIES[k].ai === 'poison');
+  const e = realEnemy(S, pe, p.x + 1, p.y, 10);
+  for (let i = 0; i < 6; i++) G.act(S, { type: 'wait' });
+  eq(p.poison, 0, 'no poison'); assert(run.log.some((l) => l.includes('大魔王のローブが毒をはねのけた')), 'message');
+  // ローブを外すと毒になる
+  G.act(S, { type: 'equip', uid: robe.uid }); assert(!G.robeGuard(run), 'robe off');
+  for (let i = 0; i < 6 && !p.poison; i++) { p.poisonGuard = 0; G.act(S, { type: 'wait' }); }
+  assert(p.poison > 0, 'poisoned without robe'); D.POISON.chance = pc; p.poison = 0;
+  // マドハンド：ローブがあってもつかまれる
+  G.act(S, { type: 'equip', uid: robe.uid }); assert(G.robeGuard(run));
+  run.enemies = []; const m = realEnemy(S, 'madhand', p.x + 1, p.y, 32); p.bindGuard = 0; p.bound = 0;
+  for (let i = 0; i < 8 && !p.bound; i++) G.act(S, { type: 'wait' });
+  assert(p.bound > 0, 'madhand still grabs');
+  // 闇の糸（ミストバーン）：ローブで拘束されない（ダメージは受ける）
+  p.bound = 0; p.bindGuard = 0; run.enemies = [];
+  const mist = G.makeEnemy(run, 'mist', p.x + 2, p.y); run.enemies.push(mist);
+  const hp0 = p.hp; G.BOSS_RESOLVE.bind(S, mist, [], { tiles: [{ x: p.x, y: p.y }], mult: 1 }, G._H);
+  eq(p.bound, 0, 'not bound'); assert(p.hp < hp0, 'damage still');
+});
+
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

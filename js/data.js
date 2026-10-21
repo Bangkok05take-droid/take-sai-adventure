@@ -362,7 +362,7 @@
     dragon_crest:  { name: '竜の紋章', type: 'accessory', acc: 'revive', atk: 5, sell: 1000, noSell: true, icon: 'crest',
       desc: '装備している間にHPが0になると、一度だけHPが全回復して立ち上がる（紋章はなくなる）。攻撃力+5。金のペンダントに青い竜の紋章。' },
     demon_robe:    { name: '大魔王のローブ', type: 'accessory', acc: 'deep', sell: 1500, noSell: true, icon: 'robe',
-      desc: '装備して出発すると、21階から探索を始められる（1階からも選べる）。大魔王バーンを倒した証。' },
+      desc: '装備して出発すると、21階から探索を始められる（1階からも選べる）。装備している間は毒などの状態異常を受けない（マドハンドにはつかまれる）。大魔王バーンを倒した証。' },
     wish_orb:      { name: '願いの宝珠', type: 'orb', sell: 0, noSell: true, noStore: true, icon: 'orb',
       desc: '遺跡の奥に眠っていた宝珠。村へ持ち帰ろう！' },
   };
