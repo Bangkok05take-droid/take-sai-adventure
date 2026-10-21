@@ -31,6 +31,8 @@ const probe = (p) => p.evaluate(() => { const SP = TS.Sprites, pose = SP.bossPos
     const tStart = Date.now();
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.route('**/*.mp4', (route) => route.fulfill({ status: 404, body: '' }));
+    // STANCE_IMG=候補のPNG：ゲームの構えの絵をこの確認の間だけ差し替える（ゲームのファイルは変えない。候補の見え方の確認用）
+    if (process.env.STANCE_IMG) await p.route('**/assets/bosses/truevearn-stance.png', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: fs.readFileSync(process.env.STANCE_IMG) }));
     await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
     await p.evaluate(() => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village, st = V.story; st.introDone = true; V.seenIntro = true; st.chapter = 6;
       for (const k of ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn']) st.defeated[k] = true;
