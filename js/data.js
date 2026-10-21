@@ -301,13 +301,15 @@
       desc: '小さなひすいの置物。高く売れる。' },
     golden_lotus:  { name: '黄金の蓮', type: 'treasure', sell: 260, icon: 'lotus',
       desc: '金でできた蓮の花。とても高く売れる。' },
-    /* お宝の「勇者の剣・勇者の盾」（2026年10月）：装備の覇者の剣・盾とは別のIDのお宝。装備はできない。
-     * 絵は今までの勇者の剣・盾（コードで描いた絵：icon・tint）をそのまま使う。
-     * イベントで手に入る予定だが、イベント・条件・売値・展示室の枠は未決定 → 今はどこからも出ない（床・敵・店・商人・ボスの報酬に入れない）。売れない・寄贈の枠に無い */
-    hero_sword_relic:  { name: '勇者の剣', type: 'treasure', sell: 0, noSell: true, icon: 'sword', tint: 'hero',
-      desc: '師匠ヤナイが遺した、勇者の剣。お宝として大切にしまっておこう（装備はできない）。' },
-    hero_shield_relic: { name: '勇者の盾', type: 'treasure', sell: 0, noSell: true, icon: 'shield', tint: 'hero',
-      desc: '師匠ヤナイが遺した、勇者の盾。お宝として大切にしまっておこう（装備はできない）。' },
+    /* 勇者の剣・勇者の盾（2026年10月21日【確定】：お宝から、装備・強化できる品へ。IDは以前のお宝のまま hero_sword_relic・hero_shield_relic）。
+     * ゲームの中でいちばん基礎の数値が高い剣と盾（覇者の剣 攻27・ドラゴニックオーラの盾 防22 より少し強く）。売れない。
+     *  勇者の剣：オリハルコンを持ってコイ（鍛冶屋）に話しかけると打ってくれる（1回だけ。G.forgeHeroSword）
+     *  勇者の盾：マスターヤナイの像を建てたあと、ワーン（食堂）に話しかけると渡してくれる（1回だけ。G.giveHeroShield）
+     *  絵は今までの勇者の剣・盾（コードで描いた絵：icon・tint）。床・敵・店・商人・ボスの報酬には入れない */
+    hero_sword_relic:  { name: '勇者の剣', type: 'weapon', atk: 30, sell: 0, noSell: true, icon: 'sword', tint: 'hero',
+      desc: 'コイがオリハルコンで打ち上げた、勇者の剣。いちばん強い剣。' },
+    hero_shield_relic: { name: '勇者の盾', type: 'shield', def: 24, sell: 0, noSell: true, icon: 'shield', tint: 'hero',
+      desc: 'マスターヤナイがワーンに預けていた、勇者の盾。いちばん強い盾。' },
     // お宝の竜の紋章（baran_emblem）は2026年10月に廃止。竜の紋章はアクセサリー（dragon_crest）だけ。以前のセーブの品は読み込みで消す（js/save.js の v8 → v9）
     // 2026年10月：展示室4番目の旧「獅子の守り石」（guardian_gem）→ クロコダインの涙。売れない（noSell。sell は以前の値を残しているだけ）
     croc_tear:     { name: 'クロコダインの涙', type: 'treasure', sell: 350, noSell: true, icon: 'gem', tint: 'crystal',
@@ -337,6 +339,9 @@
       desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る。' },
     gold_leaf:     { name: '神殿の金ぱく', type: 'material', sell: 0, noSell: true, icon: 'shard', tint: 'gold', depth: 26,
       desc: '鍛冶屋の拡張と強化に使う素材。持ち帰ると素材箱に入る。' },
+    // オリハルコン（2026年10月21日）：30階から（床・敵が落とす。D.ORICHALCUM）。勇者の剣を打つのと、+9からの強化に使う
+    orichalcum:    { name: 'オリハルコン', type: 'material', sell: 0, noSell: true, icon: 'shard', tint: 'orichalcum', depth: 30,
+      desc: '伝説の金属。コイなら勇者の剣を打てるかもしれない。+9からの強化にも使う。持ち帰ると素材箱に入る。' },
     // ---- アクセサリー（装備枠は1つ。持っているだけでは効かず、装備している間だけ効く） ----
     poison_ring:   { name: '毒よけの指輪', type: 'accessory', acc: 'poison', sell: 250, icon: 'ring',
       desc: '装備している間、新しく毒にかからない。すでにかかっている毒は治らない。' },
@@ -382,13 +387,20 @@
 
   /* 鍛冶屋の強化：設備の段階で上限が上がる（なし/+3/+5/+8）。
    * +4以降は深い階の素材も必要。売値の上がり方は強化費用よりずっと小さい（換金の抜け道にならない）。 */
+  /* +9から（2026年10月21日）：コイが勇者の剣を打つと「無限強化」が解放（V.story.heroForge）。すべての武器・盾が +8 より先へ（アクセサリーは対象外）。
+   *  +9にする：オリハルコン1個・お金は +8にするときの金額＋1000G。そこから +1 ごとにオリハルコン＋1個・お金＋1000G
+   *  （+9：1個・2200G、+10：2個・3200G、+11：3個・4200G …）。今の強化値はそのまま引き継ぐ */
   D.SMITH = {
     maxPlusByLv: [0, 3, 5, 8],
     maxPlus: 8,
-    cost: (plus) => (plus < 3 ? 80 * (plus + 1) : 150 * (plus + 1)),
-    mats: (plus) => (plus === 3 || plus === 4 ? { amber_shard: 1 } : plus === 5 ? { bronze_shard: 1 } : plus === 6 ? { crystal_shard: 1 } : plus === 7 ? { gold_leaf: 1 } : {}),
+    cost: (plus) => (plus < 3 ? 80 * (plus + 1) : plus < 8 ? 150 * (plus + 1) : 150 * 8 + 1000 * (plus - 7)),
+    mats: (plus) => (plus === 3 || plus === 4 ? { amber_shard: 1 } : plus === 5 ? { bronze_shard: 1 } : plus === 6 ? { crystal_shard: 1 } : plus === 7 ? { gold_leaf: 1 } : plus >= 8 ? { orichalcum: plus - 7 } : {}),
     sellPerPlus: 15,
   };
+  /* オリハルコン（2026年10月21日）：30階から（30階を含む）。33階の真大魔王バーンの決戦場は最初に置く道具なし（そのまま）。
+   *  floor：床に置く道具1つごとに、オリハルコンになる確率。drop：敵を倒したとき、オリハルコンを落とす確率。どちらも 5%
+   *  tiw：30階の救援のあと、ティウが町まで持ち帰ってくれる個数。sword：勇者の剣を打つのに使う個数（お金はいらない） */
+  D.ORICHALCUM = { from: 30, floor: 0.05, drop: 0.05, tiw: 1, sword: 1 };
 
   /* 敵
    * ai: melee 普通 / slow 2ターンに1回 / ranged 矢（shot：撃つ物の名前）/ dormant 近づくまで眠る / erratic ふらふら

@@ -3243,18 +3243,18 @@ test('以前のセーブ（v8）のお宝の竜の紋章は、読み込みで消
 });
 
 console.log('覇者の剣・覇者の盾と、お宝の勇者の剣・勇者の盾（2026年10月）');
-test('覇者の剣・盾：IDはそのまま（能力値・売値・強化・第5章の報酬も同じ）。勇者の剣・盾は別IDのお宝で、どこからも出ない', () => {
+test('覇者の剣・盾：IDはそのまま（能力値・売値・強化・第5章の報酬も同じ）。勇者の剣・盾は別IDの装備（2026年10月21日〜）で、イベント以外からは出ない', () => {
   const I = D.ITEMS;
   eq(I.hero_sword.name, '覇者の剣'); eq(I.hero_sword.type, 'weapon'); eq(I.hero_sword.atk, 27); eq(I.hero_sword.sell, 900);
   eq(I.hero_shield.name, '覇者の盾'); eq(I.hero_shield.type, 'shield'); eq(I.hero_shield.def, 19); eq(I.hero_shield.sell, 860);
   eq(JSON.stringify(D.CHAPTERS[5].reward.items), JSON.stringify(['hero_sword', 'hero_shield'])); eq(D.CHAPTERS[5].boss, 'mist');
   eq(TS.ASSETS.items.byId.hero_sword, 'assets/items-boss/hasha-sword'); eq(TS.ASSETS.items.byId.hero_shield, 'assets/items-boss/hasha-shield');
-  // お宝：別ID・装備できない・売れない・展示室の枠に無い・絵は今までの勇者の剣・盾（コードの絵）
+  // 勇者の剣・盾：別ID・装備できる武器と盾・売れない・展示室の枠に無い・絵は今までの勇者の剣・盾（コードの絵）
   for (const [id, old] of [['hero_sword_relic', 'hero_sword'], ['hero_shield_relic', 'hero_shield']]) {
-    const d = I[id]; assert(id !== old && d.type === 'treasure' && d.noSell && !d.atk && !d.def, id);
+    const d = I[id]; assert(id !== old && d.type === I[old].type && d.noSell, id);
     eq(d.icon, I[old].icon); eq(d.tint, I[old].tint); assert(!TS.ASSETS.items.byId[id], 'old code-drawn art');
     assert(!D.MUSEUM_ITEMS.includes(id));
-    // どこからも出ない：床・敵（同じ表）・店・旅商人・ボスの報酬
+    // イベント（コイ・ワーン）以外からは出ない：床・敵（同じ表）・店・旅商人・ボスの報酬
     eq(G.itemFloors(id).length, 0, id + ' not on floors');
     for (let ch = 1; ch <= 6; ch++) { assert(!D.CHAPTERS[ch].reward.items.includes(id)); for (let f = 1; f <= 35; f++) assert(!D.floorFor(ch, f).items.some(([i]) => i === id)); }
     for (const st of Object.values(D.SHOP_STOCK)) assert(!st.includes(id));
@@ -3717,6 +3717,83 @@ test('33階・真大魔王バーン（版4）：正方形の決戦場（15×15�
   assert(r.portal && G.inArena(r, r.portal.x, r.portal.y), 'portal in the arena'); eq(G.themeOf(r), 'void');
   // ほかのボス（例：第1章15階）は今までどおり前室つき
   const S2 = newRun(3302); goToFloor(S2, D.CHAPTERS[1] ? 15 : 15); if (S2.run.map.boss) assert(!S2.run.map.arenaOnly && S2.run.map.rooms.length === 2, 'other boss rooms unchanged');
+});
+
+test('オリハルコン：30階から床・敵（各5%）。29階まで・33階の決戦場には置かない。ティウが救援で持ち帰り、町で1回だけ1個。倒れても受け取れる', () => {
+  const O = D.ORICHALCUM;
+  eq(O.from, 30); eq(O.floor, 0.05); eq(O.drop, 0.05); eq(O.tiw, 1); eq(O.sword, 1);
+  eq(D.ITEMS.orichalcum.type, 'material');
+  // 床：最終章の31・32階に置かれることがある。29階までは置かない
+  const S = G.newState(); S.village.story.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) S.village.story.defeated[k] = true;
+  let deep = 0, shallow = 0, deepAll = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const T = G.newState(); T.village.story.chapter = 6; departWithScroll(T, 4000 + seed);
+    goToFloor(T, 29); shallow += T.run.floorItems.filter((f) => f.item && f.item.id === 'orichalcum').length;
+    goToFloor(T, 31); const it = T.run.floorItems.filter((f) => f.item); deepAll += it.length; deep += it.filter((f) => f.item.id === 'orichalcum').length;
+    if (seed <= 3) { goToFloor(T, 33); eq(T.run.floorItems.filter((f) => f.item).length, 0, '33F arena has no items'); }
+  }
+  eq(shallow, 0, 'none before 30F'); assert(deep > 0 && deep / deepAll < 0.15, 'some on 31F ' + deep + '/' + deepAll);
+  // 敵：31階で倒すと、ときどきオリハルコンを落とす（ふつうの落とし物の代わり）
+  const T = G.newState(); T.village.story.chapter = 6; departWithScroll(T, 4321); goToFloor(T, 31); bigRoomFloor(T);
+  let got = 0;
+  for (let i = 0; i < 300; i++) { T.run.floorItems = []; const e = realEnemy(T, 'imp', 6, 5, 31); G._damageEnemy(T, e, 99999, [], 'x'); got += T.run.floorItems.filter((f) => f.item && f.item.id === 'orichalcum').length; }
+  assert(got >= 5 && got <= 35, 'drop about 5%: ' + got + '/300');
+  // 29階では落とさない
+  const U = newRun(77); goToFloor(U, 12); bigRoomFloor(U); let low = 0;
+  for (let i = 0; i < 200; i++) { U.run.floorItems = []; const e = realEnemy(U, 'bat', 6, 5, 12); G._damageEnemy(U, e, 99999, [], 'x'); low += U.run.floorItems.filter((f) => f.item && f.item.id === 'orichalcum').length; }
+  eq(low, 0);
+  // ティウ：救援を終えると村の記録に「預かっている」。この探索で倒れても、町で1回だけ1個
+  const R = G.newState(), st = R.village.story; st.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) st.defeated[k] = true;
+  departWithScroll(R, 310); goToFloor(R, 30); defeatBoss(R); assert(G.commitRescue(R).ok);
+  eq(st.oriTiw, 'holding'); eq(R.village.materials.orichalcum || 0, 0, 'not given in the dungeon');
+  R.run.player.hp = 0; G.act(R, { type: 'wait' });   // 倒れたことにする
+  if (R.run) { R.run.over = true; G.finishRun(R); }
+  assert(G.canTakeTiwOri(R.village));
+  assert(G.takeTiwOri(R).ok); eq(R.village.materials.orichalcum, 1); eq(st.oriTiw, 'given');
+  assert(!G.takeTiwOri(R).ok); eq(R.village.materials.orichalcum, 1, 'only once');
+});
+test('勇者の剣・盾と無限強化：コイはオリハルコン1個（お金なし）で勇者の剣を1回だけ。+9からはオリハルコンと+1000Gずつ。ワーンは像のあと勇者の盾を1回だけ', () => {
+  const I = D.ITEMS;
+  eq(I.hero_sword_relic.atk, 30); eq(I.hero_shield_relic.def, 24);
+  const maxW = Math.max(...Object.entries(I).filter(([id, d]) => d.type === 'weapon' && id !== 'hero_sword_relic').map(([, d]) => d.atk));
+  const maxS = Math.max(...Object.entries(I).filter(([id, d]) => d.type === 'shield' && id !== 'hero_shield_relic').map(([, d]) => d.def));
+  assert(I.hero_sword_relic.atk > maxW && I.hero_shield_relic.def > maxS, 'strongest base');
+  // 費用：+9 はオリハルコン1個・(+8にするときの金額)+1000G。そのあと +1 ごとに 1個・1000G ずつ増える
+  eq(D.SMITH.cost(7), 1200); eq(JSON.stringify(D.SMITH.mats(7)), JSON.stringify({ gold_leaf: 1 }));
+  eq(D.SMITH.cost(8), 2200); eq(JSON.stringify(D.SMITH.mats(8)), JSON.stringify({ orichalcum: 1 }));
+  eq(D.SMITH.cost(9), 3200); eq(JSON.stringify(D.SMITH.mats(9)), JSON.stringify({ orichalcum: 2 }));
+  eq(D.SMITH.cost(10), 4200); eq(JSON.stringify(D.SMITH.mats(10)), JSON.stringify({ orichalcum: 3 }));
+  const S = G.newState(), V = S.village; V.funds = 99999;
+  for (const id of ['storage2', 'smith1', 'smith2', 'smith3']) V.built[id] = true; G.applyFacilities(V);
+  // コイ：オリハルコンが無ければ起きない
+  assert(!G.canForgeHeroSword(V));
+  const sw = G.makeItem(S, 'golden_shield'); sw.plus = 8; V.storage.push(sw);
+  V.materials.orichalcum = 3;
+  eq(G.smithMax(V), 8, 'cap before the event'); assert(!G.smith(S, sw.uid).ok);
+  // 勇者の剣：1個使う・お金は変わらない・バッグへ・無限強化の解放
+  const f0 = V.funds; assert(G.canForgeHeroSword(V)); const r = G.forgeHeroSword(S); assert(r.ok);
+  eq(V.materials.orichalcum, 2); eq(V.funds, f0); assert(V.bag.some((i) => i.id === 'hero_sword_relic')); assert(V.story.heroForge);
+  assert(!G.canForgeHeroSword(V) && !G.forgeHeroSword(S).ok, 'only once');
+  eq(V.bag.filter((i) => i.id === 'hero_sword_relic').length, 1);
+  // +9（盾も対象）：1個・2200G。+10：2個・3200G。強化値は引き継ぐ
+  eq(G.smithMax(V), Infinity);
+  const f1 = V.funds; assert(G.smith(S, sw.uid).ok); eq(sw.plus, 9); eq(V.materials.orichalcum, 1); eq(f1 - V.funds, 2200);
+  const m = G.smith(S, sw.uid); assert(!m.ok && /オリハルコン/.test(m.msg), 'needs 2 for +10');
+  V.materials.orichalcum = 2; assert(G.smith(S, sw.uid).ok); eq(sw.plus, 10); eq(V.materials.orichalcum, 0);
+  // 鍛冶屋の設備が +8 まで届いていなければ、+9 へは行けない
+  const S2 = G.newState(); S2.village.built.storage2 = true; S2.village.built.smith1 = true; G.applyFacilities(S2.village); S2.village.story.heroForge = true; eq(G.smithMax(S2.village), 3);
+  // アクセサリーは対象外
+  const acc = G.makeItem(S, 'poison_ring'); acc.plus = 0; V.storage.push(acc); assert(!G.canSmith(V, acc));
+  // 勇者の剣も強化できる
+  const hs = V.bag.find((i) => i.id === 'hero_sword_relic'); assert(G.canSmith(V, hs));
+  // ワーン：食堂と像があるときだけ。1回だけ
+  assert(!G.canGetHeroShield(V), 'no statue yet');
+  V.built.diner = true; V.built.yanai_statue = true; G.applyFacilities(V);
+  assert(G.canGetHeroShield(V)); assert(G.giveHeroShield(S).ok);
+  eq(V.bag.concat(V.storage).filter((i) => i.id === 'hero_shield_relic').length, 1);
+  assert(!G.canGetHeroShield(V) && !G.giveHeroShield(S).ok, 'only once');
+  // セーブして読み込んでも、二度は起きない
+  const L = TS.Save.deserialize(TS.Save.serialize(S)); assert(L.village.story.heroForge && L.village.story.heroShield); assert(!G.canGetHeroShield(L.village) && !G.canForgeHeroSword(L.village));
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

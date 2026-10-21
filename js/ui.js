@@ -472,7 +472,11 @@
   // ティウの立つマス（船着き場の案内人）
   function tiwAt() { const f = UI.vview && UI.vview.fac.find((f) => f.npc === 'tiw'); return f ? { x: f.npcAt[0], y: f.npcAt[1] } : null; }
   function creatureTalk(kind, id) {
-    if (kind === 'tiw') { openTiwGuide(); return; }
+    if (kind === 'tiw') {
+      // 30階の救援でティウが持ち帰ったオリハルコンを、町で1回だけ受け取る（そのあとはいつもの冒険案内）
+      if (G.canTakeTiwOri(UI.S.village)) { G.takeTiwOri(UI.S); villageChanged(); talk(D.STORY.orichalcum.tiwTown); return; }
+      openTiwGuide(); return;
+    }
     if (kind === 'wolf') { talk([['narration', D.STORY.tiwGuide.wolf]]); return; }
     if (kind === 'kid') talk(KID_LINES[id] || [['villager', '……']]);
     else talk([['narration', CAT_LINES[id] || 'にゃー。']]);
@@ -531,8 +535,8 @@
     switch (id) {
       case 'shop': return openShop('buy');
       case 'storage': return openStorage('in');
-      case 'smith': return openSmith();
-      case 'diner': return openDiner();
+      case 'smith': return G.canForgeHeroSword(UI.S.village) ? forgeHeroSword() : openSmith();
+      case 'diner': return G.canGetHeroShield(UI.S.village) ? heroShieldEvent() : openDiner();
       case 'museum': return openMuseum();
       case 'develop': return openDevelop();
       case 'bag': return openVillageBag();
@@ -663,8 +667,27 @@
       have.map((id) => `<div class="row mat" data-id="${id}"><img src="${SP.iconURL(D.ITEMS[id])}" alt=""><span class="nm wrap">${esc(D.ITEMS[id].name)}</span><span class="pr">${V.materials[id]}個</span></div>`).join('') + '</div>';
   }
   function materialsBox(V) {
-    const all = ['amber_shard', 'bronze_shard', 'crystal_shard', 'gold_leaf'];
+    const all = ['amber_shard', 'bronze_shard', 'crystal_shard', 'gold_leaf', 'orichalcum'];
     return '<div class="kv">' + all.map((m) => `<span>${esc(D.ITEMS[m].name)}</span><span>${V.materials[m] || 0}個 <small class="note">（${D.ITEMS[m].depth}階〜）</small></span>`).join('') + '</div>';
+  }
+  // コイが勇者の剣を打つ（オリハルコンを持って鍛冶屋へ。1回だけ。打ち終えると無限強化が解放）→ そのまま鍛冶屋の画面へ
+  function forgeHeroSword() {
+    const O = D.STORY.orichalcum;
+    talk(O.koiSee, () => {
+      const r = G.forgeHeroSword(UI.S); villageChanged();
+      if (!r.ok) return;
+      AU.sfx('levelup');
+      talk(O.koiDone.concat(r.inStorage ? [['narration', '（持ち物がいっぱいなので、倉庫に入れた）']] : []), () => openSmith());
+    });
+  }
+  // ワーンが勇者の盾を渡す（マスターヤナイの像のあと。1回だけ）→ そのまま食堂の画面へ
+  function heroShieldEvent() {
+    talk(D.STORY.orichalcum.waanShield, () => {
+      const r = G.giveHeroShield(UI.S); villageChanged();
+      if (!r.ok) return;
+      AU.sfx('levelup');
+      if (r.inStorage) talk([['narration', '（持ち物がいっぱいなので、倉庫に入れた）']], () => openDiner()); else openDiner();
+    });
   }
   function openSmith() {
     const V = UI.S.village;
@@ -678,7 +701,7 @@
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
       const list = V.bag.concat(V.storage).filter((i) => ['weapon', 'shield'].includes(G.def(i).type));
       const nx = ['smith2', 'smith3'].map(G.facility).find((f) => !G.hasFacility(V, f.id));
-      let html = `<p>設備：<b>Lv${V.smithLv}</b>　強化の上限：<b>+${G.smithMax(V)}</b>${nx ? `<br><span class="note">次の設備「${esc(nx.name)}」${nx.price}G＋${matsText(nx.mats)}</span>` : ''}</p>`;
+      let html = `<p>設備：<b>Lv${V.smithLv}</b>　強化の上限：<b>${G.smithMax(V) === Infinity ? 'なし（オリハルコンで +9 から）' : '+' + G.smithMax(V)}</b>${nx ? `<br><span class="note">次の設備「${esc(nx.name)}」${nx.price}G＋${matsText(nx.mats)}</span>` : ''}</p>`;
       html += '<details><summary class="note">素材箱を見る</summary>' + materialsBox(V) + '</details><div class="list">';
       if (!list.length) html += '<p>強化できる武器・盾がありません（バッグと倉庫の品が対象）。</p>';
       for (const it of list) {
@@ -1699,7 +1722,12 @@
     const wcv = SP.art && SP.art.village && TS.ASSETS.village.wolf && SP.art.village[TS.ASSETS.village.wolf.name];
     const wimg = wcv ? `<img class="tg-wolf" src="${wcv.toDataURL()}" alt="ティウの相棒のオオカミ">` : '';
     modal({ title: 'オオカミが来た！', html: `${wimg}<p>ティウの相棒のオオカミが、村の倉庫まで荷物を運んでくれた。</p><div class="okbox">預けた品：${w.sent}個　受け取った品：${w.got}個</div><p class="note">（運ぶ動きの演出は準備中）</p><p>玉座の後ろの階段から、31階へ進もう。</p>`,
-      noClose: true, buttons: [{ label: '進む', cls: 'primary', onClick: () => { G.wolfShown(UI.S); save(); updateHud(); } }] });
+      noClose: true, buttons: [{ label: '進む', cls: 'primary', onClick: () => {
+        G.wolfShown(UI.S); save(); updateHud();
+        // 帰り際のティウ：オリハルコンを町まで持ち帰ってくれる（話すのは1回だけ。受け取りは町で）
+        const st = UI.S.village.story;
+        if (st.oriTiw === 'holding' && !st.oriTiwTold) { st.oriTiwTold = true; save(); setTimeout(() => talk(D.STORY.orichalcum.tiwRescueEnd), 0); }
+      } }] });
   }
   UI.openRescue = openRescue;
 

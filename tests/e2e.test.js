@@ -824,6 +824,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     // 食堂
     const f1 = await p.evaluate(() => TS.UI.S.village.funds);
     await p.tap('.fac[data-fac="diner"]'); await p.waitForTimeout(150);
+    // マスターヤナイの像があるので、初めてはワーンが勇者の盾を渡す会話（2026年10月21日〜）。読み終えると食堂の画面
+    if (await p.$('.talk')) { await closeTalk(); await p.waitForTimeout(200); assert(await p.evaluate(() => TS.UI.S.village.story.heroShield), 'hero shield given'); }
     await p.tap('.row[data-id="gapao"]'); await p.waitForTimeout(100);
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(120);
     await closeTalk();
@@ -1025,6 +1027,10 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(await p.isVisible('.modal h2:has-text("オオカミが来た")'), 'wolf again after reload');
     eq2(await p.evaluate(() => TS.UI.S.run.bag.length + TS.UI.S.village.storage.length), a0.bag + a0.st, 'no dup after reload');
     await p.tap('.modal-buttons button >> text=進む'); await p.waitForTimeout(200);
+    // 帰り際のティウ：オリハルコンを町まで持ち帰る（その場では渡さない。2026年10月21日〜）
+    assert(await p.isVisible('.talk:has-text("オリハルコンを拾った")'), 'Tiw takes orichalcum home');
+    await closeTalk(); await p.waitForTimeout(150);
+    assert(await p.evaluate(() => TS.UI.S.village.story.oriTiw === 'holding' && !(TS.UI.S.village.materials.orichalcum > 0)), 'not given in the dungeon');
     eq2(await p.evaluate(() => TS.UI.S.run.final.rescue + '/' + TS.UI.S.run.final.wolf), 'done/null', 'rescue done');
     // 30階の時空の亀裂 → 31〜32階（自動では飛ばさない）→ 33階
     const floors = await p.evaluate(() => { const S = TS.UI.S, G = TS.Game, seen = [];

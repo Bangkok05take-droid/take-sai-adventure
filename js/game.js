@@ -204,6 +204,8 @@
     for (const [id, n] of Object.entries(c.mats)) { V.materials[id] -= n; for (let i = 0; i < n; i++) run.bag.push(G.makeItem(S, id)); nm += n; }
     run.final.rescue = 'done';
     run.final.rescuePlan = null;
+    // ティウがオリハルコンを拾って、町まで持ち帰ってくれる（村の記録。このあと倒れても・途中で帰っても、町でティウから受け取れる。1回だけ）
+    const st = V.story; if (!st.oriTiw) st.oriTiw = 'holding';
     run.final.wolf = { sent: c.out.length, got: c.inn.length + nm };
     G.log(run, 'オオカミが荷物を運んだ。（預けた ' + c.out.length + '個・受け取った ' + (c.inn.length + nm) + '個）');
     return { ok: true, sent: c.out.length, got: c.inn.length + nm };
@@ -355,7 +357,8 @@
       const pos = DG.freeTile(run.map, rng, occupied, room);
       if (!pos) break;
       occupied.push(pos);
-      const id = R.weighted(rng, F.items);
+      // 30階から：置く道具のうち D.ORICHALCUM.floor の割合でオリハルコン
+      const id = run.floor >= D.ORICHALCUM.from && R.chance(rng, D.ORICHALCUM.floor) ? 'orichalcum' : R.weighted(rng, F.items);
       run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id, D.ITEMS[id].type === 'staff' ? { charges: R.int(rng, 3, 5) } : null) });
     }
     const nGold = R.int(rng, F.goldCount[0], F.goldCount[1]);
@@ -435,7 +438,8 @@
       const pos = free.pop();
       occupied.push(pos);
       if (i % 3 === 2) { run.floorItems.push({ x: pos.x, y: pos.y, gold: D.goldAmount(f, R.next(rng)) * 2 }); continue; }
-      const id = R.weighted(rng, F.items);
+      // 30階から：置く道具のうち D.ORICHALCUM.floor の割合でオリハルコン
+      const id = run.floor >= D.ORICHALCUM.from && R.chance(rng, D.ORICHALCUM.floor) ? 'orichalcum' : R.weighted(rng, F.items);
       run.floorItems.push({ x: pos.x, y: pos.y, item: G.makeItem(S, id, D.ITEMS[id].type === 'staff' ? { charges: R.int(rng, 3, 5) } : null) });
     }
   }
@@ -957,6 +961,11 @@
       G.log(run, 'それは幻だった！');
     } else if (e.boss) {
       bossDefeated(S, e, ev);
+    } else if (!e.summoned && run.floor >= D.ORICHALCUM.from && !G.itemAt(run, e.x, e.y) && !DG.same(run.stairs, e) && !DG.same(run.returnPoint, e) && R.chance(run.rng, D.ORICHALCUM.drop)) {
+      // 30階から：敵を倒すと D.ORICHALCUM.drop の確率でオリハルコンを落とす（ふつうの落とし物の代わり）
+      run.floorItems.push({ x: e.x, y: e.y, item: G.makeItem(S, 'orichalcum') });
+      G.log(run, E.name + 'はオリハルコンを落とした！');
+      ev.push({ t: 'loot', x: e.x, y: e.y });
     } else if (!e.summoned && R.chance(run.rng, D.ENEMY_DROP_RATE) && !G.itemAt(run, e.x, e.y) && !DG.same(run.stairs, e) && !DG.same(run.returnPoint, e)) {
       const F = G.F(run);
       const id = R.weighted(run.rng, F.items);
@@ -2529,7 +2538,8 @@
   };
 
   // ---- 鍛冶屋 ----
-  G.smithMax = (V) => D.SMITH.maxPlusByLv[V.smithLv || 0];
+  // 強化の上限：設備の段階（+3/+5/+8）。コイが勇者の剣を打ったあと（V.story.heroForge）は、設備が +8 まで届いていれば上限なし（無限強化）
+  G.smithMax = (V) => { const m = D.SMITH.maxPlusByLv[V.smithLv || 0]; return m >= D.SMITH.maxPlus && V.story && V.story.heroForge ? Infinity : m; };
   G.smithCost = (it) => D.SMITH.cost(it.plus || 0);
   G.smithMats = (it) => D.SMITH.mats(it.plus || 0);
   G.canSmith = function (V, it) {
@@ -2541,7 +2551,8 @@
     const it = V.bag.find((i) => i.uid === uid) || V.storage.find((i) => i.uid === uid);
     if (!it) return { ok: false, msg: '見つかりません。' };
     if (!V.smithLv) return { ok: false, msg: '鍛冶屋がまだありません。' };
-    if (!G.canSmith(V, it)) return { ok: false, msg: (it.plus || 0) >= G.smithMax(V) && G.smithMax(V) < D.SMITH.maxPlus ? '今の設備ではここまで。鍛冶屋を拡張しよう。' : 'これ以上強化できません。' };
+    if (!G.canSmith(V, it)) return { ok: false, msg: (it.plus || 0) >= G.smithMax(V) && G.smithMax(V) < D.SMITH.maxPlus ? '今の設備ではここまで。鍛冶屋を拡張しよう。'
+      : (it.plus || 0) >= D.SMITH.maxPlus && !(V.story && V.story.heroForge) ? 'ここから先は、伝説の金属が要りそうだ……。' : 'これ以上強化できません。' };
     const cost = G.smithCost(it), mats = G.smithMats(it);
     if (V.funds < cost) return { ok: false, msg: 'お金が足りません。（' + cost + 'G 必要）' };
     for (const [m, n] of Object.entries(mats)) if ((V.materials[m] || 0) < n) return { ok: false, msg: '素材が足りません：' + D.ITEMS[m].name + '×' + n };
@@ -2549,6 +2560,39 @@
     for (const [m, n] of Object.entries(mats)) V.materials[m] -= n;
     it.plus = (it.plus || 0) + 1;
     return { ok: true, msg: G.itemName(it) + 'に強化した！' };
+  };
+
+  /* ---- オリハルコンと勇者の剣・盾（2026年10月21日） ----
+   *  ティウ：30階の救援で持ち帰ったオリハルコンを、町で1回だけ渡す（V.story.oriTiw：'holding' → 'given'）
+   *  コイ：オリハルコン（素材箱）を持って話しかけると勇者の剣を打つ（1個・お金なし）。1回だけ。無限強化の解放（V.story.heroForge）
+   *    ティウとの会話は条件にしない（ダンジョンで拾ったオリハルコンでもよい）。鍛冶屋が建っていること
+   *  ワーン：マスターヤナイの像があり、まだ受け取っていなければ勇者の盾を渡す（V.story.heroShield）。1回だけ
+   *  剣・盾はバッグに入れる（いっぱいなら倉庫。倉庫もいっぱいでも、なくさないよう倉庫へ） */
+  const giveVillageItem = (S, id) => { const V = S.village, it = G.makeItem(S, id); if (V.bag.length < D.BAG_SIZE) V.bag.push(it); else V.storage.push(it); return it; };
+  G.canTakeTiwOri = (V) => V.story.oriTiw === 'holding';
+  G.takeTiwOri = function (S) {
+    const V = S.village;
+    if (!G.canTakeTiwOri(V)) return { ok: false };
+    V.story.oriTiw = 'given';
+    V.materials.orichalcum = (V.materials.orichalcum || 0) + D.ORICHALCUM.tiw;
+    return { ok: true, n: D.ORICHALCUM.tiw };
+  };
+  G.canForgeHeroSword = (V) => !V.story.heroForge && (V.smithLv || 0) >= 1 && (V.materials.orichalcum || 0) >= D.ORICHALCUM.sword;
+  G.forgeHeroSword = function (S) {
+    const V = S.village;
+    if (!G.canForgeHeroSword(V)) return { ok: false };
+    V.materials.orichalcum -= D.ORICHALCUM.sword;
+    V.story.heroForge = true;
+    const it = giveVillageItem(S, 'hero_sword_relic');
+    return { ok: true, item: it, inStorage: V.storage.includes(it) };
+  };
+  G.canGetHeroShield = (V) => !V.story.heroShield && !!V.diner && !!(V.decor && V.decor.yanai_statue);
+  G.giveHeroShield = function (S) {
+    const V = S.village;
+    if (!G.canGetHeroShield(V)) return { ok: false };
+    V.story.heroShield = true;
+    const it = giveVillageItem(S, 'hero_shield_relic');
+    return { ok: true, item: it, inStorage: V.storage.includes(it) };
   };
 
   // ---- 食堂 ----

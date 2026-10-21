@@ -970,7 +970,7 @@
     P.set(8, 9, '#ff4a6a'); P.set(4, 11, '#4ac0ff'); P.set(12, 11, '#4ac0ff'); return P.outline(); };
   I.pearl = () => { const P = new Pix(16, 16); P.ball(8, 9, 6, 6, ramp('#f0f0ff')); P.set(6, 6, '#ffffff'); P.set(10, 12, '#c8c8f0'); return P.outline(); };
   // 素材：かけらの形に、地域の印（琥珀=しずく、青銅=歯車、すいしょう=ひし形、金ぱく=薄い板）
-  I.shard = (t) => { const P = new Pix(16, 16); const R = ramp({ amber: '#e8902a', bronze: '#c08a40', crystal: '#9ae8ff', gold: '#ffd84a' }[t] || '#cccccc');
+  I.shard = (t) => { const P = new Pix(16, 16); const R = ramp({ amber: '#e8902a', bronze: '#c08a40', crystal: '#9ae8ff', gold: '#ffd84a', orichalcum: '#5fe0c0' }[t] || '#cccccc');
     if (t === 'gold') { P.poly([[2, 6], [12, 3], [14, 10], [4, 13]], (x, y) => R[P.idx(0.4 + (x - 2) / 10, x, y)]); P.line(4, 7, 11, 5, R[0]); }
     else if (t === 'bronze') { P.ball(8, 8, 5.5, 5.5, R); P.ball(8, 8, 2, 2, ramp('#5a3a20')); for (let a = 0; a < 8; a++) P.set(8 + Math.cos(a * Math.PI / 4) * 6.5, 8 + Math.sin(a * Math.PI / 4) * 6.5, R[3]); }
     else if (t === 'amber') { P.ball(8, 10, 4.5, 4.5, R); P.poly([[8, 1], [12, 8], [4, 8]], R[2]); P.set(7, 9, '#fff2c0'); P.set(9, 11, '#7a4a10'); }
