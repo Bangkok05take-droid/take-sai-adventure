@@ -21,6 +21,29 @@ SHEETS = {
             # 1マス幅の壁：アーチ1つの細い壁（たいまつ左・右）。壁が奇数マスで終わる所・1マスだけの壁に使う
             'narrow': [(678, 327, 867, 566), (1000, 327, 1188, 566)]},
 }
+# 追加の原画（真上から見た形。2026年10月21日）：assets/reference/dungeon-7themes-v1/<地域>-extra-v1/
+#  brick_parts.png：1段目 床4枚・2段目 壁の上面4枚（各約246px＝2×2マス）・3段目 縁（右に縁・左に縁＝1マス幅2マス高、上に縁＝2マス幅）・4段目 角
+#  brick_inner_corners.png：内角（L字）4枚。今は使っていない（角は縁の継ぎ目の小さな四角で足りるため。docs/DUNGEON_ART_V1.md）
+#  ・壁の上面 top_0〜3：内側を切り出して 64×64（2×2マス）
+#  ・縁の帯：原画の縁（明るい石＋外側の影、約37px＝ゲームで約10ドット）だけを切り出す。rimW（左に床）10×64、rimE（右に床）10×64、rimN（上に床）64×10
+#  ・継ぎ目 joint：角の部品の、縁が直角に曲がる所の四角 10×10（斜めにだけ床がある壁の角・2方向の縁が出会う所に重ねる）
+EXTRA = {
+  'brick': {'dir': 'brick-extra-v1/', 'file': 'brick_parts.png',
+            'top': [(51, 341, 285, 573), (345, 341, 578, 573), (640, 341, 873, 573), (932, 341, 1166, 573)],
+            'rimW': (459, 628, 496, 864), 'rimE': (132, 628, 169, 864), 'rimN': (636, 757, 878, 794),
+            'joint': (731, 1009, 768, 1046)},
+}
+def build_extra(theme):
+  X = EXTRA.get(theme)
+  if not X: return
+  im = Image.open(SRC + '../' + X['dir'] + X['file']).convert('RGBA'); od = OUT + theme + '/'
+  for i, box in enumerate(X['top']):
+    im.crop(box).resize((64, 64), Image.LANCZOS).save(od + 'top_%d.png' % i, optimize=True)
+  im.crop(X['rimW']).resize((10, 64), Image.LANCZOS).save(od + 'rimW.png', optimize=True)
+  im.crop(X['rimE']).resize((10, 64), Image.LANCZOS).save(od + 'rimE.png', optimize=True)
+  im.crop(X['rimN']).resize((64, 10), Image.LANCZOS).save(od + 'rimN.png', optimize=True)
+  im.crop(X['joint']).resize((10, 10), Image.LANCZOS).save(od + 'joint.png', optimize=True)
+
 def build(theme):
   S = SHEETS[theme]; im = Image.open(SRC + S['file']).convert('RGBA')
   od = OUT + theme + '/'; os.makedirs(od, exist_ok=True)
@@ -50,5 +73,6 @@ def build(theme):
       for x in range(32):
         if px[x, y][3] < 160: px[x, y] = (0, 0, 0, 0)
     cv.save(od + 'narrow_%d.png' % i, optimize=True)
+  build_extra(theme)
   print(theme, 'ok')
 for t in (sys.argv[1:] or SHEETS.keys()): build(t)

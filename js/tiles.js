@@ -508,7 +508,8 @@
   /* 地域の背景の絵（ZIP dungeon_7themes_art_v1。D.DUNGEON_ART で使う地域だけ）。上のコードの絵を描いたあとに重ねる（地図・当たり判定は変えない）。
    *  床：64×64（2×2マス）の絵を、マップ全体の座標の偶数マスにそろえて敷く（柄は2×2マスごとに選ぶ）。通路は少し暗く。上・左が壁なら影
    *  壁の正面（下が床）：64×64（2マス幅・2マス高）の壁の絵の下半分。その上のマス（壁）には上半分（上の透明な所は今の壁の上面が見える）
-   *  壁の上面・横向きの壁・角は、使える絵がまだ無いので今のコードの絵のまま。正面の壁のたいまつは絵に描かれているので、動くたいまつは出さない */
+   *  壁の上面（正面以外の壁）：64×64（2×2マス）の上面の絵。床に面した辺には縁（左・右・上＝部屋の下の壁）、縁どうしが出会う外角と、
+   *  斜めだけ床に触れる内角には目地の角（10×10）。縁・角の絵が無い地域は今のコードの絵のまま。正面の壁のたいまつは絵に描かれているので、動くたいまつは出さない */
   function artOverlay(run, L, x, y, theme, at, walk, out) {
     const D = TS.Data, A = SP.art.dungeon && SP.art.dungeon[theme];
     const ready = (l) => l && l.length && l.every(Boolean);
@@ -532,8 +533,21 @@
     } else if (walk(x, y + 1)) {
       const w = wallPart(y); g.drawImage(w.img, w.sx, 32, 32, 32, x0, y0, 32, 32);
       out.torch = false;
-    } else if (isFace(x, y + 1)) {
-      const w = wallPart(y + 1); g.drawImage(w.img, w.sx, 0, 32, 32, x0, y0, 32, 32);
+    } else {
+      const top = ready(A.top) && ready(A.rimW) && ready(A.rimE) && ready(A.rimN) && ready(A.joint);
+      if (top) g.drawImage(A.top[hash(x >> 1, y >> 1, seed + 94) % A.top.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
+      const face = isFace(x, y + 1);
+      if (face) { const w = wallPart(y + 1); g.drawImage(w.img, w.sx, 0, 32, 32, x0, y0, 32, 32); }
+      if (!top) return;
+      // 縁：床に面した辺（下は壁の正面の絵が受け持つ）。2マス分の縁の絵を、マスの偶奇で上下（左右）半分ずつ使う
+      const fW = walk(x - 1, y), fE = walk(x + 1, y), fN = walk(x, y - 1);
+      if (fW) g.drawImage(A.rimW[0], 0, (y & 1) * 32, 10, 32, x0, y0, 10, 32);
+      if (fE) g.drawImage(A.rimE[0], 0, (y & 1) * 32, 10, 32, x0 + 22, y0, 10, 32);
+      if (fN) g.drawImage(A.rimN[0], (x & 1) * 32, 0, 32, 10, x0, y0, 32, 10);
+      // 目地の角：外角（縁が2本出会う）と内角（そのマスの縦横は壁で、斜めだけ床）。下側は下のマスが正面の壁なら描かない（正面の絵が受け持つ）
+      const corner = (dx, dy, a, b) => { if ((a && b) || (!a && !b && walk(x + dx, y + dy))) g.drawImage(A.joint[0], x0 + (dx > 0 ? 22 : 0), y0 + (dy > 0 ? 22 : 0)); };
+      corner(-1, -1, fW, fN); corner(1, -1, fE, fN);
+      if (!face) { corner(-1, 1, fW, false); corner(1, 1, fE, false); }
     }
   }
 
