@@ -2198,9 +2198,10 @@ test('シルバーデビル：1手番に2回。離れていれば2歩、隣な�
   // たけの3点セットの2回行動とは別（敵の手番の中だけの話）
   eq(D.ENEMIES.silverdevil.ai, 'double');
 }));
-test('ギガンテス：HP・攻撃・防御が高く、近づいて通常攻撃だけ（特別な技なし）', () => withHit(() => {
+test('ギガンテス：HPがいちばん高く守りも固い（2026年10月21日、Lv35で苦戦するくらいに弱めた）。近づいて通常攻撃だけ（特別な技なし）', () => withHit(() => {
   const E = D.ENEMIES.gigantes, others = ['darkknight', 'guard', 'golem'].map((k) => D.ENEMIES[k]);
-  assert(others.every((o) => E.hp > o.hp && E.atk > o.atk && E.def > o.def), 'high stats'); eq(E.ai, 'melee');
+  assert(others.every((o) => E.hp > o.hp && E.def > o.def), 'high hp/def'); eq(E.ai, 'melee');
+  eq(E.hp + '/' + E.atk + '/' + E.def, '200/30/20'); eq(D.ENEMIES.dragon.hp + '/' + D.ENEMIES.dragon.atk, '140/30');
   const { S, run, p, put } = strongRoom(4103); const g = put('gigantes', 8, 5); G.updateVision(run);
   G.act(S, { type: 'wait' }); eq(g.x, 7, 'approaches'); assert(!g.charge, 'no special');
 }));
@@ -3616,7 +3617,7 @@ test('あくまのきし：大技のあとは2行動のあいだ防御（ダメ�
   // 防御中は受けるダメージ40%（2026年10月21日 50% → 40%）。ふだんの防御 20 → 17
   eq(D.ENEMIES.darkknight.defend.cut, 0.4); eq(D.ENEMIES.darkknight.def, 17);
   const atk = 120; k.guard = 1; const hp1 = k.hp; const evs = []; G._damageEnemy(S, k, atk, evs, 'x'); eq(hp1 - k.hp, 48, '40% damage');
-  eq(D.ENEMIES.silverdevil.atk, 30, 'silver devil atk 34 -> 30');
+  eq(D.ENEMIES.silverdevil.atk, 26, 'silver devil atk 34 -> 30 -> 26');
 });
 test('ベビーサタン：5行動ごとに、たけのまわり3×3を予告して炎（攻撃力×1.6）。予告の外へ出ればかわせる。ふだんは火の玉', () => {
   const S = newRun(905); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 5000;

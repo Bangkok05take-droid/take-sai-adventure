@@ -452,13 +452,13 @@
       tip: '斧を振りかぶってから強打する。そのあとは盾で守りを固める（ダメージが大きく減る）。ときどき盾を構えて攻撃を受け止める。' },
     /* ---- 隠しダンジョンの強敵（2026年10月：動きは確定。能力値・数値はすべて**仮**＝D.STRONG の調整案。専用の絵はChatGPT側） ----
      * 絵が届くまでは、今の敵の絵に色を重ねた仮の見た目（js/sprites.js の SP.PLACEHOLDER）。base 31：深さによる強化は31階から */
-    dragon:      { name: 'ドラゴン',         hp: 190, atk: 46, def: 20, exp: 230, ai: 'breath', sprite: 'dragon', base: 31,
+    // 2026年10月21日：Lv35で苦戦するくらいに弱めた（tools/strong-enemy-balance.js）。ドラゴン HP190→140・攻撃46→30、シルバーデビル 攻撃30→26、ギガンテス HP320→200・攻撃58→30・防御26→20
+    dragon:      { name: 'ドラゴン',         hp: 140, atk: 30, def: 20, exp: 230, ai: 'breath', sprite: 'dragon', base: 31,
       tip: '一直線に炎を吐く。炎は最初に当たった相手で止まるので、間にほかの敵がいれば盾になる。' },
-    // シルバーデビル：2026年10月21日 攻撃 34 → 30
-    silverdevil: { name: 'シルバーデビル',   hp: 110, atk: 30, def: 16, exp: 200, ai: 'double', sprite: 'silverdevil', base: 31,
+    silverdevil: { name: 'シルバーデビル',   hp: 110, atk: 26, def: 16, exp: 200, ai: 'double', sprite: 'silverdevil', base: 31,
       tip: '1回の手番に2回動く。離れていれば2歩、隣なら2回攻撃。' },
-    gigantes:    { name: 'ギガンテス',       hp: 320, atk: 58, def: 26, exp: 300, ai: 'melee', sprite: 'gigantes', base: 31,
-      tip: 'HP・攻撃・防御がとても高い。ひたすら近づいて殴ってくる。' },
+    gigantes:    { name: 'ギガンテス',       hp: 200, atk: 30, def: 20, exp: 300, ai: 'melee', sprite: 'gigantes', base: 31,
+      tip: 'HPがとても高く、守りも固い。ひたすら近づいて殴ってくる。' },
     bombrock:    { name: '爆弾岩',           hp: 150, atk: 30, def: 30, exp: 160, ai: 'bomb', sprite: 'bombrock', base: 31,
       tip: 'HPが少なくなると動かなくなり、ぎりぎりまで減ると自爆する。一撃で倒せば爆発しない。' },
     mimic:       { name: 'ミミック',         hp: 160, atk: 48, def: 22, exp: 250, ai: 'mimic', sprite: 'mimic', base: 31,
