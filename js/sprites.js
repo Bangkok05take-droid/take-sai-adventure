@@ -1335,7 +1335,7 @@
    * SP.art.items[キー] = { list(48×48), floor(32×32) } */
   SP.fxFrames = (k) => { const f = SP.art.fxFrames[k]; return f && f.length && f.every(Boolean) ? f : null; };
   SP.bossPose = (sprite, pose) => (SP.art.bossPoses[sprite] || {})[pose] || null;
-  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, ground: {}, bosses: {}, enemies: {}, enemySheet: {}, take: {}, rooms: {}, fx: {}, fxFrames: {}, bossPoses: {}, ready: false };
+  SP.art = { chars: {}, items: {}, itemsById: {}, gold: {}, chest: {}, village: {}, ground: {}, bosses: {}, enemies: {}, enemySheet: {}, take: {}, rooms: {}, fx: {}, fxFrames: {}, bossPoses: {}, dungeon: {}, ready: false };
   SP.loadArt = function (onDone) {
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
@@ -1379,6 +1379,8 @@
     for (const [k, src] of Object.entries(A.fx || {})) if (src) load(src, (img) => { SP.art.fx[k] = img; });   // 技の演出の絵
     // 技の演出のコマ（順番どおりに並べる。全部読めたときだけ SP.fxFrames(k) が返す）
     for (const [k, list] of Object.entries(A.fxFrames || {})) { SP.art.fxFrames[k] = new Array(list.length).fill(null); list.forEach((src, i) => load(src, (img) => { SP.art.fxFrames[k][i] = img; })); }
+    // 通常ダンジョンの地域の背景（地域ごとに floor・wall の絵の並び。全部読めたときだけ使う：TS.Tiles）
+    for (const [th, parts] of Object.entries(A.dungeon || {})) { const o = SP.art.dungeon[th] = {}; for (const [k, list] of Object.entries(parts)) { o[k] = new Array(list.length).fill(null); list.forEach((src, i) => load(src, (img) => { o[k][i] = img; })); } }
     for (const [k, poses] of Object.entries(A.bossPoses || {})) for (const [pose, src] of Object.entries(poses)) load(src, (img) => { const c = toCanvas(img); c.art = true; (SP.art.bossPoses[k] = SP.art.bossPoses[k] || {})[pose] = c; });
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
     for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {

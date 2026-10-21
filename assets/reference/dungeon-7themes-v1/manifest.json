@@ -1,0 +1,96 @@
+{
+  "status": "source_art_not_engine_ready",
+  "assets": [
+    {
+      "file": "sheets/01_brick.png",
+      "name": "レンガの回廊",
+      "floors": "1〜3階",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "sha256": "9bcbcc6d7b2f63ac4154a1bd86f3ff2abf7f1b89401ba41a242e12359056a8de"
+    },
+    {
+      "file": "sheets/02_roots.png",
+      "name": "木の根の遺跡",
+      "floors": "4〜6階",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "sha256": "0dced94aa34a37e713805c50d04664398dc5aba2c372ffd93f1a0472d926247f"
+    },
+    {
+      "file": "sheets/03_ruins.png",
+      "name": "地下の遺跡",
+      "floors": "7〜14階",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "sha256": "fdce10b4a608386f758cbe4587651bf5e5bbed7af4594463ea594a75e4bf42a7"
+    },
+    {
+      "file": "sheets/04_sunken_city.png",
+      "name": "水没した古代都市",
+      "floors": "16〜19階",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "sha256": "635eae682042de372c0296ade3acde4669620706da6c1c624eed74ae97798412"
+    },
+    {
+      "file": "sheets/05_temple.png",
+      "name": "地底の古代神殿",
+      "floors": "21〜24階",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "sha256": "a5c293a740246d1866db1f40e96845268aaf2126db5eeb43c891bd37d7523f75"
+    },
+    {
+      "file": "sheets/06_sealed_depths.png",
+      "name": "封印の最深部",
+      "floors": "26〜29階",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "sha256": "da2e2ed2722e9188f72521faf13228a2aaccafad68d2c4329de8af82d143b72b"
+    },
+    {
+      "file": "sheets/07_demon_castle.png",
+      "name": "大魔王の城",
+      "floors": "31〜32階",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "sha256": "5bc0bd7de03a6ab4c10dc4f67d78a9a5d7ce97f83c3687d7109be3522d56179f"
+    }
+  ]
+}

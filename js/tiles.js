@@ -484,8 +484,42 @@
       }
     }
     L.g.putImageData(img, x0, y0);
+    artOverlay(run, L, x, y, theme, at, walk, out);
     return out;
   };
+
+  /* 地域の背景の絵（ZIP dungeon_7themes_art_v1。D.DUNGEON_ART で使う地域だけ）。上のコードの絵を描いたあとに重ねる（地図・当たり判定は変えない）。
+   *  床：64×64（2×2マス）の絵を、マップ全体の座標の偶数マスにそろえて敷く（柄は2×2マスごとに選ぶ）。通路は少し暗く。上・左が壁なら影
+   *  壁の正面（下が床）：64×64（2マス幅・2マス高）の壁の絵の下半分。その上のマス（壁）には上半分（上の透明な所は今の壁の上面が見える）
+   *  壁の上面・横向きの壁・角は、使える絵がまだ無いので今のコードの絵のまま。正面の壁のたいまつは絵に描かれているので、動くたいまつは出さない */
+  function artOverlay(run, L, x, y, theme, at, walk, out) {
+    const D = TS.Data, A = SP.art.dungeon && SP.art.dungeon[theme];
+    const ready = (l) => l && l.length && l.every(Boolean);
+    if (!D.DUNGEON_ART || !D.DUNGEON_ART[theme] || !A || !ready(A.floor) || !ready(A.wall) || !ready(A.narrow)) return;
+    const g = L.g, x0 = x * 32, y0 = y * 32, seed = (run.seed ^ (run.floor * 7919)) >>> 0, k = at(x, y);
+    const isFace = (xx, yy) => at(xx, yy) === WALL && walk(xx, yy + 1);
+    // 壁の正面の並び（左の端から数える）：2マスずつ横長の絵。奇数マスで終わる最後の1マスと、1マスだけの壁は細い絵
+    const wallPart = (yy) => {
+      let s0 = x; while (isFace(s0 - 1, yy)) s0--;
+      let s1 = x; while (isFace(s1 + 1, yy)) s1++;
+      const idx = x - s0, len = s1 - s0 + 1;
+      if (len % 2 === 1 && idx === len - 1) return { img: A.narrow[hash(x, yy, seed + 93) % A.narrow.length], sx: 0 };
+      return { img: A.wall[hash(s0 + (idx >> 1), yy, seed + 92) % A.wall.length], sx: (idx & 1) * 32 };
+    };
+    if (k !== WALL) {
+      g.drawImage(A.floor[hash(x >> 1, y >> 1, seed + 91) % A.floor.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
+      if (k === CORR) { g.fillStyle = 'rgba(24,12,6,0.22)'; g.fillRect(x0, y0, 32, 32); }
+      const shade = (gx0, gy0, gx1, gy1, rx, ry, rw, rh) => { const gr = g.createLinearGradient(gx0, gy0, gx1, gy1); gr.addColorStop(0, 'rgba(22,10,4,0.6)'); gr.addColorStop(1, 'rgba(22,10,4,0)'); g.fillStyle = gr; g.fillRect(rx, ry, rw, rh); };
+      if (at(x, y - 1) === WALL) shade(0, y0, 0, y0 + 9, x0, y0, 32, 9);
+      if (at(x - 1, y) === WALL) shade(x0, 0, x0 + 6, 0, x0, y0, 6, 32);
+    } else if (walk(x, y + 1)) {
+      const w = wallPart(y); g.drawImage(w.img, w.sx, 32, 32, 32, x0, y0, 32, 32);
+      out.torch = false;
+    } else if (isFace(x, y + 1)) {
+      const w = wallPart(y + 1); g.drawImage(w.img, w.sx, 0, 32, 32, x0, y0, 32, 32);
+    }
+  }
+
 
   // ---------------- 部品 ----------------
   function drawTop(T, theme, x0, y0, seed) {

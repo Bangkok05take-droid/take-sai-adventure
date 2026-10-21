@@ -175,6 +175,12 @@
       calamityWall: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_wall_' + i + '.png'),
       tenchiMato: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/tenchi_mato_' + i + '.png'),
     },
+    /* 通常ダンジョンの地域の背景（ZIP dungeon_7themes_art_v1 の原画を tools/make-dungeon-art.py で切り出し・縮小）。
+     * 床 floor：64×64＝2×2マス。壁 wall：64×64＝2マス幅・2マス高（下が壁の正面、上が壁の上の段）。
+     * 使うかどうかは D.DUNGEON_ART（地域ごと。本番はまだ空＝今までのコードの絵。確認の道具がプレビューで切り替える） */
+    dungeon: {
+      brick: { floor: [0, 1, 2].map((i) => 'assets/dungeon/brick/floor_' + i + '.png'), wall: [0, 1].map((i) => 'assets/dungeon/brick/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/brick/narrow_' + i + '.png') },
+    },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },
     /* 通常の敵（assets/enemies/）：見本の一覧画像から tools/extract-enemies.py で作る透過PNG。まだ素材が無いので空。

@@ -97,6 +97,9 @@
   D.CROC_ROOM_PREVIEW = roomPreview('crocPreview', 808, 108, 352, 1600, 'tiles');
   D.FLAME_ROOM_PREVIEW = roomPreview('flamePreview', 718, 150, 365, 1536, 'tiles', { hazardOutline: true });
   D.BOSS_ROOM_PREVIEW = {};   // プレビューのときだけ { truevearn: 'TRUEVEARN_ROOM_PREVIEW' } など（確認の道具が切り替える）
+  /* 通常ダンジョンの地域の背景の絵（ZIP dungeon_7themes_art_v1）を使う地域。{ brick: true } のように。
+   * 2026年10月21日：レンガの回廊のプレビューを作った段階（本番は空＝今までのコードの絵）。確認の道具 tools/dungeon-art-preview.js が切り替える */
+  D.DUNGEON_ART = {};
   /* 隠しダンジョン（2026年10月確定）：真大魔王バーンを倒したあと、30階の時空の亀裂から入る。
    * 31階から始まり、35階の竜人王バランまで。31〜34階は部屋の数が本編の約2倍（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul、仮）。帰還の祠は無い。
    * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜人王バランを倒したあとの帰還口
