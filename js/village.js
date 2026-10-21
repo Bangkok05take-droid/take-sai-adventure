@@ -840,9 +840,10 @@
     // 木・ヤシ（道や入口をふさがない場所だけ）
     // (0,17) のヤシは、こもれびの家の左の軒に重なるので、家の絵があるときは置かない
     const trees = [['palm', 0, 4]].concat(lv.ruinArt ? [] : [['round', 6, 4], ['round', 13, 4]], [['palm', 19, 4]],   // 石段の両わきの木は、遺跡の壁（木の根が絡む壁・崩れた壁）に置きかえ
-      [ ['palm', 0, 8], ['palm', 19, 8], ['round', 5, 11], ['flower', 19, 12],
+      [ ['palm', 0, 8], ['palm', 19, 8], ['round', 5, 11], ['palm', 19, 12],
       ...(hasArt('com_house') ? [] : [['palm', 0, 17]]), ['palm', 19, 17], ['round', 0, 19], ['palm', 19, 19], ['palm', 1, 25], ['palm', 7, 25], ['palm', 5, 25], ['palm', 18, 25], ['round', 6, 0], ['round', 13, 0], ['palm', 0, 0], ['palm', 19, 0]]);
     // 丸い木は素材の木（当たりは幹のマスだけ。樹冠は奥を歩く人の手前に重なる）
+    // 倉庫の右 (19,12) は以前の花の木（コードの絵）だったので、右の列のほかの木と同じ白い花の広葉樹の絵にした（2026年10月21日）
     // ヤシは白い花の広葉樹の絵に（幹の根元をマスの足元に。2マス幅の樹冠は左右に半マスずつはみ出す）
     const comTree = SP.art.village.com_tree;
     const palmArt = (x, y) => comTree && { img: comTree, x: x * T + 16 - comTree.width / 2, y: (y + 1) * T - 1 - comTree.height, w: comTree.width, h: comTree.height, sortY: (y + 1) * T - 1 };
