@@ -1,10 +1,10 @@
-# 天地魔闘の構えの比較の画像：python3 -I tools/truevearn-stance-sheet.py（先に node tools/truevearn-stance-compare.js）
+# 天地魔闘の構えの比較の画像：python3 -I tools/truevearn-stance-sheet.py [フォルダ]（既定 docs/truevearn-stance-v3）（先に node tools/truevearn-stance-compare.js）
 # 幅ごとに「通常 → 構え → 通常」を同じ範囲で切り抜いて並べる。上の段＝エフェクトなし、下の段＝エフェクトあり。
 # 線：緑＝足の裏（96×96の絵の y91）、青＝目の高さ（y47）、橙＝ベルトの宝石（y67）。どれも同じ高さに来れば、頭・胴の大きさと足元がそろっている
-import json, os
+import json, os, sys
 from PIL import Image, ImageDraw
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-OUT = os.path.join(ROOT, 'docs', 'truevearn-stance-v2')
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'docs', 'truevearn-stance-v3')
 crops = json.load(open(os.path.join(OUT, 'crops.json')))
 for c in crops:
     x, y, w, h = c['rect']; cv = c['canvas']; dpr = 2

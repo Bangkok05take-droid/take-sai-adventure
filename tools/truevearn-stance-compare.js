@@ -1,11 +1,11 @@
-// 天地魔闘の構え（正面 v2）：同じ場所・同じ画面の倍率で「通常 → 構え → 通常」を比べる（PCのブラウザ、幅360・390・430。390は動画も）
-//   node tools/truevearn-stance-compare.js [出力フォルダ]（既定 docs/truevearn-stance-v2/）
+// 天地魔闘の構え（v3）：同じ場所・同じ画面の倍率で「通常 → 構え → 通常」を比べる（PCのブラウザ、幅360・390・430。390は動画も）
+//   node tools/truevearn-stance-compare.js [出力フォルダ]（既定 docs/truevearn-stance-v3/）
 //   実際のゲームの処理で構えさせる（たけが2マス以内で足踏み → 構え。そのまま待つと4行動で解ける）。
 //   確かめること：構えのポーズの絵を、通常の絵と同じ大きさ・同じ足元で描く（体を縮めない・足が浮かない・手や角が切れない）、
 //   「構」の文字なし・表示は技名だけ、構えが解けると通常の絵に戻る。エフェクトなし（構えの光を止めた）の比較も撮る
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
-const ROOT = path.join(__dirname, '..'), OUT = process.argv[2] || path.join(ROOT, 'docs', 'truevearn-stance-v2');
+const ROOT = path.join(__dirname, '..'), OUT = process.argv[2] || path.join(ROOT, 'docs', 'truevearn-stance-v3');
 fs.mkdirSync(OUT, { recursive: true });
 const PORT = 8841;
 const srv = http.createServer((q, r) => { let f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0])); if (f.endsWith('/')) f += 'index.html';

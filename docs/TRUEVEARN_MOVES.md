@@ -73,7 +73,7 @@
 ## 演出の素材（ZIP truevearn_effects_v1、2026年10月21日）
 - 元の素材：`assets/reference/truevearn-effects-v1/`（指示書 `CLAUDE_README.md`）。ゲーム用は `python3 -I tools/make-truevearn-fx.py` で作る（描き直しはしない）。
   - 技のコマ：`assets/fx/truevearn/`（各4コマ・256×256 透過をそのまま。切り抜かない）。
-  - 構えのポーズ：`assets/bosses/truevearn-stance.png`（下の「構えのポーズ v2」。v1 の `stance_192.png` は使わない）。当たり判定は1マスのまま。
+  - 構えのポーズ：`assets/bosses/truevearn-stance.png`（下の「構えのポーズ v3」。v1 の `stance_192.png`・v2 の正面の構えは使わない）。当たり判定は1マスのまま。
 - 再生（見た目だけ。コマ数・時間は攻撃の回数やターンではない。当たりはゲーム側で1回だけ。`FX.draw.vfxFrames`）：
 
 | 技 | コマ | 置き方 | 長さ |
@@ -90,7 +90,14 @@
 - 戦闘の数値・判定は変えていない。
 - 確認：`node tools/truevearn-moves-check.js`（63項目すべて OK）。技名だけの表示・素材のコマだけを描く（仮の演出と二重にならない）・構えのポーズと「構」の文字なし・構えを解くと待機の絵・読み込み直しても構えのポーズ。動画 `docs/truevearn-moves-v1/moves_390.mp4`・`moves_390_slow.mp4`。
 
-## 構えのポーズ v2（ZIP truevearn_stance_front_v2、2026年10月21日）
+## 構えのポーズ v3（採用・2026年10月21日）
+- チャットで届いた新しい構えの画像（1127×1395。`assets/reference/truevearn-stance-v3/source.png`）に差し替え。描き直しはしていない。エフェクト・戦闘の性能は変えていない。「構」の文字は出さず、表示は技名だけ。
+- 大きさの合わせ方は v2 と同じ考え方（`tools/make-truevearn-fx.py`）：目の高さ → ベルトの宝石の中心の長さ（通常 20px、原画 330px）で倍率 20/330。靴底のいちばん下（通常 y91・原画 y1219）と両足の中央（通常 x48.5・原画 x558）を同じ所に。縮小は最近傍（ドット絵のまま。表示もなめらかにしない）。
+  - 原画の靴底の下にある、ほぼ透明なかすかな点は96×96の枠の外に出て切れる（見た目は変わらない）。
+  - 前にお見せしたプレビュー（ドット絵のまま縮小した方）と1ドットも違わない絵。
+- 確認（`node tools/truevearn-stance-compare.js` → `python3 -I tools/truevearn-stance-sheet.py`。幅360・390・430、18項目すべて OK）：通常 → 構え → 通常 が同じマス・同じ大きさ・同じ位置。比べる画像 `docs/truevearn-stance-v3/compare_*.png`、動画 `docs/truevearn-stance-v3/stance-compare_390.mp4`。
+
+## 構えのポーズ v2（ZIP truevearn_stance_front_v2、2026年10月21日。v3 に置き換え済み）
 - 正面の構え（`assets/reference/truevearn-stance-front-v2/`）に差し替え。エフェクト・戦闘の性能は変えていない。「構」の文字は出さず、表示は技名だけ。
 - 大きさの合わせ方（`tools/make-truevearn-fx.py`）：通常の絵（96×96）と**頭・胴体の大きさ**をそろえる。縦横同じ倍率（歪めない）。
   - 目の高さ → ベルトの赤い宝石の中心の長さ：通常 20px（y47→y67）、構えの384版 85px（y137→y222）→ 倍率 20/85（約0.235）。顔の幅（12.5px と 54px）でもほぼ同じ。
