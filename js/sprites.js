@@ -1016,6 +1016,8 @@
     water:   { floor: '#8ab4c0', floor2: '#76a0ae', wall: '#3f7f96', top: '#16303e', deco: '#ff8fb8', bg: '#04101a', light: '#9ae8ff' },
     orb:     { floor: '#c8a070', floor2: '#b48c5e', wall: '#b07a3a', top: '#3a2410', deco: '#ffd84a', bg: '#100804', light: '#ffd070' },
     garden:  { floor: '#aa8a62', floor2: '#927452', wall: '#9a5232', top: '#1e2a16', deco: '#e05a8a', root: '#4a3018', bg: '#060a04', light: '#c8ff8a' },
+    ruins:      { floor: '#b8a07a', floor2: '#a28a66', wall: '#9a7a52', top: '#30261a', deco: '#e8c050', bg: '#0e0a06', light: '#ffc870' },   // 7〜10階 地下の遺跡（灯り多め）
+    ruins_deep: { floor: '#8a7a68', floor2: '#766656', wall: '#6e5a48', top: '#1e1810', deco: '#d8b048', bg: '#080604', light: '#ffb060' },   // 11〜15階 地下の遺跡（暗く荘厳）
     sunken:  { floor: '#78a0ae', floor2: '#68909e', wall: '#4a6f80', top: '#0e2430', deco: '#ffd84a', bg: '#030c12', light: '#7ad0ff' },
     crystal: { floor: '#7890a0', floor2: '#647c8c', wall: '#4e6a80', top: '#142430', deco: '#7af0ff', bg: '#030a10', light: '#7af0ff' },
     gold:    { floor: '#6a5a74', floor2: '#5a4c64', wall: '#4e3e5e', top: '#1c1226', deco: '#ffe060', bg: '#06030a', light: '#c070ff' },

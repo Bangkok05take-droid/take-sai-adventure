@@ -70,6 +70,23 @@
       pillar: '#c8c4a8', accent: '#f0c850', mural: '#a8a46a', moss: '#5a9a3a', leaf: '#6aaa48', root: '#4a3018', flower: ['#e05a8a', '#ffd84a', '#ffffff'],
       feats: ['overgrown', 'mosaic', 'plain', 'statue', 'overgrown'],
     },
+    // 7〜15階：地下の遺跡（2026年10月21日）。砂岩の柱と古い石畳。7〜10階は灯り多め（ruins）、11〜15階は暗く荘厳（ruins_deep）
+    ruins: {
+      floor: ['#b8a07a', '#ac9470', '#c2aa84', '#a28a66'], grout: '#54442e', slab: 'temple',
+      corr: ['#948062', '#8a765a', '#9e8a6a'], dirt: '#3a2e1e',
+      wall: ['#9a7a52', '#a6865c', '#8e6e48', '#b08e64'], mortar: '#4a3820', brickW: 20, brickH: 8,
+      top: 'temple', topC: ['#30261a', '#3a2e1e', '#282014'], topGap: '#16100a', rim: '#b8945a',
+      pillar: '#dccaa4', accent: '#e8c050', mural: '#b0905a', moss: '#5a8a3a',
+      feats: ['braziers', 'pillars', 'mural', 'statue', 'mosaic', 'braziers'],
+    },
+    ruins_deep: {
+      floor: ['#8a7a68', '#80705e', '#948472', '#766656'], grout: '#2e2418', slab: 'temple',
+      corr: ['#6e6252', '#665a4a', '#76695a'], dirt: '#1e1810',
+      wall: ['#6e5a48', '#786452', '#645040', '#826e5a'], mortar: '#2a1e14', brickW: 22, brickH: 8,
+      top: 'temple', topC: ['#1e1810', '#241e14', '#18120c'], topGap: '#0c0804', rim: '#a8844a',
+      pillar: '#b8a88a', accent: '#d8b048', mural: '#8a7050', moss: '#4a7a3a',
+      feats: ['statue', 'pillars', 'mural', 'goldtrim', 'pillars'],
+    },
     sunken: {  // 16〜20階：沈んだ都
       floor: ['#84a0a6', '#7a969c', '#8eaab0', '#708c92'], grout: '#2c4850', slab: 'tile',
       corr: ['#6a8288', '#60787e', '#748c92'], dirt: '#1e3036',

@@ -645,6 +645,20 @@
     };
   }
   G.makeEnemy = makeEnemy;
+  /* 読み込んだ探索の敵の能力を、今のデータで計算し直す（2026年10月21日）。敵の能力は階を作ったときに決まって保存されるので、
+   * 調整（例：ギガンテスを弱めた）のあとも、作ってあった階の敵は以前の数値のままだった。ボスは対象外（怒りで攻撃が上がるなど、戦いの途中の変化を保つ）。
+   * HPは今の割合を保つ。経験値・状態（眠り・予告・盗んだお金など）はそのまま。HPの幅で決まる敵（メタルスライム）はHPを変えない */
+  G.restatEnemy = function (run, e) {
+    const E = D.ENEMIES[e.type];
+    if (!E || e.boss) return;
+    const f = run.floor, k = E.noScale ? 0 : Math.max(0, f - (E.base || 1)), cm = E.noScale ? 1 : D.chapterMul(run.chapter, f);
+    e.atk = Math.round(E.atk * (1 + D.ENEMY_SCALE.atk * k) * cm);
+    e.def = E.def;
+    if (!E.hpRange) {
+      const mx = Math.round(E.hp * (1 + D.ENEMY_SCALE.hp * k) * cm);
+      if (mx !== e.maxhp && e.maxhp > 0) { e.hp = Math.max(1, Math.min(mx, Math.round(e.hp * mx / e.maxhp))); e.maxhp = mx; }
+    }
+  };
   // 階の名前（隠しダンジョンは地域の名前の代わりに「時空の狭間」）
   G.areaName = (F) => F.areaName || D.THEMES[F.theme].name;
 

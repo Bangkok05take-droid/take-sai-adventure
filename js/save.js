@@ -232,6 +232,8 @@
     let data;
     try { data = JSON.parse(text); } catch (e) { return null; }
     data = S_.migrate(data);
+    // 敵の能力は今のデータで計算し直す（調整のあとに、保存してあった階の敵が以前の数値のまま残らないように。ボスは除く）
+    if (data && data.run && data.run.enemies) for (const e of data.run.enemies) G.restatEnemy(data.run, e);
     if (data && data.run) G.updateVision(data.run);
     return data;
   };

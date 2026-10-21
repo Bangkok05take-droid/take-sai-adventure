@@ -925,7 +925,7 @@ test('旧セーブ（v1・探索途中）を移行：村・倉庫・装備・探
   eq(L.run.player.poison, 0);
   // 続けて遊べる（4階→11階まで降りられる）
   for (let i = 0; i < 20; i++) G.act(L, { type: 'wait' });
-  if (!L.run.over) { goToFloor(L, 11); eq(L.run.floor, 11); eq(D.FLOORS[11].theme, 'garden'); }
+  if (!L.run.over) { goToFloor(L, 11); eq(L.run.floor, 11); eq(D.FLOORS[11].theme, 'ruins_deep'); }   // 2026年10月21日：11〜15階は地下の遺跡（以前は木の根と苔の地下庭園）
   // 再保存→再読み込みで一致
   const t = SV.serialize(L); eq(SV.serialize(SV.deserialize(t)), t);
 });
@@ -3797,6 +3797,33 @@ test('勇者の剣・盾と無限強化：コイはオリハルコン1個（お�
   assert(!G.canGetHeroShield(V) && !G.giveHeroShield(S).ok, 'only once');
   // セーブして読み込んでも、二度は起きない
   const L = TS.Save.deserialize(TS.Save.serialize(S)); assert(L.village.story.heroForge && L.village.story.heroShield); assert(!G.canGetHeroShield(L.village) && !G.canForgeHeroSword(L.village));
+});
+
+test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {
+  const name = (ch, f) => D.THEMES[D.floorFor(ch, f).theme].name;
+  const want = { 1: 'レンガの回廊', 3: 'レンガの回廊', 4: '木の根の遺跡', 6: '木の根の遺跡', 7: '地下の遺跡', 10: '地下の遺跡', 11: '地下の遺跡', 14: '地下の遺跡',
+    16: '水没した古代都市', 19: '水没した古代都市', 21: '地底の古代神殿', 24: '地底の古代神殿', 26: '封印の最深部', 29: '封印の最深部' };
+  for (const [f, n] of Object.entries(want)) eq(name(4, +f), n, f + 'F');
+  eq(D.floorFor(4, 8).theme, 'ruins'); eq(D.floorFor(4, 12).theme, 'ruins_deep');
+  // 後の章でボスの階ではない 15・20・25 階は、ひとつ前の地域
+  eq(name(2, 15), '地下の遺跡'); eq(name(3, 20), '水没した古代都市'); eq(name(4, 25), '地底の古代神殿');
+  // ボスの階は各ボスの景観のまま
+  eq(D.floorFor(1, 15).theme, 'arena_croc'); eq(D.floorFor(2, 20).theme, 'arena_flame'); eq(D.floorFor(3, 25).theme, 'arena_kill');
+  eq(D.floorFor(6, 31).theme, 'demon'); eq(D.floorFor(6, 32).theme, 'demon');
+  // 章の階では、以前の「水の神殿」「木の根と苔の地下庭園」は使わない
+  for (let ch = 1; ch <= 6; ch++) for (let f = 1; f <= 32; f++) assert(!['water', 'garden'].includes(D.floorFor(ch, f).theme), ch + ':' + f);
+});
+
+test('読み込むと、保存してあった階の敵の能力を今のデータで計算し直す（調整がすぐ効く）。HPの割合は保つ。ボスはそのまま', () => {
+  const S = G.newState(); S.village.story.chapter = 6; departWithScroll(S, 4100); const r = S.run; r.floor = 33;
+  const D0 = D.ENEMIES.gigantes, keep = { atk: D0.atk, hp: D0.hp, def: D0.def };
+  Object.assign(D0, { atk: 58, hp: 320, def: 26 });   // 以前の数値で作った敵
+  const g = G.makeEnemy(r, 'gigantes', 3, 3); g.hp = Math.round(g.maxhp / 2); r.enemies = [g];
+  const b = G.makeEnemy(r, 'truevearn', 5, 5); b.boss = true; b.atk = 999; r.enemies.push(b);
+  Object.assign(D0, keep);
+  const L = TS.Save.deserialize(TS.Save.serialize(S)), g2 = L.run.enemies.find((e) => e.type === 'gigantes'), fresh = G.makeEnemy(L.run, 'gigantes', 0, 0);
+  eq(g2.atk, fresh.atk, 'atk now'); eq(g2.def, fresh.def); eq(g2.maxhp, fresh.maxhp); assert(Math.abs(g2.hp - fresh.maxhp / 2) <= 1, 'keeps hp ratio');
+  eq(L.run.enemies.find((e) => e.boss).atk, 999, 'boss unchanged');
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);

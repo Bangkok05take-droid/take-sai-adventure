@@ -318,7 +318,7 @@
     croc_tear:     { name: 'クロコダインの涙', type: 'treasure', sell: 350, noSell: true, icon: 'gem', tint: 'crystal',
       desc: '獣王クロコダインの涙が固まったという、青緑の大きなしずく形の宝石。第1章の報酬。' },
     amber_pendant: { name: '琥珀の首飾り', type: 'treasure', sell: 300, icon: 'pendant', depth: 11,
-      desc: '地下庭園で見つかった琥珀の首飾り。' },
+      desc: '地下の遺跡で見つかった琥珀の首飾り。' },
     bronze_bell:   { name: '古都の青銅鐘', type: 'treasure', sell: 420, icon: 'bell', depth: 16,
       desc: '水没した都の小さな鐘。澄んだ音がする。' },
     sunken_crown:  { name: '水の都の王冠', type: 'treasure', sell: 560, icon: 'crown', tint: 'blue', depth: 16,
@@ -513,12 +513,20 @@
     arena_baran: { name: '竜の騎士の神殿' },
     arena_mist:  { name: '影の霧の間' },
     void:        { name: '白き異空間' },   // 33階の真大魔王バーン（名前は仮）
+    // 2026年10月21日（ZIP dungeon_7themes_art_v1 の階の割り当て）：7〜15階は「地下の遺跡」。7〜10階は灯り多め（ruins）、11〜15階は暗く荘厳（ruins_deep）
+    ruins:       { name: '地下の遺跡' },
+    ruins_deep:  { name: '地下の遺跡' },
   });
+  D.THEMES.crystal.name = '地底の古代神殿';   // 2026年10月21日：21〜25階の名前（以前は「水晶の地下神殿」）
   // 以前の版の地域（更新前から続く探索用）
   D.themeOf = (f) => (f <= 3 ? 'brick' : f <= 6 ? 'roots' : f <= 9 ? 'water' : f === 10 ? 'orb' : f <= 15 ? 'garden'
     : f <= 20 ? 'sunken' : f <= 25 ? 'crystal' : f <= 29 ? 'gold' : 'shrine');
   // 章で使う地域（ボスの階は各ボスの景観）
-  D.themeOfFloor = (f) => (f <= 3 ? 'brick' : f <= 6 ? 'roots' : f <= 10 ? 'water' : f <= 15 ? 'garden'
+  /* 2026年10月21日（ZIP dungeon_7themes_art_v1 の割り当て）：1〜3 レンガの回廊・4〜6 木の根の遺跡・7〜14 地下の遺跡・16〜19 水没した古代都市・
+   * 21〜24 地底の古代神殿・26〜29 封印の最深部・31〜32 大魔王の城。ボスの階（15・20・25・30・33）は各ボスの景観のまま。
+   * 後の章でボスの階ではない 15・20・25 階は、ひとつ前の地域（地下の遺跡・水没した古代都市・地底の古代神殿）。
+   * 以前の「水の神殿」（7〜10階）と「木の根と苔の地下庭園」（11〜15階）は章の階では使わない（以前の版の探索 D.themeOf だけ） */
+  D.themeOfFloor = (f) => (f <= 3 ? 'brick' : f <= 6 ? 'roots' : f <= 10 ? 'ruins' : f <= 15 ? 'ruins_deep'
     : f <= 20 ? 'sunken' : f <= 25 ? 'crystal' : f <= 30 ? 'gold' : 'demon');
 
   /* 階層ごとの出現テーブル [id, 重み] を作る。地域ごとに敵・道具・お宝が変わる。 */
