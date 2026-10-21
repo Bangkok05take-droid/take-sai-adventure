@@ -2198,12 +2198,15 @@ test('シルバーデビル：1手番に2回。離れていれば2歩、隣な�
   // たけの3点セットの2回行動とは別（敵の手番の中だけの話）
   eq(D.ENEMIES.silverdevil.ai, 'double');
 }));
-test('ギガンテス：HPがいちばん高く守りも固い（2026年10月21日、Lv35で苦戦するくらいに弱めた）。近づいて通常攻撃だけ（特別な技なし）', () => withHit(() => {
+test('ギガンテス：HPがいちばん高く守りも固い（2026年10月21日、Lv35で苦戦するくらいに弱めた）。鈍足（2ターンに1回）で近づいて通常攻撃だけ（特別な技なし）', () => withHit(() => {
   const E = D.ENEMIES.gigantes, others = ['darkknight', 'guard', 'golem'].map((k) => D.ENEMIES[k]);
   assert(others.every((o) => E.hp > o.hp && E.def > o.def), 'high hp/def'); eq(E.ai, 'melee');
   eq(E.hp + '/' + E.atk + '/' + E.def, '200/30/20'); eq(D.ENEMIES.dragon.hp + '/' + D.ENEMIES.dragon.atk, '140/30');
   const { S, run, p, put } = strongRoom(4103); const g = put('gigantes', 8, 5); G.updateVision(run);
-  G.act(S, { type: 'wait' }); eq(g.x, 7, 'approaches'); assert(!g.charge, 'no special');
+  // 鈍足：2ターンで1歩だけ近づく（4ターンで2歩）
+  assert(E.slowMove, 'slow');
+  G.act(S, { type: 'wait' }); G.act(S, { type: 'wait' }); eq(g.x, 7, 'one step in 2 turns');
+  G.act(S, { type: 'wait' }); G.act(S, { type: 'wait' }); eq(g.x, 6, 'two steps in 4 turns'); assert(!g.charge, 'no special');
 }));
 test('爆弾岩：HP20%以下で止まる。0より大きく10%以下で即自爆（範囲のたけにダメージ・経験値なし）。一撃で0以下なら自爆せずに倒れる', () => withHit(() => {
   const B = D.STRONG.bombrock;

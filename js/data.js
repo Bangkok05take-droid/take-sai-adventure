@@ -460,8 +460,9 @@
       tip: '一直線に炎を吐く。炎は最初に当たった相手で止まるので、間にほかの敵がいれば盾になる。' },
     silverdevil: { name: 'シルバーデビル',   hp: 110, atk: 26, def: 16, exp: 200, ai: 'double', sprite: 'silverdevil', base: 31,
       tip: '1回の手番に2回動く。離れていれば2歩、隣なら2回攻撃。' },
-    gigantes:    { name: 'ギガンテス',       hp: 200, atk: 30, def: 20, exp: 300, ai: 'melee', sprite: 'gigantes', base: 31,
-      tip: 'HPがとても高く、守りも固い。ひたすら近づいて殴ってくる。' },
+    // ギガンテス：2026年10月21日 鈍足に（slowMove：ゴーレムと同じく2ターンに1回だけ動く・殴る）
+    gigantes:    { name: 'ギガンテス',       hp: 200, atk: 30, def: 20, exp: 300, ai: 'melee', sprite: 'gigantes', base: 31, slowMove: true,
+      tip: 'HPがとても高く、守りも固い。動きは鈍く、2ターンに1回だけ近づいて殴ってくる。' },
     bombrock:    { name: '爆弾岩',           hp: 150, atk: 30, def: 30, exp: 160, ai: 'bomb', sprite: 'bombrock', base: 31,
       tip: 'HPが少なくなると動かなくなり、ぎりぎりまで減ると自爆する。一撃で倒せば爆発しない。' },
     mimic:       { name: 'ミミック',         hp: 160, atk: 48, def: 22, exp: 250, ai: 'mimic', sprite: 'mimic', base: 31,
