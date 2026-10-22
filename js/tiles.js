@@ -509,7 +509,8 @@
    *  床：64×64（2×2マス）の絵を、マップ全体の座標の偶数マスにそろえて敷く（柄は2×2マスごとに選ぶ）。通路は少し暗く。上・左が壁なら影
    *  壁の正面（下が床）：64×64（2マス幅・2マス高）の壁の絵の下半分。その上のマス（壁）には上半分（上の透明な所は今の壁の上面が見える）
    *  壁の上面（正面以外の壁）：64×64（2×2マス）の上面の絵。床に面した辺には縁（左・右・上＝部屋の下の壁）、縁どうしが出会う外角と、
-   *  斜めだけ床に触れる内角には目地の角（10×10）。縁・角の絵が無い地域は今のコードの絵のまま。正面の壁のたいまつは絵に描かれているので、動くたいまつは出さない */
+   *  斜めだけ床に触れる内角には目地の角（10×10）。縁・角の絵が無い地域は今のコードの絵のまま。正面の壁のたいまつは絵に描かれているので、動くたいまつは出さない
+   *  飾り（2026年10月22日）：正面の壁の2マス分にときどき柱・灯り・アーチ、部屋から離れた壁の上面にときどきがれき。どちらも壁のマスの中だけ */
   function artOverlay(run, L, x, y, theme, at, walk, out) {
     const D = TS.Data, A = SP.art.dungeon && SP.art.dungeon[theme];
     const ready = (l) => l && l.length && l.every(Boolean);
@@ -522,8 +523,12 @@
       let s1 = x; while (isFace(s1 + 1, yy)) s1++;
       const idx = x - s0, len = s1 - s0 + 1;
       if (len % 2 === 1 && idx === len - 1) return { img: A.narrow[hash(x, yy, seed + 93) % A.narrow.length], sx: 0 };
-      return { img: A.wall[hash(s0 + (idx >> 1), yy, seed + 92) % A.wall.length], sx: (idx & 1) * 32 };
+      // 飾り（案1）：2マス分の壁のうち、ときどき（約6分の1）柱・灯り・アーチを重ねる。壁のマスの中だけ（床・敵は隠さない）
+      const pair = s0 + (idx >> 1), dh = hash(pair, yy, seed + 95);
+      const deco = ready(A.decoWall) && dh % 6 === 0 ? A.decoWall[(dh >> 4) % A.decoWall.length] : null;
+      return { img: A.wall[hash(pair, yy, seed + 92) % A.wall.length], sx: (idx & 1) * 32, deco };
     };
+    const drawWall = (w, sy) => { g.drawImage(w.img, w.sx, sy, 32, 32, x0, y0, 32, 32); if (w.deco) g.drawImage(w.deco, w.sx, sy, 32, 32, x0, y0, 32, 32); };
     if (k !== WALL) {
       g.drawImage(A.floor[hash(x >> 1, y >> 1, seed + 91) % A.floor.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
       if (k === CORR) { g.fillStyle = 'rgba(24,12,6,0.22)'; g.fillRect(x0, y0, 32, 32); }
@@ -533,7 +538,7 @@
     } else if (walk(x, y + 1)) {
       // 下地に上面の絵（壁の絵の形が四角でない所＝柱のわき・下のすき間に、今のコードの壁が透けないように）
       if (ready(A.top)) g.drawImage(A.top[hash(x >> 1, y >> 1, seed + 94) % A.top.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
-      const w = wallPart(y); g.drawImage(w.img, w.sx, 32, 32, 32, x0, y0, 32, 32);
+      drawWall(wallPart(y), 32);
       out.torch = false;
     } else {
       // 角の絵：向きごとの絵（jOutNE など。第1回の追加原画）があればそれ、無ければ共通の目地の四角（joint。レンガの回廊）
@@ -541,8 +546,13 @@
       const top = ready(A.top) && ready(A.rimW) && ready(A.rimE) && ready(A.rimN) && !!J('jOutNE');
       if (top) g.drawImage(A.top[hash(x >> 1, y >> 1, seed + 94) % A.top.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
       const face = isFace(x, y + 1);
-      if (face) { const w = wallPart(y + 1); g.drawImage(w.img, w.sx, 0, 32, 32, x0, y0, 32, 32); }
+      if (face) drawWall(wallPart(y + 1), 0);
       if (!top) return;
+      // 飾り（案2）：床から2マス以上離れた壁の上面に、ときどき（約19分の1）がれき
+      if (!face && ready(A.decoTop) && hash(x, y, seed + 96) % 19 === 0) {
+        let far = true; for (let dy = -2; dy <= 2 && far; dy++) for (let dx = -2; dx <= 2; dx++) if (walk(x + dx, y + dy)) { far = false; break; }
+        if (far) g.drawImage(A.decoTop[0], x0, y0);
+      }
       // 縁：床に面した辺（下は壁の正面の絵が受け持つ）。2マス分の縁の絵を、マスの偶奇で上下（左右）半分ずつ使う。幅は絵の幅（地域ごと）
       const fW = walk(x - 1, y), fE = walk(x + 1, y), fN = walk(x, y - 1), rw = A.rimW[0].width, rh = A.rimN[0].height;
       if (fW) g.drawImage(A.rimW[0], 0, (y & 1) * 32, rw, 32, x0, y0, rw, 32);

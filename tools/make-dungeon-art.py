@@ -80,7 +80,29 @@ def build_batch1(theme):
     if i < 2:   # 細い壁（仮）：左右の柱の部分をつなぐ
       nv = Image.new('RGBA', (32, 64), (0, 0, 0, 0)); nv.alpha_composite(cv.crop((0, 0, 16, 64)), (0, 0)); nv.alpha_composite(cv.crop((48, 0, 64, 64)), (16, 0))
       nv.save(od + 'narrow_%d.png' % i, optimize=True)
+  build_deco(theme)
   print(theme, 'ok (rim %dpx)' % rw)
+
+# 飾り（2026年10月22日に置き方が決まった：案1と案2を控えめに併用。通路や敵を隠さない）：前回の原画の4段目
+#  ・decoWall_0〜2（柱・灯り・アーチ）：64×64（2マス幅・2マス高。正面の壁の絵と同じ置き方）の下ぞろえ・左右中央。
+#    正面の壁の2マス分の上に重ねる（壁のマスの中だけ。床には出ない）。高さは柱58・灯り50・アーチ48まで（幅60まで）
+#  ・decoTop_0（がれき）：32×32 の中央に26×26まで。部屋から離れた壁の上面に、ときどき
+DECO = {
+  'brick': {'sheet': '01_brick.png', 'wall': [(82, 881, 250, 1201), (375, 890, 520, 1206), (586, 928, 918, 1171)], 'top': (944, 953, 1217, 1191)},
+  'roots': {'sheet': '02_roots.png', 'wall': [(25, 838, 320, 1223), (388, 835, 557, 1210), (632, 872, 918, 1189)], 'top': (945, 930, 1233, 1182)},
+  'ruins': {'sheet': '03_ruins.png', 'wall': [(81, 893, 255, 1195), (378, 900, 560, 1191), (644, 911, 910, 1203)], 'top': (961, 972, 1216, 1197)},
+}
+def fit(img, mw, mh):
+  k = min(mw / img.width, mh / img.height); return img.resize((max(1, round(img.width * k)), max(1, round(img.height * k))), Image.LANCZOS)
+def build_deco(theme):
+  B = DECO.get(theme)
+  if not B: return
+  od = OUT + theme + '/'; sh = Image.open(SRC + B['sheet']).convert('RGBA')
+  for i, (box, mh) in enumerate(zip(B['wall'], (58, 50, 48))):
+    d = fit(sh.crop(box), 60, mh); cv = Image.new('RGBA', (64, 64), (0, 0, 0, 0)); cv.alpha_composite(d, ((64 - d.width) // 2, 63 - d.height))
+    clean_alpha(cv).save(od + 'decoWall_%d.png' % i, optimize=True)
+  d = fit(sh.crop(B['top']), 26, 26); cv = Image.new('RGBA', (32, 32), (0, 0, 0, 0)); cv.alpha_composite(d, ((32 - d.width) // 2, (32 - d.height) // 2))
+  clean_alpha(cv).save(od + 'decoTop_0.png', optimize=True)
 
 def build_extra(theme):
   X = EXTRA.get(theme)
@@ -123,5 +145,6 @@ def build(theme):
         if px[x, y][3] < 160: px[x, y] = (0, 0, 0, 0)
     cv.save(od + 'narrow_%d.png' % i, optimize=True)
   build_extra(theme)
+  build_deco(theme)
   print(theme, 'ok')
 for t in (sys.argv[1:] or list(SHEETS.keys()) + list(BATCH1.keys())): build_batch1(t) if t in BATCH1 else build(t)
