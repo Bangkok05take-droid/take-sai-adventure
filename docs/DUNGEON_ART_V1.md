@@ -123,4 +123,4 @@
 - 描き方（`js/render.js` の drawBackdrop・drawDepth・edgeShade）：背景（岩盤と霧。8×8マスで地図に固定、35%暗く）→ 描いた地形の下向きの辺から外壁（2マス幅・約2.7マス、明るさ0.62）と4マスおきの支柱 → 今までの地形 → 道具・キャラクター・予告。
   - 外壁・支柱は「そのマスを描いたか・下のマスを描いたか」だけで決め、長さはいつも同じ（未探索の地形は見ない）。あとで描いた地形が上に重なる。
   - 左右の辺は今は半マスの影だけ（側面の絵が無い）。
-- 本番は空（`D.DUNGEON_BACKDROP`）。プレビュー：`node tools/dungeon-backdrop-preview.js docs/ruins-depth-v1 ruins,ruins_deep`（start・corridor・edge）。目標の絵との比較 `docs/ruins-depth-v1/concept_vs_game_390.jpg`。
+- 2026年10月22日：本番に反映（`D.DUNGEON_BACKDROP = { ruins, ruins_deep }`。床の周りの壁1マス・左右の辺の影・明るさは今のままで試しにプレイ）。プレビュー：`node tools/dungeon-backdrop-preview.js docs/ruins-depth-v1 ruins,ruins_deep`（start・corridor・edge）。目標の絵との比較 `docs/ruins-depth-v1/concept_vs_game_390.jpg`。
