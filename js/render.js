@@ -283,6 +283,50 @@
     }
   }
 
+  /* 壁の外の背景（2026年10月22日・仮）：地域の壁の上面の絵（2×2マスの2枚）を並べた 128×128 を暗くして、地図の座標に固定してくり返す。
+   * 地図の外も同じ柄で、地図の端から外へ3マスかけて少しずつ暗くする（境界の四角が見えないように）。専用の素材（512×512）が届いたら差し替え */
+  const backdropCache = {};
+  function backdropPattern(g, theme) {
+    if (backdropCache[theme] !== undefined) return backdropCache[theme];
+    const A = SP.art.dungeon && SP.art.dungeon[theme], tops = A && A.top;
+    if (!tops || !tops.length || !tops.every(Boolean)) return null;   // 読み込み中は単色のまま（次のフレームで作り直す）
+    const c = document.createElement('canvas'); c.width = c.height = 128; const cg = c.getContext('2d');
+    for (let j = 0; j < 4; j++) cg.drawImage(tops[(j + (j >> 1)) % tops.length], (j & 1) * 64, (j >> 1) * 64);
+    cg.fillStyle = 'rgba(4,3,6,' + ((D.DUNGEON_BACKDROP_DARK || 0.6)) + ')'; cg.fillRect(0, 0, 128, 128);
+    return (backdropCache[theme] = g.createPattern(c, 'repeat'));
+  }
+  function drawBackdrop(g, run, theme, ox, oy, ts, k, W, H) {
+    if (!D.DUNGEON_BACKDROP || !D.DUNGEON_BACKDROP[theme]) return false;
+    const pat = backdropPattern(g, theme); if (!pat) return false;
+    const m = run.map;
+    g.save(); g.imageSmoothingEnabled = false; g.translate(ox, oy); g.scale(k, k);
+    g.fillStyle = pat; g.fillRect(-ox / k - 1, -oy / k - 1, W / k + 2, H / k + 2); g.restore();
+    // 地図の外：端から外へ3マスかけて暗く（最大 +0.25）。マスより細かい8段で、角は距離の大きい方
+    const out = (v, n) => (v < 0 ? -v : v > n ? v - n : 0);
+    const step = ts / 4, gx0 = Math.floor(-ox / step) - 1, gy0 = Math.floor(-oy / step) - 1, gx1 = Math.ceil((W - ox) / step), gy1 = Math.ceil((H - oy) / step);
+    for (let gy = gy0; gy <= gy1; gy++) for (let gx = gx0; gx <= gx1; gx++) {
+      const cx = (gx + 0.5) / 4, cy = (gy + 0.5) / 4, d = Math.max(out(cx, m.w), out(cy, m.h));
+      if (d <= 0) continue;
+      const a = 0.25 * Math.min(1, d / 3); g.fillStyle = 'rgba(2,1,4,' + a.toFixed(3) + ')';
+      g.fillRect(Math.floor(ox + gx * step), Math.floor(oy + gy * step), Math.ceil(step) + 1, Math.ceil(step) + 1);
+    }
+    return true;
+  }
+  // 描いた地形の外側の縁：背景へなじむよう、描いていないとなりのマスへ半マスの影（描いたかどうかだけで決める＝未探索の情報は出さない）
+  function edgeShade(g, m, L, ox, oy, ts, x0, y0, x1, y1) {
+    const drawn = (x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h && L.drawn[y * m.w + x];
+    const h = Math.round(ts / 2), c0 = 'rgba(3,2,5,0.55)', c1 = 'rgba(3,2,5,0)';
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (!drawn(x, y)) continue;
+      const sx = ox + x * ts, sy = oy + y * ts;
+      const strip = (gx0, gy0, gx1, gy1, rx, ry, rw, rhh) => { const gr = g.createLinearGradient(gx0, gy0, gx1, gy1); gr.addColorStop(0, c0); gr.addColorStop(1, c1); g.fillStyle = gr; g.fillRect(rx, ry, rw, rhh); };
+      if (!drawn(x - 1, y)) strip(sx, 0, sx - h, 0, sx - h, sy, h, ts);
+      if (!drawn(x + 1, y)) strip(sx + ts, 0, sx + ts + h, 0, sx + ts, sy, h, ts);
+      if (!drawn(x, y - 1)) strip(0, sy, 0, sy - h, sx, sy - h, ts, h);
+      if (!drawn(x, y + 1)) strip(0, sy + ts, 0, sy + ts + h, sx, sy + ts, ts, h);
+    }
+  }
+
   // ---------------- ダンジョン ----------------
   RD.drawDungeon = function (canvas, S, now) {
     const run = S.run;
@@ -325,6 +369,8 @@
       const t0 = performance.now();
       for (let i = 0; i < todo.length; i++) { if (i >= 12 && performance.now() - t0 > 7) break; paintTile(run, L, todo[i][0], todo[i][1]); }
     }
+    // 壁の外の背景（D.DUNGEON_BACKDROP の地域だけ）：地形と関係ない同じ柄を地図に固定して敷く（未探索の所も同じ柄＝部屋・通路は分からない）
+    const backdrop = !throneBg && !voidBg && drawBackdrop(g, run, theme, ox, oy, ts, k, W, H);
     // 見える範囲を1回で転送
     if (throneBg) {
       // under：透明な所に、今の描き方を先に描く（パーツ方式のプレビュー。'void'＝白い異空間、'tiles'＝その地域のタイル）
@@ -334,6 +380,7 @@
     }
     else if (voidBg) drawVoidBg(g, run, ox, oy, ts, k, W, H, now, x0, y0, x1, y1);
     else g.drawImage(L.canvas, x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE, ox + x0 * ts, oy + y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
+    if (backdrop) edgeShade(g, m, L, ox, oy, ts, x0, y0, x1, y1);
     // 動く地形：たいまつ・階段・帰還の祠・帰還口
     const fr = (ms, n) => Math.floor(now / ms) % n;
     const inView = (t) => t.x >= x0 && t.x <= x1 && t.y >= y0 && t.y <= y1;
