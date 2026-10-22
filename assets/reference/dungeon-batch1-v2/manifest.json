@@ -1,0 +1,65 @@
+{
+  "status": "source_art_not_engine_ready",
+  "assets": [
+    {
+      "file": "02_roots/topdown_supplement_source.png",
+      "region": "木の根の遺跡",
+      "floors": "4〜6階",
+      "size": [
+        1283,
+        1226
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "sha256": "00a5207a538e336eba5b90127aff5322de72a5fae22a167798ca7954342f7a29"
+    },
+    {
+      "file": "02_roots/original_front_walls_decor_source.png",
+      "region": "木の根の遺跡",
+      "floors": "4〜6階",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "sha256": "0dced94aa34a37e713805c50d04664398dc5aba2c372ffd93f1a0472d926247f"
+    },
+    {
+      "file": "03_ruins/topdown_supplement_source.png",
+      "region": "地下の遺跡",
+      "floors": "7〜14階",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "sha256": "b86f4eb94f52b12a9ed4d472be7c4eaa1b93e09bdc93fd52f25e9257f2944de8"
+    },
+    {
+      "file": "03_ruins/original_front_walls_decor_source.png",
+      "region": "地下の遺跡",
+      "floors": "7〜14階",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "sha256": "fdce10b4a608386f758cbe4587651bf5e5bbed7af4594463ea594a75e4bf42a7"
+    }
+  ]
+}

@@ -33,6 +33,55 @@ EXTRA = {
             'rimW': (459, 628, 496, 864), 'rimE': (132, 628, 169, 864), 'rimN': (636, 757, 878, 794),
             'joint': (731, 1009, 768, 1046)},
 }
+# 第1回の追加原画（ZIP dungeon_part1 ＝ dungeon_batch1_roots_ruins_v2。2026年10月22日）：assets/reference/dungeon-batch1-v2/<番号_地域>/topdown_supplement_source.png
+#  4段×4セル（1マス＝約137px）。1段目 床2枚・上面2枚（2×2マス）。2段目 縁（壁が左＝右に縁／壁が右＝左に縁／下に縁／上に縁）。3段目 外角。4段目 内角（L字）
+#  ・床 floor_0〜1・上面 top_0〜1：セルのふちの線（約6px）を落として 64×64（2×2マス）
+#  ・縁 rimE（右に床）・rimW（左に床）・rimN（上に床）：2段目の縁の帯（明るい石＋内側の影）だけ。幅は原画 RW px → ゲームで round(RW*32/137)
+#    「下に縁」（下に床）はこのゲームでは壁の正面（前回の原画の正面の壁）が受け持つので使わない
+#  ・角の四角（RW×RW）：jOutNE・jOutNW＝外角（上と右／上と左に床）。jInNE・jInNW・jInSE・jInSW＝内角（斜めだけ床。4段目のL字の曲がり角）
+#    切り出しは、各セルの透明な所（床の側）の角から RW の正方形
+#  ・正面の壁：前回の原画（sheets/02_roots.png・03_ruins.png）2段目の4枚を 64×64（2マス幅）。1マス幅の細い壁は原画に無いので、
+#    2マス幅の絵の左右の柱の部分（左右16pxずつ）をつないだ 32×64（仮。原画の切り貼りで、描き足しはしていない）
+#  ・地下の遺跡の奥（ruins_deep、11〜14階）は同じ絵（assets/dungeon/ruins/）を使う（js/assets.js）
+BATCH1 = {
+  'roots': {'dir': 'dungeon-batch1-v2/02_roots/', 'RW': 33, 'sheet': '02_roots.png',
+            'floor': [(31, 25, 300, 291), (349, 25, 619, 293)], 'top': [(666, 25, 939, 293), (986, 25, 1257, 293)],
+            'rimE': (135, 329, 168, 599), 'rimW': (480, 329, 513, 599), 'rimN': (985, 450, 1257, 483),
+            'jOutNE': (780, 738), 'jOutNW': (1113, 738), 'jInNE': (780, 1027), 'jInNW': (1113, 1027), 'jInSE': (136, 1014), 'jInSW': (480, 1014),
+            'wall': [(30, 329, 298, 524), (338, 331, 609, 524), (647, 332, 916, 524), (956, 330, 1225, 527)]},
+  'ruins': {'dir': 'dungeon-batch1-v2/03_ruins/', 'RW': 37, 'sheet': '03_ruins.png',
+            'floor': [(22, 22, 292, 291), (336, 22, 605, 291)], 'top': [(649, 22, 918, 291), (963, 22, 1232, 291)],
+            'rimE': (123, 334, 160, 605), 'rimW': (466, 334, 503, 605), 'rimN': (963, 459, 1232, 496),
+            'jOutNE': (770, 740), 'jOutNW': (1075, 740), 'jInNE': (749, 1072), 'jInNW': (1095, 1072), 'jInSE': (131, 1059), 'jInSW': (460, 1059),
+            'wall': [(34, 343, 316, 549), (338, 343, 616, 549), (641, 343, 919, 549), (943, 343, 1224, 549)]},
+}
+def clean_alpha(cv):
+  px = cv.load()
+  for y in range(cv.height):
+    for x in range(cv.width):
+      if px[x, y][3] < 160: px[x, y] = (0, 0, 0, 0)
+  return cv
+def build_batch1(theme):
+  B = BATCH1[theme]; od = OUT + theme + '/'; os.makedirs(od, exist_ok=True)
+  im = Image.open(SRC + '../../' + B['dir'] + 'topdown_supplement_source.png').convert('RGBA')
+  RW = B['RW']; rw = round(RW * 32 / 137); ins = 6
+  for k in ('floor', 'top'):
+    for i, (x0, y0, x1, y1) in enumerate(B[k]):
+      im.crop((x0 + ins, y0 + ins, x1 - ins, y1 - ins)).resize((64, 64), Image.LANCZOS).save(od + '%s_%d.png' % (k, i), optimize=True)
+  im.crop(B['rimE']).resize((rw, 64), Image.LANCZOS).save(od + 'rimE.png', optimize=True)
+  im.crop(B['rimW']).resize((rw, 64), Image.LANCZOS).save(od + 'rimW.png', optimize=True)
+  im.crop(B['rimN']).resize((64, rw), Image.LANCZOS).save(od + 'rimN.png', optimize=True)
+  for k in ('jOutNE', 'jOutNW', 'jInNE', 'jInNW', 'jInSE', 'jInSW'):
+    x, y = B[k]; im.crop((x, y, x + RW, y + RW)).resize((rw, rw), Image.LANCZOS).save(od + k + '.png', optimize=True)
+  sh = Image.open(SRC + B['sheet']).convert('RGBA')
+  for i, box in enumerate(B['wall']):
+    w = sh.crop(box); h = round(w.height * 64 / w.width); w = w.resize((64, h), Image.LANCZOS)
+    cv = Image.new('RGBA', (64, 64), (0, 0, 0, 0)); cv.alpha_composite(w, (0, 64 - h)); clean_alpha(cv).save(od + 'wall_%d.png' % i, optimize=True)
+    if i < 2:   # 細い壁（仮）：左右の柱の部分をつなぐ
+      nv = Image.new('RGBA', (32, 64), (0, 0, 0, 0)); nv.alpha_composite(cv.crop((0, 0, 16, 64)), (0, 0)); nv.alpha_composite(cv.crop((48, 0, 64, 64)), (16, 0))
+      nv.save(od + 'narrow_%d.png' % i, optimize=True)
+  print(theme, 'ok (rim %dpx)' % rw)
+
 def build_extra(theme):
   X = EXTRA.get(theme)
   if not X: return
@@ -75,4 +124,4 @@ def build(theme):
     cv.save(od + 'narrow_%d.png' % i, optimize=True)
   build_extra(theme)
   print(theme, 'ok')
-for t in (sys.argv[1:] or SHEETS.keys()): build(t)
+for t in (sys.argv[1:] or list(SHEETS.keys()) + list(BATCH1.keys())): build_batch1(t) if t in BATCH1 else build(t)

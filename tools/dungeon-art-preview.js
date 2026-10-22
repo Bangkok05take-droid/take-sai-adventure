@@ -5,7 +5,7 @@
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const THEME = process.argv[2] || 'brick';
-const FLOOR = { brick: 2, roots: 5, ruins: 8, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
+const FLOOR = { brick: 2, roots: 5, ruins: 8, ruins_deep: 12, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
 const ROOT = path.join(__dirname, '..'), OUT = process.argv[3] || path.join(ROOT, 'docs', 'dungeon-art-v1', THEME);
 fs.mkdirSync(OUT, { recursive: true });
 const PORT = 8849;

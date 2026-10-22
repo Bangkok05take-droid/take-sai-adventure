@@ -531,21 +531,27 @@
       if (at(x, y - 1) === WALL) shade(0, y0, 0, y0 + 9, x0, y0, 32, 9);
       if (at(x - 1, y) === WALL) shade(x0, 0, x0 + 6, 0, x0, y0, 6, 32);
     } else if (walk(x, y + 1)) {
+      // 下地に上面の絵（壁の絵の形が四角でない所＝柱のわき・下のすき間に、今のコードの壁が透けないように）
+      if (ready(A.top)) g.drawImage(A.top[hash(x >> 1, y >> 1, seed + 94) % A.top.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
       const w = wallPart(y); g.drawImage(w.img, w.sx, 32, 32, 32, x0, y0, 32, 32);
       out.torch = false;
     } else {
-      const top = ready(A.top) && ready(A.rimW) && ready(A.rimE) && ready(A.rimN) && ready(A.joint);
+      // 角の絵：向きごとの絵（jOutNE など。第1回の追加原画）があればそれ、無ければ共通の目地の四角（joint。レンガの回廊）
+      const J = (k) => (A[k] && ready(A[k]) ? A[k][0] : A.joint && ready(A.joint) ? A.joint[0] : null);
+      const top = ready(A.top) && ready(A.rimW) && ready(A.rimE) && ready(A.rimN) && !!J('jOutNE');
       if (top) g.drawImage(A.top[hash(x >> 1, y >> 1, seed + 94) % A.top.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
       const face = isFace(x, y + 1);
       if (face) { const w = wallPart(y + 1); g.drawImage(w.img, w.sx, 0, 32, 32, x0, y0, 32, 32); }
       if (!top) return;
-      // 縁：床に面した辺（下は壁の正面の絵が受け持つ）。2マス分の縁の絵を、マスの偶奇で上下（左右）半分ずつ使う
-      const fW = walk(x - 1, y), fE = walk(x + 1, y), fN = walk(x, y - 1);
-      if (fW) g.drawImage(A.rimW[0], 0, (y & 1) * 32, 10, 32, x0, y0, 10, 32);
-      if (fE) g.drawImage(A.rimE[0], 0, (y & 1) * 32, 10, 32, x0 + 22, y0, 10, 32);
-      if (fN) g.drawImage(A.rimN[0], (x & 1) * 32, 0, 32, 10, x0, y0, 32, 10);
-      // 目地の角：外角（縁が2本出会う）と内角（そのマスの縦横は壁で、斜めだけ床）。下側は下のマスが正面の壁なら描かない（正面の絵が受け持つ）
-      const corner = (dx, dy, a, b) => { if ((a && b) || (!a && !b && walk(x + dx, y + dy))) g.drawImage(A.joint[0], x0 + (dx > 0 ? 22 : 0), y0 + (dy > 0 ? 22 : 0)); };
+      // 縁：床に面した辺（下は壁の正面の絵が受け持つ）。2マス分の縁の絵を、マスの偶奇で上下（左右）半分ずつ使う。幅は絵の幅（地域ごと）
+      const fW = walk(x - 1, y), fE = walk(x + 1, y), fN = walk(x, y - 1), rw = A.rimW[0].width, rh = A.rimN[0].height;
+      if (fW) g.drawImage(A.rimW[0], 0, (y & 1) * 32, rw, 32, x0, y0, rw, 32);
+      if (fE) g.drawImage(A.rimE[0], 0, (y & 1) * 32, rw, 32, x0 + 32 - rw, y0, rw, 32);
+      if (fN) g.drawImage(A.rimN[0], (x & 1) * 32, 0, 32, rh, x0, y0, 32, rh);
+      // 角：外角（縁が2本出会う）と内角（そのマスの縦横は壁で、斜めだけ床）。下側は下のマスが正面の壁なら描かない（正面の絵が受け持つ）
+      const corner = (dx, dy, a, b) => { const v = (dy < 0 ? 'N' : 'S') + (dx > 0 ? 'E' : 'W');
+        const img = a && b ? J('jOut' + v) : !a && !b && walk(x + dx, y + dy) ? J('jIn' + v) : null;
+        if (img) g.drawImage(img, x0 + (dx > 0 ? 32 - img.width : 0), y0 + (dy > 0 ? 32 - img.height : 0)); };
       corner(-1, -1, fW, fN); corner(1, -1, fE, fN);
       if (!face) { corner(-1, 1, fW, false); corner(1, 1, fE, false); }
     }

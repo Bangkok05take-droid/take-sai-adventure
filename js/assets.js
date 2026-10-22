@@ -12,6 +12,11 @@
   'use strict';
   const C = 'assets/chars/', I = 'assets/items/';
   const views = (n, side) => ({ front: C + n + '_front.png', back: C + n + '_back.png', side: side ? C + n + '_side.png' : null });
+  // 第1回の追加原画で作った地域の背景の部品（tools/make-dungeon-art.py の BATCH1）
+  const batch1 = (d) => { const f = (n) => ['assets/dungeon/' + d + '/' + n + '.png'];
+    return { floor: [0, 1].map((i) => 'assets/dungeon/' + d + '/floor_' + i + '.png'), top: [0, 1].map((i) => 'assets/dungeon/' + d + '/top_' + i + '.png'),
+      wall: [0, 1, 2, 3].map((i) => 'assets/dungeon/' + d + '/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/' + d + '/narrow_' + i + '.png'),
+      rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jOutNE: f('jOutNE'), jOutNW: f('jOutNW'), jInNE: f('jInNE'), jInNW: f('jInNW'), jInSE: f('jInSE'), jInSW: f('jInSW') }; };
   TS.ASSETS = {
     chars: {
       take: views('take', true), sai: views('sai', true), yanai: views('yanai', true),
@@ -182,6 +187,9 @@
     dungeon: {
       brick: { floor: [0, 1, 2].map((i) => 'assets/dungeon/brick/floor_' + i + '.png'), wall: [0, 1].map((i) => 'assets/dungeon/brick/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/brick/narrow_' + i + '.png'),
         top: [0, 1, 2, 3].map((i) => 'assets/dungeon/brick/top_' + i + '.png'), rimW: ['assets/dungeon/brick/rimW.png'], rimE: ['assets/dungeon/brick/rimE.png'], rimN: ['assets/dungeon/brick/rimN.png'], joint: ['assets/dungeon/brick/joint.png'] },
+      /* 第1回の追加原画（dungeon_batch1_roots_ruins_v2）：縁・角は地域ごとの幅（木の根 8px・地下の遺跡 9px）。角は向きごと
+       *  jOutNE・jOutNW：外角（上と右／上と左に床）。jInNE・jInNW・jInSE・jInSW：内角（斜めだけ床） */
+      roots: batch1('roots'), ruins: batch1('ruins'), ruins_deep: batch1('ruins'),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },
