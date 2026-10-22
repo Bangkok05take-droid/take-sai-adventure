@@ -98,8 +98,9 @@
   D.FLAME_ROOM_PREVIEW = roomPreview('flamePreview', 718, 150, 365, 1536, 'tiles', { hazardOutline: true });
   D.BOSS_ROOM_PREVIEW = {};   // プレビューのときだけ { truevearn: 'TRUEVEARN_ROOM_PREVIEW' } など（確認の道具が切り替える）
   /* 通常ダンジョンの地域の背景の絵（ZIP dungeon_7themes_art_v1）を使う地域。{ brick: true } のように。
-   * 2026年10月21日：レンガの回廊（1〜3階）を本番に反映。ほかの地域はまだ今までのコードの絵。確認の道具 tools/dungeon-art-preview.js は before/after で切り替えて撮る */
-  D.DUNGEON_ART = { brick: true };
+   * 2026年10月21日：レンガの回廊（1〜3階）を本番に反映。10月22日：木の根の遺跡（4〜6階）・地下の遺跡（7〜14階）も反映（1マス幅の正面の壁は仮の絵）。
+   * ほかの地域はまだ今までのコードの絵。確認の道具 tools/dungeon-art-preview.js は before/after で切り替えて撮る */
+  D.DUNGEON_ART = { brick: true, roots: true, ruins: true, ruins_deep: true };
   /* 隠しダンジョン（2026年10月確定）：真大魔王バーンを倒したあと、30階の時空の亀裂から入る。
    * 31階から始まり、35階の竜人王バランまで。31〜34階は部屋の数が本編の約2倍（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul、仮）。帰還の祠は無い。
    * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜人王バランを倒したあとの帰還口
