@@ -116,3 +116,11 @@
 - 使う地域：`D.DUNGEON_BACKDROP`（本番は空。プレビューの道具だけ切り替える）。
 - プレビュー：`node tools/dungeon-backdrop-preview.js` → `docs/dungeon-backdrop-v1/`（幅360・390・430。start＝階に着いたところ、edge＝地図の端に近い部屋。`*_compare_390.jpg` は左から start の今・背景あり、edge の今・背景あり）。
 - 専用素材：512×512 の上下左右につながる背景（ゲームでは 128×128）。この仮の見え方に合わせて仕上げる。
+
+---
+# 地下の遺跡の奥行き（ZIP ruins_depth_v1、2026年10月22日・プレビュー段階）
+- 原画：`assets/reference/ruins-depth-v1/`（README・目標の絵 approved_concept.png）。ゲーム用：`python3 -I tools/make-ruins-depth.py` → `assets/dungeon/ruins/cavern.png・foundation.png・pillar.png`。
+- 描き方（`js/render.js` の drawBackdrop・drawDepth・edgeShade）：背景（岩盤と霧。8×8マスで地図に固定、35%暗く）→ 描いた地形の下向きの辺から外壁（2マス幅・約2.7マス、明るさ0.62）と4マスおきの支柱 → 今までの地形 → 道具・キャラクター・予告。
+  - 外壁・支柱は「そのマスを描いたか・下のマスを描いたか」だけで決め、長さはいつも同じ（未探索の地形は見ない）。あとで描いた地形が上に重なる。
+  - 左右の辺は今は半マスの影だけ（側面の絵が無い）。
+- 本番は空（`D.DUNGEON_BACKDROP`）。プレビュー：`node tools/dungeon-backdrop-preview.js docs/ruins-depth-v1 ruins,ruins_deep`（start・corridor・edge）。目標の絵との比較 `docs/ruins-depth-v1/concept_vs_game_390.jpg`。

@@ -16,7 +16,9 @@
   const batch1 = (d) => { const f = (n) => ['assets/dungeon/' + d + '/' + n + '.png'];
     return { floor: [0, 1].map((i) => 'assets/dungeon/' + d + '/floor_' + i + '.png'), top: [0, 1].map((i) => 'assets/dungeon/' + d + '/top_' + i + '.png'),
       wall: [0, 1, 2, 3].map((i) => 'assets/dungeon/' + d + '/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/' + d + '/narrow_' + i + '.png'),
-      rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jOutNE: f('jOutNE'), jOutNW: f('jOutNW'), jInNE: f('jInNE'), jInNW: f('jInNW'), jInSE: f('jInSE'), jInSW: f('jInSW'), ...deco(d) }; };
+      rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jOutNE: f('jOutNE'), jOutNW: f('jOutNW'), jInNE: f('jInNE'), jInNW: f('jInNW'), jInSE: f('jInSE'), jInSW: f('jInSW'), ...deco(d),
+      // 奥行き（地下の遺跡だけ。tools/make-ruins-depth.py）：cavern＝岩盤と霧の背景、foundation＝床の端から下へ伸びる外壁、pillar＝支柱
+      ...(d === 'ruins' ? { cavern: f('cavern'), foundation: f('foundation'), pillar: f('pillar') } : {}) }; };
   // 飾り（tools/make-dungeon-art.py の DECO）：decoWall＝正面の壁に重ねる柱・灯り（地下の遺跡は崩れた浮き彫りも。アーチは入口に見えるので使わない。64×64）、decoTop＝壁の上面のがれき（32×32）
   function deco(d) { return { decoWall: (d === 'ruins' ? [0, 1, 2] : [0, 1]).map((i) => 'assets/dungeon/' + d + '/decoWall_' + i + '.png'), decoTop: ['assets/dungeon/' + d + '/decoTop_0.png'] }; }
   TS.ASSETS = {

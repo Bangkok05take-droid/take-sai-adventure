@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "scope": "地下の遺跡7〜14階・見た目のプレビュー",
+  "assets": {
+    "cavern_background": {
+      "size": [
+        512,
+        512
+      ],
+      "render_size_initial": [
+        128,
+        128
+      ],
+      "seamless_status": "requested_in_generation_not_pixel_verified"
+    },
+    "foundation_wall": {
+      "source_crop": [
+        26,
+        125,
+        999,
+        1432
+      ],
+      "size": [
+        256,
+        344
+      ],
+      "anchor": "top_center_of_cropped_stone",
+      "suggested_render_height_tiles": 3,
+      "alpha_preserved": true,
+      "note": "very faint distant glow cropped; visible stone alpha preserved"
+    },
+    "support_pillar": {
+      "source_crop": [
+        419,
+        35,
+        607,
+        1517
+      ],
+      "size": [
+        81,
+        640
+      ],
+      "anchor": "top_center_of_cropped_stone",
+      "suggested_render_height_tiles": 4,
+      "alpha_preserved": true,
+      "note": "very faint distant glow cropped; visible stone alpha preserved"
+    }
+  }
+}
