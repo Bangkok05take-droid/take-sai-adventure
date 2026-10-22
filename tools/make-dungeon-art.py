@@ -84,12 +84,12 @@ def build_batch1(theme):
   print(theme, 'ok (rim %dpx)' % rw)
 
 # 飾り（2026年10月22日に置き方が決まった：案1と案2を控えめに併用。通路や敵を隠さない）：前回の原画の4段目
-#  ・decoWall_0〜2（柱・灯り・アーチ）：64×64（2マス幅・2マス高。正面の壁の絵と同じ置き方）の下ぞろえ・左右中央。
-#    正面の壁の2マス分の上に重ねる（壁のマスの中だけ。床には出ない）。高さは柱58・灯り50・アーチ48まで（幅60まで）
+#  ・decoWall（柱・灯り。地下の遺跡は崩れた浮き彫りも）。アーチは通れる入口に見えるので使わない：64×64（2マス幅・2マス高。正面の壁の絵と同じ置き方）の下ぞろえ・左右中央。
+#    正面の壁の2マス分の上に重ねる（壁のマスの中だけ。床には出ない）。高さは柱58・灯り50・浮き彫り48まで（幅60まで）
 #  ・decoTop_0（がれき）：32×32 の中央に26×26まで。部屋から離れた壁の上面に、ときどき
 DECO = {
-  'brick': {'sheet': '01_brick.png', 'wall': [(82, 881, 250, 1201), (375, 890, 520, 1206), (586, 928, 918, 1171)], 'top': (944, 953, 1217, 1191)},
-  'roots': {'sheet': '02_roots.png', 'wall': [(25, 838, 320, 1223), (388, 835, 557, 1210), (632, 872, 918, 1189)], 'top': (945, 930, 1233, 1182)},
+  'brick': {'sheet': '01_brick.png', 'wall': [(82, 881, 250, 1201), (375, 890, 520, 1206)], 'top': (944, 953, 1217, 1191)},
+  'roots': {'sheet': '02_roots.png', 'wall': [(25, 838, 320, 1223), (388, 835, 557, 1210)], 'top': (945, 930, 1233, 1182)},
   'ruins': {'sheet': '03_ruins.png', 'wall': [(81, 893, 255, 1195), (378, 900, 560, 1191), (644, 911, 910, 1203)], 'top': (961, 972, 1216, 1197)},
 }
 def fit(img, mw, mh):
@@ -98,6 +98,8 @@ def build_deco(theme):
   B = DECO.get(theme)
   if not B: return
   od = OUT + theme + '/'; sh = Image.open(SRC + B['sheet']).convert('RGBA')
+  for f in os.listdir(od):
+    if f.startswith('decoWall_'): os.remove(od + f)
   for i, (box, mh) in enumerate(zip(B['wall'], (58, 50, 48))):
     d = fit(sh.crop(box), 60, mh); cv = Image.new('RGBA', (64, 64), (0, 0, 0, 0)); cv.alpha_composite(d, ((64 - d.width) // 2, 63 - d.height))
     clean_alpha(cv).save(od + 'decoWall_%d.png' % i, optimize=True)

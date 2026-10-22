@@ -528,6 +528,8 @@
       const deco = ready(A.decoWall) && dh % 6 === 0 ? A.decoWall[(dh >> 4) % A.decoWall.length] : null;
       return { img: A.wall[hash(pair, yy, seed + 92) % A.wall.length], sx: (idx & 1) * 32, deco };
     };
+    const dark = D.DUNGEON_WALL_DARK && D.DUNGEON_WALL_DARK[theme];
+    const darkWall = () => { if (dark) { g.fillStyle = 'rgba(6,4,10,' + dark + ')'; g.fillRect(x0, y0, 32, 32); } };
     const drawWall = (w, sy) => { g.drawImage(w.img, w.sx, sy, 32, 32, x0, y0, 32, 32); if (w.deco) g.drawImage(w.deco, w.sx, sy, 32, 32, x0, y0, 32, 32); };
     if (k !== WALL) {
       g.drawImage(A.floor[hash(x >> 1, y >> 1, seed + 91) % A.floor.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
@@ -540,6 +542,7 @@
       if (ready(A.top)) g.drawImage(A.top[hash(x >> 1, y >> 1, seed + 94) % A.top.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
       drawWall(wallPart(y), 32);
       out.torch = false;
+      darkWall();
     } else {
       // 角の絵：向きごとの絵（jOutNE など。第1回の追加原画）があればそれ、無ければ共通の目地の四角（joint。レンガの回廊）
       const J = (k) => (A[k] && ready(A[k]) ? A[k][0] : A.joint && ready(A.joint) ? A.joint[0] : null);
@@ -547,7 +550,7 @@
       if (top) g.drawImage(A.top[hash(x >> 1, y >> 1, seed + 94) % A.top.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
       const face = isFace(x, y + 1);
       if (face) drawWall(wallPart(y + 1), 0);
-      if (!top) return;
+      if (!top) { darkWall(); return; }
       // 飾り（案2）：床から2マス以上離れた壁の上面に、ときどき（約19分の1）がれき
       if (!face && ready(A.decoTop) && hash(x, y, seed + 96) % 19 === 0) {
         let far = true; for (let dy = -2; dy <= 2 && far; dy++) for (let dx = -2; dx <= 2; dx++) if (walk(x + dx, y + dy)) { far = false; break; }
@@ -564,6 +567,7 @@
         if (img) g.drawImage(img, x0 + (dx > 0 ? 32 - img.width : 0), y0 + (dy > 0 ? 32 - img.height : 0)); };
       corner(-1, -1, fW, fN); corner(1, -1, fE, fN);
       if (!face) { corner(-1, 1, fW, false); corner(1, 1, fE, false); }
+      darkWall();
     }
   }
 

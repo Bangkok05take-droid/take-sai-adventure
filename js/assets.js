@@ -17,8 +17,8 @@
     return { floor: [0, 1].map((i) => 'assets/dungeon/' + d + '/floor_' + i + '.png'), top: [0, 1].map((i) => 'assets/dungeon/' + d + '/top_' + i + '.png'),
       wall: [0, 1, 2, 3].map((i) => 'assets/dungeon/' + d + '/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/' + d + '/narrow_' + i + '.png'),
       rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jOutNE: f('jOutNE'), jOutNW: f('jOutNW'), jInNE: f('jInNE'), jInNW: f('jInNW'), jInSE: f('jInSE'), jInSW: f('jInSW'), ...deco(d) }; };
-  // 飾り（tools/make-dungeon-art.py の DECO）：decoWall＝正面の壁に重ねる柱・灯り・アーチ（64×64）、decoTop＝壁の上面のがれき（32×32）
-  function deco(d) { return { decoWall: [0, 1, 2].map((i) => 'assets/dungeon/' + d + '/decoWall_' + i + '.png'), decoTop: ['assets/dungeon/' + d + '/decoTop_0.png'] }; }
+  // 飾り（tools/make-dungeon-art.py の DECO）：decoWall＝正面の壁に重ねる柱・灯り（地下の遺跡は崩れた浮き彫りも。アーチは入口に見えるので使わない。64×64）、decoTop＝壁の上面のがれき（32×32）
+  function deco(d) { return { decoWall: (d === 'ruins' ? [0, 1, 2] : [0, 1]).map((i) => 'assets/dungeon/' + d + '/decoWall_' + i + '.png'), decoTop: ['assets/dungeon/' + d + '/decoTop_0.png'] }; }
   TS.ASSETS = {
     chars: {
       take: views('take', true), sai: views('sai', true), yanai: views('yanai', true),
