@@ -2039,7 +2039,7 @@ test('30階の時空の亀裂の行き先：真大魔王バーンを倒す前は
   const keep = D.HIDDEN_DUNGEON; D.HIDDEN_DUNGEON = null; try { eq(G.crackState(S), 'hiddenNotReady'); } finally { D.HIDDEN_DUNGEON = keep; }
   S.village.story.defeated.truevearn = false; S.run.player.x = S.run.crack.x; S.run.player.y = S.run.crack.y; G.act(S, { type: 'descend' }); eq(S.run.floor, 31);
 });
-test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂から31階へ。31〜34階は部屋の数が約2倍（大きさは同じ）・道具も増える・帰還の祠なし・32〜34階は強敵（仮）・35階に竜人王バラン（ボス部屋は本編と同じ）→ 帰還口。読み込み直しても隠しダンジョンのまま', () => {
+test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂から31階へ。31〜34階は部屋の数が約2倍（大きさは同じ）・道具も増える・帰還の祠なし・32〜34階は強敵（仮）・35階に竜魔神バラン（ボス部屋は本編と同じ）→ 帰還口。読み込み直しても隠しダンジョンのまま', () => {
   const H = D.HIDDEN_DUNGEON;
   const S = toBossFloor(6, 979); defeatBoss(S); G.commitRescue(S);
   S.village.story.defeated.truevearn = true; S.village.story.endingDone = true;
@@ -2080,37 +2080,35 @@ test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂か
     goDown(S);
   }
   eq(seen.join(), '31,32,33,34');
-  // 35階：竜人王バラン（ボス部屋は本編と同じ大きさ。部屋の数の倍率は使わない）。帰還の祠なし。倒すと帰還口
+  // 35階：竜魔神バラン（ボス部屋は本編と同じ大きさ。部屋の数の倍率は使わない）。帰還の祠なし。倒すと帰還口
   eq(run.floor, 35); const b = run.enemies.find((e) => e.boss); eq(b && b.type, 'dragonbaran'); assert(!run.returnPoint);
   eq(run.bossFight.w * run.bossFight.h, 15 * 15, 'normal arena'); eq(run.map.w + 'x' + run.map.h, D.MAP.w + 'x' + D.MAP.h);
-  // 報酬：真魔剛竜剣を持っている（装備中）・竜の盾は倉庫にある → どちらも出さない。竜の紋章は村で拾い済みで今は持っていない → 出す
+  // 報酬はドラゴニックオーラの盾だけ（2026年10月23日）：盾が倉庫にあれば出さない（真魔剛竜剣・竜の紋章は報酬ではない）
   run.bag = run.bag.filter((i) => i.id !== 'shinma_sword' && i.id !== 'dragonic_shield' && i.id !== 'dragon_crest');
   S.village.storage = S.village.storage.filter((i) => !['shinma_sword', 'dragonic_shield', 'dragon_crest'].includes(i.id));
   const sw = G.makeItem(S, 'shinma_sword'); run.bag.push(sw); G.act(S, { type: 'equip', uid: sw.uid });
   S.village.storage.push(G.makeItem(S, 'dragonic_shield')); S.village.story.found = { dragon_crest: true };
   defeatBoss(S);
   assert(run.portal && S.village.story.defeated.dragonbaran, 'portal after dragon king');
-  eq(run.floorItems.filter((f) => f.item && f.item.bossReward).map((f) => f.item.id).join(), 'dragon_crest', 'only the item not owned');
+  eq(run.floorItems.filter((f) => f.item && f.item.bossReward).map((f) => f.item.id).join(), '', 'shield owned: no reward');
   run.player.x = run.portal.x; run.player.y = run.portal.y; G.act(S, { type: 'returnHome' });
   assert(run.over || !S.run || S.run.over, 'returned');
   // 本編（真大魔王バーンを倒す前）の31階は、隠しダンジョンではない
   const M = toBossFloor(6, 980); defeatBoss(M); G.commitRescue(M); M.run.player.x = M.run.crack.x; M.run.player.y = M.run.crack.y; G.act(M, { type: 'descend' });
   assert(M.run.floor === 31 && !M.run.hidden && !G.F(M.run).hidden && M.run.map.w === D.MAP.w, 'main 31F is not hidden');
 });
-test('竜人王バランの報酬：持っていない品だけ。床に落ちたまま（未回収）・村で拾う前の竜の紋章・展示室は所有扱い。2回目は重ならない', () => {
+test('竜魔神バランの報酬：ドラゴニックオーラの盾だけ。持っていなければ出す（床に落ちたまま＝未回収は所有扱い）。2回目は重ならない', () => {
   const S = G.newState(), V = S.village; G.depart(S, 5); const run = S.run;
   run.bag = []; V.storage = []; V.bag = [];
-  eq(G.dragonKingRewards(S).join(), 'shinma_sword,dragonic_shield', 'crest waits in the village (not picked yet)');
-  V.story.found = { dragon_crest: true };
-  eq(G.dragonKingRewards(S).join(), 'shinma_sword,dragonic_shield,dragon_crest');
-  V.bag.push(G.makeItem(S, 'shinma_sword'));
+  // 2026年10月23日：報酬はドラゴニックオーラの盾だけ（真魔剛竜剣・竜の紋章は出ない）
+  eq(G.dragonKingRewards(S).join(), 'dragonic_shield');
+  V.story.found = { dragon_crest: true }; V.bag.push(G.makeItem(S, 'shinma_sword'));
+  eq(G.dragonKingRewards(S).join(), 'dragonic_shield', 'sword and crest are not rewards');
   run.floorItems.push({ x: 1, y: 1, item: Object.assign(G.makeItem(S, 'dragonic_shield'), { bossReward: true }) });   // 前回の未回収（帰還時に届く）
-  eq(G.dragonKingRewards(S).join(), 'dragon_crest');
-  run.bag.push(G.makeItem(S, 'dragon_crest'));
   eq(G.dragonKingRewards(S).length, 0, 'all owned: nothing');
   eq(D.DRAGON_KING.materials.length, 0, 'materials not decided yet');
 });
-test('竜人王バランの戦い方：ドルオーラ（一直線→後半は十字）・なぎ払い（まわり8マス）・突進（離れて一直線）・通常攻撃。どれも予告→発動→隙。後半はオーラで強く', () => {
+test('竜魔神バランの戦い方：ドルオーラ（一直線→後半は十字）・なぎ払い（まわり8マス）・突進（離れて一直線）・通常攻撃。どれも予告→発動→隙。後半はオーラで強く', () => {
   const S = newRun(3301, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);
   const run = S.run, K = D.DRAGON_KING, p = run.player;
   const mk = (x, y) => { const b = G.makeEnemy(run, 'dragonbaran', x, y); b.boss = true; b.awake = true; b.hold = 0; run.enemies = [b]; run.bossFight = { x: 2, y: 2, w: 20, h: 12, engaged: true }; return b; };
@@ -2768,7 +2766,7 @@ function checkBottomEntry(run, tag) {
   const b = run.enemies.find((e) => e.boss);
   if (b) { assert(G.inArena(run, b.x, b.y), tag + ' boss in arena'); assert(b.y < p.y && Math.abs(b.y - (A.y + (A.h >> 1))) <= 1, tag + ' boss at the center, deeper than the entrance'); }
 }
-test('全ボスの部屋：下の前室・通路から上へ入る（章のボス・大魔王バーン・真大魔王バーン・竜人王バラン）。ボスは奥の中央・入室で1回だけ開始・報酬と帰還口は広間の床', () => {
+test('全ボスの部屋：下の前室・通路から上へ入る（章のボス・大魔王バーン・真大魔王バーン・竜魔神バラン）。ボスは奥の中央・入室で1回だけ開始・報酬と帰還口は広間の床', () => {
   for (const ch of [1, 2, 3, 4, 5, 6]) {
     const S = toBossFloor(ch, 2100 + ch), run = S.run, b = run.enemies.find((e) => e.boss);
     checkBottomEntry(run, 'ch' + ch + ' ' + b.type);
@@ -2784,7 +2782,7 @@ test('全ボスの部屋：下の前室・通路から上へ入る（章のボ�
     for (const o of run.floorItems.filter((f) => f.item && f.item.bossReward).concat(run.portal ? [run.portal] : [], run.crack ? [run.crack] : []))
       assert(G.inArena(run, o.x, o.y) && DG.passable(run.map, o.x, o.y), 'reward/portal on the arena floor ch' + ch + ' ' + JSON.stringify(o));
   }
-  // 真大魔王バーン（33階）と竜人王バラン（隠しダンジョン35階）：同じ形（広間15×15・下の前室）
+  // 真大魔王バーン（33階）と竜魔神バラン（隠しダンジョン35階）：同じ形（広間15×15・下の前室）
   for (const boss of ['truevearn', 'dragonbaran']) {
     const g = DG.generate(33, R.create(77), { boss: true });
     const A = g.map.rooms[1];
@@ -2849,7 +2847,7 @@ test('通常バラン戦の部屋（D.BARAN_ROOM）：背景の絵どおり。�
   for (const f of run.floorItems.filter((f) => f.item && f.item.bossReward)) assert(G.inArena(run, f.x, f.y), 'reward in hall');
   // 保存・読み込み直しでも同じ部屋
   const L = SV.deserialize(SV.serialize(S)); eq(L.run.map.bg, 'BARAN_ROOM'); eq(L.run.map.h, 34);
-  // 竜人王バラン（隠しダンジョン）には使わない
+  // 竜魔神バラン（隠しダンジョン）には使わない
   eq(DG.generate(35, R.create(5), { boss: true }).map.bg, undefined);
 });
 test('通常バラン戦：前室を足した版（D.BARAN_ROOM_EXT、確認用）。座標・倍率は同じ・前室5×3から通路を上へ・入室で1回だけ。ふだんは前室なしの版', () => {
@@ -3335,7 +3333,7 @@ test('竜の紋章：なくしたら旅商人から買える（拾ったこと�
   assert(has(), 'lost after pickup');
   const c = G.makeItem(S, 'dragon_crest'); V.storage.push(c); assert(!has(), 'in storage'); V.storage.pop();
   r.bag.push(c); assert(!has(), 'in bag'); r.bag.pop();
-  // 竜人王バランの報酬で拾った記録だけでも買える
+  // 竜魔神バランの報酬で拾った記録だけでも買える
   delete V.story.found.dragon_crest; V.bossObtained = { dragon_crest: true }; assert(has(), 'obtained from Dragon King');
   // 買う：探索中のお金から先に
   r.runGold = D.MERCHANT.buybackItems.dragon_crest.price; const n = r.bag.length;

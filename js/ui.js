@@ -507,10 +507,8 @@
   }
   UI.approachCreature = approach;
   function statueTalk() {
-    const L = D.STORY.yanaiMemories || [];
-    UI.statueN = ((UI.statueN || 0) + 1) % Math.max(1, L.length);
-    AU.startEventBgm('yanai');   // 記念像の言葉はヤナイのテーマで。閉じたら村の曲へ
-    talk([['narration', 'マスターヤナイの像。村を守った師匠をしのんで、みんなで建てた。'], L[UI.statueN] || ['yanai', '……']], () => AU.endEventBgm(), { skip: false });
+    AU.startEventBgm('yanai');   // 記念像はヤナイのテーマで。閉じたら村の曲へ。台詞はなし（名札だけ）
+    talk([['narration', D.STORY.statue]], () => AU.endEventBgm(), { skip: false });
   }
   function updateVillageHud() {
     const V = UI.S.village;
@@ -2006,7 +2004,7 @@
         setTimeout(() => AU.sfx('bolt'), PH.gather + fly);   // 当たる音
         return PH.gather + fly;   // 命中の数字・点滅はこの時間に合わせる
       }
-      // 竜人王バラン：ドルオーラ（金色の光の帯）・なぎ払い（まわりへの衝撃）。突進は 'rush'
+      // 竜魔神バラン：ドルオーラ（金色の光の帯）・なぎ払い（まわりへの衝撃）。突進は 'rush'
       // 爆弾岩の自爆：まわりへの爆発
       case 'explode': RD.addFx({ t: 'impact', tiles, center: tiles[tiles.length - 1] || null, color: '#ffb040', dur: 460 }); FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
       case 'doloura': RD.addFx({ t: 'flamewave', tiles, color: '#ffd040', dur: 560 }); FXm.shake(RD, 3, 260); AU.sfx('bolt'); return;
@@ -2295,7 +2293,7 @@
     }
     if (stt === 'hidden') {
       modal({ title: '時空の亀裂', html: `<p>時空の亀裂の奥から、竜の気配がする……。</p><p>隠しダンジョン「${esc(D.HIDDEN_DUNGEON.name)}」へ進みますか？（地下${D.HIDDEN_DUNGEON.from}階から）</p>`
-        + '<div class="warnbox">部屋が広く、強い敵が出ます。帰還の祠はありません。帰るには帰還の巻物を使うか、最奥の竜人王バランを倒してください。</div>', buttons: [
+        + '<div class="warnbox">部屋が広く、強い敵が出ます。帰還の祠はありません。帰るには帰還の巻物を使うか、最奥の竜魔神バランを倒してください。</div>', buttons: [
         { label: 'まだ探索する' },
         { label: '進む', cls: 'primary', onClick: () => { setTimeout(() => doDescend(), 0); } },
       ] });

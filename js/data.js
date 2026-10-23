@@ -6,7 +6,7 @@
 
   D.SAVE_VERSION = 9;
   /* ボスの登場ムービー（ボスID → 動画の名前。動画の場所は assets.js の movies）。ボス部屋に初めて入ったとき、戦いの前に1回だけ */
-  // baran：第4章・地下30階の玉座のバラン（通常のバラン戦）だけ。隠しダンジョン35階の「竜人王バラン」は別のボスなので、ここには入れない
+  // baran：第4章・地下30階の玉座のバラン（通常のバラン戦）だけ。隠しダンジョン35階の「竜魔神バラン」は別のボスなので、ここには入れない
   // flame：第2章のフレイザード（2026年10月、名前テロップ入り完成版の動画で追加）
   // kill：第3章のキルバーン（2026年10月、名前テロップ入り完成版の動画で追加）
   // mist：第5章のミストバーン（2026年10月、名前テロップ入り完成版の動画で追加）
@@ -22,7 +22,7 @@
   D.INTRO_SEEN_KEY = { truevearn: 'truevearnAwaken' };
   D.introSeenKey = (id) => (D.INTRO_SEEN_KEY && D.INTRO_SEEN_KEY[id]) || id;
   /* 撃破後ムービー（ボスID → 物語のムービーの名前）。章の探索でそのボスを倒したとき、撃破の演出のあとに流す。
-   * 通常のバラン（baran）だけ。クリア後の竜人王バランは別のIDにするので、ここには入らない */
+   * 通常のバラン（baran）だけ。クリア後の竜魔神バランは別のIDにするので、ここには入らない */
   D.BOSS_OUTROS = { baran: 'baranTaken' };
   /* 村で拾える品（2026年10月）。拾った記録は story.found[id]（セーブに残る。お宝の記録・ボスの撃破記録とは別）。
    * at：拾うマス。need：拾えるようになる条件（村の発展の飾りの建設済み。ムービーを見たかどうかは関係しない）
@@ -45,7 +45,7 @@
   D.LAYOUT = 4;              // 新しく始める探索の配置の版
   /* 最終章の2体のボスの階。どちらも一度倒したら出ない（skip）。版2の探索（更新前から続いているもの）は、以前どおり35階で連戦。
    *  版4（2026年10月）：地下30階に大魔王バーン、地下33階に真大魔王バーン（31〜32階は探索）。30階の時空の亀裂から31階へ。
-   *    真大魔王バーンを倒したあとは、30階の同じ亀裂が隠しダンジョン（最奥35階に竜人王バラン）の入口になる。
+   *    真大魔王バーンを倒したあとは、30階の同じ亀裂が隠しダンジョン（最奥35階に竜魔神バラン）の入口になる。
    *  版3（更新前から続いている探索だけ）：30階・35階（31〜34階は探索）。途中の探索の階は変えない */
   D.FINAL_V3 = { vearn: 30, truevearn: 33 };
   D.finalFloors = (layout) => ((layout || D.LAYOUT) >= 4 ? D.FINAL_V3 : { vearn: 30, truevearn: 35 });
@@ -114,8 +114,8 @@
    *  地下の遺跡：256（8×8マス。128だと柄のくり返しが目立った）・35%。レンガの回廊・木の根の遺跡：README どおり128（4×4マス）。素材自体が暗いので少しだけ */
   D.DUNGEON_DEPTH = { ruins: { size: 256, dark: 0.35 }, ruins_deep: { size: 256, dark: 0.35 }, brick: { size: 128, dark: 0.15 }, roots: { size: 128, dark: 0.15 } };
   /* 隠しダンジョン（2026年10月確定）：真大魔王バーンを倒したあと、30階の時空の亀裂から入る。
-   * 31階から始まり、35階の竜人王バランまで。31〜34階は部屋の数が本編の約2倍（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul、仮）。帰還の祠は無い。
-   * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜人王バランを倒したあとの帰還口
+   * 31階から始まり、35階の竜魔神バランまで。31〜34階は部屋の数が本編の約2倍（D.HIDDEN_MAP）。32〜34階は強敵（enemyMul、仮）。帰還の祠は無い。
+   * 本編の31〜33階とは別の階（run.hidden）。帰りは帰還の巻物か、竜魔神バランを倒したあとの帰還口
    *  strong：強敵の階（32〜34階）。専用の強敵6種（D.STRONG・敵の定義）が出る。以前の「今の敵を一律1.35倍」はやめた
    *  counts：部屋が約2倍になった分の配置数（仮。本編の魔王の城は 道具5〜7・お金3〜4・敵6〜7）。道具とお金は約2倍、敵は約1.5倍 */
   D.HIDDEN_DUNGEON = { from: 31, to: 35, boss: 'dragonbaran', name: '時空の狭間', strong: { floors: [32, 33, 34] },
@@ -146,7 +146,7 @@
     //   たけが breakAt マス以上離れると構えを解き、カイザーフェニックスを予告する。maxActs 行動で構えを解く。cd：構えを解いてから次に構えるまで
     stance: { name: '天地魔闘の構え', range: 2, reflect: 3, breakAt: 3, maxActs: 4, cd: [8, 6] },
   };
-  /* 竜人王バラン（隠しダンジョン35階）の戦い方（2026年10月：技の種類は確定。**数値はすべて調整案（仮）**）。
+  /* 竜魔神バラン（隠しダンジョン35階）の戦い方（2026年10月：技の種類は確定。**数値はすべて調整案（仮）**）。
    *  通常攻撃：隣なら殴る（ほかの技が使えないとき）
    *  ドルオーラ：一直線（壁まで）を予告して放つ。列の外へ出ればかわせる。後半は縦横の十字
    *  なぎ払い：隣にいると、まわり8マスを予告して振り抜く。1マス離れればかわせる
@@ -161,7 +161,7 @@
     doloura: { mult: 2.2, rest: 2, cd: [6, 5], minDist: 2 },
     sweep: { mult: 1.6, rest: 1, cd: [4, 3] },
     rush: { mult: 1.8, rest: 2, cd: [7, 5], minDist: 3, maxDist: 8 },
-    rewards: ['shinma_sword', 'dragonic_shield', 'dragon_crest'],
+    rewards: ['dragonic_shield'],   // 2026年10月23日：竜魔神バランの報酬はドラゴニックオーラの盾だけ（真魔剛竜剣・竜の紋章はなし）
     materials: [],
   };
   /* 隠しダンジョンの地図（2026年10月修正）：部屋の数を本編の約2倍に。部屋の大きさ・通路の幅は本編と同じ。
@@ -277,7 +277,7 @@
     // ---- 章の報酬（ボスを倒すと現れる装備） ----
     // 2026年10月（報酬の見直し）：げっこうの盾（moon_shield）→ ファントムシールド、りゅうきしの剣（dragon_sword）→ 真魔剛竜剣 にまとめた（save.js の RENAME_V6）。
     // 新しい報酬の絵は後で届く予定。それまではコードで描いた絵（icon・tint）
-    // 2026年10月：ボスの戦利品（章の報酬・竜人王バランの報酬）と竜の紋章は売れない（noSell。町・旅商人とも。sell は展示室のお礼の計算に残す）
+    // 2026年10月：ボスの戦利品（章の報酬・竜魔神バランの報酬）と竜の紋章は売れない（noSell。町・旅商人とも。sell は展示室のお礼の計算に残す）
     croc_axe:      { name: 'クロコダインの斧', type: 'weapon', atk: 16, sell: 560, noSell: true, icon: 'axe', tint: 'iron',
       desc: '獣王クロコダインの大きな斧。重い一撃が魅力。第1章の報酬。' },
     iceflame_shield: { name: '氷炎の盾', type: 'shield', def: 15, sell: 560, noSell: true, icon: 'shield', tint: 'iceflame',
@@ -493,11 +493,11 @@
     flame:  { name: 'フレイザード', hp: 680, atk: 36, def: 15, exp: 800, ai: 'boss', sprite: 'flame', noScale: true, arena: 'arena_flame', big: true },
     kill:   { name: 'キルバーン',   hp: 640, atk: 36, def: 14, exp: 900, ai: 'boss', sprite: 'kill', noScale: true, arena: 'arena_kill', big: true },
     kill_clone: { name: 'キルバーン', hp: 1, atk: 20, def: 0, exp: 0, ai: 'clone', sprite: 'kill', noScale: true, clone: true },
-    baran:  { name: 'バラン',       hp: 780, atk: 40, def: 18, exp: 1000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
+    baran:  { name: '竜騎士バラン',       hp: 780, atk: 40, def: 18, exp: 1000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
     mist:   { name: 'ミストバーン', hp: 820, atk: 40, def: 19, exp: 1100, ai: 'boss', sprite: 'mist', noScale: true, arena: 'arena_mist', big: true },
-    /* 竜人王バラン（隠しダンジョン35階）。通常のバランとは別のボス。戦い方はバランと同じ（js/bossai.js）で、強い。
+    /* 竜魔神バラン（隠しダンジョン35階）。通常のバランとは別のボス。戦い方はバランと同じ（js/bossai.js）で、強い。
      * 絵はまだ無いので、バランの絵を仮に使う（完成の絵はChatGPT側）。登場ムービー・報酬の品はまだ無い */
-    dragonbaran: { name: '竜人王バラン', hp: 1500, atk: 52, def: 23, exp: 4000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
+    dragonbaran: { name: '竜魔神バラン', hp: 1500, atk: 52, def: 23, exp: 4000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
     mist_clone: { name: 'ミストバーン', hp: 1, atk: 22, def: 0, exp: 0, ai: 'clone', sprite: 'mist', noScale: true, clone: true },
     vearn:  { name: '大魔王バーン', hp: 900, atk: 44, def: 20, exp: 1500, ai: 'boss', sprite: 'vearn', noScale: true, arena: 'throne', big: true },
     // arena 'void'：融合と覚醒の舞台（登場ムービーの白い異空間）。白い床・白い霧・空席の水晶の玉座（js/render.js の drawVoidBg）
@@ -552,7 +552,7 @@
     if (C.final) return D.finalFloors(layout).truevearn;   // 版2も35階（版3と同じ）
     return (layout || D.LAYOUT) >= 2 ? C.goal : D.BOSS_FLOOR;
   };
-  /* 隠しダンジョンの階（31〜35階）。部屋の大きい地図（hidden）。32〜34階は強敵（enemyMul・expMul）。35階は竜人王バラン */
+  /* 隠しダンジョンの階（31〜35階）。部屋の大きい地図（hidden）。32〜34階は強敵（enemyMul・expMul）。35階は竜魔神バラン */
   function hiddenFloor(f) {
     const H = D.HIDDEN_DUNGEON;
     if (f >= H.to) return { theme: D.ENEMIES[H.boss].arena, areaName: H.name + '・最奥', hidden: true, boss: H.boss, enemies: [], enemyCount: [0, 0], itemCount: [4, 4], goldCount: [0, 0],
@@ -685,9 +685,9 @@
     ],
     /* なくしたボスの報酬の買い戻し（2026年10月）：1個の値段は、報酬をくれたボスで決まる（同じボスの品は同じ値段）。
      * 対象は章の報酬の品（D.CHAPTERS[c].reward.items、G.buybackPrice）。最終章の報酬（大魔王のローブ）は大魔王バーン。
-     * 竜人王バランの報酬・黄金の象などのくり返し出る品・素材は対象外（未指定）。竜の紋章は下の buybackItems */
+     * 竜魔神バランの報酬・黄金の象などのくり返し出る品・素材は対象外（未指定）。竜の紋章は下の buybackItems */
     buyback: { croc: 1000, flame: 2000, kill: 3000, baran: 4000, mist: 5000, vearn: 6000 },
-    /* ボスの章の報酬のほかに買い戻せる品（2026年10月）：竜の紋章（橋の向こうで拾う・竜人王バランの報酬）。
+    /* ボスの章の報酬のほかに買い戻せる品（2026年10月）：竜の紋章（橋の向こうで拾う・竜魔神バランの報酬）。
      * 一度手に入れていて、今は持っていない（復活でなくなった・置いてきた等）ときに並ぶ。何度でも買える。値段は仮 */
     buybackItems: { dragon_crest: { price: 5000, note: '一度手に入れた竜の紋章' } },
   };
@@ -736,7 +736,7 @@
     { id: 'statue', kind: 'decor', name: '象の像', price: 500, desc: '白い象の像。', req: ['donate3'] },
     { id: 'fountain', kind: 'decor', name: '噴水', price: 900, desc: '村の真ん中に噴水。', req: ['donate6'] },
     // 2026年10月：「黄金の門」（gate）を「マスターヤナイの像」に変更。値段・解放条件は同じ。旧セーブの購入済みは save.js（v7）で引き継ぐ
-    { id: 'yanai_statue', kind: 'decor', name: 'マスターヤナイの像', price: 1500, desc: '広場に、村を守った師匠マスターヤナイの像を建てる。話しかけると師匠の言葉を思い出せる。', req: ['donate9'] },
+    { id: 'yanai_statue', kind: 'decor', name: 'マスターヤナイの像', price: 1500, desc: '広場に、村を守った師匠マスターヤナイの像を建てる。', req: ['donate9'] },
   ];
   D.REQ_TEXT = {
     storage2: '「倉庫の拡張」の後', smith1: '「鍛冶屋と屋台」の後', smith2: '「鍛冶屋の大きな炉」の後', storage3: '「倉庫の増築」の後',

@@ -313,7 +313,7 @@
     const throne = !Fdef.hidden && G.finalV3(run) && Object.values(FF).includes(floor);   // 隠しダンジョンの階は別（玉座の間ではない）
     const throne30 = throne && floor === FF.vearn;
     // 隠しダンジョン：部屋の大きい地図（D.HIDDEN_MAP）。帰還の祠は無い
-    // 通常バラン戦（第4章）：背景の絵の部屋（D.BARAN_ROOM。下の通路から入る）。竜人王バラン（隠しダンジョン）には使わない
+    // 通常バラン戦（第4章）：背景の絵の部屋（D.BARAN_ROOM。下の通路から入る）。竜魔神バラン（隠しダンジョン）には使わない
     const room = Fdef.boss === 'baran' ? D.BARAN_ROOM_LAYOUT || 'BARAN_ROOM' : null;
     // 33階・真大魔王バーン（版4）：正方形の決戦場だけ（前室・通路・最初に置く道具なし）。倒したあとに来ても同じ形。版3の35階は以前の形のまま
     const arenaOnly = throne && !throne30 && G.layoutOf(run) >= 4;
@@ -531,7 +531,7 @@
     if ((V.donated || {})[id]) return true;
     return false;
   };
-  /* 竜人王バランの報酬（D.DRAGON_KING.rewards）のうち、所有していない品。
+  /* 竜魔神バランの報酬（D.DRAGON_KING.rewards）のうち、所有していない品。
    * 所有＝装備中・持ち物・倉庫・村のかばん・床に落ちたまま（未回収・帰還時に倉庫へ届く品）・展示室（G.holdsItem）。
    * アクセサリーの竜の紋章は、村の赤い橋の向こうでまだ拾っていない間も「未回収」として出さない（あとで二重に手に入らないように） */
   G.dragonKingRewards = function (S) {
@@ -551,7 +551,7 @@
       if (!bp || out.some((x) => x.id === id) || !(V.bossObtained || {})[id] || G.holdsItem(S, id)) continue;
       out.push({ id, boss: bp.boss, price: bp.price });
     }
-    // 竜の紋章など：入手履歴（竜人王バランの報酬を拾った）か、村で拾ったことがあれば（D.VILLAGE_PICKUPS）
+    // 竜の紋章など：入手履歴（竜魔神バランの報酬を拾った）か、村で拾ったことがあれば（D.VILLAGE_PICKUPS）
     const found = (V.story || {}).found || {};
     for (const id of Object.keys(D.MERCHANT.buybackItems || {})) {
       const bp = G.buybackPrice(id), pk = Object.keys(D.VILLAGE_PICKUPS || {}).find((k) => D.VILLAGE_PICKUPS[k].item === id);
@@ -723,8 +723,8 @@
    * 版3の探索（35階）の時空の亀裂：
    *  'none'     … 亀裂が無い（真大魔王バーンを倒す前。36階へは進めない）
    *  'unstable' … 真大魔王バーンを倒した直後、エンディングの前（入れない。判断待ち：エンディング前でも入れるか）
-   *  'notReady' … クリア後。36〜40階（竜人王バラン）がまだ無いので入れない
-   *  'open'     … 36階へ進める（D.POSTGAME_FLOORS が用意できたら） */
+   *  'notReady' … クリア後も入れない（2026年10月23日：隠しダンジョンは35階までと確定。36階より先は作らない）
+   *  'open'     … （D.POSTGAME_FLOORS があれば。作らないので使わない） */
   G.crackState = function (S) {
     const run = S.run, st = S.village.story;
     if (run && run.crack && run.crack.kind === 'throne30') return G.canRescue(run) ? 'rescue' : !st.defeated.truevearn ? 'next' : D.HIDDEN_DUNGEON ? 'hidden' : 'hiddenNotReady';
@@ -1067,7 +1067,7 @@
       return;
     }
     if (e.type === D.HIDDEN_DUNGEON.boss) {
-      // 竜人王バラン（隠しダンジョン35階）：所有していない報酬の品だけ出す（重ねない）＋専用強化素材を各1個（種類は未定）→ 帰還口
+      // 竜魔神バラン（隠しダンジョン35階）：所有していない報酬の品だけ出す（重ねない）＋専用強化素材を各1個（種類は未定）→ 帰還口
       st.defeated[e.type] = true;
       const gifts = G.dragonKingRewards(S);
       for (const id of gifts) drop(id);

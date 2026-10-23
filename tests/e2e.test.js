@@ -77,7 +77,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await shot('03_village');
   });
 
-  await test('村を歩く：地面をタップすると1マスずつ歩き、人物をタップするとその前まで歩いて施設が開く。像に話しかけるとヤナイの言葉', async () => {
+  await test('村を歩く：地面をタップすると1マスずつ歩き、人物をタップするとその前まで歩いて施設が開く。像に話しかけると名札（台詞なし）', async () => {
     const tapAt = async (sel) => { const pt = await p.evaluate(sel); await p.touchscreen.tap(pt.x, pt.y); };
     // タップする範囲のうち画面に見えている部分の中（端の人物は半分画面の外のことがある）
     const hitPt = (id, kind) => `(() => { const h = TS.UI.vview.hits.find((h) => h.id === '${id}' && h.kind === '${kind}'); const r = document.getElementById('village-canvas').getBoundingClientRect();
@@ -108,8 +108,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await tapAt(hitPt('statue', 'statue'));
     for (let i = 0; i < 80 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.talk'), 'statue talk');
-    await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(80);
-    assert(await p.evaluate(() => document.querySelector('.talk .who').textContent.includes('ヤナイ')), 'yanai speaks');
+    // 2026年10月23日：像は台詞なし。名札「〜街を守った英雄ヤナイ〜」だけ
+    assert(await p.evaluate(() => document.querySelector('.talk').textContent.includes('街を守った英雄ヤナイ')), 'statue plate');
     await closeTalk();
     // キー操作：下へ1マス
     const k0 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));

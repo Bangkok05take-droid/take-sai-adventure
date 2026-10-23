@@ -1,5 +1,5 @@
 // 隠しダンジョンの画面確認：node tools/hidden-dungeon-check.js [リポジトリ] [出力フォルダ]（幅360・390・430）
-// 真大魔王バーン撃破後の30階 → 亀裂から入る → 31階（部屋の数が約2倍）→ 33階（専用の強敵6種）→ 35階（竜人王バラン：ドルオーラ・なぎ払い・突進の予告）
+// 真大魔王バーン撃破後の30階 → 亀裂から入る → 31階（部屋の数が約2倍）→ 33階（専用の強敵6種）→ 35階（竜魔神バラン：ドルオーラ・なぎ払い・突進の予告）
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const TS_W = 44;   // D.HIDDEN_MAP.w
@@ -36,12 +36,12 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     s = await p.evaluate(() => { const r = TS.UI.S.run, F = TS.Game.F(r); return { floor: r.floor, strong: !!F.strong, kinds: [...new Set(r.enemies.map((e) => e.type))].join(), log: r.log.slice(-3).join('/'), rp: !!r.returnPoint }; });
     chk(s.floor === 33 && s.strong && /dragon|silverdevil|gigantes|bombrock|mimic|madhand/.test(s.kinds) && s.log.includes('強敵の気配') && !s.rp, `${w} 33階：強敵の階（専用の強敵） ${JSON.stringify(s)}`);
     await shot('3_floor33_strong');
-    // 35階：竜人王バラン
+    // 35階：竜魔神バラン
     await p.evaluate(() => { const S = TS.UI.S, G = TS.Game; while (S.run.floor < 35) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
       const r = S.run, A = r.bossFight; r.player.x = A.x + 2; r.player.y = A.y + (A.h >> 1); G.updateVision(r); G.checkBossRoom(S, []); TS.UI.lockUntil = 0; });
     await p.waitForTimeout(600); await closeAll(); await p.waitForTimeout(300);
     s = await p.evaluate(() => { const r = TS.UI.S.run, b = r.enemies.find((e) => e.boss); return { floor: r.floor, boss: b && b.type, name: b && TS.Data.ENEMIES[b.type].name, arena: r.bossFight.w + 'x' + r.bossFight.h, rp: !!r.returnPoint }; });
-    chk(s.floor === 35 && s.boss === 'dragonbaran' && s.arena === '15x15' && !s.rp, `${w} 35階：竜人王バラン（ボス部屋は本編と同じ） ${JSON.stringify(s)}`);
+    chk(s.floor === 35 && s.boss === 'dragonbaran' && s.arena === '15x15' && !s.rp, `${w} 35階：竜魔神バラン（ボス部屋は本編と同じ） ${JSON.stringify(s)}`);
     await shot('4_floor35_dragonking');
     // 技の予告：ドルオーラ（一直線）→ なぎ払い（隣）→ 後半のドルオーラ（十字）
     for (const [name, setup] of [['doloura', 'line'], ['sweep', 'adj'], ['doloura2', 'cross']]) {
@@ -52,7 +52,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
         r.player.x = mode === 'adj' ? b.x + 1 : b.x + 3; r.player.y = b.y; r.player.hp = r.player.maxhp; G.updateVision(r); TS.UI.lockUntil = 0; }, setup);
       await p.waitForTimeout(250); await p.keyboard.press('Space'); await p.waitForTimeout(450);
       const c = await p.evaluate(() => { const b = TS.UI.S.run.enemies.find((e) => e.boss); return b && b.charge ? { fx: b.charge.fx, n: b.charge.tiles.length } : null; });
-      chk(c && c.fx === (name === 'sweep' ? 'sweep' : 'doloura'), `${w} 竜人王バラン：${name} の予告 ${JSON.stringify(c)}`);
+      chk(c && c.fx === (name === 'sweep' ? 'sweep' : 'doloura'), `${w} 竜魔神バラン：${name} の予告 ${JSON.stringify(c)}`);
       if (w === 390) await shot('5_' + name);
       await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); const b = TS.UI.S.run.enemies.find((e) => e.boss); b.charge = null; TS.UI.lockUntil = 0; });
     }
