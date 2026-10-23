@@ -291,8 +291,8 @@
     const A = SP.art.dungeon && SP.art.dungeon[theme], cav = A && A.cavern && A.cavern[0], tops = A && A.top;
     // 専用の背景（地下の遺跡の岩盤と霧 cavern）があればそれを 128×128 に。無ければ仮：壁の上面の絵を並べて暗くしたもの
     if (!cav && (!tops || !tops.length || !tops.every(Boolean))) return null;   // 読み込み中は単色のまま（次のフレームで作り直す）
-    const n = cav ? (D.DUNGEON_CAVERN_SIZE || 128) : 128, c = document.createElement('canvas'); c.width = c.height = n; const cg = c.getContext('2d');
-    if (cav) { cg.imageSmoothingEnabled = true; cg.imageSmoothingQuality = 'high'; cg.drawImage(cav, 0, 0, n, n); cg.fillStyle = 'rgba(2,3,8,' + (D.DUNGEON_CAVERN_DARK || 0) + ')'; cg.fillRect(0, 0, n, n); }
+    const DP = (D.DUNGEON_DEPTH && D.DUNGEON_DEPTH[theme]) || {}, n = cav ? (DP.size || 128) : 128, c = document.createElement('canvas'); c.width = c.height = n; const cg = c.getContext('2d');
+    if (cav) { cg.imageSmoothingEnabled = true; cg.imageSmoothingQuality = 'high'; cg.drawImage(cav, 0, 0, n, n); cg.fillStyle = 'rgba(2,3,8,' + (DP.dark || 0) + ')'; cg.fillRect(0, 0, n, n); }
     else {
       for (let j = 0; j < 4; j++) cg.drawImage(tops[(j + (j >> 1)) % tops.length], (j & 1) * 64, (j >> 1) * 64);
       cg.fillStyle = 'rgba(4,3,6,' + ((D.DUNGEON_BACKDROP_DARK || 0.6)) + ')'; cg.fillRect(0, 0, 128, 128);
@@ -307,14 +307,18 @@
     if (!F) return;
     const m = run.map, drawn = (x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h && L.drawn[y * m.w + x];
     g.save(); g.imageSmoothingEnabled = false;   // 最近傍（絵の左右半分を切って並べるので、なめらかにすると継ぎ目に線が出る）
-    const fh = Math.round(F.height * k), pins = [];
-    for (let y = Math.max(0, y0 - 4); y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      if (!drawn(x, y) || drawn(x, y + 1)) continue;
+    const fh = Math.round(F.height * k), pins = [], edge = (x, y) => drawn(x, y) && !drawn(x, y + 1), pin = (x, y) => ((x + (SP.hash(0, y, 7) >>> 0)) & 3) === 0;
+    const H = A.hang && A.hang.every(Boolean) ? A.hang : null, hangs = [];
+    for (let y = Math.max(0, y0 - 4); y <= y1; y++) for (let x = x0 - 1; x <= x1; x++) {
+      if (!edge(x, y)) continue;
       const sx = ox + x * ts, sy = oy + (y + 1) * ts;
       g.drawImage(F, (x & 1) * 32, 0, 32, F.height, sx, sy, ts, fh);
-      if (P && (x + SP.hash(0, y, 7)) % 4 === 0) pins.push([sx + ts / 2, sy]);
+      if (P && pin(x, y)) pins.push([sx + ts / 2, sy]);
+      // 飾り（控えめ）：2マス分の外壁が両方そろい、そこに支柱が無い所の約7分の1。外壁の上端から下げる（床には出ない）
+      if (H && !(x & 1) && edge(x + 1, y) && !pin(x, y) && !pin(x + 1, y)) { const h = SP.hash(x >> 1, y, 8) >>> 0; if (h % 7 === 0) hangs.push([sx + ts, sy, H[(h >>> 3) % H.length]]); }
     }
     for (const [cx, sy] of pins) g.drawImage(P, Math.round(cx - P.width * k / 2), sy, Math.round(P.width * k), Math.round(P.height * k));
+    for (const [cx, sy, im] of hangs) g.drawImage(im, Math.round(cx - im.width * k / 2), sy + Math.round(2 * k), Math.round(im.width * k), Math.round(im.height * k));
     g.restore();
   }
   function drawBackdrop(g, run, theme, ox, oy, ts, k, W, H) {

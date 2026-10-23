@@ -2,6 +2,7 @@
 //   レンガの回廊（2階）・木の根の遺跡（5階）・地下の遺跡（8階）を、幅360・390・430で「今（黒）」と「背景あり」で撮る。本番の設定（D.DUNGEON_BACKDROP）はこの確認の間だけ切り替える
 //   start：階に着いたところ（探索は普通どおり。未探索の所は地形と関係ない背景だけ）
 //   corridor：部屋の外の通路（まわり4マスだけ探索済み）
+//   adjacent：上下に近い2つの部屋（上の部屋の下の端。下の部屋は探索済みで今は見えていない）
 //   edge ：地図の端にいちばん近い部屋の角（まわり7マスを探索済み＝見えていない探索済みの所の暗さ・地図の外のなじみ方）
 //   node tools/dungeon-backdrop-preview.js [出力] [地域,…]（既定は brick・roots・ruins）
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
@@ -18,7 +19,7 @@ const THEMES = [['brick', 2], ['roots', 5], ['ruins', 8], ['ruins_deep', 12]].fi
   const b = await chromium.launch();
   for (const [W, H] of [[390, 844], [360, 780], [430, 932]]) {
     const ctx = await b.newContext({ viewport: { width: W, height: H }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
-    const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+    const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/404|Failed to load/.test(m.text())) errs.push(m.text()); });   // 描画の途中のエラー（ui.js が console.error で受ける）も数える
     await p.goto('http://localhost:8853/'); await p.waitForTimeout(400);
     for (const [th, F] of THEMES) {
       await p.evaluate((F) => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true;
@@ -28,13 +29,21 @@ const THEMES = [['brick', 2], ['roots', 5], ['ruins', 8], ['ruins_deep', 12]].fi
       await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });
       const info = await p.evaluate(() => TS.Game.themeOf(TS.UI.S.run));
       chk(info === th, `${W} ${F}階は ${th}（${info}）`);
-      for (const spot of ['start', 'corridor', 'edge']) {
+      for (const spot of ['start', 'corridor', 'adjacent', 'edge']) {
         // corridor：通路のマス（部屋の外）で、まわり4マスだけ探索済み
         if (spot === 'corridor') await p.evaluate(() => { const r = TS.UI.S.run, m = r.map, G = TS.Game, DG = TS.Dungeon;
           let c = null; for (let i = 0; i < m.tiles.length && !c; i++) { const x = i % m.w, y = Math.floor(i / m.w); if (m.tiles[i] === 2 && !DG.roomAt(m, x, y) && x > 4 && y > 4 && x < m.w - 5 && y < m.h - 5) c = { x, y }; }
           if (!c) return; r.explored.fill(0); r.enemies = r.enemies.filter((e) => e.boss);
           for (let y = c.y - 4; y <= c.y + 4; y++) for (let x = c.x - 4; x <= c.x + 4; x++) if (x >= 0 && y >= 0 && x < m.w && y < m.h) r.explored[y * m.w + x] = 1;
           r.player.x = c.x; r.player.y = c.y; G.updateVision(r); TS.Render.resetLayer(); });
+        // adjacent：上下に近い2つの部屋（上の部屋の下の端にたけ。両方の部屋を探索済み＝下の部屋は今は見えていない暗さ）
+        if (spot === 'adjacent') await p.evaluate(() => { const r = TS.UI.S.run, m = r.map, G = TS.Game;
+          let best = null;
+          for (const a of m.rooms) for (const b of m.rooms) { const gap = b.y - (a.y + a.h), ov = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+            if (a !== b && gap >= 1 && ov >= 2 && (!best || gap < best.gap)) best = { a, b, gap }; }
+          if (!best) return; const { a, b } = best; r.explored.fill(0); r.enemies = r.enemies.filter((e) => e.boss);
+          for (const rm of [a, b]) for (let y = rm.y - 1; y <= rm.y + rm.h; y++) for (let x = rm.x - 1; x <= rm.x + rm.w; x++) if (x >= 0 && y >= 0 && x < m.w && y < m.h) r.explored[y * m.w + x] = 1;
+          r.player.x = Math.max(a.x, b.x) + 1; r.player.y = a.y + a.h - 1; G.updateVision(r); TS.Render.resetLayer(); });
         if (spot === 'edge') await p.evaluate(() => { const r = TS.UI.S.run, m = r.map, G = TS.Game;
           // 地図の端にいちばん近い部屋の、端に近い角へ。その部屋と、そこから出る通路の数マスだけ探索済みにする
           const rm = m.rooms.slice().sort((a, b) => Math.min(a.x, a.y, m.w - a.x - a.w, m.h - a.y - a.h) - Math.min(b.x, b.y, m.w - b.x - b.w, m.h - b.y - b.h))[0];

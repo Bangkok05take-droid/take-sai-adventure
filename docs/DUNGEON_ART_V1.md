@@ -124,3 +124,12 @@
   - 外壁・支柱は「そのマスを描いたか・下のマスを描いたか」だけで決め、長さはいつも同じ（未探索の地形は見ない）。あとで描いた地形が上に重なる。
   - 左右の辺は今は半マスの影だけ（側面の絵が無い）。
 - 2026年10月22日：本番に反映（`D.DUNGEON_BACKDROP = { ruins, ruins_deep }`。床の周りの壁1マス・左右の辺の影・明るさは今のままで試しにプレイ）。プレビュー：`node tools/dungeon-backdrop-preview.js docs/ruins-depth-v1 ruins,ruins_deep`（start・corridor・edge）。目標の絵との比較 `docs/ruins-depth-v1/concept_vs_game_390.jpg`。
+
+---
+# レンガの回廊・木の根の遺跡の奥行き（ZIP early_depth_v1、2026年10月23日・プレビュー段階）
+- 原画：`assets/reference/early-depth-v1/`（README・manifest・各地域の approved_concept.png）。ゲーム用：`python3 -I tools/make-early-depth.py` → `assets/dungeon/<brick|roots>/cavern.png・foundation.png・pillar.png・hang_0〜1.png`。
+- 描き方は地下の遺跡と同じ（`js/render.js` の drawBackdrop・drawDepth）。背景は128×128（4×4マス）で15%暗く（`D.DUNGEON_DEPTH`）。外壁 64×96・支柱 高さ128。外壁・支柱の明るさはレンガ0.6・木の根0.75（床より暗く）。
+- 継ぎ目：背景2×2・外壁3枚をそのまま並べると継ぎ目は目立たなかった。反転して並べると左右対称の模様が目立ったので、反転は使わない（`docs/early-depth-v1/seams_*.png`。左＝そのまま、右＝反転）。
+- 飾り（控えめ）：レンガ＝旗・松明、木の根＝根・ランタン。2マス分の外壁が両方そろい支柱が無い所の約7分の1に、外壁の上端から下げる（床には出ない）。
+- 左右の側面は今回素材なし：半マスの影だけ（正面の外壁は回して使わない）。
+- 本番は今のまま（`D.DUNGEON_BACKDROP` は ruins・ruins_deep だけ）。プレビュー：`node tools/dungeon-backdrop-preview.js docs/early-depth-v1 brick,roots`（start・corridor・adjacent＝上下に近い部屋・edge＝地図の端、幅360・390・430）。完成イメージとの比較 `docs/early-depth-v1/<地域>_concept_vs_game_390.jpg`。

@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "floors": {
+    "01_brick": [
+      1,
+      2,
+      3
+    ],
+    "02_roots": [
+      4,
+      5,
+      6
+    ]
+  },
+  "asset_data": {
+    "01_brick": {
+      "background": {
+        "size": [
+          512,
+          512
+        ],
+        "render_size": [
+          128,
+          128
+        ]
+      },
+      "foundation_wall": {
+        "size": [
+          256,
+          384
+        ],
+        "render_size": [
+          64,
+          96
+        ]
+      },
+      "support_pillar": {
+        "size": [
+          78,
+          512
+        ],
+        "source_crop": [
+          779,
+          70,
+          906,
+          904
+        ],
+        "anchor": "top_center",
+        "render_height": 128
+      },
+      "optional_banner": {
+        "size": [
+          273,
+          384
+        ],
+        "source_crop": [
+          152,
+          983,
+          501,
+          1474
+        ],
+        "anchor": "top_center",
+        "render_height": "adjust_to_wall"
+      },
+      "optional_torch": {
+        "size": [
+          128,
+          384
+        ],
+        "source_crop": [
+          736,
+          975,
+          899,
+          1465
+        ],
+        "anchor": "top_center",
+        "render_height": "adjust_to_wall"
+      }
+    },
+    "02_roots": {
+      "background": {
+        "size": [
+          512,
+          512
+        ],
+        "render_size": [
+          128,
+          128
+        ]
+      },
+      "foundation_wall": {
+        "size": [
+          256,
+          384
+        ],
+        "render_size": [
+          64,
+          96
+        ]
+      },
+      "support_pillar": {
+        "size": [
+          106,
+          512
+        ],
+        "source_crop": [
+          770,
+          12,
+          923,
+          751
+        ],
+        "anchor": "top_center",
+        "render_height": 128
+      },
+      "optional_roots": {
+        "size": [
+          274,
+          384
+        ],
+        "source_crop": [
+          60,
+          790,
+          585,
+          1525
+        ],
+        "anchor": "top_center",
+        "render_height": "adjust_to_wall"
+      },
+      "optional_lantern": {
+        "size": [
+          182,
+          384
+        ],
+        "source_crop": [
+          701,
+          895,
+          974,
+          1472
+        ],
+        "anchor": "top_center",
+        "render_height": "adjust_to_wall"
+      }
+    }
+  },
+  "status": "game_integration_preview_required",
+  "seams": "direct repeat not pixel-identical; alternating reflection supported"
+}

@@ -18,7 +18,9 @@
       wall: [0, 1, 2, 3].map((i) => 'assets/dungeon/' + d + '/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/' + d + '/narrow_' + i + '.png'),
       rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jOutNE: f('jOutNE'), jOutNW: f('jOutNW'), jInNE: f('jInNE'), jInNW: f('jInNW'), jInSE: f('jInSE'), jInSW: f('jInSW'), ...deco(d),
       // 奥行き（地下の遺跡だけ。tools/make-ruins-depth.py）：cavern＝岩盤と霧の背景、foundation＝床の端から下へ伸びる外壁、pillar＝支柱
-      ...(d === 'ruins' ? { cavern: f('cavern'), foundation: f('foundation'), pillar: f('pillar') } : {}) }; };
+      ...(d === 'ruins' ? depth(d) : {}), ...(d === 'roots' ? depth(d, true) : {}) }; };
+  // 奥行き（地下の遺跡：tools/make-ruins-depth.py、レンガの回廊・木の根の遺跡：tools/make-early-depth.py）。hang＝外壁に下げる控えめの飾り
+  function depth(d, hang) { const f = (n) => ['assets/dungeon/' + d + '/' + n + '.png']; return { cavern: f('cavern'), foundation: f('foundation'), pillar: f('pillar'), ...(hang ? { hang: [0, 1].map((i) => 'assets/dungeon/' + d + '/hang_' + i + '.png') } : {}) }; }
   // 飾り（tools/make-dungeon-art.py の DECO）：decoWall＝正面の壁に重ねる柱・灯り（地下の遺跡は崩れた浮き彫りも。アーチは入口に見えるので使わない。64×64）、decoTop＝壁の上面のがれき（32×32）
   function deco(d) { return { decoWall: (d === 'ruins' ? [0, 1, 2] : [0, 1]).map((i) => 'assets/dungeon/' + d + '/decoWall_' + i + '.png'), decoTop: ['assets/dungeon/' + d + '/decoTop_0.png'] }; }
   TS.ASSETS = {
@@ -190,7 +192,7 @@
      * 使うかどうかは D.DUNGEON_ART（地域ごと。2026年10月21日 brick、22日 roots・ruins・ruins_deep を本番に反映。ほかの地域は今までのコードの絵） */
     dungeon: {
       brick: { floor: [0, 1, 2].map((i) => 'assets/dungeon/brick/floor_' + i + '.png'), wall: [0, 1].map((i) => 'assets/dungeon/brick/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/brick/narrow_' + i + '.png'),
-        top: [0, 1, 2, 3].map((i) => 'assets/dungeon/brick/top_' + i + '.png'), rimW: ['assets/dungeon/brick/rimW.png'], rimE: ['assets/dungeon/brick/rimE.png'], rimN: ['assets/dungeon/brick/rimN.png'], joint: ['assets/dungeon/brick/joint.png'], ...deco('brick') },
+        top: [0, 1, 2, 3].map((i) => 'assets/dungeon/brick/top_' + i + '.png'), rimW: ['assets/dungeon/brick/rimW.png'], rimE: ['assets/dungeon/brick/rimE.png'], rimN: ['assets/dungeon/brick/rimN.png'], joint: ['assets/dungeon/brick/joint.png'], ...deco('brick'), ...depth('brick', true) },
       /* 第1回の追加原画（dungeon_batch1_roots_ruins_v2）：縁・角は地域ごとの幅（木の根 8px・地下の遺跡 9px）。角は向きごと
        *  jOutNE・jOutNW：外角（上と右／上と左に床）。jInNE・jInNW・jInSE・jInSW：内角（斜めだけ床） */
       roots: batch1('roots'), ruins: batch1('ruins'), ruins_deep: batch1('ruins'),
