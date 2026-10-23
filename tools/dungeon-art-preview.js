@@ -5,7 +5,7 @@
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const THEME = process.argv[2] || 'brick';
-const FLOOR = { brick: 2, roots: 5, ruins: 8, ruins_deep: 12, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
+const FLOOR = { gold: 27, brick: 2, roots: 5, ruins: 8, ruins_deep: 12, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
 const ROOT = path.join(__dirname, '..'), OUT = process.argv[3] || path.join(ROOT, 'docs', 'dungeon-art-v1', THEME);
 fs.mkdirSync(OUT, { recursive: true });
 const PORT = 8849;
@@ -21,8 +21,10 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
     await p.evaluate((F) => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true;
-      G.depart(S, 2024); const r = S.run;
-      while (r.floor < F) { r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); }
+      // 26階より深い地域：最終章（ボスを倒した記録つき）で、30階のバーンは飛ばし、亀裂（r.crack）でも降りる
+      if (F >= 26) { const st = V.story; st.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) st.defeated[k] = true; st.introSeen = { truevearn: true, truevearnAwaken: true }; }
+      G.depart(S, 2024); const r = S.run; if (F >= 26 && r.final) r.final.skip.vearn = true;
+      while (r.floor < F) { const t = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = t.x; r.player.y = t.y; G.act(S, { type: 'descend' }); }
       r.player.hp = r.player.maxhp = 999; r.explored.fill(1); TS.Save.save(S); }, FLOOR);
     await p.reload(); await p.waitForTimeout(700); await p.tap('#btn-continue'); await p.waitForTimeout(900);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });

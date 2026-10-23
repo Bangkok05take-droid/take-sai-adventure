@@ -1,0 +1,320 @@
+{
+  "version": 1,
+  "status": "prepared_for_preview_not_game_verified",
+  "tile_px": 32,
+  "backdrop": "disabled",
+  "themes": [
+    {
+      "id": "06_sealed_depths",
+      "name": "封印の最深部",
+      "floors": [
+        26,
+        27,
+        28,
+        29
+      ],
+      "assets": [
+        {
+          "file": "assets/floor.png",
+          "source_crop": [
+            2,
+            2,
+            311,
+            311
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_top.png",
+          "source_crop": [
+            3,
+            319,
+            311,
+            625
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_front.png",
+          "source_crop": [
+            2,
+            630,
+            311,
+            939
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_narrow.png",
+          "source_crop": [
+            80,
+            630,
+            234,
+            939
+          ],
+          "size": [
+            128,
+            256
+          ],
+          "render_px": [
+            32,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_pilaster_optional.png",
+          "source_crop": [
+            316,
+            630,
+            625,
+            939
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": true
+        },
+        {
+          "file": "assets/wall_emblem_optional.png",
+          "source_crop": [
+            943,
+            630,
+            1252,
+            939
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": true
+        },
+        {
+          "file": "assets/rim_vertical_strip.png",
+          "source_crop": [
+            3,
+            945,
+            29,
+            1252
+          ],
+          "size": [
+            12,
+            128
+          ],
+          "render_px": [
+            3,
+            32
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/rim_horizontal_strip.png",
+          "source_crop": [
+            630,
+            945,
+            937,
+            970
+          ],
+          "size": [
+            128,
+            12
+          ],
+          "render_px": [
+            32,
+            3
+          ],
+          "optional": false
+        }
+      ]
+    },
+    {
+      "id": "07_demon_castle",
+      "name": "大魔王の城",
+      "floors": [
+        31,
+        32,
+        33,
+        34
+      ],
+      "assets": [
+        {
+          "file": "assets/floor.png",
+          "source_crop": [
+            2,
+            2,
+            311,
+            311
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_top.png",
+          "source_crop": [
+            3,
+            319,
+            311,
+            625
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_front.png",
+          "source_crop": [
+            2,
+            630,
+            311,
+            939
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_narrow.png",
+          "source_crop": [
+            80,
+            630,
+            234,
+            939
+          ],
+          "size": [
+            128,
+            256
+          ],
+          "render_px": [
+            32,
+            64
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/wall_pilaster_optional.png",
+          "source_crop": [
+            316,
+            630,
+            625,
+            939
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": true
+        },
+        {
+          "file": "assets/wall_emblem_optional.png",
+          "source_crop": [
+            943,
+            630,
+            1252,
+            939
+          ],
+          "size": [
+            256,
+            256
+          ],
+          "render_px": [
+            64,
+            64
+          ],
+          "optional": true
+        },
+        {
+          "file": "assets/rim_vertical_strip.png",
+          "source_crop": [
+            3,
+            945,
+            29,
+            1252
+          ],
+          "size": [
+            12,
+            128
+          ],
+          "render_px": [
+            3,
+            32
+          ],
+          "optional": false
+        },
+        {
+          "file": "assets/rim_horizontal_strip.png",
+          "source_crop": [
+            630,
+            945,
+            937,
+            970
+          ],
+          "size": [
+            128,
+            12
+          ],
+          "render_px": [
+            32,
+            3
+          ],
+          "optional": false
+        }
+      ]
+    }
+  ]
+}
