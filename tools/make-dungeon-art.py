@@ -15,7 +15,9 @@ OUT = os.path.join(ROOT, 'assets/dungeon/')
 SHEETS = {
   'brick': {'file': '01_brick.png',
             # 床：(左, 上, 右, 下)。ふちの縁取り（約12px）を落とした内側
-            'floor': [(53, 58, 296, 293), (355, 58, 598, 293), (659, 58, 902, 293)], 'deco': (960, 58, 1204, 293),
+            # 2026年10月23日：床は追加の原画（brick_parts.png）の真上から見た床1種類に統一（EXTRA の floor）。前の原画の床3枚は明るさ・石の大きさが違い、
+            # 2×2マスごとに切り替わって四角く見えたので使わない
+            'floor': [], 'deco': (960, 58, 1204, 293),
             # 壁：アーチ2つの横長の壁（たいまつ左・右）。原画の不透明な範囲
             'wall': [(40, 327, 311, 566), (341, 327, 611, 566)],
             # 1マス幅の壁：アーチ1つの細い壁（たいまつ左・右）。壁が奇数マスで終わる所・1マスだけの壁に使う
@@ -31,7 +33,9 @@ EXTRA = {
   'brick': {'dir': 'brick-extra-v1/', 'file': 'brick_parts.png',
             'top': [(51, 341, 285, 573), (345, 341, 578, 573), (640, 341, 873, 573), (932, 341, 1166, 573)],
             'rimW': (459, 628, 496, 864), 'rimE': (132, 628, 169, 864), 'rimN': (636, 757, 878, 794),
-            'joint': (731, 1009, 768, 1046)},
+            'joint': (731, 1009, 768, 1046),
+            # 基本の床（1段目の2枚目。明るさ・石の大きさがそろい、上下左右に並べても継ぎ目が目立たない）。ふちの赤いにじみを落とすため内側8px
+            'floor': (346, 54, 577, 284)},
 }
 # 第1回の追加原画（ZIP dungeon_part1 ＝ dungeon_batch1_roots_ruins_v2。2026年10月22日）：assets/reference/dungeon-batch1-v2/<番号_地域>/topdown_supplement_source.png
 #  4段×4セル（1マス＝約137px）。1段目 床2枚・上面2枚（2×2マス）。2段目 縁（壁が左＝右に縁／壁が右＝左に縁／下に縁／上に縁）。3段目 外角。4段目 内角（L字）
@@ -116,6 +120,11 @@ def build_extra(theme):
   im.crop(X['rimE']).resize((10, 64), Image.LANCZOS).save(od + 'rimE.png', optimize=True)
   im.crop(X['rimN']).resize((64, 10), Image.LANCZOS).save(od + 'rimN.png', optimize=True)
   im.crop(X['joint']).resize((10, 10), Image.LANCZOS).save(od + 'joint.png', optimize=True)
+  if X.get('floor'):   # 基本の床 floor_0（ほかの床の番号は消す）。敵や赤い予告が沈まないよう、前と同じく少し明るく・色を少し抑える
+    f = im.crop(X['floor']).resize((64, 64), Image.LANCZOS)
+    ImageEnhance.Color(ImageEnhance.Brightness(f).enhance(1.2)).enhance(0.85).save(od + 'floor_0.png', optimize=True)
+    for i in (1, 2):
+      if os.path.exists(od + 'floor_%d.png' % i): os.remove(od + 'floor_%d.png' % i)
 
 def build(theme):
   S = SHEETS[theme]; im = Image.open(SRC + S['file']).convert('RGBA')

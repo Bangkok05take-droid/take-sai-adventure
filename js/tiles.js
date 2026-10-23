@@ -525,7 +525,7 @@
       if (len % 2 === 1 && idx === len - 1) return { img: A.narrow[hash(x, yy, seed + 93) % A.narrow.length], sx: 0 };
       // 飾り（案1）：2マス分の壁のうち、ときどき（約6分の1）柱・灯り・アーチを重ねる。壁のマスの中だけ（床・敵は隠さない）
       const pair = s0 + (idx >> 1), dh = hash(pair, yy, seed + 95);
-      const deco = ready(A.decoWall) && dh % 6 === 0 ? A.decoWall[(dh >> 4) % A.decoWall.length] : null;
+      const deco = D.DUNGEON_DECO && ready(A.decoWall) && dh % 6 === 0 ? A.decoWall[(dh >> 4) % A.decoWall.length] : null;
       return { img: A.wall[hash(pair, yy, seed + 92) % A.wall.length], sx: (idx & 1) * 32, deco };
     };
     const dark = D.DUNGEON_WALL_DARK && D.DUNGEON_WALL_DARK[theme];
@@ -533,7 +533,7 @@
     const drawWall = (w, sy) => { g.drawImage(w.img, w.sx, sy, 32, 32, x0, y0, 32, 32); if (w.deco) g.drawImage(w.deco, w.sx, sy, 32, 32, x0, y0, 32, 32); };
     if (k !== WALL) {
       g.drawImage(A.floor[hash(x >> 1, y >> 1, seed + 91) % A.floor.length], (x & 1) * 32, (y & 1) * 32, 32, 32, x0, y0, 32, 32);
-      if (k === CORR) { g.fillStyle = 'rgba(24,12,6,0.22)'; g.fillRect(x0, y0, 32, 32); }
+      // 通路も部屋と同じ床（以前は通路だけ少し暗くしていたが、部屋とのつなぎ目が四角く見えたのでやめた）
       const shade = (gx0, gy0, gx1, gy1, rx, ry, rw, rh) => { const gr = g.createLinearGradient(gx0, gy0, gx1, gy1); gr.addColorStop(0, 'rgba(22,10,4,0.6)'); gr.addColorStop(1, 'rgba(22,10,4,0)'); g.fillStyle = gr; g.fillRect(rx, ry, rw, rh); };
       if (at(x, y - 1) === WALL) shade(0, y0, 0, y0 + 9, x0, y0, 32, 9);
       if (at(x - 1, y) === WALL) shade(x0, 0, x0 + 6, 0, x0, y0, 6, 32);
@@ -552,7 +552,7 @@
       if (face) drawWall(wallPart(y + 1), 0);
       if (!top) { darkWall(); return; }
       // 飾り（案2）：床から2マス以上離れた壁の上面に、ときどき（約19分の1）がれき
-      if (!face && ready(A.decoTop) && hash(x, y, seed + 96) % 19 === 0) {
+      if (D.DUNGEON_DECO && !face && ready(A.decoTop) && hash(x, y, seed + 96) % 19 === 0) {
         let far = true; for (let dy = -2; dy <= 2 && far; dy++) for (let dx = -2; dx <= 2; dx++) if (walk(x + dx, y + dy)) { far = false; break; }
         if (far) g.drawImage(A.decoTop[0], x0, y0);
       }

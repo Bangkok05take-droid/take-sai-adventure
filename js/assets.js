@@ -191,7 +191,7 @@
      * 追加（brick-extra-v1）：壁の上面 top 64×64＝2×2マス、縁 rimW・rimE 10×64（左右の縁・2マス分）、rimN 64×10（下の壁の縁）、目地の角 joint 10×10。
      * 使うかどうかは D.DUNGEON_ART（地域ごと。2026年10月21日 brick、22日 roots・ruins・ruins_deep を本番に反映。ほかの地域は今までのコードの絵） */
     dungeon: {
-      brick: { floor: [0, 1, 2].map((i) => 'assets/dungeon/brick/floor_' + i + '.png'), wall: [0, 1].map((i) => 'assets/dungeon/brick/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/brick/narrow_' + i + '.png'),
+      brick: { floor: ['assets/dungeon/brick/floor_0.png'], wall: [0, 1].map((i) => 'assets/dungeon/brick/wall_' + i + '.png'), narrow: [0, 1].map((i) => 'assets/dungeon/brick/narrow_' + i + '.png'),
         top: [0, 1, 2, 3].map((i) => 'assets/dungeon/brick/top_' + i + '.png'), rimW: ['assets/dungeon/brick/rimW.png'], rimE: ['assets/dungeon/brick/rimE.png'], rimN: ['assets/dungeon/brick/rimN.png'], joint: ['assets/dungeon/brick/joint.png'], ...deco('brick'), ...depth('brick', true) },
       /* 第1回の追加原画（dungeon_batch1_roots_ruins_v2）：縁・角は地域ごとの幅（木の根 8px・地下の遺跡 9px）。角は向きごと
        *  jOutNE・jOutNW：外角（上と右／上と左に床）。jInNE・jInNW・jInSE・jInSW：内角（斜めだけ床） */
