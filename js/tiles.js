@@ -513,6 +513,7 @@
    *  飾り（2026年10月22日）：正面の壁の2マス分にときどき柱・灯り・アーチ、部屋から離れた壁の上面にときどきがれき。どちらも壁のマスの中だけ */
   function artOverlay(run, L, x, y, theme, at, walk, out) {
     const D = TS.Data, A = SP.art.dungeon && SP.art.dungeon[theme];
+    if (D.DUNGEON_ART && D.DUNGEON_ART[theme] === 'v2') return artOverlayV2(run, L, x, y, SP.art.dungeon[theme + '_v2'], at, walk, out);
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!D.DUNGEON_ART || !D.DUNGEON_ART[theme] || !A || !ready(A.floor) || !ready(A.wall) || !ready(A.narrow)) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, seed = (run.seed ^ (run.floor * 7919)) >>> 0, k = at(x, y);
@@ -571,6 +572,51 @@
     }
   }
 
+  /* v2（レンガの回廊。ZIP brick_match_v2 の承認図に合わせる。2026年10月23日・プレビュー）
+   *  床：4×4マス（128×128）の1枚を、マップ全体の座標で4マスごとにそろえて敷く（部屋も通路も同じ）
+   *  正面の壁：3マスの高さ。いちばん下を床との境目（壁の正面のマス）にそろえ、その上の2マスに上の段を描く。各マスは自分のマスの中だけ
+   *    （上の段のマスが床なら描かない＝床・通路・隣の部屋は覆わない）。壁の並びは左の端から アーチ4・旗2・アーチ4…、残りは旗2か細い1
+   *  それ以外の壁：暗い単色（部屋の外と同じ）。床に面した辺と、正面の壁のとなりに縁（左右16px・下24px）。部屋の左下・右下の角に角の絵 */
+  function artOverlayV2(run, L, x, y, A, at, walk, out) {
+    const ready = (l) => l && l.length && l.every(Boolean);
+    if (!A || !['floor', 'arch', 'banner', 'narrow3', 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW'].every((k) => ready(A[k]))) return;
+    const g = L.g, x0 = x * 32, y0 = y * 32, k = at(x, y);
+    if (k !== WALL) {
+      const F = A.floor[0], n = F.width / 32;
+      g.drawImage(F, (x % n) * 32, (y % n) * 32, 32, 32, x0, y0, 32, 32);
+      return;
+    }
+    const isFace = (xx, yy) => at(xx, yy) === WALL && walk(xx, yy + 1);
+    // 壁の正面の並びの中の、x の列に当たる絵と列（左の端から数える）
+    const part = (xx, yf) => {
+      let s0 = xx; while (isFace(s0 - 1, yf)) s0--;
+      let s1 = xx; while (isFace(s1 + 1, yf)) s1++;
+      let i = s0, turn = 0;
+      for (;;) {
+        const rest = s1 - i + 1, want = turn % 2 === 0 ? 4 : 2, w = want <= rest ? want : rest >= 2 ? 2 : 1;
+        if (xx < i + w) return { img: (w === 4 ? A.arch : w === 2 ? A.banner : A.narrow3)[0], col: xx - i };
+        i += w; turn++;
+      }
+    };
+    // このマスが正面の壁の絵の何段目か（2＝いちばん下＝壁の正面、1・0＝その上）。間に床があれば描かない
+    const row = (xx, yy) => { if (at(xx, yy) !== WALL) return -1; for (let d = 0; d <= 2; d++) { if (d > 0 && at(xx, yy + d) !== WALL) return -1; if (isFace(xx, yy + d)) return 2 - d; } return -1; };
+    const r = row(x, y);
+    g.fillStyle = '#140a08'; g.fillRect(x0, y0, 32, 32);
+    if (r >= 0) {
+      const p = part(x, y + 2 - r); g.drawImage(p.img, p.col * 32, r * 32, 32, 32, x0, y0, 32, 32);
+      out.torch = false;
+    }
+    // 縁：床に面した辺。正面の壁の絵のとなり（その絵を描かないマス）にも左右の縁を続ける。下は壁の正面の絵が受け持つ
+    const art = (xx, yy) => row(xx, yy) >= 0;
+    const fW = walk(x - 1, y) || (r < 0 && art(x - 1, y)), fE = walk(x + 1, y) || (r < 0 && art(x + 1, y)), fN = walk(x, y - 1);
+    const vW = A.rimW[0], vE = A.rimE[0], hN = A.rimN[0];
+    if (fW) g.drawImage(vW, 0, (y % (vW.height / 32)) * 32, vW.width, 32, x0, y0, vW.width, 32);
+    if (fE) g.drawImage(vE, 0, (y % (vE.height / 32)) * 32, vE.width, 32, x0 + 32 - vE.width, y0, vE.width, 32);
+    if (fN) g.drawImage(hN, (x % (hN.width / 32)) * 32, 0, 32, hN.height, x0, y0, 32, hN.height);
+    // 角：斜め上だけ床（部屋の左下・右下の角）。外角などほかの形の絵はまだ無い
+    if (!fN && walk(x + 1, y - 1) && !fE && at(x + 1, y) === WALL && at(x, y - 1) === WALL) { const c = A.jInNE[0]; g.drawImage(c, x0 + 32 - c.width, y0); }
+    if (!fN && walk(x - 1, y - 1) && !fW && at(x - 1, y) === WALL && at(x, y - 1) === WALL) g.drawImage(A.jInNW[0], x0, y0);
+  }
 
   // ---------------- 部品 ----------------
   function drawTop(T, theme, x0, y0, seed) {

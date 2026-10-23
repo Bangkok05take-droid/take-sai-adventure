@@ -1,0 +1,118 @@
+{
+  "version": 2,
+  "stage": "brick_pilot",
+  "floors": [
+    1,
+    2,
+    3
+  ],
+  "tile_px": 32,
+  "source": "approved_board.png",
+  "status": "local_assembly_only_not_game_tested",
+  "assets": [
+    {
+      "file": "assets/floor_4x4.png",
+      "crop": [
+        152,
+        154,
+        280,
+        249
+      ],
+      "pixels": [
+        128,
+        128
+      ]
+    },
+    {
+      "file": "assets/wall_arch.png",
+      "crop": [
+        192,
+        45,
+        320,
+        137
+      ],
+      "pixels": [
+        128,
+        96
+      ]
+    },
+    {
+      "file": "assets/wall_banner.png",
+      "crop": [
+        123,
+        45,
+        196,
+        137
+      ],
+      "pixels": [
+        64,
+        96
+      ]
+    },
+    {
+      "file": "assets/wall_narrow.png",
+      "crop": [
+        123,
+        45,
+        149,
+        137
+      ],
+      "pixels": [
+        32,
+        96
+      ]
+    },
+    {
+      "file": "assets/edge_left.png",
+      "crop": [
+        32,
+        144,
+        53,
+        269
+      ],
+      "pixels": [
+        16,
+        128
+      ]
+    },
+    {
+      "file": "assets/edge_right.png",
+      "crop": [
+        437,
+        67,
+        457,
+        139
+      ],
+      "pixels": [
+        16,
+        64
+      ]
+    },
+    {
+      "file": "assets/edge_bottom.png",
+      "crop": [
+        55,
+        270,
+        195,
+        297
+      ],
+      "pixels": [
+        128,
+        24
+      ]
+    },
+    {
+      "file": "assets/corner_bottom_left.png",
+      "crop": [
+        30,
+        268,
+        56,
+        298
+      ],
+      "pixels": [
+        24,
+        24
+      ]
+    }
+  ]
+}

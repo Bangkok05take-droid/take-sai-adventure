@@ -148,3 +148,9 @@
 - 封印の最深部（gold、26〜29階）・大魔王の城（demon、31〜34階）：ZIP dungeon_part3（`assets/reference/late-dungeons-v1/`）。`python3 -I tools/make-late-dungeons.py` → `assets/dungeon/<gold|demon>/`。
   - 床 floor_0（1種類）・壁の上面 top_0・正面の壁 wall_0（2マス幅・2マス高）・細い壁 narrow_0・縁（3px。左右は同じ帯の反転）・角は縁の端の3×3（joint）。optional の装飾は使わない。背景・下へ伸びる外壁・支柱なし。
   - 本番はまだ（`D.DUNGEON_ART` に入れていない）。プレビュー：`node tools/dungeon-art-preview.js gold|demon`（最終章の状態で27階・31階へ降りて撮る）。代表画像 `docs/dungeon-art-v1/<地域>/<地域>_representative_390.jpg`。
+
+---
+# レンガの回廊 v2（ZIP brick_match_v2、2026年10月23日・プレビュー段階）
+- 承認図 `assets/reference/brick-match-v2/approved_board.png`。部品は `python3 -I tools/make-brick-v2.py` → `assets/dungeon/brick_v2/`（どれもゲームの32px単位で切り出し済み）。
+- 描き方（`js/tiles.js` の artOverlayV2。`D.DUNGEON_ART.brick = 'v2'` のとき）：床 4×4マス1種類／正面の壁は3マスの高さで、いちばん下を床との境目にそろえる（各マスは自分のマスの中だけ描く＝上の段に床があれば描かない）。並びは左端から アーチ4・旗2 のくり返し、残りは旗2か細い1／それ以外の壁は暗い単色で、床に面した辺と正面の壁のとなりに縁（左右16px・下24px）／部屋の左下・右下の角に角の絵（右下は左下の反転・仮）。
+- 本番はまだ今の絵（`D.DUNGEON_ART.brick = true`）。プレビュー：`node tools/dungeon-art-preview.js brick docs/brick-v2 v2`。承認図・見本・ゲーム画面の比較 `docs/brick-v2/compare_approved_sample_game_390.jpg`、階全体 `docs/brick-v2/overview_v2.png`。
