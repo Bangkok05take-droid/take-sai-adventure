@@ -286,18 +286,21 @@
   /* 壁の外の背景（2026年10月22日・仮）：地域の壁の上面の絵（2×2マスの2枚）を並べた 128×128 を暗くして、地図の座標に固定してくり返す。
    * 地図の外も同じ柄で、地図の端から外へ3マスかけて少しずつ暗くする（境界の四角が見えないように）。専用の素材（512×512）が届いたら差し替え */
   const backdropCache = {};
-  function backdropPattern(g, theme) {
-    if (backdropCache[theme] !== undefined) return backdropCache[theme];
+  // 画面の倍率 k に合わせて縮めた1枚（模様で塗るより、1枚ずつ並べて貼る方が軽かった）
+  function backdropPattern(g, theme, k) {
+    const key = theme + ':' + k;
+    if (backdropCache[key] !== undefined) return backdropCache[key];
     const A = SP.art.dungeon && SP.art.dungeon[theme], cav = A && A.cavern && A.cavern[0], tops = A && A.top;
     // 専用の背景（地下の遺跡の岩盤と霧 cavern）があればそれを 128×128 に。無ければ仮：壁の上面の絵を並べて暗くしたもの
     if (!cav && (!tops || !tops.length || !tops.every(Boolean))) return null;   // 読み込み中は単色のまま（次のフレームで作り直す）
-    const DP = (D.DUNGEON_DEPTH && D.DUNGEON_DEPTH[theme]) || {}, n = cav ? (DP.size || 128) : 128, c = document.createElement('canvas'); c.width = c.height = n; const cg = c.getContext('2d');
+    const DP = (D.DUNGEON_DEPTH && D.DUNGEON_DEPTH[theme]) || {}, n = Math.round((cav ? (DP.size || 128) : 128) * k), c = document.createElement('canvas'); c.width = c.height = n; const cg = c.getContext('2d');
     if (cav) { cg.imageSmoothingEnabled = true; cg.imageSmoothingQuality = 'high'; cg.drawImage(cav, 0, 0, n, n); cg.fillStyle = 'rgba(2,3,8,' + (DP.dark || 0) + ')'; cg.fillRect(0, 0, n, n); }
     else {
-      for (let j = 0; j < 4; j++) cg.drawImage(tops[(j + (j >> 1)) % tops.length], (j & 1) * 64, (j >> 1) * 64);
-      cg.fillStyle = 'rgba(4,3,6,' + ((D.DUNGEON_BACKDROP_DARK || 0.6)) + ')'; cg.fillRect(0, 0, 128, 128);
+      cg.imageSmoothingEnabled = false; const q = n / 2;
+      for (let j = 0; j < 4; j++) cg.drawImage(tops[(j + (j >> 1)) % tops.length], (j & 1) * q, (j >> 1) * q, q, q);
+      cg.fillStyle = 'rgba(4,3,6,' + ((D.DUNGEON_BACKDROP_DARK || 0.6)) + ')'; cg.fillRect(0, 0, n, n);
     }
-    return (backdropCache[theme] = g.createPattern(c, 'repeat'));
+    return (backdropCache[key] = c);
   }
   /* 奥行き（地下の遺跡。ZIP ruins_depth_v1）：描いた地形（探索した床とまわりの壁）の下向きの辺から、正面の外壁を下へ（2マス幅・約2.7マス）、
    * 4マスおきに支柱（4マス）。描いたかどうかだけで決め、長さはいつも同じ（未探索の地形は見ない）。あとから描く地形がこの上に重なる。
@@ -323,35 +326,44 @@
   }
   function drawBackdrop(g, run, theme, ox, oy, ts, k, W, H) {
     if (!D.DUNGEON_BACKDROP || !D.DUNGEON_BACKDROP[theme]) return false;
-    const pat = backdropPattern(g, theme); if (!pat) return false;
-    const m = run.map;
-    g.save(); g.imageSmoothingEnabled = false; g.translate(ox, oy); g.scale(k, k);
-    g.fillStyle = pat; g.fillRect(-ox / k - 1, -oy / k - 1, W / k + 2, H / k + 2); g.restore();
-    // 地図の外：端から外へ3マスかけて暗く（最大 +0.25）。マスより細かい8段で、角は距離の大きい方
-    const out = (v, n) => (v < 0 ? -v : v > n ? v - n : 0);
-    const step = ts / 4, gx0 = Math.floor(-ox / step) - 1, gy0 = Math.floor(-oy / step) - 1, gx1 = Math.ceil((W - ox) / step), gy1 = Math.ceil((H - oy) / step);
-    for (let gy = gy0; gy <= gy1; gy++) for (let gx = gx0; gx <= gx1; gx++) {
-      const cx = (gx + 0.5) / 4, cy = (gy + 0.5) / 4, d = Math.max(out(cx, m.w), out(cy, m.h));
-      if (d <= 0) continue;
-      const a = 0.25 * Math.min(1, d / 3); g.fillStyle = 'rgba(2,1,4,' + a.toFixed(3) + ')';
-      g.fillRect(Math.floor(ox + gx * step), Math.floor(oy + gy * step), Math.ceil(step) + 1, Math.ceil(step) + 1);
-    }
+    const t = backdropPattern(g, theme, k); if (!t) return false;
+    const m = run.map, n = t.width;
+    for (let y = ((oy % n) + n) % n - n; y < H; y += n) for (let x = ((ox % n) + n) % n - n; x < W; x += n) g.drawImage(t, x, y);
+    // 地図の外：端から外へ3マスかけて少しずつ暗く（最大 +0.25）。辺は線のグラデーション、角は丸いグラデーション（どちらも端より先は最大の暗さ）。
+    // 1フレームに8回塗るだけ（細かく塗り分けると重かった）
+    const mx0 = ox, my0 = oy, mx1 = ox + m.w * ts, my1 = oy + m.h * ts, R = 3 * ts, c0 = 'rgba(2,1,4,0)', c1 = 'rgba(2,1,4,0.25)';
+    const lin = (ax, ay, bx, by, rx, ry, rw, rh) => { if (rw <= 0 || rh <= 0) return; const gr = g.createLinearGradient(ax, ay, bx, by); gr.addColorStop(0, c0); gr.addColorStop(1, c1); g.fillStyle = gr; g.fillRect(rx, ry, rw, rh); };
+    const rad = (cx, cy, rx, ry, rw, rh) => { if (rw <= 0 || rh <= 0) return; const gr = g.createRadialGradient(cx, cy, 0, cx, cy, R); gr.addColorStop(0, c0); gr.addColorStop(1, c1); g.fillStyle = gr; g.fillRect(rx, ry, rw, rh); };
+    const L0 = Math.max(0, mx0), T0 = Math.max(0, my0), R0 = Math.min(W, mx1), B0 = Math.min(H, my1);
+    lin(mx0, 0, mx0 - R, 0, 0, T0, mx0, B0 - T0);                 // 左
+    lin(mx1, 0, mx1 + R, 0, mx1, T0, W - mx1, B0 - T0);          // 右
+    lin(0, my0, 0, my0 - R, L0, 0, R0 - L0, my0);                 // 上
+    lin(0, my1, 0, my1 + R, L0, my1, R0 - L0, H - my1);          // 下
+    rad(mx0, my0, 0, 0, mx0, my0); rad(mx1, my0, mx1, 0, W - mx1, my0);
+    rad(mx0, my1, 0, my1, mx0, H - my1); rad(mx1, my1, mx1, my1, W - mx1, H - my1);
     return true;
   }
   // 描いた地形の外側の縁：背景へなじむよう、描いていないとなりのマスへ半マスの影（描いたかどうかだけで決める＝未探索の情報は出さない）
+  const shadeCache = {};
+  function shadeStrips(ts) {   // 4方向の影の帯（半マス）。マスの大きさごとに1回だけ作る
+    if (shadeCache[ts]) return shadeCache[ts];
+    const h = Math.round(ts / 2), mk = (w, hh, ax, ay, bx, by) => { const c = document.createElement('canvas'); c.width = w; c.height = hh; const cg = c.getContext('2d');
+      const gr = cg.createLinearGradient(ax, ay, bx, by); gr.addColorStop(0, 'rgba(3,2,5,0.55)'); gr.addColorStop(1, 'rgba(3,2,5,0)'); cg.fillStyle = gr; cg.fillRect(0, 0, w, hh); return c; };
+    return (shadeCache[ts] = { h, W: mk(h, ts, h, 0, 0, 0), E: mk(h, ts, 0, 0, h, 0), N: mk(ts, h, 0, h, 0, 0), S: mk(ts, h, 0, 0, 0, h) });
+  }
   function edgeShade(g, m, L, ox, oy, ts, x0, y0, x1, y1, noBottom) {
     const drawn = (x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h && L.drawn[y * m.w + x];
-    const h = Math.round(ts / 2), c0 = 'rgba(3,2,5,0.55)', c1 = 'rgba(3,2,5,0)';
+    const st = shadeStrips(ts), h = st.h;
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       if (!drawn(x, y)) continue;
       const sx = ox + x * ts, sy = oy + y * ts;
-      const strip = (gx0, gy0, gx1, gy1, rx, ry, rw, rhh) => { const gr = g.createLinearGradient(gx0, gy0, gx1, gy1); gr.addColorStop(0, c0); gr.addColorStop(1, c1); g.fillStyle = gr; g.fillRect(rx, ry, rw, rhh); };
-      if (!drawn(x - 1, y)) strip(sx, 0, sx - h, 0, sx - h, sy, h, ts);
-      if (!drawn(x + 1, y)) strip(sx + ts, 0, sx + ts + h, 0, sx + ts, sy, h, ts);
-      if (!drawn(x, y - 1)) strip(0, sy, 0, sy - h, sx, sy - h, ts, h);
-      if (!noBottom && !drawn(x, y + 1)) strip(0, sy + ts, 0, sy + ts + h, sx, sy + ts, ts, h);   // 下へ伸びる外壁がある地域は、外壁の上に影を落とさない
+      if (!drawn(x - 1, y)) g.drawImage(st.W, sx - h, sy);
+      if (!drawn(x + 1, y)) g.drawImage(st.E, sx + ts, sy);
+      if (!drawn(x, y - 1)) g.drawImage(st.N, sx, sy - h);
+      if (!noBottom && !drawn(x, y + 1)) g.drawImage(st.S, sx, sy + ts);   // 下へ伸びる外壁がある地域は、外壁の上に影を落とさない
     }
   }
+
 
   // ---------------- ダンジョン ----------------
   RD.drawDungeon = function (canvas, S, now) {

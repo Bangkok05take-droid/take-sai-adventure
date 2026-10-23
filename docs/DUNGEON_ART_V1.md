@@ -132,4 +132,4 @@
 - 継ぎ目：背景2×2・外壁3枚をそのまま並べると継ぎ目は目立たなかった。反転して並べると左右対称の模様が目立ったので、反転は使わない（`docs/early-depth-v1/seams_*.png`。左＝そのまま、右＝反転）。
 - 飾り（控えめ）：レンガ＝旗・松明、木の根＝根・ランタン。2マス分の外壁が両方そろい支柱が無い所の約7分の1に、外壁の上端から下げる（床には出ない）。
 - 左右の側面は今回素材なし：半マスの影だけ（正面の外壁は回して使わない）。
-- 本番は今のまま（`D.DUNGEON_BACKDROP` は ruins・ruins_deep だけ）。プレビュー：`node tools/dungeon-backdrop-preview.js docs/early-depth-v1 brick,roots`（start・corridor・adjacent＝上下に近い部屋・edge＝地図の端、幅360・390・430）。完成イメージとの比較 `docs/early-depth-v1/<地域>_concept_vs_game_390.jpg`。
+- 2026年10月23日：本番に反映（`D.DUNGEON_BACKDROP` に brick・roots）。プレビュー：`node tools/dungeon-backdrop-preview.js docs/early-depth-v1 brick,roots`（start・corridor・adjacent＝上下に近い部屋・edge＝地図の端、幅360・390・430）。完成イメージとの比較 `docs/early-depth-v1/<地域>_concept_vs_game_390.jpg`。

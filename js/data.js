@@ -106,7 +106,7 @@
   /* 壁の外の背景（地図の外・壁の奥・未探索の所）を絵にする地域。2026年10月22日：仮の背景のプレビュー段階（本番は空）。
    * DUNGEON_BACKDROP_DARK：背景を暗くする割合（仮の背景＝壁の上面の絵を暗くしたもの）
    * 2026年10月22日：地下の遺跡（7〜14階）だけ本番（岩盤の背景・下へ伸びる外壁・支柱。ZIP ruins_depth_v1）。レンガ・木の根は専用素材待ち（壁柄の仮背景は本番にしない） */
-  D.DUNGEON_BACKDROP = { ruins: true, ruins_deep: true };
+  D.DUNGEON_BACKDROP = { brick: true, roots: true, ruins: true, ruins_deep: true };   // 10月23日：レンガの回廊・木の根の遺跡も（ZIP early_depth_v1）
   D.DUNGEON_BACKDROP_DARK = 0.6;
   /* 奥行きの背景（専用の素材 cavern）の地域ごとの設定（仮。実画面で決めた値）。size：1枚の大きさ（マス32の座標で）、dark：暗くする割合
    *  地下の遺跡：256（8×8マス。128だと柄のくり返しが目立った）・35%。レンガの回廊・木の根の遺跡：README どおり128（4×4マス）。素材自体が暗いので少しだけ */
