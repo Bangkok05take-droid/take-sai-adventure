@@ -157,3 +157,9 @@
 - 2026年10月24日：本番に反映（`D.DUNGEON_ART.brick = 'v2'`）。補修素材 v3（ZIP brick_repair_v3、`assets/reference/brick-repair-v3/`）の壁3種（アーチ・旗・細い壁。左右6pxが共通の柱の半分）に差し替え、柱の二重と旗の切れ端がなくなった。
   - 角の部品12点は、線の太さ（約8px）が今の縁（左右16px・下24px）と合わず継ぎ目が目立ったので使わない（`D.DUNGEON_V2_CORNERS = false`。素材と描き方は残す）。部屋の左下・右下の角は brick_match_v2 の角のまま。
   - 攻撃予告：塗りを濃い赤に、暗い外枠＋明るい内枠に。枠は人物・道具・敵の絵の上にもう一度描く（全地域）。比較 `docs/brick-v2/telegraph_before_after_390.jpg`。
+
+---
+# 木の根の遺跡 v2（ZIP roots_match_v1、2026年10月24日・プレビュー段階）
+- 承認図から切り出した部品（`assets/reference/roots-match-v1/`）。`python3 -I tools/make-roots-v2.py` → `assets/dungeon/roots_v2/`。
+- 描き方はレンガの回廊 v2 と同じ（`artOverlayV2`）。壁の並びは地域ごとの設定（`seq`・`fill`）：根4・祠3（石壁と灯り）・根（右）4 のくり返し、残りは祠3か細い1。床は4×4マス1種類。左右の縁が正面の壁の上端に届く所に corner_upper_left/right、部屋の左下・右下に corner_lower_left/right。
+- 本番はまだ今の絵（`D.DUNGEON_ART.roots = true`）。プレビュー：`node tools/dungeon-art-preview.js roots docs/roots-v2 v2`。承認図との比較 `docs/roots-v2/compare_approved_game_390.jpg`。

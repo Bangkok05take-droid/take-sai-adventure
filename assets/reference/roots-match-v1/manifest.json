@@ -1,0 +1,180 @@
+{
+  "version": "roots_match_v1",
+  "floors": [
+    4,
+    5,
+    6
+  ],
+  "tile_px": 32,
+  "status": "preview_only_until_renderer_fit_checked",
+  "assets": {
+    "floor_4x4": {
+      "file": "assets/floor_4x4.png",
+      "size": [
+        128,
+        128
+      ],
+      "source_box": [
+        656,
+        155,
+        784,
+        251
+      ],
+      "note": "床はこの1種類のみ。部屋・通路で色を切り替えない。"
+    },
+    "wall_roots": {
+      "file": "assets/wall_roots.png",
+      "size": [
+        128,
+        96
+      ],
+      "source_box": [
+        560,
+        45,
+        704,
+        141
+      ],
+      "note": "根のある正面壁。根は画像内に収める。"
+    },
+    "wall_shrine": {
+      "file": "assets/wall_shrine.png",
+      "size": [
+        96,
+        96
+      ],
+      "source_box": [
+        704,
+        45,
+        812,
+        141
+      ],
+      "note": "石壁と灯り。入口ではなく閉じた壁。"
+    },
+    "wall_roots_right": {
+      "file": "assets/wall_roots_right.png",
+      "size": [
+        128,
+        96
+      ],
+      "source_box": [
+        812,
+        45,
+        952,
+        141
+      ],
+      "note": "右側の根の正面壁。"
+    },
+    "wall_narrow": {
+      "file": "assets/wall_narrow.png",
+      "size": [
+        32,
+        96
+      ],
+      "source_box": [
+        704,
+        45,
+        730,
+        141
+      ],
+      "note": "1マス幅の石柱と灯り。"
+    },
+    "edge_left": {
+      "file": "assets/edge_left.png",
+      "size": [
+        16,
+        128
+      ],
+      "source_box": [
+        543,
+        145,
+        560,
+        267
+      ],
+      "note": "床の左側の縁。"
+    },
+    "edge_right": {
+      "file": "assets/edge_right.png",
+      "size": [
+        16,
+        64
+      ],
+      "source_box": [
+        951,
+        207,
+        969,
+        267
+      ],
+      "note": "床の右側の縁。"
+    },
+    "edge_bottom": {
+      "file": "assets/edge_bottom.png",
+      "size": [
+        128,
+        24
+      ],
+      "source_box": [
+        565,
+        272,
+        693,
+        296
+      ],
+      "note": "下側の縁。"
+    },
+    "corner_upper_left": {
+      "file": "assets/corner_upper_left.png",
+      "size": [
+        16,
+        24
+      ],
+      "source_box": [
+        543,
+        45,
+        561,
+        69
+      ],
+      "note": "上端左。"
+    },
+    "corner_upper_right": {
+      "file": "assets/corner_upper_right.png",
+      "size": [
+        16,
+        24
+      ],
+      "source_box": [
+        950,
+        45,
+        969,
+        69
+      ],
+      "note": "上端右。"
+    },
+    "corner_lower_left": {
+      "file": "assets/corner_lower_left.png",
+      "size": [
+        24,
+        24
+      ],
+      "source_box": [
+        542,
+        270,
+        566,
+        294
+      ],
+      "note": "下端左。"
+    },
+    "corner_lower_right": {
+      "file": "assets/corner_lower_right.png",
+      "size": [
+        24,
+        24
+      ],
+      "source_box": [
+        945,
+        270,
+        969,
+        294
+      ],
+      "note": "下端右。"
+    }
+  }
+}

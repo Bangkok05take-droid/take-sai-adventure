@@ -579,7 +579,7 @@
    *  それ以外の壁：暗い単色（部屋の外と同じ）。床に面した辺と、正面の壁のとなりに縁（左右16px・下24px）。部屋の左下・右下の角に角の絵 */
   function artOverlayV2(run, L, x, y, A, at, walk, out) {
     const ready = (l) => l && l.length && l.every(Boolean);
-    if (!A || !['floor', 'arch', 'banner', 'narrow3', 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW'].every((k) => ready(A[k]))) return;
+    if (!A || !A.seq || ![...A.seq, ...A.fill, 'floor', 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW'].every((k) => ready(A[k]))) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, k = at(x, y);
     if (k !== WALL) {
       const F = A.floor[0], n = F.width / 32;
@@ -591,10 +591,12 @@
     const part = (xx, yf) => {
       let s0 = xx; while (isFace(s0 - 1, yf)) s0--;
       let s1 = xx; while (isFace(s1 + 1, yf)) s1++;
+      // 左の端から A.seq をくり返す。入らない残りは A.fill のうち入る最大のもの（どの絵も幅は 32 の倍数）
+      const W = (n) => A[n][0].width / 32;
       let i = s0, turn = 0;
       for (;;) {
-        const rest = s1 - i + 1, want = turn % 2 === 0 ? 4 : 2, w = want <= rest ? want : rest >= 2 ? 2 : 1;
-        if (xx < i + w) return { img: (w === 4 ? A.arch : w === 2 ? A.banner : A.narrow3)[0], col: xx - i };
+        const rest = s1 - i + 1, want = A.seq[turn % A.seq.length], n = W(want) <= rest ? want : A.fill.find((f) => W(f) <= rest) || A.fill[A.fill.length - 1], w = W(n);
+        if (xx < i + w) return { img: A[n][0], col: xx - i };
         i += w; turn++;
       }
     };
@@ -618,6 +620,9 @@
     if (!fN && walk(x - 1, y - 1) && !fW && at(x - 1, y) === WALL && at(x, y - 1) === WALL) g.drawImage(A.jInNW[0], x0, y0);
     // 補修素材 v3 の角（無ければ描かない）。どれも自分のマスの中だけ
     const P = (n) => (ready(A[n]) ? A[n][0] : null), put = (n, right, bottom) => { const c = P(n); if (c) g.drawImage(c, right ? x0 + 32 - c.width : x0, bottom ? y0 + 32 - c.height : y0); };
+    // 左右の縁が正面の壁の上端に届く所（木の根の遺跡の corner_upper_left/right。となりが正面の壁のいちばん上の段）
+    if (r < 0 && !fN && A.upper_left && row(x + 1, y) === 0) put('upper_left', true, false);
+    if (r < 0 && !fN && A.upper_right && row(x - 1, y) === 0) put('upper_right', false, false);
     if (r < 0 && TS.Data.DUNGEON_V2_CORNERS) {
       const wF = walk(x - 1, y), eF = walk(x + 1, y), row0 = (xx, yy) => row(xx, yy) === 0;
       // 出っ張った角：上と左（右）が床
@@ -626,9 +631,6 @@
       // 下の縁が、となりの正面の壁（隣の部屋や通路の口の上の壁）で終わる所
       if (fN && !wF && art(x - 1, y)) put('end_bl', false, false);
       if (fN && !eF && art(x + 1, y)) put('end_br', true, false);
-      // 左右の縁が正面の壁の上端に届く所（となりが正面の壁のいちばん上の段）
-      if (!fN && row0(x + 1, y)) put('upper_left', true, false);
-      if (!fN && row0(x - 1, y)) put('upper_right', false, false);
       // 左右の縁が、下の正面の壁（通路の口の上の壁）で終わる所
       if (eF && row0(x, y + 1)) put('end_left', true, true);
       if (wF && row0(x, y + 1)) put('end_right', false, true);
