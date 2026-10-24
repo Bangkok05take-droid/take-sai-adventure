@@ -513,14 +513,17 @@
       g.fillStyle = fg; g.fillRect(0, 0, W, H);
     }
     // 予告攻撃の範囲（赤く点滅）。ボスの予告は霧の中でも見える
+    // 2026年10月24日：明るい床（レンガの回廊 v2）でも分かるよう、塗りを濃い赤に・暗い外枠＋明るい内枠に強めた。枠は人物や道具の絵の上にもう一度描く（下）
     const pulse = 0.32 + 0.25 * Math.sin(now / 120);
-    for (const e of run.enemies) {
-      if (!e.charge || (!e.boss && !G.isVisible(run, e.x, e.y))) continue;
+    const tele = run.enemies.filter((e) => e.charge && (e.boss || G.isVisible(run, e.x, e.y)));
+    for (const e of tele) {
       // 白い異空間では、白い床の上でも分かるよう濃い赤と暗い縁にする
-      g.fillStyle = voidBg ? `rgba(225,20,40,${pulse + 0.18})` : `rgba(255,40,40,${pulse})`;
+      g.fillStyle = voidBg ? `rgba(225,20,40,${pulse + 0.18})` : `rgba(220,16,24,${pulse + 0.14})`;
       for (const t of e.charge.tiles) g.fillRect(ox + t.x * ts + k, oy + t.y * ts + k, ts - 2 * k, ts - 2 * k);
-      g.strokeStyle = voidBg ? 'rgba(130,0,20,0.9)' : 'rgba(255,220,220,0.9)'; g.lineWidth = k;
-      for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 1.5 * k, oy + t.y * ts + 1.5 * k, ts - 3 * k, ts - 3 * k);
+      g.strokeStyle = voidBg ? 'rgba(130,0,20,0.9)' : 'rgba(70,0,6,0.9)'; g.lineWidth = 1.5 * k;
+      for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 1.25 * k, oy + t.y * ts + 1.25 * k, ts - 2.5 * k, ts - 2.5 * k);
+      g.strokeStyle = voidBg ? 'rgba(255,200,200,0.9)' : 'rgba(255,215,205,0.95)'; g.lineWidth = k;
+      for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 3 * k, oy + t.y * ts + 3 * k, ts - 6 * k, ts - 6 * k);
     }
     // 床の危険（炎・氷・罠・雷）：色つきの印と、発動までにたけが動ける回数の数字。霧の中でも見える
     if (run.hazards && run.hazards.length) {
@@ -637,14 +640,15 @@
         g.fillStyle = '#ff5050'; g.fillRect(sx + 2 * k, sy + ts - 3 * k, Math.max(1, (ts - 4 * k) * e.hp / e.maxhp), 2 * k);
       }
     }
-    // 大きなボスの絵に隠れた床の予告・危険の印は、枠と数字をもう一度上から描く（絵の上でも分かるように）
+    // 人物・道具・ボスの絵に隠れた床の予告は、枠をもう一度上から描く（敵や道具と重なっても範囲が分かるように）
+    if (tele.length) {
+      g.lineWidth = k * 1.5;
+      g.strokeStyle = `rgba(255,60,60,${0.6 + 0.3 * Math.sin(now / 120)})`;
+      for (const e of tele) for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 2 * k, oy + t.y * ts + 2 * k, ts - 4 * k, ts - 4 * k);
+    }
+    // 大きなボスの絵に隠れた床の危険の印も、枠をもう一度上から描く
     if (run.enemies.some((e) => e.boss)) {
       g.lineWidth = k * 1.5;
-      for (const e of run.enemies) {
-        if (!e.charge || !e.boss) continue;
-        g.strokeStyle = `rgba(255,90,90,${0.55 + 0.3 * Math.sin(now / 120)})`;
-        for (const t of e.charge.tiles) g.strokeRect(ox + t.x * ts + 2 * k, oy + t.y * ts + 2 * k, ts - 4 * k, ts - 4 * k);
-      }
       if (run.hazards && run.hazards.length) for (const h of run.hazards) { if (!run.explored[h.y * run.map.w + h.x]) continue; g.strokeStyle = 'rgba(255,240,200,0.7)'; g.strokeRect(ox + h.x * ts + 2 * k, oy + h.y * ts + 2 * k, ts - 4 * k, ts - 4 * k); }
     }
     // 床の危険の数字（発動までにたけが動ける回数）：マスの中央に1回だけ、絵の上に描く

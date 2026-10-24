@@ -613,9 +613,26 @@
     if (fW) g.drawImage(vW, 0, (y % (vW.height / 32)) * 32, vW.width, 32, x0, y0, vW.width, 32);
     if (fE) g.drawImage(vE, 0, (y % (vE.height / 32)) * 32, vE.width, 32, x0 + 32 - vE.width, y0, vE.width, 32);
     if (fN) g.drawImage(hN, (x % (hN.width / 32)) * 32, 0, 32, hN.height, x0, y0, 32, hN.height);
-    // 角：斜め上だけ床（部屋の左下・右下の角）。外角などほかの形の絵はまだ無い
+    // 角：斜め上だけ床（部屋の左下・右下の角）
     if (!fN && walk(x + 1, y - 1) && !fE && at(x + 1, y) === WALL && at(x, y - 1) === WALL) { const c = A.jInNE[0]; g.drawImage(c, x0 + 32 - c.width, y0); }
     if (!fN && walk(x - 1, y - 1) && !fW && at(x - 1, y) === WALL && at(x, y - 1) === WALL) g.drawImage(A.jInNW[0], x0, y0);
+    // 補修素材 v3 の角（無ければ描かない）。どれも自分のマスの中だけ
+    const P = (n) => (ready(A[n]) ? A[n][0] : null), put = (n, right, bottom) => { const c = P(n); if (c) g.drawImage(c, right ? x0 + 32 - c.width : x0, bottom ? y0 + 32 - c.height : y0); };
+    if (r < 0 && TS.Data.DUNGEON_V2_CORNERS) {
+      const wF = walk(x - 1, y), eF = walk(x + 1, y), row0 = (xx, yy) => row(xx, yy) === 0;
+      // 出っ張った角：上と左（右）が床
+      if (fN && wF) put('outer_nw', false, false);
+      if (fN && eF) put('outer_ne', true, false);
+      // 下の縁が、となりの正面の壁（隣の部屋や通路の口の上の壁）で終わる所
+      if (fN && !wF && art(x - 1, y)) put('end_bl', false, false);
+      if (fN && !eF && art(x + 1, y)) put('end_br', true, false);
+      // 左右の縁が正面の壁の上端に届く所（となりが正面の壁のいちばん上の段）
+      if (!fN && row0(x + 1, y)) put('upper_left', true, false);
+      if (!fN && row0(x - 1, y)) put('upper_right', false, false);
+      // 左右の縁が、下の正面の壁（通路の口の上の壁）で終わる所
+      if (eF && row0(x, y + 1)) put('end_left', true, true);
+      if (wF && row0(x, y + 1)) put('end_right', false, true);
+    }
   }
 
   // ---------------- 部品 ----------------

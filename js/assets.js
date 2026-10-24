@@ -204,7 +204,10 @@
       /* レンガの回廊 v2（ZIP brick_match_v2。承認図から切り出し。tools/make-brick-v2.py）：D.DUNGEON_ART.brick = 'v2' のとき使う。
        *  床 4×4マス、正面の壁は3マスの高さ（アーチ4マス幅・旗2マス幅・細い1マス幅。旗・灯り・浅い柱は壁の絵の中）、縁、左下・右下の角 */
       brick_v2: (() => { const f = (n) => ['assets/dungeon/brick_v2/' + n + '.png'];
-        return { floor: f('floor_0'), arch: f('arch'), banner: f('banner'), narrow3: f('narrow3'), rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jInNE: f('jInNE'), jInNW: f('jInNW') }; })(),
+        return { floor: f('floor_0'), arch: f('arch'), banner: f('banner'), narrow3: f('narrow3'), rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jInNE: f('jInNE'), jInNW: f('jInNW'),
+          // 補修素材 v3（ZIP brick_repair_v3）：出っ張った角・正面の壁の上端の角・縁の終わり
+          outer_nw: f('outer_nw'), outer_ne: f('outer_ne'), outer_sw: f('outer_sw'), outer_se: f('outer_se'), upper_left: f('upper_left'), upper_right: f('upper_right'),
+          end_left: f('end_left'), end_right: f('end_right'), end_bl: f('end_bl'), end_br: f('end_br') }; })(),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },

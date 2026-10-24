@@ -154,3 +154,6 @@
 - 承認図 `assets/reference/brick-match-v2/approved_board.png`。部品は `python3 -I tools/make-brick-v2.py` → `assets/dungeon/brick_v2/`（どれもゲームの32px単位で切り出し済み）。
 - 描き方（`js/tiles.js` の artOverlayV2。`D.DUNGEON_ART.brick = 'v2'` のとき）：床 4×4マス1種類／正面の壁は3マスの高さで、いちばん下を床との境目にそろえる（各マスは自分のマスの中だけ描く＝上の段に床があれば描かない）。並びは左端から アーチ4・旗2 のくり返し、残りは旗2か細い1／それ以外の壁は暗い単色で、床に面した辺と正面の壁のとなりに縁（左右16px・下24px）／部屋の左下・右下の角に角の絵（右下は左下の反転・仮）。
 - 本番はまだ今の絵（`D.DUNGEON_ART.brick = true`）。プレビュー：`node tools/dungeon-art-preview.js brick docs/brick-v2 v2`。承認図・見本・ゲーム画面の比較 `docs/brick-v2/compare_approved_sample_game_390.jpg`、階全体 `docs/brick-v2/overview_v2.png`。
+- 2026年10月24日：本番に反映（`D.DUNGEON_ART.brick = 'v2'`）。補修素材 v3（ZIP brick_repair_v3、`assets/reference/brick-repair-v3/`）の壁3種（アーチ・旗・細い壁。左右6pxが共通の柱の半分）に差し替え、柱の二重と旗の切れ端がなくなった。
+  - 角の部品12点は、線の太さ（約8px）が今の縁（左右16px・下24px）と合わず継ぎ目が目立ったので使わない（`D.DUNGEON_V2_CORNERS = false`。素材と描き方は残す）。部屋の左下・右下の角は brick_match_v2 の角のまま。
+  - 攻撃予告：塗りを濃い赤に、暗い外枠＋明るい内枠に。枠は人物・道具・敵の絵の上にもう一度描く（全地域）。比較 `docs/brick-v2/telegraph_before_after_390.jpg`。

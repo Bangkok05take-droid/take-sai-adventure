@@ -1,0 +1,133 @@
+{
+  "version": "brick_repair_v3",
+  "region": "brick",
+  "floors": [
+    1,
+    2,
+    3
+  ],
+  "tile_px": 32,
+  "status": "assembly_checked_game_preview_required",
+  "assets": {
+    "wall_arch": {
+      "file": "assets/wall_arch.png",
+      "size": [
+        128,
+        96
+      ],
+      "notes": "左右6pxは共通柱の半分。重ねず横に連結。下端を床境界に合わせる。"
+    },
+    "wall_banner": {
+      "file": "assets/wall_banner.png",
+      "size": [
+        64,
+        96
+      ],
+      "notes": "左右6pxは共通柱の半分。重ねず横に連結。下端を床境界に合わせる。"
+    },
+    "wall_narrow": {
+      "file": "assets/wall_narrow.png",
+      "size": [
+        32,
+        96
+      ],
+      "notes": "左右6pxは共通柱の半分。重ねず横に連結。下端を床境界に合わせる。"
+    },
+    "outer_nw": {
+      "file": "assets/outer_nw.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "outer_ne": {
+      "file": "assets/outer_ne.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "outer_sw": {
+      "file": "assets/outer_sw.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "outer_se": {
+      "file": "assets/outer_se.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "upper_left": {
+      "file": "assets/upper_left.png",
+      "size": [
+        16,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "upper_right": {
+      "file": "assets/upper_right.png",
+      "size": [
+        16,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "lower_left": {
+      "file": "assets/lower_left.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "lower_right": {
+      "file": "assets/lower_right.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "end_left": {
+      "file": "assets/end_left.png",
+      "size": [
+        16,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "end_right": {
+      "file": "assets/end_right.png",
+      "size": [
+        16,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "end_bottom_left": {
+      "file": "assets/end_bottom_left.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    },
+    "end_bottom_right": {
+      "file": "assets/end_bottom_right.png",
+      "size": [
+        24,
+        24
+      ],
+      "notes": "透過PNG。角の中心・縁の接続位置を描画側で合わせる。隣の床へ張り出さない。"
+    }
+  }
+}

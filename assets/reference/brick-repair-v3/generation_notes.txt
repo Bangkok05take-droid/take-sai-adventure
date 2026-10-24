@@ -1,0 +1,1 @@
+Built-in imagegen used. Prompt: match approved warm brick dungeon; continuous front wall with two blind arches, red banner and amber torches; shared half-pillar boundaries; twelve isolated coping corners and end caps. Second pass removed black background, preserving masonry. Mechanical crop/resize and shared pillar assembly followed. No floor replacement.
