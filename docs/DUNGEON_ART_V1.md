@@ -174,3 +174,4 @@
 - 2026年10月26日：帯の終わりの補修 v5（ZIP ends_fit_v5、`assets/reference/ends-fit-v5/`、部品は `assets/dungeon/<地域>_v2/e5/`）。下の帯の終わりは h=x%4、縦の終わりは帯の位相に加えて、下に続く正面の壁の絵（並びの右端／左端の列）ごとの絵を選ぶ。合う絵が無い所は今の帯のまま。
   - 暗い切れ目・色の浮きは消えた（`docs/ends-fit-v5/<地域>_ends_before_after.png`：置いた全ての所の4倍拡大。各組の左が帯のまま、右が v5）。
   - レンガの回廊は本番に反映（`D.DUNGEON_EDGE_V4 = { brick: true }`、`D.DUNGEON_ENDS_V5 = true`）。木の根の遺跡はプレビューのまま（roots v2 が本番前）。
+- 2026年10月26日：木の根の遺跡も本番に反映（`D.DUNGEON_ART.roots = 'v2'`、`D.DUNGEON_EDGE_V4.roots`）。壁・床（v2）・角6種類・帯の終わり v5。背景は暗い単色。
