@@ -15,10 +15,10 @@
   /* 縁・角の補修 v4（ZIP edge_fit_v4。assets/dungeon/<地域>_v2/e4/）：帯の位相ごとの部品。h＝下の帯の x%4、v＝左の帯（edge_left）の y%4・右の帯（edge_right）の y%2
    *  outer_floor_nw/ne（出っ張った角 32×32）・upper_left/right（左右の帯の上端 16×24）・end_vertical_left/right（左右の帯の下の終わり 16×24）・
    *  end_bottom_left/right（下の帯の終わり 24×24）・corner_bottom_left/right（部屋の左下・右下 24×24）。sw/se は下に床がある所用で、このゲームでは正面の壁が受け持つので使わない */
-  const edgeFitV4 = (d) => { const o = {}, f = (n) => { o['e4_' + n] = ['assets/dungeon/' + d + '/e4/' + n + '.png']; }, H = [0, 1, 2, 3];
+  const edgeFitV4 = (d, ends = true) => { const o = {}, f = (n) => { o['e4_' + n] = ['assets/dungeon/' + d + '/e4/' + n + '.png']; }, H = [0, 1, 2, 3];
     for (const h of H) { for (const v of H) { f(`outer_floor_ne_h${h}_v${v}`); f(`corner_bottom_left_h${h}_v${v}`); } for (const v of [0, 1]) { f(`outer_floor_nw_h${h}_v${v}`); f(`corner_bottom_right_h${h}_v${v}`); }
-      f(`end_bottom_left_h${h}`); f(`end_bottom_right_h${h}`); f(`upper_left_v${h}`); f(`end_vertical_left_v${h}`); }
-    for (const v of [0, 1]) { f(`upper_right_v${v}`); f(`end_vertical_right_v${v}`); }
+      if (ends) { f(`end_bottom_left_h${h}`); f(`end_bottom_right_h${h}`); f(`end_vertical_left_v${h}`); } f(`upper_left_v${h}`); }
+    for (const v of [0, 1]) { f(`upper_right_v${v}`); if (ends) f(`end_vertical_right_v${v}`); }   // ends：v4 の帯の終わり（使っていない。v5 で置き換え）
     return o; };
   /* 帯の終わりの補修 v5（ZIP ends_fit_v5。assets/dungeon/<地域>_v2/e5/）：end_bottom_left/right_h0〜3（下の帯の終わり）と、
    * end_vertical_left_v0〜3／right_v0〜1（左右の帯の下の終わり）。縦は下に続く正面の壁の絵ごとに別の絵（__wall_arch など）。walls：壁の部品名 → 絵の名前 */
@@ -36,7 +36,7 @@
   function regionV2(d, cfg) {
     const f = (n) => ['assets/dungeon/' + d + '/' + n + '.png'], o = { floor: f('floor_0'), seq: cfg.seq, fill: cfg.fill };
     for (const k of [...Object.keys(cfg.walls), 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW', ...(cfg.extra || [])]) o[k] = f(k);
-    if (cfg.e4 !== false) Object.assign(o, edgeFitV4(d));
+    if (cfg.e4 !== false) Object.assign(o, edgeFitV4(d, cfg.e4ends !== false));
     if (cfg.e5 !== false) Object.assign(o, endsFitV5(d, cfg.walls));
     return o;
   }
@@ -239,6 +239,9 @@
       // 木の根の遺跡（ZIP roots_match_v1＋edge_fit_v4＋ends_fit_v5）。壁は 根4・祠3・根（右）4 のくり返し。upper_left/right は edge_fit_v4 が無いときの上端の角
       roots_v2: regionV2('roots_v2', { walls: { wallRoots: 'wall_roots', shrine: 'wall_shrine', wallRootsR: 'wall_roots_right', narrow3: 'wall_narrow' },
         seq: ['wallRoots', 'shrine', 'wallRootsR'], fill: ['shrine', 'narrow3'], extra: ['upper_left', 'upper_right'] }),
+      // 地下の遺跡（ZIP ruins_match_v1。tools/region-v2/ruins.json）。壁は 浮き彫り4・彫刻3・破損3 のくり返し、残り3は彫刻、2・1は細い壁。11〜14階も同じ部品（D.DUNGEON_V2_SET）
+      ruins_v2: regionV2('ruins_v2', { walls: { wallRelief: 'wall_relief', wallCarving: 'wall_carving', wallBroken: 'wall_broken', narrow3: 'wall_narrow' },
+        seq: ['wallRelief', 'wallCarving', 'wallBroken'], fill: ['wallCarving', 'narrow3'], e4ends: false }),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },

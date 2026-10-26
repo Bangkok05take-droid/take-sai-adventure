@@ -29,7 +29,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       r.player.hp = r.player.maxhp = 999; r.explored.fill(1); TS.Save.save(S); }, FLOOR);
     await p.reload(); await p.waitForTimeout(700); await p.tap('#btn-continue'); await p.waitForTimeout(900);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });
-    const info = await p.evaluate(([TH, MD]) => { const r = TS.UI.S.run, m = r.map; return { theme: TS.Game.themeOf(r), art: !!(TS.Sprites.art.dungeon[TH] && TS.Sprites.art.dungeon[TH].floor.every(Boolean)) && (!MD || TS.Sprites.art.dungeon[TH + '_v2'].floor.every(Boolean)), rooms: m.rooms.length }; }, [THEME, MODE]);
+    const info = await p.evaluate(([TH, MD]) => { const r = TS.UI.S.run, m = r.map; return { theme: TS.Game.themeOf(r), art: !!(TS.Sprites.art.dungeon[TH] && TS.Sprites.art.dungeon[TH].floor.every(Boolean)) && (!MD || TS.Sprites.art.dungeon[(TS.Data.DUNGEON_V2_SET && TS.Data.DUNGEON_V2_SET[TH]) || TH + '_v2'].floor.every(Boolean)), rooms: m.rooms.length }; }, [THEME, MODE]);
     chk(info.art, `${W} 素材の絵を読み込んだ（${THEME}・地域 ${info.theme}）`);
     // 撮る場所：いちばん大きい部屋の中央・左上の角・右下の角、細い通路のマス、床の道具の隣
     const spots = await p.evaluate(() => { const r = TS.UI.S.run, m = r.map, DG = TS.Dungeon;

@@ -32,3 +32,8 @@
 ## 地下の遺跡（7〜14階）
 - 今の絵（第1回の追加原画）のまま。新しい素材が届いたら上の手順で入れる（`tools/region-v2/ruins.json` は見込みの設定）。
 - 7〜10階は通常の明るさ、11〜14階は壁・縁・角だけ少し暗く（v2 でも同じ設定が効く）。
+
+## 2026年10月26日：地下の遺跡 v2（ZIP ruins_match_v1）をプレビュー
+- `assets/reference/ruins-match-v1/` → `python3 -I tools/make-region-v2.py ruins assets/reference/ruins-match-v1` → `assets/dungeon/ruins_v2/`。
+- 壁は 浮き彫り4・彫刻3・破損3 のくり返し、残り3は彫刻、2・1は細い壁。edge_fit（角・上端）・ends_fit（帯の終わり）つき。11〜14階は同じ部品で壁・帯・角・終端だけ30%暗く。
+- 本番はまだ（`D.DUNGEON_ART.ruins`・`ruins_deep` は今の絵）。プレビュー：`node tools/dungeon-art-preview.js ruins|ruins_deep docs/ruins-v2/<地域> e5`。代表 `docs/ruins-v2/ruins_7-10_390.jpg`・`ruins_11-14_390.jpg`。
