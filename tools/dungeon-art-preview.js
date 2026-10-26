@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const THEME = process.argv[2] || 'brick';
 const FLOOR = { gold: 27, brick: 2, roots: 5, ruins: 8, ruins_deep: 12, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
 const ROOT = path.join(__dirname, '..'), OUT = process.argv[3] || path.join(ROOT, 'docs', 'dungeon-art-v1', THEME);
-const MODE = process.argv[4] || '';   // 'v2'：before＝今の本番の絵、after＝v2 の絵（レンガの回廊 v2 の比較）
+const MODE = process.argv[4] || '';   // 'v2'：before＝今の本番の絵、after＝v2 の絵。'e4'：before＝v2、after＝v2＋縁・角の補修 v4
 fs.mkdirSync(OUT, { recursive: true });
 const PORT = 8849;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.json': 'application/json' };
@@ -29,7 +29,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       r.player.hp = r.player.maxhp = 999; r.explored.fill(1); TS.Save.save(S); }, FLOOR);
     await p.reload(); await p.waitForTimeout(700); await p.tap('#btn-continue'); await p.waitForTimeout(900);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });
-    const info = await p.evaluate(([TH, MD]) => { const r = TS.UI.S.run, m = r.map; return { theme: TS.Game.themeOf(r), art: !!(TS.Sprites.art.dungeon[TH] && TS.Sprites.art.dungeon[TH].floor.every(Boolean)) && (!MD || TS.Sprites.art.dungeon[TH + '_' + MD].floor.every(Boolean)), rooms: m.rooms.length }; }, [THEME, MODE]);
+    const info = await p.evaluate(([TH, MD]) => { const r = TS.UI.S.run, m = r.map; return { theme: TS.Game.themeOf(r), art: !!(TS.Sprites.art.dungeon[TH] && TS.Sprites.art.dungeon[TH].floor.every(Boolean)) && (!MD || TS.Sprites.art.dungeon[TH + '_v2'].floor.every(Boolean)), rooms: m.rooms.length }; }, [THEME, MODE]);
     chk(info.art, `${W} 素材の絵を読み込んだ（${THEME}・地域 ${info.theme}）`);
     // 撮る場所：いちばん大きい部屋の中央・左上の角・右下の角、細い通路のマス、床の道具の隣
     const spots = await p.evaluate(() => { const r = TS.UI.S.run, m = r.map, DG = TS.Dungeon;
@@ -38,7 +38,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       const it = r.floorItems.find((f) => f.item) || r.floorItems[0];
       return { center: { x: big.x + (big.w >> 1), y: big.y + (big.h >> 1) }, cornerTL: { x: big.x, y: big.y }, cornerBR: { x: big.x + big.w - 1, y: big.y + big.h - 1 }, corridor: corr, item: it ? { x: it.x, y: it.y } : null }; });
     for (const ver of ['before', 'after']) {
-      await p.evaluate(([on, TH, MD]) => { TS.Data.DUNGEON_ART = MD ? { [TH]: on ? MD : true } : on ? { [TH]: true } : {}; TS.Render.resetLayer(); }, [ver === 'after', THEME, MODE]);
+      await p.evaluate(([on, TH, MD]) => { if (MD === 'e4') { TS.Data.DUNGEON_ART = { [TH]: 'v2' }; TS.Data.DUNGEON_EDGE_V4 = on ? { [TH]: true } : {}; } else TS.Data.DUNGEON_ART = MD ? { [TH]: on ? MD : true } : on ? { [TH]: true } : {}; TS.Render.resetLayer(); }, [ver === 'after', THEME, MODE]);
       for (const [name, s] of Object.entries(spots)) {
         if (!s) continue;
         await p.evaluate(([s, name]) => { const r = TS.UI.S.run; r.player.x = s.x; r.player.y = s.y; r.enemies = r.enemies.filter((e) => e.boss);

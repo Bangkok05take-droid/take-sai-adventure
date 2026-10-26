@@ -513,7 +513,7 @@
    *  飾り（2026年10月22日）：正面の壁の2マス分にときどき柱・灯り・アーチ、部屋から離れた壁の上面にときどきがれき。どちらも壁のマスの中だけ */
   function artOverlay(run, L, x, y, theme, at, walk, out) {
     const D = TS.Data, A = SP.art.dungeon && SP.art.dungeon[theme];
-    if (D.DUNGEON_ART && D.DUNGEON_ART[theme] === 'v2') return artOverlayV2(run, L, x, y, SP.art.dungeon[theme + '_v2'], at, walk, out);
+    if (D.DUNGEON_ART && D.DUNGEON_ART[theme] === 'v2') return artOverlayV2(run, L, x, y, SP.art.dungeon[theme + '_v2'], at, walk, out, !!(D.DUNGEON_EDGE_V4 && D.DUNGEON_EDGE_V4[theme]));
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!D.DUNGEON_ART || !D.DUNGEON_ART[theme] || !A || !ready(A.floor) || !ready(A.wall) || !ready(A.narrow)) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, seed = (run.seed ^ (run.floor * 7919)) >>> 0, k = at(x, y);
@@ -577,7 +577,7 @@
    *  正面の壁：3マスの高さ。いちばん下を床との境目（壁の正面のマス）にそろえ、その上の2マスに上の段を描く。各マスは自分のマスの中だけ
    *    （上の段のマスが床なら描かない＝床・通路・隣の部屋は覆わない）。壁の並びは左の端から アーチ4・旗2・アーチ4…、残りは旗2か細い1
    *  それ以外の壁：暗い単色（部屋の外と同じ）。床に面した辺と、正面の壁のとなりに縁（左右16px・下24px）。部屋の左下・右下の角に角の絵 */
-  function artOverlayV2(run, L, x, y, A, at, walk, out) {
+  function artOverlayV2(run, L, x, y, A, at, walk, out, e4) {
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!A || !A.seq || ![...A.seq, ...A.fill, 'floor', 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW'].every((k) => ready(A[k]))) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, k = at(x, y);
@@ -612,17 +612,36 @@
     const art = (xx, yy) => row(xx, yy) >= 0;
     const fW = walk(x - 1, y) || (r < 0 && art(x - 1, y)), fE = walk(x + 1, y) || (r < 0 && art(x + 1, y)), fN = walk(x, y - 1);
     const vW = A.rimW[0], vE = A.rimE[0], hN = A.rimN[0];
-    if (fW) g.drawImage(vW, 0, (y % (vW.height / 32)) * 32, vW.width, 32, x0, y0, vW.width, 32);
-    if (fE) g.drawImage(vE, 0, (y % (vE.height / 32)) * 32, vE.width, 32, x0 + 32 - vE.width, y0, vE.width, 32);
-    if (fN) g.drawImage(hN, (x % (hN.width / 32)) * 32, 0, 32, hN.height, x0, y0, 32, hN.height);
+    // 補修 v4：帯の位相（下の帯 x%4・左の帯 y%4・右の帯 y%2）に合う部品。出っ張った角は帯2本の代わりに置く
+    const E4 = (n) => (e4 && A['e4_' + n] && A['e4_' + n][0]) || null;
+    const hp = x % (hN.width / 32), vpE = y % (vE.height / 32), vpW = y % (vW.height / 32);
+    const oNW = r < 0 && fN && walk(x - 1, y) && E4(`outer_floor_nw_h${hp}_v${vpW}`), oNE = r < 0 && fN && walk(x + 1, y) && !oNW && E4(`outer_floor_ne_h${hp}_v${vpE}`);
+    if (oNW || oNE) g.drawImage(oNW || oNE, x0, y0);
+    if (fW && !oNW) g.drawImage(vW, 0, vpW * 32, vW.width, 32, x0, y0, vW.width, 32);
+    if (fE && !oNE) g.drawImage(vE, 0, vpE * 32, vE.width, 32, x0 + 32 - vE.width, y0, vE.width, 32);
+    if (fN && !oNW && !oNE) g.drawImage(hN, hp * 32, 0, 32, hN.height, x0, y0, 32, hN.height);
+    if (e4 && r < 0) {
+      const top = (xx, yy) => row(xx, yy) === 0, put4 = (n, dx, dy) => { const c = E4(n); if (c) g.drawImage(c, x0 + dx, y0 + dy); };
+      // 左右の帯の上端（となりが正面の壁のいちばん上の段）・下の終わり（下のマスが正面の壁のいちばん上の段）
+      if (fE && !fN && top(x + 1, y)) put4(`upper_left_v${vpE}`, 32 - vE.width, 0);
+      if (fW && !fN && top(x - 1, y)) put4(`upper_right_v${vpW}`, 0, 0);
+      // 帯の終わり（end_vertical・end_bottom）：2026年10月26日の確認で、正面の壁の上端の縁取りと重なって暗い切れ目に見えたり、
+      // 色が帯より暗く浮いたりしたので使わない（D.DUNGEON_EDGE_V4_ENDS が true のときだけ）
+      if (TS.Data.DUNGEON_EDGE_V4_ENDS) {
+        if (fE && !oNE && top(x, y + 1)) put4(`end_vertical_left_v${vpE}`, 32 - vE.width, 8);
+        if (fW && !oNW && top(x, y + 1)) put4(`end_vertical_right_v${vpW}`, 0, 8);
+        if (fN && !oNW && !walk(x - 1, y) && art(x - 1, y)) put4(`end_bottom_left_h${hp}`, 0, 0);
+        if (fN && !oNE && !walk(x + 1, y) && art(x + 1, y)) put4(`end_bottom_right_h${hp}`, 8, 0);
+      }
+    }
     // 角：斜め上だけ床（部屋の左下・右下の角）
-    if (!fN && walk(x + 1, y - 1) && !fE && at(x + 1, y) === WALL && at(x, y - 1) === WALL) { const c = A.jInNE[0]; g.drawImage(c, x0 + 32 - c.width, y0); }
-    if (!fN && walk(x - 1, y - 1) && !fW && at(x - 1, y) === WALL && at(x, y - 1) === WALL) g.drawImage(A.jInNW[0], x0, y0);
+    if (!fN && walk(x + 1, y - 1) && !fE && at(x + 1, y) === WALL && at(x, y - 1) === WALL) { const c = E4(`corner_bottom_left_h${hp}_v${vpE}`) || A.jInNE[0]; g.drawImage(c, x0 + 32 - c.width, y0); }
+    if (!fN && walk(x - 1, y - 1) && !fW && at(x - 1, y) === WALL && at(x, y - 1) === WALL) g.drawImage(E4(`corner_bottom_right_h${hp}_v${vpW}`) || A.jInNW[0], x0, y0);
     // 補修素材 v3 の角（無ければ描かない）。どれも自分のマスの中だけ
     const P = (n) => (ready(A[n]) ? A[n][0] : null), put = (n, right, bottom) => { const c = P(n); if (c) g.drawImage(c, right ? x0 + 32 - c.width : x0, bottom ? y0 + 32 - c.height : y0); };
     // 左右の縁が正面の壁の上端に届く所（木の根の遺跡の corner_upper_left/right。となりが正面の壁のいちばん上の段）
-    if (r < 0 && !fN && A.upper_left && row(x + 1, y) === 0) put('upper_left', true, false);
-    if (r < 0 && !fN && A.upper_right && row(x - 1, y) === 0) put('upper_right', false, false);
+    if (!e4 && r < 0 && !fN && A.upper_left && row(x + 1, y) === 0) put('upper_left', true, false);
+    if (!e4 && r < 0 && !fN && A.upper_right && row(x - 1, y) === 0) put('upper_right', false, false);
     if (r < 0 && TS.Data.DUNGEON_V2_CORNERS) {
       const wF = walk(x - 1, y), eF = walk(x + 1, y), row0 = (xx, yy) => row(xx, yy) === 0;
       // 出っ張った角：上と左（右）が床

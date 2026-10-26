@@ -1,0 +1,3913 @@
+{
+  "version": "edge_fit_v4",
+  "tile_px": 32,
+  "method": "generated corner interiors + original unscaled edge pixels",
+  "regions": {
+    "brick": {
+      "assets": [
+        {
+          "file": "variants/outer_floor_nw_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_nw_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_nw_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_nw_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_sw_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_sw_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_sw_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_sw_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/upper_left_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 0,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 0,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_left_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 1,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 1,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_left_v2.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 2,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v2.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 2,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_left_v3.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 3,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v3.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 3,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_right_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 0,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_right_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 0,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_right_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 1,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_right_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 1,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_bottom_left_h0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_left_h1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_left_h2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_left_h3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h0_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h0_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h1_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h1_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h2_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h2_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h3_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h3_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        }
+      ],
+      "defaults": "assets/ は h0/v0 の代表。variants/ から現在の帯の位相に合わせて選択。",
+      "original_sha256": {
+        "corner_bottom_left.png": "993da524817d6bb8043d57ef52755ba8e46ec013224269960a2ce4d024c39090",
+        "edge_left.png": "3cd29f6a8c74eccd4c65c95ddf559508ddea813e8330deb59e502561411ba39c",
+        "corner_bottom_right.png": "bfd6ea54aafe9b0d8be82db11d191f337dc32372ae1d88ec7d440085ea559729",
+        "edge_right.png": "4fe6d9c937c04e3bfd8b1aed3725e44839f5e65b5fa8961fd0f730e358a55ab8",
+        "edge_bottom.png": "90737ddaecdd975f6d2a203c7fbd45f10de544379e319337c7422a5dc8f113a8"
+      }
+    },
+    "roots": {
+      "assets": [
+        {
+          "file": "variants/outer_floor_nw_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_nw_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_nw_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_nw_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_nw_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h0_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h1_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h2_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_ne_h3_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "n",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            0,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_sw_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_sw_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_sw_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_sw_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_sw_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "w"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            0,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h0_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 0,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h1_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 1,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h2_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 2,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v0.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 0
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v1.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 1
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v2.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 2
+        },
+        {
+          "file": "variants/outer_floor_se_h3_v3.png",
+          "size": [
+            32,
+            32
+          ],
+          "floor_sides": [
+            "s",
+            "e"
+          ],
+          "horizontal_rect": [
+            0,
+            8,
+            32,
+            24
+          ],
+          "vertical_rect": [
+            16,
+            0,
+            16,
+            32
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "h_phase": 3,
+          "v_phase": 3
+        },
+        {
+          "file": "variants/upper_left_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 0,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 0,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_left_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 1,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 1,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_left_v2.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 2,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v2.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 2,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_left_v3.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 3,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_left_v3.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "left",
+          "v_phase": 3,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_right_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 0,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_right_v0.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 0,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/upper_right_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 1,
+          "source_y_within_chunk": 0,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_vertical_right_v1.png",
+          "size": [
+            16,
+            24
+          ],
+          "edge": "right",
+          "v_phase": 1,
+          "source_y_within_chunk": 8,
+          "placement": "上端は接続する縁の上24pxを置換。終端は下24pxを置換。"
+        },
+        {
+          "file": "variants/end_bottom_left_h0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_left_h1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_left_h2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_left_h3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "source_x_within_chunk": 0,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/end_bottom_right_h3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "source_x_within_chunk": 8,
+          "placement": "横帯の左端または右端24pxを置換"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h0_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h1_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h2_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 0,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 1,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v2.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 2,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_left_h3_v3.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 3,
+          "tile_offset": [
+            8,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h0_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h0_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 0,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h1_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h1_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 1,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h2_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h2_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 2,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h3_v0.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 0,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        },
+        {
+          "file": "variants/corner_bottom_right_h3_v1.png",
+          "size": [
+            24,
+            24
+          ],
+          "h_phase": 3,
+          "v_phase": 1,
+          "tile_offset": [
+            0,
+            0
+          ],
+          "placement": "斜めだけ床の下角専用。左右反転なし。接続端の重なる4pxは縦帯を優先。"
+        }
+      ],
+      "defaults": "assets/ は h0/v0 の代表。variants/ から現在の帯の位相に合わせて選択。",
+      "original_sha256": {
+        "edge_left.png": "18a7e426226830ab3fb3af163bb8f8e45edd5acf24dc994300e085903e863aa5",
+        "edge_right.png": "a76b7d7b139d6c5faef2f0d3d4d2391396472b00b029d268d7864f0d33b8e5a3",
+        "corner_lower_left.png": "b313982f277ad8335eeaf4f1dd99c727aa59e5750cf99240751a8bf56bc80aad",
+        "edge_bottom.png": "85ab0b2ed8cee0a03b7a56de9a6a88162a0f3874222fda9168925d3cab00037a",
+        "corner_upper_right.png": "8b262522b838b1dcb6613b12459e64b3fba1e32174ed7e6e7f1fbf2d79c9c96e",
+        "corner_upper_left.png": "f3c46698565300eb08a06bc6bb6df4ed8fda52bd02a5f2d6c2a4e98faf6ba0b5",
+        "corner_lower_right.png": "4d3b9d1957debd432df727c40b07822c0c596c73c999681206d151b7545dc118"
+      }
+    }
+  }
+}

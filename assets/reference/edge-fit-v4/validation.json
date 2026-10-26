@@ -1,0 +1,14 @@
+[
+  {
+    "region": "brick",
+    "files": 92,
+    "geometry": "outer: 16px vertical / 24px horizontal, exactly 32x32; all other dimensions checked",
+    "connector_band": "4px source pixel equality checked except lower corner intersecting join priority noted"
+  },
+  {
+    "region": "roots",
+    "files": 92,
+    "geometry": "outer: 16px vertical / 24px horizontal, exactly 32x32; all other dimensions checked",
+    "connector_band": "4px source pixel equality checked except lower corner intersecting join priority noted"
+  }
+]

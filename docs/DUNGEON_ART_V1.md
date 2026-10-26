@@ -163,3 +163,11 @@
 - 承認図から切り出した部品（`assets/reference/roots-match-v1/`）。`python3 -I tools/make-roots-v2.py` → `assets/dungeon/roots_v2/`。
 - 描き方はレンガの回廊 v2 と同じ（`artOverlayV2`）。壁の並びは地域ごとの設定（`seq`・`fill`）：根4・祠3（石壁と灯り）・根（右）4 のくり返し、残りは祠3か細い1。床は4×4マス1種類。左右の縁が正面の壁の上端に届く所に corner_upper_left/right、部屋の左下・右下に corner_lower_left/right。
 - 本番はまだ今の絵（`D.DUNGEON_ART.roots = true`）。プレビュー：`node tools/dungeon-art-preview.js roots docs/roots-v2 v2`。承認図との比較 `docs/roots-v2/compare_approved_game_390.jpg`。
+
+---
+# 縁・角の補修 v4（ZIP edge_fit_v4、2026年10月26日・プレビュー段階）
+- 原画と部品：`assets/reference/edge-fit-v4/`。帯の位相ごとの部品（variants）を `assets/dungeon/<brick|roots>_v2/e4/` に写した（加工なし）。
+- 位相は今の描き方そのまま：下の帯 x%4（h）、左の帯 edge_left y%4・右の帯 edge_right y%2（v）。
+- 使う部品：出っ張った角 outer_floor_nw/ne（帯2本の代わりに 32×32）、部屋の左下・右下 corner_bottom_left/right（前の角の代わり）、左右の帯の上端 upper_left/right（帯の上24pxに重ねる）。
+- 使わない部品：end_vertical_left/right（正面の壁の上端の縁取りと重なり、暗い切れ目に見えた）、end_bottom_left/right（帯より色が暗く浮いた）、outer_floor_sw/se（下に床がある所はこのゲームでは正面の壁が受け持つ）。`D.DUNGEON_EDGE_V4_ENDS = false`。
+- 本番はまだ（`D.DUNGEON_EDGE_V4 = {}`）。プレビュー：`node tools/dungeon-art-preview.js <brick|roots> docs/edge-fit-v4/<地域> e4`（before＝今の v2、after＝v2＋補修 v4）。比較 `docs/edge-fit-v4/<地域>_before_after_overview.png`・`<地域>_before_after_390.jpg`。
