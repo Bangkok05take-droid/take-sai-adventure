@@ -5,7 +5,7 @@
 ## 中身
 - ends_mismatch.png：edge_fit_v4 の end_* を置いた所の拡大（4倍）。4組あり、各組の左が今、右が部品あり。
   - 1組目：end_vertical_left（レンガ）。帯の途中に暗い切れ目が出た所。
-  - 2・3組目：end_bottom_right / end_bottom_left（レンガ）。帯より暗く浮いた所。
+  - 2・3組目：end_bottom（下の帯の終わり。レンガ）。帯より暗く浮いた所。
   - 4組目：corner_bottom_right（採用。比較用）。
 - brick_walls/：レンガの正面の壁（brick_repair_v3 の wall_arch 128×96・wall_banner 64×96・wall_narrow 32×96）
 - roots_walls/：木の根の正面の壁（roots_match_v1 の wall_roots 128×96・wall_shrine 96×96・wall_roots_right 128×96・wall_narrow 32×96）
