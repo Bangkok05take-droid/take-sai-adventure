@@ -26,6 +26,20 @@
     for (const h of [0, 1, 2, 3]) { f(`end_bottom_left_h${h}`); f(`end_bottom_right_h${h}`); }
     for (const w of Object.values(walls)) { for (const v of [0, 1, 2, 3]) f(`end_vertical_left_v${v}__${w}`); for (const v of [0, 1]) f(`end_vertical_right_v${v}__${w}`); }
     return o; };
+  /* 3マスの高さの壁の描き方（v2。js/tiles.js の artOverlayV2）の地域の部品。assets/dungeon/<d>/ に決まった名前で置く（tools/make-region-v2.py が写す）
+   *  floor_0：床（4×4マス＝128×128。地域で1種類）
+   *  壁（高さ96px＝3マス、幅は32の倍数。下端を床との境目に）：cfg.walls の キー.png（キーは部品名、値は素材の名前。帯の終わり v5 の絵の名前にも使う）
+   *  rimE（部屋の左の壁の帯 16px＝edge_left）・rimW（右の壁の帯 16px＝edge_right）・rimN（下の壁の帯 24px＝edge_bottom）
+   *  jInNE・jInNW：部屋の左下・右下の角（24×24。edge_fit の角が無いとき）
+   *  e4/：edge_fit の位相ごとの角・上端（あれば。edgeFitV4）、e5/：帯の終わり（あれば。endsFitV5）
+   *  cfg.seq・cfg.fill：壁の並び（左の端から seq をくり返し、入らない残りは fill の中から入る最大のもの）。cfg.extra：そのほかの部品名 */
+  function regionV2(d, cfg) {
+    const f = (n) => ['assets/dungeon/' + d + '/' + n + '.png'], o = { floor: f('floor_0'), seq: cfg.seq, fill: cfg.fill };
+    for (const k of [...Object.keys(cfg.walls), 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW', ...(cfg.extra || [])]) o[k] = f(k);
+    if (cfg.e4 !== false) Object.assign(o, edgeFitV4(d));
+    if (cfg.e5 !== false) Object.assign(o, endsFitV5(d, cfg.walls));
+    return o;
+  }
   // 第1回の追加原画で作った地域の背景の部品（tools/make-dungeon-art.py の BATCH1）
   const batch1 = (d) => { const f = (n) => ['assets/dungeon/' + d + '/' + n + '.png'];
     return { floor: ['assets/dungeon/' + d + '/floor_0.png'],   // 床は地域ごとに1種類（2026年10月23日）
@@ -217,18 +231,14 @@
       gold: late('gold'), demon: late('demon'),
       /* レンガの回廊 v2（ZIP brick_match_v2。承認図から切り出し。tools/make-brick-v2.py）：D.DUNGEON_ART.brick = 'v2' のとき使う。
        *  床 4×4マス、正面の壁は3マスの高さ（アーチ4マス幅・旗2マス幅・細い1マス幅。旗・灯り・浅い柱は壁の絵の中）、縁、左下・右下の角 */
-      brick_v2: (() => { const f = (n) => ['assets/dungeon/brick_v2/' + n + '.png'];
-        return { floor: f('floor_0'), arch: f('arch'), banner: f('banner'), narrow3: f('narrow3'), rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jInNE: f('jInNE'), jInNW: f('jInNW'),
-          // 壁の並び：左の端から seq をくり返し、入らない残りは fill の中から入る最大のもの（幅は絵の幅÷32）
-          seq: ['arch', 'banner'], fill: ['banner', 'narrow3'], ...edgeFitV4('brick_v2'), ...endsFitV5('brick_v2', { arch: 'wall_arch', banner: 'wall_banner', narrow3: 'wall_narrow' }),
-          // 補修素材 v3（ZIP brick_repair_v3）の角：縁の太さと合わないので使わない（D.DUNGEON_V2_CORNERS）。upper_left/right も読み込まない
-          outer_nw: f('outer_nw'), outer_ne: f('outer_ne'), outer_sw: f('outer_sw'), outer_se: f('outer_se'),
-          end_left: f('end_left'), end_right: f('end_right'), end_bl: f('end_bl'), end_br: f('end_br') }; })(),
-      /* 木の根の遺跡 v2（ZIP roots_match_v1。tools/make-roots-v2.py）：D.DUNGEON_ART.roots = 'v2' のとき。壁は 根4・祠3・根（右）4 のくり返し */
-      roots_v2: (() => { const f = (n) => ['assets/dungeon/roots_v2/' + n + '.png'];
-        return { floor: f('floor_0'), wallRoots: f('wallRoots'), shrine: f('shrine'), wallRootsR: f('wallRootsR'), narrow3: f('narrow3'),
-          rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jInNE: f('jInNE'), jInNW: f('jInNW'), upper_left: f('upper_left'), upper_right: f('upper_right'),
-          seq: ['wallRoots', 'shrine', 'wallRootsR'], fill: ['shrine', 'narrow3'], ...edgeFitV4('roots_v2'), ...endsFitV5('roots_v2', { wallRoots: 'wall_roots', shrine: 'wall_shrine', wallRootsR: 'wall_roots_right', narrow3: 'wall_narrow' }) }; })(),
+      /* 3マスの高さの壁の描き方（v2）の地域。部品の置き方は regionV2 の説明のとおりで、地域ごとに違うのは壁の絵の並びと、ある部品だけ */
+      // レンガの回廊（ZIP brick_match_v2＋brick_repair_v3＋edge_fit_v4＋ends_fit_v5）。壁は アーチ4・旗2 のくり返し
+      brick_v2: regionV2('brick_v2', { walls: { arch: 'wall_arch', banner: 'wall_banner', narrow3: 'wall_narrow' }, seq: ['arch', 'banner'], fill: ['banner', 'narrow3'],
+        // 補修素材 v3（brick_repair_v3）の角：縁の太さと合わないので使わない（D.DUNGEON_V2_CORNERS）
+        extra: ['outer_nw', 'outer_ne', 'outer_sw', 'outer_se', 'end_left', 'end_right', 'end_bl', 'end_br'] }),
+      // 木の根の遺跡（ZIP roots_match_v1＋edge_fit_v4＋ends_fit_v5）。壁は 根4・祠3・根（右）4 のくり返し。upper_left/right は edge_fit_v4 が無いときの上端の角
+      roots_v2: regionV2('roots_v2', { walls: { wallRoots: 'wall_roots', shrine: 'wall_shrine', wallRootsR: 'wall_roots_right', narrow3: 'wall_narrow' },
+        seq: ['wallRoots', 'shrine', 'wallRootsR'], fill: ['shrine', 'narrow3'], extra: ['upper_left', 'upper_right'] }),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },

@@ -513,7 +513,9 @@
    *  飾り（2026年10月22日）：正面の壁の2マス分にときどき柱・灯り・アーチ、部屋から離れた壁の上面にときどきがれき。どちらも壁のマスの中だけ */
   function artOverlay(run, L, x, y, theme, at, walk, out) {
     const D = TS.Data, A = SP.art.dungeon && SP.art.dungeon[theme];
-    if (D.DUNGEON_ART && D.DUNGEON_ART[theme] === 'v2') return artOverlayV2(run, L, x, y, SP.art.dungeon[theme + '_v2'], at, walk, out, !!(D.DUNGEON_EDGE_V4 && D.DUNGEON_EDGE_V4[theme]));
+    // v2（3マスの高さの壁）：部品の組は D.DUNGEON_V2_SET（地下の遺跡の奥は地下の遺跡と同じ組）。壁を暗くする地域は D.DUNGEON_WALL_DARK
+    if (D.DUNGEON_ART && D.DUNGEON_ART[theme] === 'v2') return artOverlayV2(run, L, x, y, SP.art.dungeon[(D.DUNGEON_V2_SET && D.DUNGEON_V2_SET[theme]) || theme + '_v2'], at, walk, out,
+      !!(D.DUNGEON_EDGE_V4 && D.DUNGEON_EDGE_V4[theme]), (D.DUNGEON_WALL_DARK && D.DUNGEON_WALL_DARK[theme]) || 0);
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!D.DUNGEON_ART || !D.DUNGEON_ART[theme] || !A || !ready(A.floor) || !ready(A.wall) || !ready(A.narrow)) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, seed = (run.seed ^ (run.floor * 7919)) >>> 0, k = at(x, y);
@@ -577,7 +579,7 @@
    *  正面の壁：3マスの高さ。いちばん下を床との境目（壁の正面のマス）にそろえ、その上の2マスに上の段を描く。各マスは自分のマスの中だけ
    *    （上の段のマスが床なら描かない＝床・通路・隣の部屋は覆わない）。壁の並びは左の端から アーチ4・旗2・アーチ4…、残りは旗2か細い1
    *  それ以外の壁：暗い単色（部屋の外と同じ）。床に面した辺と、正面の壁のとなりに縁（左右16px・下24px）。部屋の左下・右下の角に角の絵 */
-  function artOverlayV2(run, L, x, y, A, at, walk, out, e4) {
+  function artOverlayV2(run, L, x, y, A, at, walk, out, e4, dark) {
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!A || !A.seq || ![...A.seq, ...A.fill, 'floor', 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW'].every((k) => ready(A[k]))) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, k = at(x, y);
@@ -662,6 +664,8 @@
       if (eF && row0(x, y + 1)) put('end_left', true, true);
       if (wF && row0(x, y + 1)) put('end_right', false, true);
     }
+    // 壁・縁・角を少し暗く（地下の遺跡の奥など。床・攻撃の予告はそのまま）
+    if (dark) { g.fillStyle = 'rgba(6,4,10,' + dark + ')'; g.fillRect(x0, y0, 32, 32); }
   }
 
   // ---------------- 部品 ----------------

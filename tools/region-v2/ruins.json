@@ -1,0 +1,18 @@
+{
+  "_note": "地下の遺跡（7〜14階）の受け入れの設定（素材が届く前の見込み。届いたら README・manifest に合わせて書き直す）。11〜14階（ruins_deep）も同じ部品で、壁だけ D.DUNGEON_WALL_DARK で暗くする",
+  "out": "ruins_v2",
+  "walls": { "wallA": "wall_a", "wallB": "wall_b", "narrow3": "wall_narrow" },
+  "files": {
+    "floor_0": "assets/floor_4x4.png",
+    "wallA": "assets/wall_a.png",
+    "wallB": "assets/wall_b.png",
+    "narrow3": "assets/wall_narrow.png",
+    "rimE": "assets/edge_left.png",
+    "rimW": "assets/edge_right.png",
+    "rimN": "assets/edge_bottom.png",
+    "jInNE": "assets/corner_bottom_left.png",
+    "jInNW": "assets/corner_bottom_right.png"
+  },
+  "e4": "edge_fit/variants",
+  "e5": "ends_fit/assets"
+}
