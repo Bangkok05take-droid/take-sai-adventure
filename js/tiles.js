@@ -596,7 +596,7 @@
       let i = s0, turn = 0;
       for (;;) {
         const rest = s1 - i + 1, want = A.seq[turn % A.seq.length], n = W(want) <= rest ? want : A.fill.find((f) => W(f) <= rest) || A.fill[A.fill.length - 1], w = W(n);
-        if (xx < i + w) return { img: A[n][0], col: xx - i };
+        if (xx < i + w) return { img: A[n][0], col: xx - i, name: n, w };
         i += w; turn++;
       }
     };
@@ -632,6 +632,14 @@
         if (fW && !oNW && top(x, y + 1)) put4(`end_vertical_right_v${vpW}`, 0, 8);
         if (fN && !oNW && !walk(x - 1, y) && art(x - 1, y)) put4(`end_bottom_left_h${hp}`, 0, 0);
         if (fN && !oNE && !walk(x + 1, y) && art(x + 1, y)) put4(`end_bottom_right_h${hp}`, 8, 0);
+      }
+      // 帯の終わりの補修 v5（ZIP ends_fit_v5）：縦は下に続く正面の壁の絵（並びの右端／左端の列）に合わせた絵。合う絵が無ければ今の帯のまま
+      if (TS.Data.DUNGEON_ENDS_V5 && A.e5walls) {
+        const E5 = (n) => (A['e5_' + n] && A['e5_' + n][0]) || null, put5 = (n, dx, dy) => { const c = E5(n); if (c) g.drawImage(c, x0 + dx, y0 + dy); };
+        if (fE && !oNE && top(x, y + 1)) { const p = part(x, y + 3); if (p.col === p.w - 1 && A.e5walls[p.name]) put5(`end_vertical_left_v${vpE}__${A.e5walls[p.name]}`, 32 - vE.width, 8); }
+        if (fW && !oNW && top(x, y + 1)) { const p = part(x, y + 3); if (p.col === 0 && A.e5walls[p.name]) put5(`end_vertical_right_v${vpW}__${A.e5walls[p.name]}`, 0, 8); }
+        if (fN && !oNW && !walk(x - 1, y) && art(x - 1, y)) put5(`end_bottom_left_h${hp}`, 0, 0);
+        if (fN && !oNE && !walk(x + 1, y) && art(x + 1, y)) put5(`end_bottom_right_h${hp}`, 8, 0);
       }
     }
     // 角：斜め上だけ床（部屋の左下・右下の角）

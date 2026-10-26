@@ -171,3 +171,6 @@
 - 使う部品：出っ張った角 outer_floor_nw/ne（帯2本の代わりに 32×32）、部屋の左下・右下 corner_bottom_left/right（前の角の代わり）、左右の帯の上端 upper_left/right（帯の上24pxに重ねる）。
 - 使わない部品：end_vertical_left/right（正面の壁の上端の縁取りと重なり、暗い切れ目に見えた）、end_bottom_left/right（帯より色が暗く浮いた）、outer_floor_sw/se（下に床がある所はこのゲームでは正面の壁が受け持つ）。`D.DUNGEON_EDGE_V4_ENDS = false`。
 - 本番はまだ（`D.DUNGEON_EDGE_V4 = {}`）。プレビュー：`node tools/dungeon-art-preview.js <brick|roots> docs/edge-fit-v4/<地域> e4`（before＝今の v2、after＝v2＋補修 v4）。比較 `docs/edge-fit-v4/<地域>_before_after_overview.png`・`<地域>_before_after_390.jpg`。
+- 2026年10月26日：帯の終わりの補修 v5（ZIP ends_fit_v5、`assets/reference/ends-fit-v5/`、部品は `assets/dungeon/<地域>_v2/e5/`）。下の帯の終わりは h=x%4、縦の終わりは帯の位相に加えて、下に続く正面の壁の絵（並びの右端／左端の列）ごとの絵を選ぶ。合う絵が無い所は今の帯のまま。
+  - 暗い切れ目・色の浮きは消えた（`docs/ends-fit-v5/<地域>_ends_before_after.png`：置いた全ての所の4倍拡大。各組の左が帯のまま、右が v5）。
+  - レンガの回廊は本番に反映（`D.DUNGEON_EDGE_V4 = { brick: true }`、`D.DUNGEON_ENDS_V5 = true`）。木の根の遺跡はプレビューのまま（roots v2 が本番前）。

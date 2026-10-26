@@ -20,6 +20,12 @@
       f(`end_bottom_left_h${h}`); f(`end_bottom_right_h${h}`); f(`upper_left_v${h}`); f(`end_vertical_left_v${h}`); }
     for (const v of [0, 1]) { f(`upper_right_v${v}`); f(`end_vertical_right_v${v}`); }
     return o; };
+  /* 帯の終わりの補修 v5（ZIP ends_fit_v5。assets/dungeon/<地域>_v2/e5/）：end_bottom_left/right_h0〜3（下の帯の終わり）と、
+   * end_vertical_left_v0〜3／right_v0〜1（左右の帯の下の終わり）。縦は下に続く正面の壁の絵ごとに別の絵（__wall_arch など）。walls：壁の部品名 → 絵の名前 */
+  const endsFitV5 = (d, walls) => { const o = { e5walls: walls }, f = (n) => { o['e5_' + n] = ['assets/dungeon/' + d + '/e5/' + n + '.png']; };
+    for (const h of [0, 1, 2, 3]) { f(`end_bottom_left_h${h}`); f(`end_bottom_right_h${h}`); }
+    for (const w of Object.values(walls)) { for (const v of [0, 1, 2, 3]) f(`end_vertical_left_v${v}__${w}`); for (const v of [0, 1]) f(`end_vertical_right_v${v}__${w}`); }
+    return o; };
   // 第1回の追加原画で作った地域の背景の部品（tools/make-dungeon-art.py の BATCH1）
   const batch1 = (d) => { const f = (n) => ['assets/dungeon/' + d + '/' + n + '.png'];
     return { floor: ['assets/dungeon/' + d + '/floor_0.png'],   // 床は地域ごとに1種類（2026年10月23日）
@@ -214,7 +220,7 @@
       brick_v2: (() => { const f = (n) => ['assets/dungeon/brick_v2/' + n + '.png'];
         return { floor: f('floor_0'), arch: f('arch'), banner: f('banner'), narrow3: f('narrow3'), rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jInNE: f('jInNE'), jInNW: f('jInNW'),
           // 壁の並び：左の端から seq をくり返し、入らない残りは fill の中から入る最大のもの（幅は絵の幅÷32）
-          seq: ['arch', 'banner'], fill: ['banner', 'narrow3'], ...edgeFitV4('brick_v2'),
+          seq: ['arch', 'banner'], fill: ['banner', 'narrow3'], ...edgeFitV4('brick_v2'), ...endsFitV5('brick_v2', { arch: 'wall_arch', banner: 'wall_banner', narrow3: 'wall_narrow' }),
           // 補修素材 v3（ZIP brick_repair_v3）の角：縁の太さと合わないので使わない（D.DUNGEON_V2_CORNERS）。upper_left/right も読み込まない
           outer_nw: f('outer_nw'), outer_ne: f('outer_ne'), outer_sw: f('outer_sw'), outer_se: f('outer_se'),
           end_left: f('end_left'), end_right: f('end_right'), end_bl: f('end_bl'), end_br: f('end_br') }; })(),
@@ -222,7 +228,7 @@
       roots_v2: (() => { const f = (n) => ['assets/dungeon/roots_v2/' + n + '.png'];
         return { floor: f('floor_0'), wallRoots: f('wallRoots'), shrine: f('shrine'), wallRootsR: f('wallRootsR'), narrow3: f('narrow3'),
           rimW: f('rimW'), rimE: f('rimE'), rimN: f('rimN'), jInNE: f('jInNE'), jInNW: f('jInNW'), upper_left: f('upper_left'), upper_right: f('upper_right'),
-          seq: ['wallRoots', 'shrine', 'wallRootsR'], fill: ['shrine', 'narrow3'], ...edgeFitV4('roots_v2') }; })(),
+          seq: ['wallRoots', 'shrine', 'wallRootsR'], fill: ['shrine', 'narrow3'], ...edgeFitV4('roots_v2'), ...endsFitV5('roots_v2', { wallRoots: 'wall_roots', shrine: 'wall_shrine', wallRootsR: 'wall_roots_right', narrow3: 'wall_narrow' }) }; })(),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },

@@ -1,0 +1,18 @@
+[
+  {
+    "region": "brick",
+    "count": 26,
+    "vertical_top20px_unchanged": true,
+    "vertical_lastrow_wall_rgb_exact": true,
+    "horizontal_23of24cols_unchanged": true,
+    "horizontal_average_RGB_delta_lt_3": true
+  },
+  {
+    "region": "roots",
+    "count": 32,
+    "vertical_top20px_unchanged": true,
+    "vertical_lastrow_wall_rgb_exact": true,
+    "horizontal_23of24cols_unchanged": true,
+    "horizontal_average_RGB_delta_lt_3": true
+  }
+]

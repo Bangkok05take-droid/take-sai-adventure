@@ -38,7 +38,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       const it = r.floorItems.find((f) => f.item) || r.floorItems[0];
       return { center: { x: big.x + (big.w >> 1), y: big.y + (big.h >> 1) }, cornerTL: { x: big.x, y: big.y }, cornerBR: { x: big.x + big.w - 1, y: big.y + big.h - 1 }, corridor: corr, item: it ? { x: it.x, y: it.y } : null }; });
     for (const ver of ['before', 'after']) {
-      await p.evaluate(([on, TH, MD]) => { if (MD === 'e4') { TS.Data.DUNGEON_ART = { [TH]: 'v2' }; TS.Data.DUNGEON_EDGE_V4 = on ? { [TH]: true } : {}; } else TS.Data.DUNGEON_ART = MD ? { [TH]: on ? MD : true } : on ? { [TH]: true } : {}; TS.Render.resetLayer(); }, [ver === 'after', THEME, MODE]);
+      await p.evaluate(([on, TH, MD]) => { if (MD === 'e4') { TS.Data.DUNGEON_ART = { [TH]: 'v2' }; TS.Data.DUNGEON_EDGE_V4 = on ? { [TH]: true } : {}; } else if (MD === 'e5') { TS.Data.DUNGEON_ART = { [TH]: 'v2' }; TS.Data.DUNGEON_EDGE_V4 = { [TH]: true }; TS.Data.DUNGEON_ENDS_V5 = on; } else TS.Data.DUNGEON_ART = MD ? { [TH]: on ? MD : true } : on ? { [TH]: true } : {}; TS.Render.resetLayer(); }, [ver === 'after', THEME, MODE]);
       for (const [name, s] of Object.entries(spots)) {
         if (!s) continue;
         await p.evaluate(([s, name]) => { const r = TS.UI.S.run; r.player.x = s.x; r.player.y = s.y; r.enemies = r.enemies.filter((e) => e.boss);

@@ -1382,10 +1382,10 @@
     // 技の演出のコマ（順番どおりに並べる。全部読めたときだけ SP.fxFrames(k) が返す）
     for (const [k, list] of Object.entries(A.fxFrames || {})) { SP.art.fxFrames[k] = new Array(list.length).fill(null); list.forEach((src, i) => load(src, (img) => { SP.art.fxFrames[k][i] = img; })); }
     // 通常ダンジョンの地域の背景（地域ごとに floor・wall の絵の並び。全部読めたときだけ使う：TS.Tiles）
-    for (const [th, parts] of Object.entries(A.dungeon || {})) { const o = SP.art.dungeon[th] = {}; for (const [k, list] of Object.entries(parts)) { if (k === 'seq' || k === 'fill') { o[k] = list; continue; }   // 壁の並びの設定（絵ではない）
+    for (const [th, parts] of Object.entries(A.dungeon || {})) { const o = SP.art.dungeon[th] = {}; for (const [k, list] of Object.entries(parts)) { if (k === 'seq' || k === 'fill' || k === 'e5walls') { o[k] = list; continue; }   // 壁の並びの設定（絵ではない）
       o[k] = new Array(list.length).fill(null); list.forEach((src, i) => load(src, (img) => { o[k][i] = img;
       // 全部そろったら、すでに描いた地形を描き直す（読み込みより先に探索した所が今までの絵のまま残らないように）
-      if (Object.values(o).every((l) => l.every(Boolean)) && TS.Render && TS.Render.resetLayer) TS.Render.resetLayer(); })); } }
+      if (Object.values(o).every((l) => !Array.isArray(l) || l.every(Boolean)) && TS.Render && TS.Render.resetLayer) TS.Render.resetLayer(); })); } }
     for (const [k, poses] of Object.entries(A.bossPoses || {})) for (const [pose, src] of Object.entries(poses)) load(src, (img) => { const c = toCanvas(img); c.art = true; (SP.art.bossPoses[k] = SP.art.bossPoses[k] || {})[pose] = c; });
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
     for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {

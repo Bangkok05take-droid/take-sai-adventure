@@ -1,0 +1,1238 @@
+{
+  "version": "ends_fit_v5",
+  "scope": "end_* only",
+  "tile_px": 32,
+  "regions": {
+    "brick": {
+      "assets": [
+        {
+          "file": "assets/end_vertical_left_v0__wall_banner.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_banner",
+          "wall_x": 48,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v1__wall_banner.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_banner",
+          "wall_x": 48,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v2__wall_banner.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 2,
+          "wall": "wall_banner",
+          "wall_x": 48,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v3__wall_banner.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 3,
+          "wall": "wall_banner",
+          "wall_x": 48,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v0__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v1__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v2__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 2,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v3__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 3,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v0__wall_arch.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_arch",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v1__wall_arch.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_arch",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v2__wall_arch.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 2,
+          "wall": "wall_arch",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v3__wall_arch.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 3,
+          "wall": "wall_arch",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v0__wall_banner.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_banner",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v1__wall_banner.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_banner",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v0__wall_narrow.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_narrow",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v1__wall_narrow.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_narrow",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v0__wall_arch.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_arch",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v1__wall_arch.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_arch",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_bottom_left_h0.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 0,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_left_h1.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 1,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_left_h2.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 2,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_left_h3.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 3,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_right_h0.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 0,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        },
+        {
+          "file": "assets/end_bottom_right_h1.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 1,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        },
+        {
+          "file": "assets/end_bottom_right_h2.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 2,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        },
+        {
+          "file": "assets/end_bottom_right_h3.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 3,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        }
+      ],
+      "input_sha256": {
+        "edges_brick/edge_left.png": "3cd29f6a8c74eccd4c65c95ddf559508ddea813e8330deb59e502561411ba39c",
+        "edges_brick/edge_bottom.png": "90737ddaecdd975f6d2a203c7fbd45f10de544379e319337c7422a5dc8f113a8",
+        "edges_brick/edge_right.png": "4fe6d9c937c04e3bfd8b1aed3725e44839f5e65b5fa8961fd0f730e358a55ab8",
+        "brick_walls/wall_banner.png": "f3238c42be01988f63bffe8b50e399091e22202c839497458f6f5f85ee80dece",
+        "brick_walls/wall_narrow.png": "45dd97ec5b7cda42ed458d75ea69f22a4c533ffe690802e8eff235fd76a8b055",
+        "brick_walls/wall_arch.png": "5f55c32c2b3ebad8520cbd13e8d2de0365e893a44b09fd800b2a8f4f0d825ea9"
+      }
+    },
+    "roots": {
+      "assets": [
+        {
+          "file": "assets/end_vertical_left_v0__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v1__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v2__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 2,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v3__wall_narrow.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 3,
+          "wall": "wall_narrow",
+          "wall_x": 16,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v0__wall_roots_right.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_roots_right",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v1__wall_roots_right.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_roots_right",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v2__wall_roots_right.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 2,
+          "wall": "wall_roots_right",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v3__wall_roots_right.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 3,
+          "wall": "wall_roots_right",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v0__wall_roots.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_roots",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v1__wall_roots.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_roots",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v2__wall_roots.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 2,
+          "wall": "wall_roots",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v3__wall_roots.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 3,
+          "wall": "wall_roots",
+          "wall_x": 112,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v0__wall_shrine.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_shrine",
+          "wall_x": 80,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v1__wall_shrine.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_shrine",
+          "wall_x": 80,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v2__wall_shrine.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 2,
+          "wall": "wall_shrine",
+          "wall_x": 80,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_left_v3__wall_shrine.png",
+          "type": "end_vertical_left",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            16,
+            8
+          ],
+          "phase_y": 3,
+          "wall": "wall_shrine",
+          "wall_x": 80,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v0__wall_narrow.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_narrow",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v1__wall_narrow.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_narrow",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v0__wall_roots_right.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_roots_right",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v1__wall_roots_right.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_roots_right",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v0__wall_roots.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_roots",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v1__wall_roots.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_roots",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v0__wall_shrine.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 0,
+          "wall": "wall_shrine",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_vertical_right_v1__wall_shrine.png",
+          "type": "end_vertical_right",
+          "size": [
+            16,
+            24
+          ],
+          "tile_offset": [
+            0,
+            8
+          ],
+          "phase_y": 1,
+          "wall": "wall_shrine",
+          "wall_x": 0,
+          "source_unchanged_rows": [
+            0,
+            20
+          ],
+          "connector_rows": [
+            20,
+            24
+          ]
+        },
+        {
+          "file": "assets/end_bottom_left_h0.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 0,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_left_h1.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 1,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_left_h2.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 2,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_left_h3.png",
+          "type": "end_bottom_left",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            0,
+            0
+          ],
+          "phase_x": 3,
+          "unchanged_columns": 23,
+          "terminal_column": 0
+        },
+        {
+          "file": "assets/end_bottom_right_h0.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 0,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        },
+        {
+          "file": "assets/end_bottom_right_h1.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 1,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        },
+        {
+          "file": "assets/end_bottom_right_h2.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 2,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        },
+        {
+          "file": "assets/end_bottom_right_h3.png",
+          "type": "end_bottom_right",
+          "size": [
+            24,
+            24
+          ],
+          "tile_offset": [
+            8,
+            0
+          ],
+          "phase_x": 3,
+          "unchanged_columns": 23,
+          "terminal_column": 23
+        }
+      ],
+      "input_sha256": {
+        "edges_roots/edge_left.png": "18a7e426226830ab3fb3af163bb8f8e45edd5acf24dc994300e085903e863aa5",
+        "edges_roots/edge_bottom.png": "85ab0b2ed8cee0a03b7a56de9a6a88162a0f3874222fda9168925d3cab00037a",
+        "edges_roots/edge_right.png": "a76b7d7b139d6c5faef2f0d3d4d2391396472b00b029d268d7864f0d33b8e5a3",
+        "roots_walls/wall_narrow.png": "4652e563ba2b2bae8cf2280b79097fce5a09d3403a48f513231d80811e0c48cb",
+        "roots_walls/wall_roots_right.png": "097f956eab0abf0c90d6d4e9157ebb9e3d11f715ac5c0299f76074c61d5696a4",
+        "roots_walls/wall_roots.png": "1db65d949be2bf519728ff792e0ce75d66cad55a1a43e23f3dc914bd7a02a074",
+        "roots_walls/wall_shrine.png": "1129bbe80f1566dfb138a86b06e047848401c79800fc3b5be4e9820d291e5136"
+      }
+    }
+  }
+}
