@@ -876,7 +876,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const funds = await p.evaluate(() => TS.UI.S.village.funds);
     assert(await p.evaluate(() => TS.UI.S.run.meal === 'gapao' && TS.UI.S.village.meal === null), 'meal applied on depart');
     // 敵の攻撃は外れることがあるので、倒れるまで足踏みを続ける（20回では乱数しだいで足りないことがあった）
-    for (let i = 0; i < 80 && !(await p.$('text=探索失敗')); i++) { await p.tap('#b-wait'); await p.waitForTimeout(150); }
+    // 倒れた直後（演出中）は足踏みボタンが押せないので、押せないときは待つだけ
+    for (let i = 0; i < 80 && !(await p.$('text=探索失敗')); i++) { await p.tap('#b-wait', { timeout: 800 }).catch(() => {}); await p.waitForTimeout(150); }
     await p.waitForTimeout(400);
     assert(await p.isVisible('text=探索失敗'));
     assert(await p.isVisible('text=スライムにやられた'));
