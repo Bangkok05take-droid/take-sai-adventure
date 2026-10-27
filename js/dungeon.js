@@ -80,7 +80,7 @@
         const path = corridorPath(rng, A, B, horiz);
         const added = path.filter(([x, y]) => tiles[y * w + x] === WALL);
         for (const [x, y] of added) tiles[y * w + x] = CORR;
-        if (shapeOk(map)) ok = true;
+        if (shapeOk(map) && (!D.MAP_THICK_WALLS || thickOk(map))) ok = true;
         else for (const [x, y] of added) tiles[y * w + x] = WALL;
       }
       if (!ok && must) return null;
@@ -118,6 +118,18 @@
       const A = a !== WALL, B = b !== WALL, C = c !== WALL, Dd = d !== WALL;
       if (A && B && C && Dd && (a === CORR || b === CORR || c === CORR || d === CORR)) return false;
       if ((A && Dd && !B && !C) || (B && C && !A && !Dd)) return false;
+    }
+    return true;
+  }
+  /* 厚い壁の検査（試験中のプランB。D.MAP_THICK_WALLS のときだけ。本番は使っていない）：
+   *  壁の正面（下が床の壁）の上に、壁が2マス以上続く（3マスの高さの壁の絵が切れない）
+   *  左右とも床の1マス幅の壁が無い */
+  function thickOk(map) {
+    const { w, h, tiles } = map, wall = (x, y) => x < 0 || y < 0 || x >= w || y >= h || tiles[y * w + x] === WALL;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!wall(x, y)) continue;
+      if (!wall(x, y + 1) && (!wall(x, y - 1) || !wall(x, y - 2))) return false;
+      if (!wall(x - 1, y) && !wall(x + 1, y)) return false;
     }
     return true;
   }

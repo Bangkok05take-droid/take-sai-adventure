@@ -33,6 +33,7 @@
 
   // マップ（3x3 の区画にランダムな部屋を置く）
   D.MAP = { cols: 3, rows: 3, cellW: 11, cellH: 8 };
+  D.MAP_THICK_WALLS = false;   // 試験中（プランB）：薄い壁を作らない地図（js/dungeon.js の thickOk）。本番は false
   D.MAP.w = D.MAP.cols * D.MAP.cellW;
   D.MAP.h = D.MAP.rows * D.MAP.cellH;
 

@@ -20,8 +20,10 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
   for (const [W, H] of [[390, 844], [360, 780], [430, 932]]) {
     const ctx = await b.newContext({ viewport: { width: W, height: H }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+    if (process.env.THICK) await p.addInitScript(() => { window.__THICK = true; });
     await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
     await p.evaluate((F) => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true;
+      if (window.__THICK) TS.Data.MAP_THICK_WALLS = true;   // THICK=1：試験中のプランB（薄い壁を作らない地図）で撮る
       // 15階より深い地域（第1〜5章のボスの階を通らない）：最終章（ボスを倒した記録つき）で、30階のバーンは飛ばし、亀裂（r.crack）でも降りる
       if (F >= 15) { const st = V.story; st.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) st.defeated[k] = true; st.introSeen = { truevearn: true, truevearnAwaken: true }; }
       G.depart(S, 2024); const r = S.run; if (F >= 15 && r.final) r.final.skip.vearn = true;
