@@ -3191,9 +3191,10 @@ test('2回行動の行動順（記録）：セットができる・外れる（1
   eq(run.turn - t0, 5); eq(moves, 5);
   // 紋章で復活：倒されるのは敵の手番の中（2回目の行動のあと）。その手番は消えず、次からはセットなしで1行動＝1ターン
   run.enemies = []; const k = addEnemy(S, 'frog', p.x + 1, p.y); k.atk = 99999; k.awake = true; p.hp = 1;
-  log.length = 0; e = k;
-  step('1回目', { type: 'wait' });
-  const r = step('2回目（敵の攻撃で倒れて復活）', { type: 'wait' });
+  e = k;
+  // 敵の攻撃は外れることがある（乱数）。当たって復活するまで、1回目・2回目の組をくり返す（組の途中の扱いは毎回同じ）
+  let r;
+  for (let i = 0; i < 12; i++) { log.length = 0; p.hp = 1; step('1回目', { type: 'wait' }); r = step('2回目（敵の攻撃で倒れて復活）', { type: 'wait' }); if (r.events.some((x) => x.t === 'revive')) break; }
   assert(r.events.some((x) => x.t === 'revive') && !run.bag.includes(crest) && !G.sets(run).all3, 'crest consumed');
   eq(p.hp, p.maxhp, '3点セットだったので全回復');
   k.atk = 0;
