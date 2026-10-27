@@ -591,10 +591,24 @@
       return;
     }
     const isFace = (xx, yy) => at(xx, yy) === WALL && walk(xx, yy + 1);
+    /* 薄い壁の専用部品（ZIP sunken_thin_v1。部品がある地域だけ）。優先：上下とも床（左右も床なら1マスの low_wall_single）→ 左右とも床（pillar_v）。
+     * 端の形は、となりが床なら閉じた端、壁（低い壁でも普通の壁でも）なら続き。このマスには帯・角・正面の壁の切れ端を重ねない */
+    const TH = (n) => (A['thin_' + n] && A['thin_' + n][0]) || null;
+    const thin = (xx, yy) => {
+      if (!A.thin_short_1 || at(xx, yy) !== WALL) return null;
+      const n = walk(xx, yy - 1), s = walk(xx, yy + 1), w = walk(xx - 1, yy), e = walk(xx + 1, yy);
+      if (n && s) return TH(`low_wall${w && e ? '_single' : w ? '_left' : e ? '_right' : ''}_h${xx % 4}`);
+      if (w && e) return TH(`pillar_v${n ? '_top' : s ? '_bottom' : ''}_v${yy % 4}`);
+      return null;
+    };
     // 壁の正面の並びの中の、x の列に当たる絵と列（左の端から数える）
     const part = (xx, yf) => {
-      let s0 = xx; while (isFace(s0 - 1, yf)) s0--;
-      let s1 = xx; while (isFace(s1 + 1, yf)) s1++;
+      let s0 = xx; while (isFace(s0 - 1, yf) && !thin(s0 - 1, yf)) s0--;
+      let s1 = xx; while (isFace(s1 + 1, yf) && !thin(s1 + 1, yf)) s1++;
+      // 幅1・2マスだけの短い正面の壁で、どの列も上に3マスの高さがあれば専用の short_wall（柱で閉じた絵）
+      const len = s1 - s0 + 1;
+      if (len <= 2 && A.thin_short_1) { let tall = true; for (let c = s0; c <= s1; c++) if (at(c, yf - 1) !== WALL || at(c, yf - 2) !== WALL) tall = false;
+        const sw = tall && (A['thin_short_' + len] || [])[0]; if (sw) return { img: sw, col: xx - s0, name: null, w: len }; }
       // 左の端から A.seq をくり返す。入らない残りは A.fill のうち入る最大のもの（どの絵も幅は 32 の倍数）
       const W = (n) => A[n][0].width / 32;
       let i = s0, turn = 0;
@@ -609,10 +623,11 @@
      *  n＝3 → 上・中・足元。n＝2（上に床）→ 上のマスに上端、正面に足元（中を省いた低い壁）。
      *  n＝1（上下とも床の1マスの壁）→ 上端の縁取り16pxと足元16pxをつないだ低い壁（comp）。絵は縮めない */
     const slot = (xx, yy) => {
-      if (at(xx, yy) !== WALL) return null;
+      if (at(xx, yy) !== WALL || thin(xx, yy)) return null;
       for (let d = 0; d <= 2; d++) {
         if (d > 0 && at(xx, yy + d) !== WALL) return null;
         if (!isFace(xx, yy + d)) continue;
+        if (thin(xx, yy + d)) return null;
         const yf = yy + d; let n = 1; while (n < 3 && at(xx, yf - n) === WALL) n++;
         if (d >= n) return null;
         return n === 3 ? { row: 2 - d, yf } : n === 2 ? { row: d === 0 ? 2 : 0, yf } : { row: 0, yf, comp: true };
@@ -622,6 +637,8 @@
     const row = (xx, yy) => { const t = slot(xx, yy); return t ? t.row : -1; };
     const me = slot(x, y), r = me ? me.row : -1;
     g.fillStyle = bg; g.fillRect(x0, y0, 32, 32);   // 壁の外と同じ地域の背景色（境目が見えないように）
+    const tp = thin(x, y);
+    if (tp) { g.drawImage(tp, x0, y0); out.torch = false; if (dark) { g.fillStyle = 'rgba(6,4,10,' + dark + ')'; g.fillRect(x0, y0, 32, 32); } return; }
     if (me) {
       const p = part(x, me.yf);
       if (me.comp) { g.drawImage(p.img, p.col * 32, 0, 32, 16, x0, y0, 32, 16); g.drawImage(p.img, p.col * 32, 80, 32, 16, x0, y0 + 16, 32, 16); }
@@ -663,8 +680,9 @@
       }
     }
     // 角：斜め上だけ床（部屋の左下・右下の角）
-    if (!fN && walk(x + 1, y - 1) && !fE && at(x + 1, y) === WALL && at(x, y - 1) === WALL) { const c = E4(`corner_bottom_left_h${hp}_v${vpE}`) || A.jInNE[0]; g.drawImage(c, x0 + 32 - c.width, y0); }
-    if (!fN && walk(x - 1, y - 1) && !fW && at(x - 1, y) === WALL && at(x, y - 1) === WALL) g.drawImage(E4(`corner_bottom_right_h${hp}_v${vpW}`) || A.jInNW[0], x0, y0);
+    // 部屋の下の角：となりが薄い壁の専用部品なら描かない（その部品が端を受け持つ）
+    if (!fN && walk(x + 1, y - 1) && !fE && at(x + 1, y) === WALL && !thin(x + 1, y) && at(x, y - 1) === WALL) { const c = E4(`corner_bottom_left_h${hp}_v${vpE}`) || A.jInNE[0]; g.drawImage(c, x0 + 32 - c.width, y0); }
+    if (!fN && walk(x - 1, y - 1) && !fW && at(x - 1, y) === WALL && !thin(x - 1, y) && at(x, y - 1) === WALL) g.drawImage(E4(`corner_bottom_right_h${hp}_v${vpW}`) || A.jInNW[0], x0, y0);
     // 補修素材 v3 の角（無ければ描かない）。どれも自分のマスの中だけ
     const P = (n) => (ready(A[n]) ? A[n][0] : null), put = (n, right, bottom) => { const c = P(n); if (c) g.drawImage(c, right ? x0 + 32 - c.width : x0, bottom ? y0 + 32 - c.height : y0); };
     // 左右の縁が正面の壁の上端に届く所（木の根の遺跡の corner_upper_left/right。となりが正面の壁のいちばん上の段）

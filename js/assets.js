@@ -38,6 +38,14 @@
     for (const k of [...Object.keys(cfg.walls), 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW', ...(cfg.extra || [])]) o[k] = f(k);
     if (cfg.e4 !== false) Object.assign(o, edgeFitV4(d, cfg.e4ends !== false));
     if (cfg.e5 !== false) Object.assign(o, endsFitV5(d, cfg.walls));
+    /* 薄い壁の専用部品（cfg.thin。<d>/thin/）：low_wall（上下とも床の壁。h=x%4。中・左端・右端・1マス）、pillar_v（左右とも床の壁。v=y%4。中・上端・下端・1マス）、
+     * short_wall_1・2（幅1・2マス、高さ3マスの短い正面の壁） */
+    if (cfg.thin) {
+      const t = (n) => ['assets/dungeon/' + d + '/thin/' + n + '.png'];
+      for (const h of [0, 1, 2, 3]) { for (const r of ['low_wall', 'low_wall_left', 'low_wall_right', 'low_wall_single']) o[`thin_${r}_h${h}`] = t(`${r}_h${h}`);
+        for (const r of ['pillar_v', 'pillar_v_top', 'pillar_v_bottom', 'pillar_v_single']) o[`thin_${r}_v${h}`] = t(`${r}_v${h}`); }
+      o.thin_short_1 = t('short_wall_1'); o.thin_short_2 = t('short_wall_2');
+    }
     return o;
   }
   // 第1回の追加原画で作った地域の背景の部品（tools/make-dungeon-art.py の BATCH1）
@@ -244,7 +252,7 @@
         seq: ['wallRelief', 'wallCarving', 'wallBroken'], fill: ['wallCarving', 'narrow3'], e4ends: false }),
       // 水没した古代都市（ZIP sunken_match_v1。tools/region-v2/sunken.json）。壁は 水の守護像4・波3・侵食3 のくり返し、残り3は波、2・1は細い壁。水は壁の足元の絵だけ
       sunken_v2: regionV2('sunken_v2', { walls: { wallDeity: 'wall_water_deity', wallWave: 'wall_wave', wallEroded: 'wall_eroded', narrow3: 'wall_narrow' },
-        seq: ['wallDeity', 'wallWave', 'wallEroded'], fill: ['wallWave', 'narrow3'], e4ends: false }),
+        seq: ['wallDeity', 'wallWave', 'wallEroded'], fill: ['wallWave', 'narrow3'], e4ends: false, thin: true }),   // thin：ZIP sunken_thin_v1
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },

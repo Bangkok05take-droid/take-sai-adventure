@@ -46,3 +46,7 @@
 - 本番はまだ。プレビュー：`node tools/dungeon-art-preview.js sunken docs/sunken-v2 e5`。代表 `docs/sunken-v2/sunken_16-19_390.jpg`、全体 `docs/sunken-v2/sunken_overview.png`。
 - 2026年10月27日：壁の正面の上に壁が2マス以下しかない所（床と床にはさまれた薄い壁）は、絵の上端と足元を残して中を省く（縮めない）。上に床があれば下の縁の帯をそろえて描く。
 - 見にくい所の分類（`docs/sunken-v2/thin_walls_marks.png`）：赤＝左右とも床の1マス幅の壁（左右の帯が2本並ぶ）、黄＝上下とも床の1マスの壁（帯と足元の水だけの低い壁）、青＝1〜2マスだけの短い正面の壁。地形を変えずに自然にするには、薄い壁用の部品が必要。
+- 2026年10月27日：薄い壁の専用部品（ZIP sunken_thin_v1、`assets/reference/sunken-thin-v1/` → `assets/dungeon/sunken_v2/thin/`）。水没した古代都市だけ（`regionV2(..., { thin: true })`）。
+  - 上下とも床の壁は low_wall（h=x%4、となりが床なら閉じた端）、左右とも床の壁は pillar_v（v=y%4）。そのマスには帯・角・壁の切れ端を描かない。となりの部屋の下の角も描かない。
+  - 幅1・2マスだけの正面の壁で、どの列も上に3マスの高さがあれば short_wall_1・2。
+  - 比較 `docs/sunken-v2/thin_3spots_before_after.png`（指摘の3か所、左が前・右が後）。
