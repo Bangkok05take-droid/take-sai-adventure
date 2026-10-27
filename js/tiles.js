@@ -604,12 +604,28 @@
         i += w; turn++;
       }
     };
-    // このマスが正面の壁の絵の何段目か（2＝いちばん下＝壁の正面、1・0＝その上）。間に床があれば描かない
-    const row = (xx, yy) => { if (at(xx, yy) !== WALL) return -1; for (let d = 0; d <= 2; d++) { if (d > 0 && at(xx, yy + d) !== WALL) return -1; if (isFace(xx, yy + d)) return 2 - d; } return -1; };
-    const r = row(x, y);
+    /* このマスが正面の壁の絵のどこか。yf＝その壁の正面（下が床）の行。row：絵の段（0＝上端の縁取り、1＝中、2＝足元）。
+     * 壁の正面の上に壁が何マスあるか（n＝1〜3）で描き分ける（2026年10月27日）：
+     *  n＝3 → 上・中・足元。n＝2（上に床）→ 上のマスに上端、正面に足元（中を省いた低い壁）。
+     *  n＝1（上下とも床の1マスの壁）→ 上端の縁取り16pxと足元16pxをつないだ低い壁（comp）。絵は縮めない */
+    const slot = (xx, yy) => {
+      if (at(xx, yy) !== WALL) return null;
+      for (let d = 0; d <= 2; d++) {
+        if (d > 0 && at(xx, yy + d) !== WALL) return null;
+        if (!isFace(xx, yy + d)) continue;
+        const yf = yy + d; let n = 1; while (n < 3 && at(xx, yf - n) === WALL) n++;
+        if (d >= n) return null;
+        return n === 3 ? { row: 2 - d, yf } : n === 2 ? { row: d === 0 ? 2 : 0, yf } : { row: 0, yf, comp: true };
+      }
+      return null;
+    };
+    const row = (xx, yy) => { const t = slot(xx, yy); return t ? t.row : -1; };
+    const me = slot(x, y), r = me ? me.row : -1;
     g.fillStyle = bg; g.fillRect(x0, y0, 32, 32);   // 壁の外と同じ地域の背景色（境目が見えないように）
-    if (r >= 0) {
-      const p = part(x, y + 2 - r); g.drawImage(p.img, p.col * 32, r * 32, 32, 32, x0, y0, 32, 32);
+    if (me) {
+      const p = part(x, me.yf);
+      if (me.comp) { g.drawImage(p.img, p.col * 32, 0, 32, 16, x0, y0, 32, 16); g.drawImage(p.img, p.col * 32, 80, 32, 16, x0, y0 + 16, 32, 16); }
+      else g.drawImage(p.img, p.col * 32, r * 32, 32, 32, x0, y0, 32, 32);
       out.torch = false;
     }
     // 縁：床に面した辺。正面の壁の絵のとなり（その絵を描かないマス）にも左右の縁を続ける。下は壁の正面の絵が受け持つ
@@ -623,7 +639,7 @@
     if (oNW || oNE) g.drawImage(oNW || oNE, x0, y0);
     if (fW && !oNW) g.drawImage(vW, 0, vpW * 32, vW.width, 32, x0, y0, vW.width, 32);
     if (fE && !oNE) g.drawImage(vE, 0, vpE * 32, vE.width, 32, x0 + 32 - vE.width, y0, vE.width, 32);
-    if (fN && !oNW && !oNE) g.drawImage(hN, hp * 32, 0, 32, hN.height, x0, y0, 32, hN.height);
+    if (fN && !oNW && !oNE) g.drawImage(hN, hp * 32, 0, 32, hN.height, x0, y0, 32, hN.height);   // 上に床があれば、正面の壁の絵の上でも下の縁の帯（となりの壁のマスとそろえる）
     if (e4 && r < 0) {
       const top = (xx, yy) => row(xx, yy) === 0, put4 = (n, dx, dy) => { const c = E4(n); if (c) g.drawImage(c, x0 + dx, y0 + dy); };
       // 左右の帯の上端（となりが正面の壁のいちばん上の段）・下の終わり（下のマスが正面の壁のいちばん上の段）
@@ -640,8 +656,8 @@
       // 帯の終わりの補修 v5（ZIP ends_fit_v5）：縦は下に続く正面の壁の絵（並びの右端／左端の列）に合わせた絵。合う絵が無ければ今の帯のまま
       if (TS.Data.DUNGEON_ENDS_V5 && A.e5walls) {
         const E5 = (n) => (A['e5_' + n] && A['e5_' + n][0]) || null, put5 = (n, dx, dy) => { const c = E5(n); if (c) g.drawImage(c, x0 + dx, y0 + dy); };
-        if (fE && !oNE && top(x, y + 1)) { const p = part(x, y + 3); if (p.col === p.w - 1 && A.e5walls[p.name]) put5(`end_vertical_left_v${vpE}__${A.e5walls[p.name]}`, 32 - vE.width, 8); }
-        if (fW && !oNW && top(x, y + 1)) { const p = part(x, y + 3); if (p.col === 0 && A.e5walls[p.name]) put5(`end_vertical_right_v${vpW}__${A.e5walls[p.name]}`, 0, 8); }
+        if (fE && !oNE && top(x, y + 1)) { const p = part(x, slot(x, y + 1).yf); if (p.col === p.w - 1 && A.e5walls[p.name]) put5(`end_vertical_left_v${vpE}__${A.e5walls[p.name]}`, 32 - vE.width, 8); }
+        if (fW && !oNW && top(x, y + 1)) { const p = part(x, slot(x, y + 1).yf); if (p.col === 0 && A.e5walls[p.name]) put5(`end_vertical_right_v${vpW}__${A.e5walls[p.name]}`, 0, 8); }
         if (fN && !oNW && !walk(x - 1, y) && art(x - 1, y)) put5(`end_bottom_left_h${hp}`, 0, 0);
         if (fN && !oNE && !walk(x + 1, y) && art(x + 1, y)) put5(`end_bottom_right_h${hp}`, 8, 0);
       }
