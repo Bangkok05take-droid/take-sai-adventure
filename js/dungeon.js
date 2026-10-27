@@ -126,10 +126,15 @@
    *  左右とも床の1マス幅の壁が無い */
   function thickOk(map) {
     const { w, h, tiles } = map, wall = (x, y) => x < 0 || y < 0 || x >= w || y >= h || tiles[y * w + x] === WALL;
+    const T = D.MAP_THICK_RULES || {}, face = (x, y) => wall(x, y) && !wall(x, y + 1);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       if (!wall(x, y)) continue;
+      // 縦：壁の正面の上に壁が2マス以上（床と床の間の壁が3マス以上＝96pxの正面の壁が切れない）
       if (!wall(x, y + 1) && (!wall(x, y - 1) || !wall(x, y - 2))) return false;
-      if (!wall(x - 1, y) && !wall(x + 1, y)) return false;
+      // 横：床と床の間の壁の幅は T.side マス以上（既定2＝1マス幅の壁を作らない。3なら部屋どうしの間の壁が3マス以上）
+      if (!wall(x - 1, y)) { let n = 0; while (n < (T.side || 2) && wall(x + n, y)) n++; if (n < (T.side || 2) && x + n < w) return false; }
+      // 正面の壁の並びの長さ（T.run：短い並びは細い壁の切れ端に見える）
+      if (T.run && face(x, y) && !face(x - 1, y)) { let n = 1; while (face(x + n, y)) n++; if (n < T.run) return false; }
     }
     return true;
   }

@@ -34,6 +34,8 @@
   // マップ（3x3 の区画にランダムな部屋を置く）
   D.MAP = { cols: 3, rows: 3, cellW: 11, cellH: 8 };
   D.MAP_THICK_WALLS = true;   // プランB（2026年10月27日に採用）：薄い壁を作らない地図（js/dungeon.js の thickOk）。新しく作る階から。全地域
+  // プランBの条件（10月27日）：side＝床と床の間の壁の横の幅の最小（3＝部屋どうしの間の壁が3マス以上）。run＝正面の壁の並びの最小（使わない：作り直しが増えすぎた）
+  D.MAP_THICK_RULES = {};   // 本番は既定（side 2）。side 3 は水没した古代都市で試した段階（docs/sunken-planb/）。採用したら { side: 3 }
   D.MAP.w = D.MAP.cols * D.MAP.cellW;
   D.MAP.h = D.MAP.rows * D.MAP.cellH;
 
