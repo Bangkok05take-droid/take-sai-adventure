@@ -22,14 +22,14 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
     await p.evaluate((F) => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true;
-      // 26階より深い地域：最終章（ボスを倒した記録つき）で、30階のバーンは飛ばし、亀裂（r.crack）でも降りる
-      if (F >= 26) { const st = V.story; st.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) st.defeated[k] = true; st.introSeen = { truevearn: true, truevearnAwaken: true }; }
-      G.depart(S, 2024); const r = S.run; if (F >= 26 && r.final) r.final.skip.vearn = true;
+      // 15階より深い地域（第1〜5章のボスの階を通らない）：最終章（ボスを倒した記録つき）で、30階のバーンは飛ばし、亀裂（r.crack）でも降りる
+      if (F >= 15) { const st = V.story; st.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) st.defeated[k] = true; st.introSeen = { truevearn: true, truevearnAwaken: true }; }
+      G.depart(S, 2024); const r = S.run; if (F >= 15 && r.final) r.final.skip.vearn = true;
       while (r.floor < F) { const t = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = t.x; r.player.y = t.y; G.act(S, { type: 'descend' }); }
       r.player.hp = r.player.maxhp = 999; r.explored.fill(1); TS.Save.save(S); }, FLOOR);
     await p.reload(); await p.waitForTimeout(700); await p.tap('#btn-continue'); await p.waitForTimeout(900);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });
-    const info = await p.evaluate(([TH, MD]) => { const r = TS.UI.S.run, m = r.map; return { theme: TS.Game.themeOf(r), art: !!(TS.Sprites.art.dungeon[TH] && TS.Sprites.art.dungeon[TH].floor.every(Boolean)) && (!MD || TS.Sprites.art.dungeon[(TS.Data.DUNGEON_V2_SET && TS.Data.DUNGEON_V2_SET[TH]) || TH + '_v2'].floor.every(Boolean)), rooms: m.rooms.length }; }, [THEME, MODE]);
+    const info = await p.evaluate(([TH, MD]) => { const r = TS.UI.S.run, m = r.map; return { theme: TS.Game.themeOf(r), art: MD ? !!TS.Sprites.art.dungeon[(TS.Data.DUNGEON_V2_SET && TS.Data.DUNGEON_V2_SET[TH]) || TH + '_v2'].floor.every(Boolean) : !!(TS.Sprites.art.dungeon[TH] && TS.Sprites.art.dungeon[TH].floor.every(Boolean)), rooms: m.rooms.length }; }, [THEME, MODE]);
     chk(info.art, `${W} 素材の絵を読み込んだ（${THEME}・地域 ${info.theme}）`);
     // 撮る場所：いちばん大きい部屋の中央・左上の角・右下の角、細い通路のマス、床の道具の隣
     const spots = await p.evaluate(() => { const r = TS.UI.S.run, m = r.map, DG = TS.Dungeon;

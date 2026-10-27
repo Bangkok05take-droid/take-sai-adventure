@@ -515,7 +515,8 @@
     const D = TS.Data, A = SP.art.dungeon && SP.art.dungeon[theme];
     // v2（3マスの高さの壁）：部品の組は D.DUNGEON_V2_SET（地下の遺跡の奥は地下の遺跡と同じ組）。壁を暗くする地域は D.DUNGEON_WALL_DARK
     if (D.DUNGEON_ART && D.DUNGEON_ART[theme] === 'v2') return artOverlayV2(run, L, x, y, SP.art.dungeon[(D.DUNGEON_V2_SET && D.DUNGEON_V2_SET[theme]) || theme + '_v2'], at, walk, out,
-      !!(D.DUNGEON_EDGE_V4 && D.DUNGEON_EDGE_V4[theme]), (D.DUNGEON_WALL_DARK && D.DUNGEON_WALL_DARK[theme]) || 0);
+      !!(D.DUNGEON_EDGE_V4 && D.DUNGEON_EDGE_V4[theme]), (D.DUNGEON_WALL_DARK && D.DUNGEON_WALL_DARK[theme]) || 0,
+      (SP.themeColors[theme] && SP.themeColors[theme].bg) || '#140a08');
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!D.DUNGEON_ART || !D.DUNGEON_ART[theme] || !A || !ready(A.floor) || !ready(A.wall) || !ready(A.narrow)) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, seed = (run.seed ^ (run.floor * 7919)) >>> 0, k = at(x, y);
@@ -579,10 +580,11 @@
    *  正面の壁：3マスの高さ。いちばん下を床との境目（壁の正面のマス）にそろえ、その上の2マスに上の段を描く。各マスは自分のマスの中だけ
    *    （上の段のマスが床なら描かない＝床・通路・隣の部屋は覆わない）。壁の並びは左の端から アーチ4・旗2・アーチ4…、残りは旗2か細い1
    *  それ以外の壁：暗い単色（部屋の外と同じ）。床に面した辺と、正面の壁のとなりに縁（左右16px・下24px）。部屋の左下・右下の角に角の絵 */
-  function artOverlayV2(run, L, x, y, A, at, walk, out, e4, dark) {
+  function artOverlayV2(run, L, x, y, A, at, walk, out, e4, dark, bg) {
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!A || !A.seq || ![...A.seq, ...A.fill, 'floor', 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW'].every((k) => ready(A[k]))) return;
     const g = L.g, x0 = x * 32, y0 = y * 32, k = at(x, y);
+    out.water = false;   // 水面のきらめき（昔の水の地域の描き方）は出さない。水は壁の絵の足元に描き込んである
     if (k !== WALL) {
       const F = A.floor[0], n = F.width / 32;
       g.drawImage(F, (x % n) * 32, (y % n) * 32, 32, 32, x0, y0, 32, 32);
@@ -605,7 +607,7 @@
     // このマスが正面の壁の絵の何段目か（2＝いちばん下＝壁の正面、1・0＝その上）。間に床があれば描かない
     const row = (xx, yy) => { if (at(xx, yy) !== WALL) return -1; for (let d = 0; d <= 2; d++) { if (d > 0 && at(xx, yy + d) !== WALL) return -1; if (isFace(xx, yy + d)) return 2 - d; } return -1; };
     const r = row(x, y);
-    g.fillStyle = '#140a08'; g.fillRect(x0, y0, 32, 32);
+    g.fillStyle = bg; g.fillRect(x0, y0, 32, 32);   // 壁の外と同じ地域の背景色（境目が見えないように）
     if (r >= 0) {
       const p = part(x, y + 2 - r); g.drawImage(p.img, p.col * 32, r * 32, 32, 32, x0, y0, 32, 32);
       out.torch = false;

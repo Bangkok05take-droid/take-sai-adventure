@@ -392,7 +392,8 @@
     const x0 = Math.max(0, Math.floor(-ox / ts)), x1 = Math.min(m.w - 1, Math.ceil((W - ox) / ts));
     const y0 = Math.max(0, Math.floor(-oy / ts)), y1 = Math.min(m.h - 1, Math.ceil((H - oy) / ts));
     const L = getLayer(run);
-    const reach = TS.Tiles.isWaterTheme(theme) ? 2 : 1;
+    // 水の地域は岸から2マスまで水面を描く。3マスの高さの壁の描き方（v2）の地域は、水を壁の絵に描き込んであるので1マス（壁のまわりだけ）
+    const reach = TS.Tiles.isWaterTheme(theme) && !(D.DUNGEON_ART && D.DUNGEON_ART[theme] === 'v2') ? 2 : 1;
     // 新しく見えたマスを描く。重くならないよう1フレームの時間に上限を設け、たけに近いマスから描く
     // 30階の玉座の間：背景の絵をそのまま敷く（タイルは描かない。通れる所・壁は D.THRONE_ROOM の地図のとおり）
     // 通常バラン戦の部屋（m.bg：D.BARAN_ROOM）も同じように背景の絵を敷く

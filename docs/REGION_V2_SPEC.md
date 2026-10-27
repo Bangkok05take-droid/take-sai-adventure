@@ -38,3 +38,9 @@
 - 壁は 浮き彫り4・彫刻3・破損3 のくり返し、残り3は彫刻、2・1は細い壁。edge_fit（角・上端）・ends_fit（帯の終わり）つき。11〜14階は同じ部品で壁・帯・角・終端だけ30%暗く。
 - 本番はまだ（`D.DUNGEON_ART.ruins`・`ruins_deep` は今の絵）。プレビュー：`node tools/dungeon-art-preview.js ruins|ruins_deep docs/ruins-v2/<地域> e5`。代表 `docs/ruins-v2/ruins_7-10_390.jpg`・`ruins_11-14_390.jpg`。
 - 2026年10月26日：本番に反映（`D.DUNGEON_ART.ruins/ruins_deep = 'v2'`、`D.DUNGEON_EDGE_V4.ruins/ruins_deep`）。
+
+## 2026年10月27日：水没した古代都市 v2（ZIP sunken_match_v1）をプレビュー
+- `assets/reference/sunken-match-v1/` → `python3 -I tools/make-region-v2.py sunken assets/reference/sunken-match-v1` → `assets/dungeon/sunken_v2/`。壁は 水の守護像4・波3・侵食3、残り3は波、2・1は細い壁。16〜19階は同じ明るさ（暗くしない）。
+- 水は壁の足元の絵だけ。v2 の地域では、昔の水の地域の描き方（岸から2マスの水面・水面のきらめき）を出さない（`js/render.js` の reach、`artOverlayV2` の out.water）。
+- 壁のマスの下地の色を、その地域の背景色（`SP.themeColors[地域].bg`）にした（壁の外との境目が見えないように。レンガ・木の根・地下の遺跡もこの色）。
+- 本番はまだ。プレビュー：`node tools/dungeon-art-preview.js sunken docs/sunken-v2 e5`。代表 `docs/sunken-v2/sunken_16-19_390.jpg`、全体 `docs/sunken-v2/sunken_overview.png`。

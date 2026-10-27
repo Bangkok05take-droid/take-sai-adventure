@@ -1,0 +1,19 @@
+{
+  "_note": "水没した古代都市（16〜19階）：ZIP sunken_match_v1（assets/reference/sunken-match-v1/）。水は正面の壁の足元に描き込み済み（水の地形・効果はない）。暗くしない",
+  "out": "sunken_v2",
+  "walls": { "wallDeity": "wall_water_deity", "wallWave": "wall_wave", "wallEroded": "wall_eroded", "narrow3": "wall_narrow" },
+  "files": {
+    "floor_0": "assets/floor_4x4.png",
+    "wallDeity": "assets/wall_water_deity.png",
+    "wallWave": "assets/wall_wave.png",
+    "wallEroded": "assets/wall_eroded.png",
+    "narrow3": "assets/wall_narrow.png",
+    "rimE": "assets/edge_left.png",
+    "rimW": "assets/edge_right.png",
+    "rimN": "assets/edge_bottom.png",
+    "jInNE": "assets/corner_bottom_left.png",
+    "jInNW": "assets/corner_bottom_right.png"
+  },
+  "e4": "edge_fit",
+  "e5": "ends_fit"
+}
