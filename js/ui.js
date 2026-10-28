@@ -263,17 +263,37 @@
 
   // ================= タイトル =================
   function bindTitle() {
-    $('btn-continue').addEventListener('click', () => { AU.sfx('tap'); continueGame(); });
+    $('btn-continue').addEventListener('click', () => { AU.sfx('tap'); whenArtReady(continueGame); });
     $('btn-newgame').addEventListener('click', () => {
       AU.sfx('tap');
       if (SV.exists()) {
         confirmBox('はじめから', '<div class="warnbox">今のセーブデータ（村・倉庫・探索途中）はすべて消えます。本当にはじめからにしますか？</div>', '消してはじめる', () => {
-          setTimeout(() => confirmBox('最終確認', 'セーブデータを削除します。元には戻せません。', '削除する', newGame), 0);
+          setTimeout(() => confirmBox('最終確認', 'セーブデータを削除します。元には戻せません。', '削除する', () => whenArtReady(newGame)), 0);
         });
-      } else newGame();
+      } else whenArtReady(newGame);
     });
     $('btn-help-title').addEventListener('click', () => { AU.sfx('tap'); showHelp(); });
     $('btn-sound-title').addEventListener('click', () => { toggleSound(); });
+  }
+  /* 絵の読み込みが終わってから村・ダンジョンへ進む（2026年10月28日）。読み込みの途中で進むと、絵が届くまで仮のコードの絵（以前の見た目）が出て、
+   * あとから入れ替わって見えていた。待つ間はタイトルのボタンに「読み込み中 ○%」。通信が悪くて ARTWAIT ミリ秒を過ぎたら、待たずに進む（届いた所から入れ替わる） */
+  UI.ARTWAIT = 20000;
+  function whenArtReady(go) {
+    if (SP.art.ready) { go(); return; }
+    const btns = [$('btn-continue'), $('btn-newgame')], labels = btns.map((b) => b.textContent), t0 = performance.now();
+    if (UI.artWaiting) return;   // 待っている間のもう1回のタップは無視
+    UI.artWaiting = true;
+    for (const b of btns) b.disabled = true;
+    const tick = () => {
+      const P = SP.art.progress || {}, pct = P.total ? Math.floor(P.done * 100 / P.total) : 0;
+      if (SP.art.ready || performance.now() - t0 > UI.ARTWAIT) {
+        btns.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
+        UI.artWaiting = false; go(); return;
+      }
+      for (const b of btns) b.textContent = '読み込み中 ' + pct + '%';
+      setTimeout(tick, 100);
+    };
+    tick();
   }
   function showTitle() {
     closeAllModals();

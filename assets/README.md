@@ -16,23 +16,18 @@
 - `python3 tools/extract-boss-treasures.py` で、各アイコンを背景と周囲の光を消した透過PNGにする（描き直さない。縮小のみ）。
   - `items-v2/croc_tear.png`（クロコダイルの涙）・`iceflame_crystal.png`（氷炎結晶）・`phantom_shield.png`（ファントムシールド）・`shinma_sword.png`（真魔剛竜剣。ほかの剣と同じく斜め45度に傾けた）：一覧用 48×48。床用 32×32 は `python3 tools/make-items-v2-floor.py`。
   - `chest/chest_32.png`・`chest_48.png`：床のお宝の宝箱。1マスで分かるよう、ふたと本体の境目を暗い線に、中央の鍵穴を大きめに仕上げている。
-- `items-v2/guardian_gem.png`・`river_pearl.png` は、お宝の入れ替えで未使用になった（記録として残す）。
+- `items-v2/` の phantom_shield・shinma_sword（`items-boss/` の絵に替わった）と guardian_gem・river_pearl（お宝の入れ替えで未使用）は、2026年10月28日に消した。
 
-## 以前のタイトル素材（今は表示していない。記録として残す）
-- `title-characters.png`：見本イラスト（人物・人物名・題字・ドット絵一覧を含む元画像。変更しない）。
-- `title-chars.webp`：タイトル画面の主役の人物。元画像から `node tests/make-title-art.js` で作る。
-  - 紙の色の部分を外周から塗りつぶして透明にする（人物の輪郭線で止まる）。題字・名札・飾りは消し、たけとサイだけを残す。
-  - 縦横比を保って表示し、引き伸ばさない。後ろの夕暮れの遺跡・水辺・石のテラスは `js/ui.js` がキャンバスに描く。
-- `title-art.jpg`：紙の背景つきの切り出し（透過画像を表示できないときの予備。同じスクリプトで作る）。
-- `logo.png`：タイトルロゴ「たけとサイの／大冒険」と紋章（剣・宝珠・アユタヤの塔）。`node tests/make-logo.js` でSVGから作る。
-  - 文字は Google Fonts の「Dela Gothic One」（SIL Open Font License）。作るときだけ取得し、ゲームはPNGだけを使う。
+## 以前のタイトル素材
+- 今は表示していない title-chars.webp・title-art.jpg・logo.png と、それを作るスクリプトは2026年10月28日に消した。
+- 見本イラスト `title-characters.png` は `reference/title/` へ移した（変更しない）。
 
 ## デザイン見本（正式なアートの基準）
 `reference/` に、受け取った見本6枚を**変更せずに**保存している（ゲームは直接表示しない）。
 
 | ファイル | 内容 |
 |---|---|
-| `reference/takesai.png` | たけとサイ（`title-characters.png` と同じ画像） |
+| `reference/takesai.png` | たけとサイ（`reference/title/title-characters.png` と同じ画像） |
 | `reference/villagers.png` | コイ（鍛冶屋）・モッ（復興のまとめ役）・ワーン（料理人）・ティウ（案内人） |
 | `reference/yanai.png` | マスターヤナイ |
 | `reference/village.png` | 発展後の村の広場 |

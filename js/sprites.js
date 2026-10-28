@@ -135,7 +135,7 @@
   const EYE = '#2a1a12', BROW = '#6a3a1a', MOUTH = '#b8483a', CHEEK = '#f59a8e';
 
   /* ---------------- たけ・サイ（見本のドット絵に合わせた32×32の1マス用） ----------------
-   * 見本 assets/title-characters.png 下段のドット絵に近づけた：濃い輪郭線、ディザを抑えたはっきりした塗り、
+   * 見本 assets/reference/title/title-characters.png 下段のドット絵に近づけた：濃い輪郭線、ディザを抑えたはっきりした塗り、
    * 日焼けした肌、たけ＝坊主頭・オレンジのスカーフマント・金縁の青い服・白いズボン・茶色のブーツ・
    * 銀の剣・金の十字の丸い青盾、サイ＝長い黒髪・青緑の宝石のティアラ・白と淡いピンクの衣装・金の縁・白いブーツ・宝珠の杖。 */
   const CH = {
@@ -1343,7 +1343,8 @@
     const A = TS.ASSETS || {};
     let left = 0, finished = false;
     const end = () => { if (finished) return; finished = true; SP.art.ready = true; buildFromArt(); if (onDone) onDone(); };
-    const load = (src, cb) => { left++; const img = new Image(); img.onload = () => { cb(img); if (--left === 0) end(); }; img.onerror = () => { if (--left === 0) end(); }; img.src = src; };
+    const P = SP.art.progress = { done: 0, total: 0 };   // 読み込みの進み具合（タイトルの「読み込み中」に出す）
+    const load = (src, cb) => { left++; P.total++; const img = new Image(); img.onload = () => { cb(img); P.done++; if (--left === 0) end(); }; img.onerror = () => { P.done++; if (--left === 0) end(); }; img.src = src; };
     for (const [who, v] of Object.entries(A.chars || {})) {
       const c = SP.art.chars[who] = {};
       for (const view of ['front', 'back', 'side']) if (v[view]) load(v[view], (img) => { c[view] = toCanvas(img); if (view === 'side') c.sideR = flipCanvas(c.side); });
