@@ -55,7 +55,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     const setup = (mode, slow) => p.evaluate(([mode, slow]) => { const S = TS.UI.S, r = S.run, G = TS.Game, b = r.enemies.find((e) => e.boss), A = r.bossFight;
       const DB = TS.FX.DB; if (!window.__db0) window.__db0 = Object.assign({}, DB); Object.assign(DB, window.__db0); if (slow) for (const k of Object.keys(DB)) DB[k] *= slow;
       r.hazards = []; b.charge = null; b.rest = 0; b.hold = 0; b.sleep = 0; b.slow = 0; b.dora = 0; if (b.doraDef != null) { b.def = b.doraDef; b.doraDef = null; }
-      b.x = A.x + 7; b.y = A.y + 5; b.hp = mode === 'dora' ? Math.floor(b.maxhp * 0.7) : b.maxhp; b.cds = { giga: mode.startsWith('giga') ? 0 : 9, sweep: mode === 'sweep' ? 0 : 9, doruora: mode === 'doruora' ? 0 : 9, dora: mode === 'dora' ? 0 : 99 };
+      b.x = A.x + 7; b.y = A.y + 5; b.hp = mode === 'dora' ? Math.floor(b.maxhp * 0.7) : b.maxhp; b.cds = { giga: mode.startsWith('giga') ? 0 : 9, sweep: mode === 'sweep' ? 0 : 9, doruora: mode === 'doruora' ? 0 : 9, dora: mode === 'dora' ? 0 : 99 }; TS.Data.DRAGON_KING.sweep.chance = mode === 'sweep' ? 1 : 0.75;   // 画像を撮る場面では必ずなぎ払い
       r.player.x = b.x + (mode === 'doruora' ? 0 : mode === 'gigaPush' ? 0 : 0); r.player.y = b.y + (mode === 'doruora' ? 3 : mode === 'gigaPush' ? 5 : mode === 'dora' ? 4 : mode === 'sweep' ? 1 : 3);
       r.player.hp = r.player.maxhp; G.updateVision(r); TS.Render.clearFx(); TS.UI.lockUntil = 0; }, [mode, slow || 0]);
     const press = async () => { await p.evaluate(() => { TS.UI.lockUntil = 0; }); await p.keyboard.press('Space'); };

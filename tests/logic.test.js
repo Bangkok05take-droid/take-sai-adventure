@@ -2176,6 +2176,7 @@ test('竜魔神バランの技：ギガブレイク（なぎ払い。隣でま�
   const mk = (x, y) => { const b = G.makeEnemy(run, 'dragonbaran', x, y); b.boss = true; b.awake = true; b.hold = 0; run.enemies = [b]; run.bossFight = { x: 2, y: 2, w: 20, h: 12, engaged: true }; return b; };
   p.hp = p.maxhp = 99999;
   eq(D.ENEMIES.dragonbaran.atk + '/' + D.ENEMIES.dragonbaran.def, '66/50');
+  const ch0 = K.sweep.chance; K.sweep.chance = 1;   // 割合は下で別に確かめる
   const hits = (r) => r.events.filter((e) => e.t === 'hit' && e.target === 'player').length;
   // 隣（右）：まわり8マスの予告 → 当たって右へ1マス押される
   let b = mk(10, 5); p.x = 11; p.y = 5; G.updateVision(run); b.cds = { giga: 9, doruora: 9 };
@@ -2194,6 +2195,14 @@ test('竜魔神バランの技：ギガブレイク（なぎ払い。隣でま�
   b = mk(10, 5); p.x = 11; p.y = 5; G.updateVision(run); b.cds = { giga: 9, doruora: 9 };
   G.act(S, { type: 'wait' }); p.x = 12; r = G.act(S, { type: 'wait' }); eq(hits(r), 0, 'dodged'); eq(p.x + ',' + p.y, '12,5');
   eq(b.cds.sweep, K.sweep.cd, 'cooldown');
+  // 接近戦：隣に立ち続けると、なぎ払いを続けて使う（終わった次の行動ですぐ予告できる）
+  b = mk(10, 5); p.x = 11; p.y = 5; G.updateVision(run); b.cds = { giga: 9, doruora: 9 };
+  let n = 0; for (let i = 0; i < 10; i++) { b.x = 10; b.y = 5; p.x = 11; p.y = 5; G.act(S, { type: 'wait' }); if (b.charge && b.charge.kind === 'gigasweep') n++; }
+  eq(n, 5, 'every other turn (telegraph, swing, telegraph, ...)');
+  // 割合（4回に3回くらい。残りは通常攻撃）
+  K.sweep.chance = ch0; let used = 0;
+  for (let i = 0; i < 200; i++) { b = mk(10, 5); p.x = 11; p.y = 5; b.cds = { giga: 9, doruora: 9 }; G.act(S, { type: 'wait' }); if (b.charge) used++; }
+  assert(used > 120 && used < 180, 'about 3 of 4: ' + used);
 });
 test('竜魔神バランの技：竜闘気（HP70%で1ターン使う → 3ターン2回行動・防御1.5倍・技なし → 1ターン動けない → 12行動後にまた使える）・HP50%で攻撃力1.15倍', () => {
   const S = newRun(3303, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);

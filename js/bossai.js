@@ -341,7 +341,7 @@
     }
     const d = H.cheb(e, p), a = aligned(e, p);
     // ギガブレイク（なぎ払い）：隣にいるとき、まわり1マスを予告
-    if (d === 1 && H.adjacent(run, e, p) && !cd.sweep) {
+    if (d === 1 && H.adjacent(run, e, p) && !cd.sweep && R.chance(run.rng, K.sweep.chance)) {
       H.startCharge(S, e, ev, H.areaTiles(run, e, 1), K.sweep.mult, 0, '', K.sweep.name);
       Object.assign(e.charge, { kind: 'gigasweep', fx: 'giga' });
       cd.sweep = K.sweep.cd;
