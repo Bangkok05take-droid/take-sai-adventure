@@ -62,3 +62,4 @@
 ## 2026年10月28日：地底の古代神殿 v2（ZIP temple_match_v1）をプレビュー
 - 内部名 crystal（21〜24階）。`python3 -I tools/make-region-v2.py crystal assets/reference/temple-match-v1` → `assets/dungeon/crystal_v2/`。壁は 太陽4・旗3・日輪3、残り3は旗、2・1は細い壁。暗くしない。25階のボス部屋は変えない。
 - 本番はまだ。プレビュー：`node tools/dungeon-art-preview.js crystal docs/temple-v2 e5`（強めたB案＋周回ルートの地図）。代表 `docs/temple-v2/temple_21-24_390.jpg`、全体 `docs/temple-v2/temple_overview.png`。
+- 2026年10月28日：地底の古代神殿（21〜24階）を本番に反映。

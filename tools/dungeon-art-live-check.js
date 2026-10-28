@@ -11,7 +11,7 @@ const srv = http.createServer((q, r) => { let f = path.join(ROOT, decodeURICompo
     const ctx = await b.newContext({ viewport: { width: W, height: H }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto('http://localhost:8851/'); await p.waitForTimeout(400);
-    for (const F of [1, 4, 8, 12, 14, 17]) {
+    for (const F of [1, 4, 8, 12, 14, 17, 22]) {
       await p.evaluate((F) => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true;
         if (F >= 15) { const st = V.story; st.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) st.defeated[k] = true; }
         G.depart(S, 77); const r = S.run; while (r.floor < F) { r.enemies = r.enemies.filter((e) => e.boss); r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); } TS.Save.save(S); }, F);
@@ -19,7 +19,7 @@ const srv = http.createServer((q, r) => { let f = path.join(ROOT, decodeURICompo
       await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });
       await p.waitForTimeout(600);
       const info = await p.evaluate(() => ({ th: TS.Game.themeOf(TS.UI.S.run), on: !!TS.Data.DUNGEON_ART[TS.Game.themeOf(TS.UI.S.run)] }));
-      const want = ['brick', 'roots', 'ruins', 'ruins_deep', 'sunken'].includes(info.th);
+      const want = ['brick', 'roots', 'ruins', 'ruins_deep', 'sunken', 'crystal'].includes(info.th);
       console.log(W, F, info.th, info.on === want ? 'OK' : 'NG', errs.length ? errs.join('/') : 'エラーなし'); if (info.on !== want || errs.length) ng++;
       const c = await p.evaluate(() => { const e = document.getElementById('dungeon-canvas').getBoundingClientRect(); return { x: e.x, y: e.y, width: e.width, height: e.height }; });
       await p.screenshot({ path: path.join(OUT, `live_f${F}_${W}.jpg`), clip: c, quality: 88 });

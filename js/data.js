@@ -105,7 +105,7 @@
   /* 通常ダンジョンの地域の背景の絵（ZIP dungeon_7themes_art_v1）を使う地域。{ brick: true } のように。
    * 2026年10月21日：レンガの回廊（1〜3階）を本番に反映。10月22日：木の根の遺跡（4〜6階）・地下の遺跡（7〜14階）も反映（1マス幅の正面の壁は仮の絵）。
    * ほかの地域はまだ今までのコードの絵。確認の道具 tools/dungeon-art-preview.js は before/after で切り替えて撮る */
-  D.DUNGEON_ART = { brick: 'v2', roots: 'v2', ruins: 'v2', ruins_deep: 'v2', sunken: 'v2' };   // 10月24日：レンガの回廊は v2（承認図の床・3マスの高さの壁）
+  D.DUNGEON_ART = { brick: 'v2', roots: 'v2', ruins: 'v2', ruins_deep: 'v2', sunken: 'v2', crystal: 'v2' };   // 10月24日：レンガの回廊は v2（承認図の床・3マスの高さの壁）
   /* 壁（正面・上面・縁・角・飾り）だけ暗くする割合（床・敵・道具・攻撃の予告はそのまま）。2026年10月22日：地下の遺跡の奥（11〜14階）を深く荘厳に */
   D.DUNGEON_WALL_DARK = { ruins_deep: 0.3 };
   // v2 の部品の組（js/assets.js の dungeon の名前）。書いていない地域は '<地域>_v2'。地下の遺跡の奥（11〜14階）は地下の遺跡と同じ組を使い、壁だけ暗く（上の WALL_DARK）
@@ -115,7 +115,7 @@
   /* レンガの回廊 v2 の補修素材 v3 の角（出っ張った角・壁の上端の角・縁の終わり）。2026年10月24日：線の太さが今の縁と合わず目立ったので使わない（壁の3種だけ差し替え） */
   D.DUNGEON_V2_CORNERS = false;
   /* 縁・角の補修 v4（ZIP edge_fit_v4）を使う地域。2026年10月26日：プレビュー段階（本番は空。確認の道具が切り替える） */
-  D.DUNGEON_EDGE_V4 = { brick: true, roots: true, ruins: true, ruins_deep: true, sunken: true };   // 10月26日：レンガの回廊・木の根の遺跡に反映（角6種類＋帯の終わり v5）
+  D.DUNGEON_EDGE_V4 = { brick: true, roots: true, ruins: true, ruins_deep: true, sunken: true, crystal: true };   // 10月26日：レンガの回廊・木の根の遺跡に反映（角6種類＋帯の終わり v5）
   D.DUNGEON_EDGE_V4_ENDS = false;   // 帯の終わりの部品（end_vertical・end_bottom）は合わなかったので使わない
   D.DUNGEON_ENDS_V5 = true;   // 帯の終わりの補修 v5（ZIP ends_fit_v5）。2026年10月26日：暗い切れ目・色の浮きが消えたので採用（DUNGEON_EDGE_V4 の地域だけに効く）
   /* 壁の外の背景（地図の外・壁の奥・未探索の所）を絵にする地域。2026年10月22日：仮の背景のプレビュー段階（本番は空）。
