@@ -424,6 +424,8 @@
       if (occupied.some((o) => o.x === x && o.y === y) || G.enemyAt(run, x, y)) continue;
       free.push({ x, y });
     }
+    // 空きマスが少なく4体置けない部屋はモンスターハウスにしない（道具・階段などで埋まっていることがある）
+    if (Math.floor(free.length * 0.6) < 4) { run.map.monsterHouse = null; return; }
     R.shuffle(rng, free);
     const nE = Math.min(MH.enemiesMax, 4 + Math.floor(room.w * room.h / 6), Math.floor(free.length * 0.6));
     for (let i = 0; i < nE; i++) {
