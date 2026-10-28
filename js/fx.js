@@ -548,5 +548,90 @@
     g.drawImage(fr[0], x - W / 2, y - W / 2, W, W); g.restore();
   };
 
+  /* ---------------- 竜魔神バランの演出（ZIP baran-images-v2。assets/fx/dragonbaran/ の絵を SP.art.fx.db_* で使う） ----------------
+   * 見た目だけ（当たり・ターンはゲーム側で1回だけ済んでいる）。大きさはマスの単位（絵の余白は切ってあるので、絵の幅＝見える幅）。
+   * 演出の秒数はターンとは無関係。絵が読めないときは描かない（予告の赤いマス・数字は今までどおり出る） */
+  const dbImg = (n) => { const A = TS.Sprites && TS.Sprites.art && TS.Sprites.art.fx; return A ? A['db_' + n] || null : null; };
+  FX.DB = { doruoraGather: 140, doruoraPerTile: 90, doruoraFlyMin: 240, doruoraBurst: 300, gigaMove: 120, gigaHold: 380, gigaTrail: 420 };
+  // 絵を (x, y) に置く。W：幅（ピクセル）、ang：回す角度、ax・ay：絵の中の基準（0〜1）、flipY：上下反転（左向きの竜の頭が逆さにならないように）
+  function dbDraw(g, img, x, y, W, ang, ax, ay, alpha, flipY) {
+    if (!img || alpha <= 0) return;
+    const H = W * img.height / img.width;
+    g.save(); g.translate(x, y); if (ang) g.rotate(ang); if (flipY) g.scale(1, -1);
+    g.globalAlpha = Math.min(1, alpha); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(img, -W * (ax == null ? 0.5 : ax), -H * (ay == null ? 0.5 : ay), W, H);
+    g.restore();
+  }
+  // 体の後ろ（render.js から毎フレーム。x：マスの中心、foot：マスの下端）：竜闘気の間の青い炎（2コマを交互に）
+  FX.dragonBack = function (g, e, x, foot, ts, k, now) {
+    if (!(e.dora > 0)) return;
+    const img = dbImg(Math.floor(now / 150) % 2 ? 'aura_1' : 'aura_0');
+    dbDraw(g, img, x, foot + ts * 0.05, ts * 2.5, 0, 0.5, 1, 0.85 + 0.15 * Math.sin(now / 180));
+  };
+  // 体の前：竜闘気の炎の手前側（薄く）、ドルオーラの溜め（両手の前の渦）、ギガブレイクの溜め（頭上の剣に雷が落ちる）
+  FX.dragonFront = function (g, e, x, foot, ts, k, now) {
+    if (e.dora > 0) { g.save(); g.globalCompositeOperation = 'lighter'; FX.dragonBack(g, e, x, foot, ts, k, now); g.restore(); }
+    const c = e.charge;
+    if (c && c.fx === 'doruora') dbDraw(g, dbImg('doruora_charge'), x, foot - ts * 0.95, ts * (1.05 + 0.08 * Math.sin(now / 90)), now / 160, 0.5, 0.5, 0.95);
+    if (c && c.fx === 'giga') {   // 0.7秒ごとに雷が剣先へ落ちる（落ちている間 0.2秒）
+      const ph = now % 700;
+      if (ph < 200) {
+        const tip = foot - ts * 2.78;
+        dbDraw(g, dbImg('giga_bolt'), x, tip, ts * 1.1, 0, 0.5, 1, 1 - ph / 260);
+        dbDraw(g, dbImg('giga_impact'), x, tip, ts * 0.7, 0, 0.5, 0.5, 0.9 - ph / 220);
+      }
+    }
+  };
+  // 竜闘気の始まり：足元に青い炎の輪が広がる
+  FX.draw.doraStart = function (g, f, a, v) {
+    dbDraw(g, dbImg('aura_ring'), cx(v, f.x), v.oy + (f.y + 1) * v.ts, v.ts * (1.4 + 1.2 * ease(a)), 0, 0.5, 1, a < 0.6 ? 1 : (1 - a) / 0.4);
+  };
+  // 竜闘気の終わり：まとっていた炎が外へはじけて消える
+  FX.draw.doraBurst = function (g, f, a, v) {
+    dbDraw(g, dbImg('aura_burst'), cx(v, f.x), v.oy + (f.y + 1) * v.ts - v.ts * 1.1, v.ts * (1.4 + 1.8 * ease(a)), 0, 0.5, 0.5, 1 - a);
+  };
+  /* ドルオーラ：両手の渦が光る（gather）→ 竜の頭が太い青い尾を引いて一直線に飛ぶ（fly）→ 着いた所で爆発（burst）。バランは動かない。
+   * f.from：バランのマス、f.to：届く所（たけに当たればたけ、外れなら直線の端）、f.dx・f.dy：向き */
+  FX.draw.dbDoruora = function (g, f, a, v) {
+    const B = FX.DB, age = a * f.dur, ts = v.ts;
+    const x0 = cx(v, f.from.x), y0 = v.oy + (f.from.y + 1) * ts - ts * 0.95, x1 = cx(v, f.to.x), y1 = cy(v, f.to.y);
+    const ang = Math.atan2(f.dy, f.dx), flip = f.dx < 0;
+    if (age < f.gather) { dbDraw(g, dbImg('doruora_charge'), x0, y0, ts * (1.05 + 0.4 * age / f.gather), age / 60, 0.5, 0.5, 1); return; }
+    const t = Math.min(1, (age - f.gather) / f.fly), hx = x0 + (x1 - x0) * t, hy = y0 + (y1 - y0) * t;
+    const fade = age > f.gather + f.fly ? 1 - (age - f.gather - f.fly) / (f.dur - f.gather - f.fly) : 1;
+    // 太い青い尾（バランの手から頭まで）
+    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+    for (const [w, col] of [[0.62, 'rgba(40,110,255,0.45)'], [0.4, 'rgba(90,190,255,0.7)'], [0.16, 'rgba(225,250,255,0.95)']]) {
+      g.globalAlpha = fade; g.strokeStyle = col; g.lineWidth = ts * w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(hx, hy); g.stroke();
+    }
+    g.restore();
+    if (t < 1) { const fr = Math.floor(age / 70) % 2, M = (TS.ASSETS && TS.ASSETS.dragonFxMeta) || {};
+      dbDraw(g, dbImg('doruora_head_' + fr), hx, hy, ts * 1.9, ang, 0.86, (M.mouthY || [0.6, 0.6])[fr], 1, flip); }
+    else {
+      const b = (age - f.gather - f.fly) / (f.dur - f.gather - f.fly);
+      dbDraw(g, dbImg('doruora_burst'), x1, y1, ts * (1.1 + 0.8 * ease(b)), 0, 0.5, 0.5, 1 - b);
+    }
+  };
+  /* ギガブレイク：f.from → f.to を f.move ミリ秒で一気に（バランの位置と突進のポーズは render.js がこの演出から決める）。
+   * 通ったマスに短い雷と斬撃の残像、止まった所で斬撃の弧、当たったマスに衝撃。f.path：通ったマス、f.hit：当たったマス（無ければ null） */
+  FX.draw.gigaDash = function (g, f, a, v) {
+    const B = FX.DB, age = a * f.dur, ts = v.ts, n = Math.max(1, f.path.length);
+    const ang = Math.atan2(f.dir[1], f.dir[0]), x0 = cx(v, f.from.x), y0 = cy(v, f.from.y), x1 = cx(v, f.to.x), y1 = cy(v, f.to.y);
+    const t = Math.min(1, age / f.move), L = Math.hypot(x1 - x0, y1 - y0) * t;
+    // 雷の筋（通った所まで伸び、止まったあと消えていく）
+    if (L > 0) dbDraw(g, dbImg('giga_streak'), x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, L + ts * 0.6, ang, 1, 0.5, age < f.move ? 1 : 1 - (age - f.move) / (f.dur - f.move));
+    // 通ったマスごとの短い残像（雷と斬撃）
+    f.path.forEach((p, i) => {
+      const at = f.move * (i + 1) / n, d = age - at; if (d < 0 || d > B.gigaTrail) return;
+      const al = 1 - d / B.gigaTrail;
+      dbDraw(g, dbImg('giga_slash'), cx(v, p.x), cy(v, p.y), ts * 0.85, ang, 0.5, 0.5, al * 0.8);
+      dbDraw(g, dbImg('giga_bolt'), cx(v, p.x), cy(v, p.y) + ts * 0.3, ts * 0.45, 0, 0.5, 1, al * 0.7);
+    });
+    // 当たったマス：衝撃
+    if (f.hit) { const at = f.move * f.hitI / n, d = age - at; if (d >= 0 && d < 280) dbDraw(g, dbImg('giga_impact'), cx(v, f.hit.x), cy(v, f.hit.y), ts * (1.1 + 0.5 * d / 280), 0, 0.5, 0.5, 1 - d / 280); }
+    // 止まった所：斬撃の弧（少しのあいだ残る）
+    if (age >= f.move) { const d = (age - f.move) / (f.dur - f.move); dbDraw(g, dbImg('giga_slash'), x1 + Math.cos(ang) * ts * 0.55, y1 + Math.sin(ang) * ts * 0.55 - ts * 0.4, ts * 1.7, ang, 0.5, 0.5, d < 0.5 ? 1 : (1 - d) / 0.5); }
+  };
+
   TS.FX = FX;
 })(globalThis.TS = globalThis.TS || {});

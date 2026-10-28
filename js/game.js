@@ -785,6 +785,9 @@
           enterFloor(S, run.floor + 1);
           ev.push({ t: 'stairs' });
           G.arriveBossFloor(S, ev);   // 33階の真大魔王バーン：着いた直後に登場ムービー → 戦い
+          // 着くたびに流すムービー（D.ARRIVAL_MOVIES。隠しダンジョン35階の竜魔神バラン）。ターン・戦いの始まりは変えない（画面が流すだけ）
+          const am = run.hidden && D.ARRIVAL_MOVIES && D.ARRIVAL_MOVIES[G.F(run).boss];
+          if (am) ev.push({ t: 'arrivalMovie', key: am });
         }
         return { consumed: false, events: ev, floorChanged: true };
       case 'returnHome':

@@ -149,7 +149,9 @@
       // 通常のバランの撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の霧でバランを連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
       baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' },
       // 大魔王バーン（版3の30階）の撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の煙でバーンを包み、時の裂け目へ連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
-      vearnTaken: { video: 'assets/movies/vearn-taken.mp4', poster: 'assets/movies/vearn-taken-poster.jpg' } },
+      vearnTaken: { video: 'assets/movies/vearn-taken.mp4', poster: 'assets/movies/vearn-taken-poster.jpg' },
+      // 竜魔神バランの登場（ZIP baran-images-v2 の動画をそのまま。再生を早く始められるよう情報の位置だけ前へ）。隠しダンジョン35階に着くたびに流す（D.ARRIVAL_MOVIES）
+      dragonGodIntro: { video: 'assets/movies/dragon-god-baran-intro.mp4', poster: 'assets/movies/dragon-god-baran-poster.jpg' } },
     /* 村の素材（assets/village/、2026年10月「サイの店〜ヤナイ像の広場」）。寸法と足元の位置は assets/village/manifest.json。
      * 建物・小物（店・像・木・花壇・屋台・ベンチ）は、見本の細かさが村のマスより細かいので 2/3 の大きさで描く（1マス32ドット）。
      *   2/3 にすると店の幅が今までの店（4マス＋余白）とほぼ同じになる。スマホ（1ドット＝3ピクセル）ではちょうど2ピクセルずつになる。
@@ -204,8 +206,11 @@
      * キャンバス 96×96（1ドット＝1ピクセル。たけと同じ細かさ）、足の裏は y=92、足元の中央は x=48。正面の1枚だけ（横向き・背面・歩行コマは無い）。
      * キーは js/data.js の敵の sprite 名。分身（kill_clone・mist_clone）も同じ絵を使う。 */
     bosses: { croc: 'assets/bosses/croc.png', flame: 'assets/bosses/flame.png', kill: 'assets/bosses/kill.png', baran: 'assets/bosses/baran.png',
-      mist: 'assets/bosses/mist.png', vearn: 'assets/bosses/vearn.png', truevearn: 'assets/bosses/truevearn.png' },
+      mist: 'assets/bosses/mist.png', vearn: 'assets/bosses/vearn.png', truevearn: 'assets/bosses/truevearn.png',
+      // 竜魔神バラン（ZIP baran-images-v2。tools/make-dragon-god-baran.py）：3倍の細かさで持つ（bossArtScale。画面では 96×96 の枠として描く）
+      dragonbaran: 'assets/bosses/dragonbaran.png' },
     bossBox: { w: 96, h: 96, foot: 92 },
+    bossArtScale: { dragonbaran: 3 },
     /* 部屋の絵（assets/rooms/。tools/make-throne-room.py で、assets/reference/throne-room-v1/ の ChatGPT 制作の素材から作る。描き直しはしない）
      *  throneBg：地下30階・大魔王バーンの玉座の間の背景（1024×1536。玉座・柱・旗・炎も描かれている。マスとの対応は js/data.js の D.THRONE_ROOM）
      *  crack：時空の亀裂（透過PNG。背景には焼きこまず、状態に応じて別に描く）
@@ -217,7 +222,13 @@
     /* 技の演出の絵（assets/fx/）。描き直しはしない。
      *  kaiserPhoenix：大魔王バーンのカイザーフェニックス（下向きに飛ぶ火の鳥。tools/make-kaiser-phoenix.py で余白を切り、縮小）。
      *    攻撃の向きに合わせてゲームで回す。読み込めなければ今までの炎の帯の演出 */
-    fx: { kaiserPhoenix: 'assets/fx/kaiser-phoenix.png' },
+    fx: { kaiserPhoenix: 'assets/fx/kaiser-phoenix.png',
+      /* 竜魔神バランの技の演出（ZIP baran-images-v2 の3枚のシートを tools/make-dragon-god-baran.py が区画ごとに切り出す。余白は切ってある）。
+       *  ドルオーラ：溜めの渦・竜の頭（右向き。2コマ。口先の高さ mouthY）・着弾の爆発。ギガブレイク：剣に落ちる雷（下の端が落ちる所）・突進の雷の筋（右向き）・斬撃の弧・衝撃。
+       *  竜闘気：体を包む炎（2コマ）・始まりの輪・終わりにはじける光。大きさはマスの単位で js/fx.js が決める（当たり判定とは無関係） */
+      ...Object.fromEntries(['doruora_charge', 'doruora_head_0', 'doruora_head_1', 'doruora_burst', 'giga_bolt', 'giga_streak', 'giga_slash', 'giga_impact',
+        'aura_0', 'aura_1', 'aura_ring', 'aura_burst'].map((n) => ['db_' + n, 'assets/fx/dragonbaran/' + n + '.png'])) },
+    dragonFxMeta: { mouthY: [0.607, 0.637] },
     /* 真大魔王バーンの技の演出のコマ（ZIP truevearn_effects_v1。tools/make-truevearn-fx.py が assets/reference/truevearn-effects-v1/ からそのまま写す）。
      * 各4コマ・256×256 透過・中心が基準（切り抜かない）。全部そろっていればコマで描き、そろわなければ js/fx.js のコードで描く仮の演出 */
     fxFrames: {
@@ -258,7 +269,9 @@
         seq: ['wallSun', 'wallBanner', 'wallSolar'], fill: ['wallBanner', 'narrow3'], e4ends: false }),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
-    bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },
+    // dragonbaran：竜魔神バラン（3倍の細かさ）。doruora：ドルオーラの構え、sword：ギガブレイクの溜め（剣を頭上に）、dash：突進・斬撃（128×128 の枠・足の裏 y=124。右向き）
+    bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' },
+      dragonbaran: { doruora: 'assets/bosses/dragonbaran-doruora.png', sword: 'assets/bosses/dragonbaran-sword.png', dash: 'assets/bosses/dragonbaran-dash.png' } },
     /* 通常の敵（assets/enemies/）：見本の一覧画像から tools/extract-enemies.py で作る透過PNG。まだ素材が無いので空。
      * 1コマは 64×64（足の裏 y=60、足元の中央 x=32）、待機2コマなら横に並べた 128×64。キーは js/data.js の敵の sprite 名。
      * 書いた敵だけ画像に替わり、書かない敵は今までのコードで描いた絵のまま。必要な素材の一覧は docs/ENEMY_ART.md */

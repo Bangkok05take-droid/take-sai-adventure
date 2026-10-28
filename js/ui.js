@@ -1754,8 +1754,18 @@
       // ボスの階に着いたとき：戦いはまだ始まらない（ボスは奥の部屋の中央で待つ。曲は探索のまま）。
       // 着いた直後に戦いになるボス（33階の真大魔王バーン）は、気配の知らせを出さない（すぐムービーか戦い）
       const boss = G.F(S.run).boss, arrival = S.run.bossFight && (S.run.bossFight.engaged || S.run.bossFight.intro === 'pending');
-      if (boss && !arrival) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
+      const am = res.events.find((e) => e.t === 'arrivalMovie');
+      if (boss && !arrival && !am) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
       if (boss) prepareBossIntro(boss);   // 登場ムービーがあれば、ここで動画の読み込みだけ始める（起動時には読まない）
+      // 着くたびに流すムービー（D.ARRIVAL_MOVIES。隠しダンジョン35階の竜魔神バラン）：見たことがあっても毎回。戦いの始まり方は今までどおり（ボス部屋に入ったら）
+      if (am) {
+        stopAllInput();
+        playStoryMovie(am.key, () => {
+          UI.lockUntil = performance.now() + 300;   // スキップのタップが、そのまま方向ボタンの入力にならないように
+          if (UI.S.run && boss) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
+        });
+        return;
+      }
     }
     // ボス部屋に初めて入った（登場ムービーのあるボス）：ダッシュ・長押し・予約を止めて、ムービーへ。戦いの開始はムービーのあと
     if (res.events.some((e) => e.t === 'bossIntro')) { stopAllInput(); playBossIntro(res.events.find((e) => e.t === 'bossIntro').boss); return; }
@@ -1910,7 +1920,18 @@
         case 'eanim': { const en = run.enemies.find((q) => q.id === e.id); if (en) enemyActFx(en, e.kind, e.dx, UI.ENEMY_ACT.prep, UI.ENEMY_ACT.prep + UI.ENEMY_ACT.act); break; }
         // あくまのきしが盾を構えた（ポーズは render.js が e.guard で出す）
         case 'eguard': AU.sfx('bump'); break;
-        case 'stance': toast(e.name || '天地魔闘の構え', 'danger'); AU.sfx('bump'); break;   // 天地魔闘の構え：技名だけ（構えのポーズと光は render.js が e.stance で出す）
+        case 'stance': toast(e.name || '天地魔闘の構え', 'danger'); AU.sfx('bump'); break;
+        // 竜魔神バラン：ギガブレイクの突進（位置とポーズは render.js がこの演出から。たけへの命中の表示は、通り抜けた時）
+        case 'gigaBreak': {
+          const B = TS.FX.DB, n = Math.max(1, e.path.length), hitI = e.hit ? e.path.findIndex((t) => t.x === e.hit.x && t.y === e.hit.y) + 1 : 0;
+          RD.addFx({ t: 'gigaDash', id: e.id, from: e.from, to: e.to, dir: e.dir, path: e.path, hit: e.hit, hitI, move: B.gigaMove, dur: B.gigaMove + B.gigaHold });
+          AU.sfx('bolt'); TS.FX.shake(RD, 4, 300);
+          if (e.hit) hitD = Math.max(hitD, Math.round(B.gigaMove * hitI / n));
+          break;
+        }
+        // 竜魔神バラン：竜闘気の始まり（足元の輪）・終わり（炎がはじける）。まとっている間の炎は render.js が e.dora で出す
+        case 'dora': { const b = run.enemies.find((q) => q.id === e.id); if (b) RD.addFx({ t: 'doraStart', x: b.x, y: b.y, dur: 520 }); toast(e.name || '竜闘気', 'danger'); AU.sfx('warn'); break; }
+        case 'doraEnd': { const b = run.enemies.find((q) => q.id === e.id); if (b) RD.addFx({ t: 'doraBurst', x: b.x, y: b.y, dur: 520 }); AU.sfx('bump'); break; }   // 天地魔闘の構え：技名だけ（構えのポーズと光は render.js が e.stance で出す）
         case 'steal': {
           // おどるほうせき：盗む動作のコマを、逃げる前の場所に残して見せる（盗みはゲーム側で1回だけ済んでいる）
           const th = e.id !== undefined && { id: e.id, x: e.from.x, y: e.from.y, type: (run.enemies.find((q) => q.id === e.id) || {}).type || 'thief' };
@@ -1980,7 +2001,7 @@
   function blastFx(e, run, p) {
     const FXm = TS.FX, tiles = e.tiles || [];
     const b = e.id !== undefined && run.enemies.find((q) => q.id === e.id);
-    if (b) RD.addFx({ t: 'lunge', id: b.id, dx: Math.sign(p.x - b.x), dy: Math.sign(p.y - b.y), dur: 160 });
+    if (b && e.fx !== 'doruora') RD.addFx({ t: 'lunge', id: b.id, dx: Math.sign(p.x - b.x), dy: Math.sign(p.y - b.y), dur: 160 });   // ドルオーラ：バランは動かない
     if (b && !b.boss) enemyActFx(b, 'attack', Math.sign(p.x - b.x) || (G.DIRS[b.dir] || [0])[0], 0, UI.ENEMY_ACT.blast);   // 予告した大技の発動：発動のコマ
     switch (e.fx) {
       case 'axe': // クロコダイン：重い斧の振り下ろし、衝撃、土煙
@@ -2004,11 +2025,18 @@
         setTimeout(() => AU.sfx('bolt'), PH.gather + fly);   // 当たる音
         return PH.gather + fly;   // 命中の数字・点滅はこの時間に合わせる
       }
-      // 竜魔神バラン：ドルオーラ（金色の光の帯）・なぎ払い（まわりへの衝撃）。突進は 'rush'
       // 爆弾岩の自爆：まわりへの爆発
       case 'explode': RD.addFx({ t: 'impact', tiles, center: tiles[tiles.length - 1] || null, color: '#ffb040', dur: 460 }); FXm.shake(RD, 4, 300); AU.sfx('hit'); return;
-      case 'doloura': RD.addFx({ t: 'flamewave', tiles, color: '#ffd040', dur: 560 }); FXm.shake(RD, 3, 260); AU.sfx('bolt'); return;
-      case 'sweep': RD.addFx({ t: 'impact', tiles, center: b ? { x: b.x, y: b.y } : null, color: '#9ad8ff', dur: 380 }); AU.sfx('hit'); return;
+      /* 竜魔神バランのドルオーラ：両手の渦 → 竜の頭が太い青い尾を引いて飛ぶ → 爆発（FX.draw.dbDoruora）。届く所はたけ（当たり）か直線の端。
+       * 命中の数字は頭が届いた時に出す（判定はゲーム側で1回だけ）。絵が読めなければ青い光の帯 */
+      case 'doruora': {
+        if (!b || !tiles.length || !(SP.art.fx && SP.art.fx.db_doruora_head_0)) { RD.addFx({ t: 'flamewave', tiles, color: '#60b0ff', dur: 560 }); FXm.shake(RD, 3, 260); AU.sfx('bolt'); return 0; }
+        const to = tiles.some((t) => t.x === p.x && t.y === p.y) ? { x: p.x, y: p.y } : tiles[tiles.length - 1];
+        const B = TS.FX.DB, fly = Math.max(B.doruoraFlyMin, Math.max(Math.abs(to.x - b.x), Math.abs(to.y - b.y)) * B.doruoraPerTile);
+        RD.addFx({ t: 'dbDoruora', id: b.id, from: { x: b.x, y: b.y }, to, dx: Math.sign(tiles[0].x - b.x), dy: Math.sign(tiles[0].y - b.y), gather: B.doruoraGather, fly, dur: B.doruoraGather + fly + B.doruoraBurst });
+        AU.sfx('bolt'); setTimeout(() => { AU.sfx('hit'); FXm.shake(RD, 4, 280); }, B.doruoraGather + fly);
+        return B.doruoraGather + fly;
+      }
       case 'doomflame': RD.addFx({ t: 'flamewave', tiles, color: '#c8306a', dur: 560 }); AU.sfx('bolt'); return;   // 真大魔王：滅びの炎
       // 真大魔王バーン：カラミティエンド（まわり1マス）・カラミティウォール（まわり3マス）。正式の演出の絵は後で届く予定（それまでの仮）
       // 真大魔王バーンの技：ChatGPT の演出のコマ（assets/fx/truevearn/。FX.draw.vfxFrames）。コマが読めないときだけ、コードで描く仮の演出（cslash・cwall・ccounter）。二重には描かない

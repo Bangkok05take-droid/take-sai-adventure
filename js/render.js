@@ -581,6 +581,9 @@
       // 生き物ごとの動き（実際にマスを移動している間だけ。待機中は動かない＝ターンも進まない）
       const ea = anims['e' + e.id], emov = ea && now - ea.t0 < ea.dur, et = emov ? (now - ea.t0) / ea.dur : 0;
       const kind = D.ENEMIES[e.type].sprite;
+      // 竜魔神バランのギガブレイク：突進の演出の間は、演出の時間で始まり → 止まる所へ一気に動く（ゲームの位置はもう止まった所）
+      const gd = kind === 'dragonbaran' ? RD.fx.find((f) => f.t === 'gigaDash' && f.id === e.id && now - f.t0 < f.dur) : null;
+      if (gd) { const t = Math.min(1, (now - gd.t0) / gd.move); sx = Math.round(ox + (gd.from.x + (gd.to.x - gd.from.x) * t) * ts); sy = Math.round(oy + (gd.from.y + (gd.to.y - gd.from.y) * t) * ts); }
       if (emov && kind === 'frog') sy -= Math.round(Math.sin(et * Math.PI) * ts * 0.28);              // 蛙：短い跳躍
       else if (emov && kind === 'turtle') { sx += Math.round(Math.sin(et * Math.PI * 4) * k); sy -= (Math.floor(et * 4) % 2) * Math.round(k); }   // 亀：のそのそ足運び
       else if (emov && (kind === 'monkey' || kind === 'thief')) sy -= (Math.floor(et * 4) % 2) * Math.round(k * 2);  // 猿：軽い足運び
@@ -597,6 +600,12 @@
       else if (e.guard > 0 && SP.enemyAction(kind, 'guard')) img = SP.enemyAction(kind, 'guard', SP.enemyFlip(kind, Math.sign(p.x - e.x) || (G.DIRS[e.dir] || [0])[0], 'guard'));
       // 天地魔闘の構え（e.stance）：専用のポーズの絵（待機の絵と同じ大きさ・足元）。構えが終われば e.stance が 0 になり、待機の絵に戻る（読み込み直しでも同じ）
       if (e.stance > 0 && SP.bossPose(kind, 'stance')) img = SP.bossPose(kind, 'stance');
+      // 竜魔神バランの技のポーズ：ギガブレイクの溜め（剣を頭上に）→ 突進・斬撃（突進の演出の間。左へは反転）、ドルオーラの構え（予告から放ち終わるまで）
+      if (kind === 'dragonbaran') {
+        const fire = RD.fx.some((f) => f.t === 'dbDoruora' && f.id === e.id && now - f.t0 < f.dur);
+        const dp = gd ? (gd.dir[0] < 0 ? 'dashL' : 'dash') : e.charge && e.charge.fx === 'giga' ? 'sword' : (e.charge && e.charge.fx === 'doruora') || fire ? 'doruora' : null;
+        if (dp && SP.bossPose(kind, dp)) img = SP.bossPose(kind, dp);
+      }
       const hit = hitFx(e.x, e.y, 'enemy', now);
       const big = (img.logical || img.width) / TILE;   // 細かく持っている絵（隠しダンジョンの強敵・通常の敵15種）は枠の大きさで（占有は1マスのまま）
       if (img.logical && !img.sheet) { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; }   // 通常の敵15種は最近傍（ドット絵のまま）
@@ -621,10 +630,12 @@
       }
       // 天地魔闘の構えの間：控えめな光（tenchi_mato の 00）を体の後ろに
       if (e.stance > 0 && TS.FX && TS.FX.stanceGlow) TS.FX.stanceGlow(g, sx + ts / 2, ty0 + dw * 0.55, ts, k, now);
+      if (kind === 'dragonbaran' && TS.FX && TS.FX.dragonBack) TS.FX.dragonBack(g, e, sx + ts / 2, sy + ts, ts, k, now);   // 竜闘気の炎（体の後ろ）
       if (isClone) g.globalAlpha = 0.78 + 0.18 * Math.sin(now / 160 + e.id);
       g.drawImage(img, sx + (ts - dw) / 2 + shake, ty0 - lift, dw, dw);
       g.globalAlpha = 1;
       if (img.art && e.charge) { g.globalAlpha = 0.25 + 0.25 * Math.sin(now / 120); g.drawImage(SP.tinted(img, '#ff2a2a'), sx + (ts - dw) / 2 + shake, ty0 - lift, dw, dw); g.globalAlpha = 1; }
+      if (kind === 'dragonbaran' && TS.FX && TS.FX.dragonFront) TS.FX.dragonFront(g, e, sx + ts / 2, sy + ts, ts, k, now);   // 技の溜め・竜闘気の炎の手前側
       if (isClone && G.hasCharm(run, 'truesight')) badge(g, '幻', sx + ts / 2, sy + ts - dw * 0.55, ts, k, '#c8f0ff', '#102040');
       if (hit) { g.globalAlpha = img.art ? 0.65 : 0.6; if (img.art) g.drawImage(SP.tinted(img, '#ffffff'), sx + (ts - dw) / 2 + shake, ty0, dw, dw); else { g.globalCompositeOperation = 'lighter'; g.drawImage(img, sx + (ts - dw) / 2 + shake, sy + ts - dw, dw, dw); g.globalCompositeOperation = 'source-over'; } g.globalAlpha = 1; }
       g.imageSmoothingEnabled = false;

@@ -307,49 +307,83 @@
     else { G.log(run, E.name + 'の' + c.label + 'をかわした！'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
   /* ---------------- 竜魔神バラン（隠しダンジョン35階の裏ボス） ----------------
-   * 数値は D.DRAGON_KING（調整案）。強い技はどれも予告 → 次の行動で発動 → 隙（rest）。
-   * 隣：なぎ払い（まわり8マス）。待ち中なら通常攻撃（false を返すと、いつもどおり隣なら攻撃・離れていれば近づく）。
-   * 一直線上で離れている：遠ければ突進、そうでなければドルオーラ（一直線。後半は十字）。 */
+   * 数値は D.DRAGON_KING。技の順：竜闘気（条件を満たしたとき）→ ギガブレイク（一直線 minDist〜range マス）→ ドルオーラ（一直線 minDist〜range マス）→ 通常攻撃・移動。
+   * ドルオーラ・ギガブレイクは予告1ターン（向きと範囲は予告のときに決まり、発動まで変えない）→ 次の行動で発動。
+   * 竜闘気の間（e.dora＝残りのターン）は1ターンに2回、通常攻撃か移動だけ。防御は上がる（e.def）。終わると1ターン動けない（e.rest） */
   AI.dragonbaran = function (S, e, ev, sees, H) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type], K = D.DRAGON_KING;
     if (!aware(run, e, sees)) return false;
     const cd = tick(e);
     if (!e.enraged && e.hp <= e.maxhp * K.enrageAt) {
       e.enraged = true; e.atk = Math.round(e.atk * K.aura);
-      say(run, E.name + 'のドラゴニックオーラが強まった！ 技の間隔が短くなり、ドルオーラが十字に広がる！');
+      say(run, E.name + 'のドラゴニックオーラが強まった！ 攻撃が重くなった！');
       ev.push({ t: 'warn', msg: 'ドラゴニックオーラが強まった！' });
     }
-    const ph = e.enraged ? 1 : 0, d = H.cheb(e, p), a = aligned(e, p);
-    // なぎ払い：隣にいるとき
-    if (H.adjacent(run, e, p) && !cd.sweep) {
-      const tiles = [];
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && DG.passable(run.map, e.x + dx, e.y + dy)) tiles.push({ x: e.x + dx, y: e.y + dy });
-      H.startCharge(S, e, ev, tiles, K.sweep.mult, K.sweep.rest, 'が竜の爪を大きく振りかぶった！ まわりをなぎ払う！（1マス離れよう）'); e.charge.fx = 'sweep';
-      cd.sweep = K.sweep.cd[ph];
+    // 竜闘気の間：通常攻撃か移動を2回（隣なら攻撃、離れていれば近づく。1回目で隣になれば2回目は攻撃）
+    if (e.dora > 0) {
+      for (let k = 0; k < K.dora.acts && run.enemies.includes(e) && !run.over; k++) {
+        if (H.adjacent(run, e, p)) H.enemyAttack(S, e, e.atk, ev, false);
+        else { e.tx = p.x; e.ty = p.y; H.moveEnemy(run, e); }
+      }
+      if (--e.dora <= 0) {   // 終わり：オーラがはじけて消える → 1ターン動けない（ポーズはふだんのまま）
+        e.dora = 0; e.def = e.doraDef != null ? e.doraDef : E.def; e.doraDef = null;
+        e.rest = K.dora.rest; cd.dora = K.dora.cd;
+        say(run, E.name + 'の竜闘気がはじけて消えた。');
+        ev.push({ t: 'doraEnd', id: e.id });
+      }
       return true;
     }
-    if (a && !H.adjacent(run, e, p)) {
-      // 突進：遠くから一直線に
-      if (!cd.rush && d >= K.rush.minDist && d <= K.rush.maxDist) {
-        const tiles = H.lineTiles(run, e, a[0], a[1], 12);
-        if (tiles.some((t) => t.x === p.x && t.y === p.y)) {
-          H.startCharge(S, e, ev, tiles, K.rush.mult, K.rush.rest, 'が竜の翼を広げた！ 一直線に突進してくる！（横へよけよう）'); e.charge.fx = 'rush'; e.charge.kind = 'rush';
-          cd.rush = K.rush.cd[ph];
-          return true;
-        }
-      }
-      // ドルオーラ：一直線（後半は縦横の十字）
-      if (!cd.doloura && d >= K.doloura.minDist) {
-        let tiles = H.lineTiles(run, e, a[0], a[1], 12);
-        if (e.enraged) { tiles = []; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) tiles = tiles.concat(H.lineTiles(run, e, dx, dy, 12)); }
-        if (tiles.some((t) => t.x === p.x && t.y === p.y)) {
-          H.startCharge(S, e, ev, tiles, K.doloura.mult, K.doloura.rest, e.enraged ? 'の両手に竜闘気が集まる！ ドルオーラが十字に放たれる！（線の外へ）' : 'の両手に竜闘気が集まる！ ドルオーラが一直線に放たれる！（列の外へ）');
-          e.charge.fx = 'doloura';
-          cd.doloura = K.doloura.cd[ph];
-          return true;
-        }
+    if (!cd.dora && e.hp <= e.maxhp * K.dora.at) {
+      e.dora = K.dora.turns; e.doraDef = e.def; e.def = Math.round(e.def * K.dora.def); cd.dora = 999;   // 次に使えるのは終わってから cd 行動のあと
+      say(run, '！ ' + E.name + '：' + K.dora.name + '（ドウラ）');
+      ev.push({ t: 'dora', id: e.id, name: K.dora.name });
+      return true;
+    }
+    const d = H.cheb(e, p), a = aligned(e, p);
+    if (!a || d < 2) return false;   // 通常攻撃（隣）か、近づく
+    const onLine = (tiles) => tiles.some((t) => t.x === p.x && t.y === p.y);
+    if (!cd.giga && d >= K.giga.minDist && d <= K.giga.range) {
+      const tiles = H.lineTiles(run, e, a[0], a[1], K.giga.range);
+      if (onLine(tiles)) {
+        H.startCharge(S, e, ev, tiles, K.giga.mult, 0, '', K.giga.name);
+        Object.assign(e.charge, { kind: 'gigabreak', fx: 'giga', dir: a });
+        cd.giga = K.giga.cd;
+        return true;
       }
     }
-    return false;   // 通常攻撃（隣）か、近づく
+    if (!cd.doruora && d >= K.doruora.minDist && d <= K.doruora.range) {
+      const tiles = H.lineTiles(run, e, a[0], a[1], K.doruora.range);
+      if (onLine(tiles)) {
+        H.startCharge(S, e, ev, tiles, K.doruora.mult, K.doruora.rest, '', K.doruora.name);
+        Object.assign(e.charge, { fx: 'doruora', dir: a });
+        cd.doruora = K.doruora.cd;
+        return true;
+      }
+    }
+    return false;
+  };
+  /* ギガブレイクの発動：予告した直線（c.tiles。向き c.dir）を一気に突進する。途中のマスを飛ばさずに1マスずつ調べ、たけがいれば1回だけ当たる（通り抜ける）。
+   * 壁・通れない所・ほかの敵の手前で止まる。止まるマスにたけがいれば、たけを1マス先へ押してそのマスで止まる（押せなければ手前で止まる）。隙は無い */
+  RES.gigabreak = function (S, e, ev, c, H) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], K = D.DRAGON_KING.giga, [dx, dy] = c.dir;
+    const from = { x: e.x, y: e.y }, path = [];
+    let hit = null, pushed = null, x = e.x, y = e.y;
+    for (const t of c.tiles) {
+      if (!G.canStep(run.map, x, y, dx, dy) || !DG.passable(run.map, t.x, t.y)) break;
+      const o = G.enemyAt(run, t.x, t.y); if (o && o !== e) break;
+      x = t.x; y = t.y; path.push(t);
+      if (t.x === p.x && t.y === p.y && !hit) hit = { x: t.x, y: t.y };
+    }
+    let stop = path.length ? path[path.length - 1] : from;
+    if (stop.x === p.x && stop.y === p.y) {   // 止まるマスにたけ：1マス押す。押せなければ手前で止まる
+      const nx = p.x + dx, ny = p.y + dy;
+      if (G.canStep(run.map, p.x, p.y, dx, dy) && DG.passable(run.map, nx, ny) && !G.enemyAt(run, nx, ny)) pushed = { x: nx, y: ny };
+      else { path.pop(); stop = path.length ? path[path.length - 1] : from; }
+    }
+    e.x = stop.x; e.y = stop.y; e.dir = G.dirOf(dx, dy) || e.dir;
+    if (pushed) { p.x = pushed.x; p.y = pushed.y; if (G.updateVision) G.updateVision(run); }
+    ev.push({ t: 'gigaBreak', id: e.id, from, to: { x: stop.x, y: stop.y }, dir: [dx, dy], path: path.slice(), hit, pushed });
+    if (hit) H.damagePlayer(S, e, H.calcDamage(run.rng, e.atk * K.mult, G.playerDef(run)), ev, E.name + 'の' + K.name, { big: true });
+    else { G.log(run, E.name + 'の' + K.name + 'をかわした！'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
 })(globalThis.TS = globalThis.TS || {});

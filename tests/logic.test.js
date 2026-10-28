@@ -79,7 +79,7 @@ function goDown(S) {
   const to = run.stairs || (run.crack && run.crack.kind === 'throne30' ? run.crack : null);   // 30階（玉座の間）は時空の亀裂から先へ
   if (G.canRescue(run)) G.commitRescue(S);
   run.player.x = to.x; run.player.y = to.y;
-  G.act(S, { type: 'descend' });
+  return G.act(S, { type: 'descend' });
 }
 function goToFloor(S, f) { while (S.run.floor < f) goDown(S); }
 
@@ -2077,9 +2077,12 @@ test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂か
       assert(run.log.some((l) => l.includes('強敵の気配')), 'strong notice');
     }
     seen.push(run.floor);
-    goDown(S);
+    const rd = goDown(S);
+    // 35階に着くたびに登場ムービー（D.ARRIVAL_MOVIES）。ほかの階では流さない
+    eq(rd.events.filter((e) => e.t === 'arrivalMovie').map((e) => e.key).join(), run.floor === 35 ? 'dragonGodIntro' : '', 'arrival movie on ' + run.floor);
   }
   eq(seen.join(), '31,32,33,34');
+  assert(!run.bossFight.engaged && run.bossFight.intro !== 'pending', 'the fight still starts in the boss room');
   // 35階：竜魔神バラン（ボス部屋は本編と同じ大きさ。部屋の数の倍率は使わない）。帰還の祠なし。倒すと帰還口
   eq(run.floor, 35); const b = run.enemies.find((e) => e.boss); eq(b && b.type, 'dragonbaran'); assert(!run.returnPoint);
   eq(run.bossFight.w * run.bossFight.h, 15 * 15, 'normal arena'); eq(run.map.w + 'x' + run.map.h, D.MAP.w + 'x' + D.MAP.h);
@@ -2108,35 +2111,88 @@ test('竜魔神バランの報酬：ドラゴニックオーラの盾だけ。�
   eq(G.dragonKingRewards(S).length, 0, 'all owned: nothing');
   eq(D.DRAGON_KING.materials.length, 0, 'materials not decided yet');
 });
-test('竜魔神バランの戦い方：ドルオーラ（一直線→後半は十字）・なぎ払い（まわり8マス）・突進（離れて一直線）・通常攻撃。どれも予告→発動→隙。後半はオーラで強く', () => {
+test('竜魔神バランの技：ドルオーラ（8方向・3マス・予告1ターン・向きは変えない・発動後1ターン動けない）', () => {
   const S = newRun(3301, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);
   const run = S.run, K = D.DRAGON_KING, p = run.player;
   const mk = (x, y) => { const b = G.makeEnemy(run, 'dragonbaran', x, y); b.boss = true; b.awake = true; b.hold = 0; run.enemies = [b]; run.bossFight = { x: 2, y: 2, w: 20, h: 12, engaged: true }; return b; };
   p.hp = p.maxhp = 99999;
-  // ドルオーラ：一直線上・2マス
-  let b = mk(10, 5); p.x = 12; p.y = 5; G.updateVision(run); b.cds = { rush: 9, sweep: 9 };
+  eq(D.ENEMIES.dragonbaran.sprite, 'dragonbaran');
+  // 横：3マス先。予告は3マスの一直線
+  let b = mk(10, 5); p.x = 13; p.y = 5; G.updateVision(run); b.cds = { giga: 9 };
   G.act(S, { type: 'wait' });
-  assert(b.charge && b.charge.fx === 'doloura' && b.charge.tiles.some((t) => t.x === 12 && t.y === 5) && b.charge.tiles.every((t) => t.y === 5), 'doloura line telegraph');
-  p.y = 6; const hp0 = p.hp; G.act(S, { type: 'wait' });   // 列の外へよける
-  eq(p.hp, hp0, 'dodged doloura'); eq(b.rest, K.doloura.rest, 'rest after doloura');
-  // なぎ払い：隣
-  b = mk(10, 5); p.x = 11; p.y = 5; b.cds = { doloura: 9, rush: 9 }; G.updateVision(run);
-  G.act(S, { type: 'wait' }); assert(b.charge && b.charge.fx === 'sweep' && b.charge.tiles.length === 8, 'sweep telegraph 8 tiles');
-  p.x = 12; const hp1 = p.hp; G.act(S, { type: 'wait' }); eq(p.hp, hp1, 'one step away dodges the sweep'); eq(b.rest, K.sweep.rest);
-  // 突進：離れて一直線（3マス以上）
-  b = mk(5, 5); p.x = 12; p.y = 5; b.cds = { doloura: 9, sweep: 9 }; G.updateVision(run);
-  G.act(S, { type: 'wait' }); assert(b.charge && b.charge.kind === 'rush', 'rush telegraph');
-  const hp2 = p.hp; G.act(S, { type: 'wait' }); assert(p.hp < hp2, 'rush hits when staying'); eq(b.rest, K.rush.rest);
-  // 通常攻撃：技が待ち中で隣
-  b = mk(10, 5); p.x = 11; p.y = 5; b.cds = { doloura: 9, rush: 9, sweep: 9 }; G.updateVision(run);
-  const r3 = G.act(S, { type: 'wait' }); assert(!b.charge && r3.events.some((e) => (e.t === 'hit' && e.target === 'player') || e.t === 'miss'), 'normal attack (hit or miss)');
-  // 後半：HP半分以下でオーラ（攻撃力が上がる）・ドルオーラは十字・待ち時間が短い・予告と隙は残る
-  b = mk(10, 5); const atk0 = b.atk; b.hp = Math.floor(b.maxhp * 0.5); p.x = 12; p.y = 5; b.cds = { rush: 9, sweep: 9 }; G.updateVision(run);
+  assert(b.charge && b.charge.fx === 'doruora' && b.charge.tiles.length === 3 && b.charge.tiles.every((t) => t.y === 5) && b.charge.dir.join() === '1,0', 'doruora telegraph 3 tiles');
+  // 列の外へ出ても、向き・範囲は変わらない（狙い直さない）。バランは動かない
+  p.y = 7; const hp0 = p.hp; G.act(S, { type: 'wait' });
+  eq(p.hp, hp0, 'dodged'); eq(b.x + ',' + b.y, '10,5', 'baran does not move'); eq(b.rest, K.doruora.rest, 'rest 1 after firing');
+  const r1 = G.act(S, { type: 'wait' }); eq(b.rest, 0); assert(!b.charge && !r1.events.some((e) => e.t === 'lunge' || e.t === 'telegraph'), 'cannot act for 1 turn');
+  // 斜め：当たる（倍率は攻撃力 × mult）
+  b = mk(10, 5); p.x = 12; p.y = 7; G.updateVision(run); b.cds = { giga: 9 };
+  G.act(S, { type: 'wait' }); assert(b.charge && b.charge.tiles.some((t) => t.x === 12 && t.y === 7) && b.charge.dir.join() === '1,1', 'diagonal');
+  const hp1 = p.hp; G.act(S, { type: 'wait' }); assert(p.hp < hp1, 'hit when staying');
+  // 4マス先では使わない（3マスまで）
+  b = mk(10, 5); p.x = 14; p.y = 5; G.updateVision(run); b.cds = { giga: 9 };
+  G.act(S, { type: 'wait' }); assert(!b.charge, 'out of range: no doruora');
+});
+test('竜魔神バランの技：ギガブレイク（5マスの突進・通り道で1回だけ当たる・5マス目なら押す・押せなければ手前・隙なし）', () => {
+  const S = newRun(3302, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);
+  const run = S.run, K = D.DRAGON_KING, p = run.player;
+  const mk = (x, y) => { const b = G.makeEnemy(run, 'dragonbaran', x, y); b.boss = true; b.awake = true; b.hold = 0; run.enemies = [b]; run.bossFight = { x: 2, y: 2, w: 20, h: 12, engaged: true }; return b; };
+  p.hp = p.maxhp = 99999;
+  const hits = (r) => r.events.filter((e) => e.t === 'hit' && e.target === 'player').length;
+  // 途中のマス（3マス目）：通り抜けて1回だけ当たり、5マス先で止まる
+  let b = mk(5, 5); p.x = 8; p.y = 5; G.updateVision(run); b.cds = { doruora: 9 };
   G.act(S, { type: 'wait' });
-  assert(b.enraged && b.atk > atk0 && b.charge && b.charge.fx === 'doloura', 'enraged doloura');
-  assert(b.charge.tiles.some((t) => t.x === 10 && t.y !== 5) && b.charge.tiles.some((t) => t.y === 5), 'cross');
-  eq(b.cds.doloura, K.doloura.cd[1], 'shorter cooldown');
-  p.x = 11; p.y = 6; const hp4 = p.hp; G.act(S, { type: 'wait' }); eq(p.hp, hp4, 'diagonal dodges the cross'); eq(b.rest, K.doloura.rest, 'rest remains in phase 2');
+  assert(b.charge && b.charge.kind === 'gigabreak' && b.charge.tiles.length === K.giga.range, 'giga telegraph 5 tiles');
+  let r = G.act(S, { type: 'wait' });
+  eq(hits(r), 1, 'one hit'); eq(b.x + ',' + b.y, '10,5', 'stops 5 tiles away'); eq(p.x + ',' + p.y, '8,5', 'player not moved'); eq(b.rest, 0, 'no rest');
+  const gb = r.events.find((e) => e.t === 'gigaBreak'); eq(gb.path.length, 5, 'no skipped tiles'); eq(gb.hit.x, 8);
+  // 斜め・1マス目（隣）でも、予告のあとなら通り抜ける
+  b = mk(5, 5); p.x = 7; p.y = 7; G.updateVision(run); b.cds = { doruora: 9 };
+  G.act(S, { type: 'wait' }); p.x = 6; p.y = 6; r = G.act(S, { type: 'wait' });
+  eq(hits(r), 1); eq(b.x + ',' + b.y, '10,10', 'diagonal 5 tiles');
+  // 5マス目にたけ：1マス押して、5マス目で止まる
+  b = mk(5, 5); p.x = 10; p.y = 5; G.updateVision(run); b.cds = { doruora: 9 };
+  G.act(S, { type: 'wait' }); r = G.act(S, { type: 'wait' });
+  eq(hits(r), 1); eq(b.x + ',' + b.y, '10,5'); eq(p.x + ',' + p.y, '11,5', 'pushed 1 tile');
+  // 5マス目にたけ・後ろが壁：押せないので手前で止まる
+  b = mk(16, 5); p.x = 21; p.y = 5; G.updateVision(run); b.cds = { doruora: 9 };
+  G.act(S, { type: 'wait' }); r = G.act(S, { type: 'wait' });
+  eq(hits(r), 1); eq(b.x + ',' + b.y, '20,5', 'stops in front'); eq(p.x + ',' + p.y, '21,5');
+  // 壁で短い直線：壁の手前で止まる
+  b = mk(17, 8); p.x = 19; p.y = 8; G.updateVision(run); b.cds = { doruora: 9 };
+  G.act(S, { type: 'wait' }); eq(b.charge.tiles.length, 4, 'line until the wall'); p.y = 10; r = G.act(S, { type: 'wait' });
+  eq(hits(r), 0, 'dodged'); eq(b.x + ',' + b.y, '21,8', 'stops before the wall');
+  // 予告のあと、列の外へよけると当たらない（向きは変えない）
+  b = mk(5, 5); p.x = 8; p.y = 5; G.updateVision(run); b.cds = { doruora: 9 };
+  G.act(S, { type: 'wait' }); p.y = 6; r = G.act(S, { type: 'wait' });
+  eq(hits(r), 0); eq(b.x + ',' + b.y, '10,5');
+  // 隣では使わない（通常攻撃）
+  b = mk(5, 5); p.x = 6; p.y = 5; G.updateVision(run);
+  G.act(S, { type: 'wait' }); assert(!b.charge, 'adjacent: normal attack');
+});
+test('竜魔神バランの技：竜闘気（HP70%で1ターン使う → 3ターン2回行動・防御1.5倍・技なし → 1ターン動けない → 12行動後にまた使える）・HP50%で攻撃力1.15倍', () => {
+  const S = newRun(3303, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);
+  const run = S.run, K = D.DRAGON_KING, p = run.player;
+  const mk = (x, y) => { const b = G.makeEnemy(run, 'dragonbaran', x, y); b.boss = true; b.awake = true; b.hold = 0; run.enemies = [b]; run.bossFight = { x: 2, y: 2, w: 20, h: 12, engaged: true }; return b; };
+  p.hp = p.maxhp = 99999;
+  let b = mk(10, 5); const def0 = b.def, atk0 = b.atk; b.hp = Math.floor(b.maxhp * 0.7); p.x = 16; p.y = 5; G.updateVision(run);
+  let r = G.act(S, { type: 'wait' });
+  eq(b.dora, K.dora.turns); eq(b.def, Math.round(def0 * K.dora.def), 'def x1.5'); eq(b.atk, atk0, 'atk unchanged'); eq(b.x, 10, 'uses the turn');
+  assert(r.events.some((e) => e.t === 'dora'));
+  // 離れている：1ターンに2歩。一直線上でも技は使わない
+  r = G.act(S, { type: 'wait' }); eq(b.x, 12, 'two steps'); assert(!b.charge, 'no special moves');
+  // 隣：2回攻撃
+  b.x = 15; b.y = 5; r = G.act(S, { type: 'wait' });
+  eq(r.events.filter((e) => e.t === 'lunge').length, 2, 'two attacks');
+  r = G.act(S, { type: 'wait' });
+  eq(b.dora, 0); eq(b.def, def0, 'def restored'); eq(b.rest, K.dora.rest); assert(r.events.some((e) => e.t === 'doraEnd'));
+  r = G.act(S, { type: 'wait' }); eq(r.events.filter((e) => e.t === 'lunge').length, 0, 'cannot act for 1 turn');
+  eq(b.cds.dora, K.dora.cd, 'cooldown counts from the end');
+  // HP50%以下：攻撃力1.15倍（すべての攻撃）。ドルオーラは一直線のまま（十字はない）
+  b = mk(10, 5); b.hp = Math.floor(b.maxhp * 0.5); b.cds = { dora: 99, giga: 9 }; p.x = 12; p.y = 5; G.updateVision(run);
+  G.act(S, { type: 'wait' });
+  assert(b.enraged && b.atk === Math.round(atk0 * K.aura), 'atk x1.15');
+  assert(b.charge && b.charge.fx === 'doruora' && b.charge.tiles.every((t) => t.y === 5), 'no cross');
 });
 test('商人の呼鈴の寄付：村の発展（施設と飾り）をすべて建てるまで寄付できない。開いたら1000Gで1個（何度でも）', () => {
   const S = G.newState(), V = S.village; V.funds = 2500;

@@ -749,6 +749,7 @@
     return P.outline(0.8);
   };
   // バラン：銀と青の鎧の竜の騎士。赤いマント、額の竜の紋章、大剣
+  E.dragonbaran = (f) => E.baran(f);   // 竜魔神バラン：絵が読めないときの仮（竜騎士バランのコードの絵）
   E.baran = (f) => {
     const P = new Pix(64, 64), A = ramp('#a8bcd8'), B = ramp('#3a62b0'), M = ramp('#e8c040'), Rc = ramp('#a8282a');
     P.poly([[14, 22], [50, 22], [58, 62], [6, 62]], litPoly(P, Rc, 6, 52, 1.4));                            // マント
@@ -1301,8 +1302,8 @@
     if (String(who).startsWith('boss:')) {
       const E = TS.Data.ENEMIES[who.slice(5)]; src = E && SP.s.enemy[E.sprite] ? SP.s.enemy[E.sprite][0] : SP.s.portrait.villager;
       if (src && src.art) { // 見本のボスの絵は、頭から胸までを切り出す
-        const t = topRow(src), c0 = document.createElement('canvas'); c0.width = c0.height = 56;
-        const g0 = c0.getContext('2d'); g0.fillStyle = '#2a2236'; g0.fillRect(0, 0, 56, 56); g0.drawImage(src, 20, Math.max(0, t - 2), 56, 56, 0, 0, 56, 56);
+        const t = topRow(src), c0 = document.createElement('canvas'), q = src.logical ? src.width / src.logical : 1; c0.width = c0.height = 56;   // q：細かく持っている絵の倍率
+        const g0 = c0.getContext('2d'); g0.fillStyle = '#2a2236'; g0.fillRect(0, 0, 56, 56); g0.imageSmoothingEnabled = q > 1; g0.drawImage(src, 20 * q, Math.max(0, t - 2 * q), 56 * q, 56 * q, 0, 0, 56, 56);
         src = c0;
       }
     } else src = SP.s.portrait[who] || SP.s.portrait.villager;
@@ -1376,7 +1377,9 @@
       for (const n of names) load(VA.dir + n + '.png', (img) => { const c = toCanvas(img); SP.art.village[n] = c; if (/_right$/.test(n)) SP.art.village[n.replace(/_right$/, '_left')] = flipCanvas(c); });
     }
     for (const [k, src] of Object.entries(A.takeFrames || {})) load(src, (img) => { SP.art.take[k] = toCanvas(img); });
-    for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { const c = toCanvas(img); c.art = true; SP.art.bosses[k] = c; });
+    // 細かく持っているボスの絵（A.bossArtScale）：画面では枠の大きさ（logical）として描く
+    const bossCanvas = (k, img) => { const c = toCanvas(img); c.art = true; const sc = (A.bossArtScale || {})[k]; if (sc > 1) c.logical = img.width / sc; return c; };
+    for (const [k, src] of Object.entries(A.bosses || {})) if (src) load(src, (img) => { SP.art.bosses[k] = bossCanvas(k, img); });
     for (const [k, src] of Object.entries(A.rooms || {})) if (src) load(src, (img) => { SP.art.rooms[k] = img; });   // 部屋の絵（大きいので画像のまま使う）
     for (const [k, src] of Object.entries(A.fx || {})) if (src) load(src, (img) => { SP.art.fx[k] = img; });   // 技の演出の絵
     // 技の演出のコマ（順番どおりに並べる。全部読めたときだけ SP.fxFrames(k) が返す）
@@ -1386,7 +1389,8 @@
       o[k] = new Array(list.length).fill(null); list.forEach((src, i) => load(src, (img) => { o[k][i] = img;
       // 全部そろったら、すでに描いた地形を描き直す（読み込みより先に探索した所が今までの絵のまま残らないように）
       if (Object.values(o).every((l) => !Array.isArray(l) || l.every(Boolean)) && TS.Render && TS.Render.resetLayer) TS.Render.resetLayer(); })); } }
-    for (const [k, poses] of Object.entries(A.bossPoses || {})) for (const [pose, src] of Object.entries(poses)) load(src, (img) => { const c = toCanvas(img); c.art = true; (SP.art.bossPoses[k] = SP.art.bossPoses[k] || {})[pose] = c; });
+    for (const [k, poses] of Object.entries(A.bossPoses || {})) for (const [pose, src] of Object.entries(poses)) load(src, (img) => { const c = bossCanvas(k, img); (SP.art.bossPoses[k] = SP.art.bossPoses[k] || {})[pose] = c;
+      if (pose === 'dash') { const f = flipCanvas(c); Object.assign(f, { art: true, logical: c.logical }); SP.art.bossPoses[k].dashL = f; } });   // 左向き（反転）
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
     for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {
       const n = Math.max(1, Math.round(img.width / img.height)), w = img.width / n;
