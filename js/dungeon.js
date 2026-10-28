@@ -73,17 +73,32 @@
       if (!tree.concat(extra).some((e) => (e[0] === c && e[1] === k) || (e[0] === k && e[1] === c))) extra.push([c, k]);
     }
     const map = { w, h, tiles, rooms };
-    for (const [a, b, must] of tree.map((e) => e.concat(true)).concat(extra.map((e) => e.concat(false)))) {
+    // 区画AとBをつなぐ通路を引く（形の検査に通るまで14回まで引き直す）。引けたら true
+    const link = (a, b) => {
       const A = cells[Math.min(a, b)], B = cells[Math.max(a, b)], horiz = Math.abs(a - b) === 1;
-      let ok = false;
-      for (let t = 0; t < 14 && !ok; t++) {
+      for (let t = 0; t < 14; t++) {
         const path = corridorPath(rng, A, B, horiz);
         const added = path.filter(([x, y]) => tiles[y * w + x] === WALL);
         for (const [x, y] of added) tiles[y * w + x] = CORR;
-        if (shapeOk(map) && (!D.MAP_THICK_WALLS || thickOk(map))) ok = true;
-        else for (const [x, y] of added) tiles[y * w + x] = WALL;
+        if (shapeOk(map) && (!D.MAP_THICK_WALLS || thickOk(map))) return true;
+        for (const [x, y] of added) tiles[y * w + x] = WALL;
       }
-      if (!ok && must) return null;
+      return false;
+    };
+    for (const [a, b] of tree) if (!link(a, b)) return null;
+    const LP = D.MAP_LOOPS && !(opts && opts.hidden) ? D.MAP_LOOPS : null;
+    if (!LP) { for (const [a, b] of extra) link(a, b); }
+    else {
+      /* 周回ルート（2026年10月28日）：つながっていない隣どうしの区画の組から、通路を足して輪を LP.target 個まで作る。
+       * 行き止まり（つながりが1本だけの区画）を含む組を先に試す（一本道の枝を輪に変える）。引けない組は飛ばす（数は強制しない） */
+      const deg = new Array(n).fill(0); for (const [a, b] of tree) { deg[a]++; deg[b]++; }
+      const has = (a, b) => tree.some((e) => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
+      const cand = [];
+      for (let c = 0; c < n; c++) for (const k of neighbors(c)) if (c < k && !has(c, k)) cand.push([c, k]);
+      const order2 = R.shuffle(rng, cand).sort((p, q) => (Math.min(deg[p[0]], deg[p[1]]) === 1 ? 0 : 1) - (Math.min(deg[q[0]], deg[q[1]]) === 1 ? 0 : 1));
+      let loops = 0;
+      for (const [a, b] of order2) { if (loops >= LP.target) break; if (link(a, b)) { loops++; deg[a]++; deg[b]++; } }
+      map.loops = loops;
     }
     if (!connected(map)) return null;
     return finishFloor(floor, rng, map, opts);

@@ -7,7 +7,9 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const THEME = process.argv[2] || 'brick';
 const FLOOR = { gold: 27, brick: 2, roots: 5, ruins: 8, ruins_deep: 12, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
 const ROOT = path.join(__dirname, '..'), OUT = process.argv[3] || path.join(ROOT, 'docs', 'dungeon-art-v1', THEME);
-const MODE = process.argv[4] || '';   // 'v2'：before＝今の本番の絵、after＝v2 の絵。'e4'：before＝v2、after＝v2＋縁・角の補修 v4
+const MODE = process.argv[4] || '';
+const SEED = +(process.env.SEED || 2024);   // 地図の種（別の地図を撮るとき）
+// MODE 'v2'：before＝今の本番の絵、after＝v2 の絵。'e4'：before＝v2、after＝v2＋縁・角の補修 v4
 fs.mkdirSync(OUT, { recursive: true });
 const PORT = 8849;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.json': 'application/json' };
@@ -21,14 +23,16 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     const ctx = await b.newContext({ viewport: { width: W, height: H }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     if (process.env.THICK) await p.addInitScript(() => { window.__THICK = true; });
+    if (process.env.LOOPS) await p.addInitScript((n) => { window.__LOOPS = n; }, +process.env.LOOPS);
     await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(400);
-    await p.evaluate((F) => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true;
+    await p.evaluate(([F, SEED]) => { localStorage.clear(); const G = TS.Game, S = G.newState(), V = S.village; V.story.introDone = true; V.seenIntro = true;
       if (window.__THICK) TS.Data.MAP_THICK_WALLS = true;   // THICK=1：試験中のプランB（薄い壁を作らない地図）で撮る
+      if (window.__LOOPS) { TS.Data.MAP_THICK_WALLS = true; TS.Data.MAP_THICK_RULES = { side: 3 }; TS.Data.MAP_LOOPS = { target: window.__LOOPS }; }   // LOOPS=2：強めたB案＋周回ルートで撮る
       // 15階より深い地域（第1〜5章のボスの階を通らない）：最終章（ボスを倒した記録つき）で、30階のバーンは飛ばし、亀裂（r.crack）でも降りる
       if (F >= 15) { const st = V.story; st.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) st.defeated[k] = true; st.introSeen = { truevearn: true, truevearnAwaken: true }; }
-      G.depart(S, 2024); const r = S.run; if (F >= 15 && r.final) r.final.skip.vearn = true;
+      G.depart(S, SEED); const r = S.run; if (F >= 15 && r.final) r.final.skip.vearn = true;
       while (r.floor < F) { const t = r.stairs || r.crack; r.enemies = r.enemies.filter((e) => e.boss); r.player.x = t.x; r.player.y = t.y; G.act(S, { type: 'descend' }); }
-      r.player.hp = r.player.maxhp = 999; r.explored.fill(1); TS.Save.save(S); }, FLOOR);
+      r.player.hp = r.player.maxhp = 999; r.explored.fill(1); TS.Save.save(S); }, [FLOOR, SEED]);
     await p.reload(); await p.waitForTimeout(700); await p.tap('#btn-continue'); await p.waitForTimeout(900);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.lockUntil = 0; });
     const info = await p.evaluate(([TH, MD]) => { const r = TS.UI.S.run, m = r.map; return { theme: TS.Game.themeOf(r), art: MD ? !!TS.Sprites.art.dungeon[(TS.Data.DUNGEON_V2_SET && TS.Data.DUNGEON_V2_SET[TH]) || TH + '_v2'].floor.every(Boolean) : !!(TS.Sprites.art.dungeon[TH] && TS.Sprites.art.dungeon[TH].floor.every(Boolean)), rooms: m.rooms.length }; }, [THEME, MODE]);
