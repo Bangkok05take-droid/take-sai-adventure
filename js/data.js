@@ -162,12 +162,14 @@
     //   たけが breakAt マス以上離れると構えを解き、カイザーフェニックスを予告する。maxActs 行動で構えを解く。cd：構えを解いてから次に構えるまで
     stance: { name: '天地魔闘の構え', range: 2, reflect: 3, breakAt: 3, maxActs: 4, cd: [8, 6] },
   };
-  /* 竜魔神バラン（隠しダンジョン35階）の戦い方（2026年10月28日：技は確定。HP・攻撃力・防御・倍率・待ちの数値は調整案（仮））。技の動きは js/bossai.js の AI.dragonbaran
+  /* 竜魔神バラン（隠しダンジョン35階）の戦い方（2026年10月28日：技は確定。攻撃力・防御は「弱い」のご指摘で 52→66・23→50。倍率・待ちの数値は調整案（仮））。技の動きは js/bossai.js の AI.dragonbaran
    *  どの技も予告した向き・範囲は発動まで変えない（狙い直さない）。演出の秒数とターンの処理は別（演出が長くてもターンは増えない）
    *  doruora：ドルオーラ。8方向の一直線 range マス。予告1ターン → 次の行動で放つ（バランは動かない）→ rest ターン動けない
    *  giga：ギガブレイク。8方向の一直線 range マスを予告1ターン → 次の行動で突進（通り道のたけに1回だけ当たる）。壁・通れない所の手前で止まる。
    *    止まるマスにたけがいれば、たけを1マス押して、そのマスで止まる（押せなければ手前で止まる）。発動のあとの隙は無い
    *    minDist：たけまでの距離がこれ以上（隣では使わない）
+   *  sweep：ギガブレイク（なぎ払い。2026年10月28日に復活）。隣にいるとき、まわり1マス（8マス）を予告1ターン → 次の行動で振り抜く。発動のあとの隙は無い。
+   *    当たるとたけを1マス後ろ（バランから離れる向き）へ押す（押せなければその場）。技名は突進と同じ「ギガブレイク」。溜めの見た目も同じ（剣を頭上・雷）
    *  dora：竜闘気（ドウラ）。HP が at 以下で初めて使う（1ターン使う）。そのあと turns ターン、1ターンに acts 回行動・防御 def 倍（攻撃力はそのまま）。
    *    その間は通常攻撃と移動だけ（ドルオーラ・ギガブレイクは使わない）。終わると rest ターン動けない。終わってから cd 行動で、また使える
    *  HPが enrageAt 以下でドラゴニックオーラが強まる：攻撃力 aura 倍（すべての攻撃）。ドルオーラは一直線のまま
@@ -178,6 +180,7 @@
     enrageAt: 0.5, aura: 1.15,
     doruora: { name: 'ドルオーラ', mult: 2.4, range: 3, rest: 1, cd: 5, minDist: 2 },
     giga: { name: 'ギガブレイク', mult: 2.0, range: 5, cd: 6, minDist: 2 },
+    sweep: { name: 'ギガブレイク', mult: 2.0, cd: 4 },
     dora: { name: '竜闘気', at: 0.7, turns: 3, acts: 2, def: 1.5, rest: 1, cd: 12 },
     rewards: ['dragonic_shield'],   // 2026年10月23日：竜魔神バランの報酬はドラゴニックオーラの盾だけ（真魔剛竜剣・竜の紋章はなし）
     materials: [],
@@ -514,7 +517,7 @@
     baran:  { name: '竜騎士バラン',       hp: 780, atk: 40, def: 18, exp: 1000, ai: 'boss', sprite: 'baran', noScale: true, arena: 'arena_baran', big: true },
     mist:   { name: 'ミストバーン', hp: 820, atk: 40, def: 19, exp: 1100, ai: 'boss', sprite: 'mist', noScale: true, arena: 'arena_mist', big: true },
     /* 竜魔神バラン（隠しダンジョン35階）。竜騎士バランとは別のボス（専用の絵・技・登場ムービー）。技は js/bossai.js の AI.dragonbaran、数値は D.DRAGON_KING */
-    dragonbaran: { name: '竜魔神バラン', hp: 1500, atk: 52, def: 23, exp: 4000, ai: 'boss', sprite: 'dragonbaran', noScale: true, arena: 'arena_baran', big: true },
+    dragonbaran: { name: '竜魔神バラン', hp: 1500, atk: 66, def: 50, exp: 4000, ai: 'boss', sprite: 'dragonbaran', noScale: true, arena: 'arena_baran', big: true },
     mist_clone: { name: 'ミストバーン', hp: 1, atk: 22, def: 0, exp: 0, ai: 'clone', sprite: 'mist', noScale: true, clone: true },
     vearn:  { name: '大魔王バーン', hp: 900, atk: 44, def: 20, exp: 1500, ai: 'boss', sprite: 'vearn', noScale: true, arena: 'throne', big: true },
     // arena 'void'：融合と覚醒の舞台（登場ムービーの白い異空間）。白い床・白い霧・空席の水晶の玉座（js/render.js の drawVoidBg）

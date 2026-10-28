@@ -55,8 +55,8 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     const setup = (mode, slow) => p.evaluate(([mode, slow]) => { const S = TS.UI.S, r = S.run, G = TS.Game, b = r.enemies.find((e) => e.boss), A = r.bossFight;
       const DB = TS.FX.DB; if (!window.__db0) window.__db0 = Object.assign({}, DB); Object.assign(DB, window.__db0); if (slow) for (const k of Object.keys(DB)) DB[k] *= slow;
       r.hazards = []; b.charge = null; b.rest = 0; b.hold = 0; b.sleep = 0; b.slow = 0; b.dora = 0; if (b.doraDef != null) { b.def = b.doraDef; b.doraDef = null; }
-      b.x = A.x + 7; b.y = A.y + 5; b.hp = mode === 'dora' ? Math.floor(b.maxhp * 0.7) : b.maxhp; b.cds = { giga: mode.startsWith('giga') ? 0 : 9, doruora: mode === 'doruora' ? 0 : 9, dora: mode === 'dora' ? 0 : 99 };
-      r.player.x = b.x + (mode === 'doruora' ? 0 : mode === 'gigaPush' ? 0 : 0); r.player.y = b.y + (mode === 'doruora' ? 3 : mode === 'gigaPush' ? 5 : mode === 'dora' ? 4 : 3);
+      b.x = A.x + 7; b.y = A.y + 5; b.hp = mode === 'dora' ? Math.floor(b.maxhp * 0.7) : b.maxhp; b.cds = { giga: mode.startsWith('giga') ? 0 : 9, sweep: mode === 'sweep' ? 0 : 9, doruora: mode === 'doruora' ? 0 : 9, dora: mode === 'dora' ? 0 : 99 };
+      r.player.x = b.x + (mode === 'doruora' ? 0 : mode === 'gigaPush' ? 0 : 0); r.player.y = b.y + (mode === 'doruora' ? 3 : mode === 'gigaPush' ? 5 : mode === 'dora' ? 4 : mode === 'sweep' ? 1 : 3);
       r.player.hp = r.player.maxhp; G.updateVision(r); TS.Render.clearFx(); TS.UI.lockUntil = 0; }, [mode, slow || 0]);
     const press = async () => { await p.evaluate(() => { TS.UI.lockUntil = 0; }); await p.keyboard.press('Space'); };
     const state = () => p.evaluate(() => { const r = TS.UI.S.run, b = r.enemies.find((e) => e.boss); return { b: b.x + ',' + b.y, p: r.player.x + ',' + r.player.y, hp: r.player.hp, turn: r.turn, charge: b.charge && b.charge.fx, rest: b.rest, dora: b.dora || 0, def: b.def }; });
@@ -76,6 +76,13 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await p.waitForTimeout(main ? 2400 : 600); s = await state();
     const [bx, by] = s0.b.split(',').map(Number);
     chk(s.hp < s0.hp && s.b === bx + ',' + (by + 5) && s.p === s0.p && s.rest === 0 && s.turn === s0.turn + 1, `${w} ギガブレイク：通り抜けて5マス先・1回命中・隙なし ${JSON.stringify(s)}`);
+    // ギガブレイク（なぎ払い）：隣でまわり1マスを予告 → 当たると1マス後ろへ押される
+    await closeAll(); await setup('sweep', main ? 5 : 0); await p.waitForTimeout(250); await press(); await p.waitForTimeout(500);
+    s = await state(); chk(s.charge === 'giga', `${w} なぎ払いの予告 ${JSON.stringify(s)}`);
+    await shot('6b_sweep_telegraph'); await closeAll();
+    s0 = await state(); await press(); await p.waitForTimeout(main ? 900 : 100); await shot('6c_sweep');
+    await p.waitForTimeout(main ? 2000 : 600); s = await state();
+    { const [qx, qy] = s0.p.split(',').map(Number); chk(s.hp < s0.hp && s.p === qx + ',' + (qy + 1) && s.b === s0.b && s.rest === 0, `${w} なぎ払い：命中・1マス押される・隙なし ${JSON.stringify(s)}`); }
     // 5マス目：押す
     await closeAll(); await setup('gigaPush'); await p.waitForTimeout(200); await press(); await p.waitForTimeout(400); await closeAll(); s0 = await state(); await press(); await p.waitForTimeout(900); s = await state();
     const [px, py] = s0.p.split(',').map(Number);

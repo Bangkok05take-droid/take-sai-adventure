@@ -603,7 +603,8 @@
       // 竜魔神バランの技のポーズ：ギガブレイクの溜め（剣を頭上に）→ 突進・斬撃（突進の演出の間。左へは反転）、ドルオーラの構え（予告から放ち終わるまで）
       if (kind === 'dragonbaran') {
         const fire = RD.fx.some((f) => f.t === 'dbDoruora' && f.id === e.id && now - f.t0 < f.dur);
-        const dp = gd ? (gd.dir[0] < 0 ? 'dashL' : 'dash') : e.charge && e.charge.fx === 'giga' ? 'sword' : (e.charge && e.charge.fx === 'doruora') || fire ? 'doruora' : null;
+        const gs = RD.fx.find((f) => f.t === 'gigaSweep' && f.id === e.id && now - f.t0 < f.dur);   // なぎ払い：専用の絵が届くまで突進・斬撃の絵（たけの方を向く）
+        const dp = gd ? (gd.dir[0] < 0 ? 'dashL' : 'dash') : gs ? (gs.dir[0] < 0 ? 'dashL' : 'dash') : e.charge && e.charge.fx === 'giga' ? 'sword' : (e.charge && e.charge.fx === 'doruora') || fire ? 'doruora' : null;
         if (dp && SP.bossPose(kind, dp)) img = SP.bossPose(kind, dp);
       }
       const hit = hitFx(e.x, e.y, 'enemy', now);

@@ -2166,9 +2166,34 @@ test('竜魔神バランの技：ギガブレイク（5マスの突進・通り�
   b = mk(5, 5); p.x = 8; p.y = 5; G.updateVision(run); b.cds = { doruora: 9 };
   G.act(S, { type: 'wait' }); p.y = 6; r = G.act(S, { type: 'wait' });
   eq(hits(r), 0); eq(b.x + ',' + b.y, '10,5');
-  // 隣では使わない（通常攻撃）
-  b = mk(5, 5); p.x = 6; p.y = 5; G.updateVision(run);
-  G.act(S, { type: 'wait' }); assert(!b.charge, 'adjacent: normal attack');
+  // 隣では突進しない（なぎ払いが待ち中なら通常攻撃）
+  b = mk(5, 5); p.x = 6; p.y = 5; b.cds = { sweep: 9 }; G.updateVision(run);
+  G.act(S, { type: 'wait' }); assert(!b.charge, 'adjacent: no dash');
+});
+test('竜魔神バランの技：ギガブレイク（なぎ払い。隣でまわり1マスを予告1ターン → 当たるとたけを1マス後ろへ押す・押せなければその場・隙なし）。攻撃力66・防御50', () => {
+  const S = newRun(3304, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);
+  const run = S.run, K = D.DRAGON_KING, p = run.player;
+  const mk = (x, y) => { const b = G.makeEnemy(run, 'dragonbaran', x, y); b.boss = true; b.awake = true; b.hold = 0; run.enemies = [b]; run.bossFight = { x: 2, y: 2, w: 20, h: 12, engaged: true }; return b; };
+  p.hp = p.maxhp = 99999;
+  eq(D.ENEMIES.dragonbaran.atk + '/' + D.ENEMIES.dragonbaran.def, '66/50');
+  const hits = (r) => r.events.filter((e) => e.t === 'hit' && e.target === 'player').length;
+  // 隣（右）：まわり8マスの予告 → 当たって右へ1マス押される
+  let b = mk(10, 5); p.x = 11; p.y = 5; G.updateVision(run); b.cds = { giga: 9, doruora: 9 };
+  G.act(S, { type: 'wait' });
+  assert(b.charge && b.charge.kind === 'gigasweep' && b.charge.fx === 'giga' && b.charge.tiles.length === 8, 'sweep telegraph 8 tiles');
+  assert(run.log.some((l) => l.includes('ギガブレイク')), 'name');
+  let r = G.act(S, { type: 'wait' });
+  eq(hits(r), 1); eq(p.x + ',' + p.y, '12,5', 'pushed back 1'); eq(b.rest, 0, 'no rest'); eq(b.x + ',' + b.y, '10,5', 'baran stays');
+  // 斜め：斜めに押される
+  b = mk(10, 5); p.x = 9; p.y = 4; G.updateVision(run); b.cds = { giga: 9, doruora: 9 };
+  G.act(S, { type: 'wait' }); r = G.act(S, { type: 'wait' }); eq(hits(r), 1); eq(p.x + ',' + p.y, '8,3');
+  // 後ろが壁：押せないのでその場（ダメージは受ける）
+  b = mk(20, 5); p.x = 21; p.y = 5; G.updateVision(run); b.cds = { giga: 9, doruora: 9 };
+  G.act(S, { type: 'wait' }); r = G.act(S, { type: 'wait' }); eq(hits(r), 1); eq(p.x + ',' + p.y, '21,5', 'cannot push');
+  // 1マス離れればかわせる
+  b = mk(10, 5); p.x = 11; p.y = 5; G.updateVision(run); b.cds = { giga: 9, doruora: 9 };
+  G.act(S, { type: 'wait' }); p.x = 12; r = G.act(S, { type: 'wait' }); eq(hits(r), 0, 'dodged'); eq(p.x + ',' + p.y, '12,5');
+  eq(b.cds.sweep, K.sweep.cd, 'cooldown');
 });
 test('竜魔神バランの技：竜闘気（HP70%で1ターン使う → 3ターン2回行動・防御1.5倍・技なし → 1ターン動けない → 12行動後にまた使える）・HP50%で攻撃力1.15倍', () => {
   const S = newRun(3303, (S0) => { S0.village.story.chapter = 6; }); bigRoomFloor(S);

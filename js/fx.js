@@ -552,7 +552,7 @@
    * 見た目だけ（当たり・ターンはゲーム側で1回だけ済んでいる）。大きさはマスの単位（絵の余白は切ってあるので、絵の幅＝見える幅）。
    * 演出の秒数はターンとは無関係。絵が読めないときは描かない（予告の赤いマス・数字は今までどおり出る） */
   const dbImg = (n) => { const A = TS.Sprites && TS.Sprites.art && TS.Sprites.art.fx; return A ? A['db_' + n] || null : null; };
-  FX.DB = { doruoraGather: 140, doruoraPerTile: 90, doruoraFlyMin: 240, doruoraBurst: 300, gigaMove: 120, gigaHold: 380, gigaTrail: 420 };
+  FX.DB = { doruoraGather: 140, doruoraPerTile: 90, doruoraFlyMin: 240, doruoraBurst: 300, gigaMove: 120, gigaHold: 380, gigaTrail: 420, sweepHit: 140, sweepDur: 520 };
   // 絵を (x, y) に置く。W：幅（ピクセル）、ang：回す角度、ax・ay：絵の中の基準（0〜1）、flipY：上下反転（左向きの竜の頭が逆さにならないように）
   function dbDraw(g, img, x, y, W, ang, ax, ay, alpha, flipY) {
     if (!img || alpha <= 0) return;
@@ -611,6 +611,18 @@
       const b = (age - f.gather - f.fly) / (f.dur - f.gather - f.fly);
       dbDraw(g, dbImg('doruora_burst'), x1, y1, ts * (1.1 + 0.8 * ease(b)), 0, 0.5, 0.5, 1 - b);
     }
+  };
+  /* ギガブレイク（なぎ払い）：バランのまわりを雷の斬撃の弧がひと回り（予告したマスの上）、当たったマスに衝撃。
+   * ポーズは render.js が突進・斬撃の絵にする（専用の絵が届くまで）。f.c：バランのマス、f.tiles：予告したマス、f.hit：当たったマス、f.dir：たけの向き */
+  FX.draw.gigaSweep = function (g, f, a, v) {
+    const B = FX.DB, age = a * f.dur, ts = v.ts, x = cx(v, f.c.x), y = cy(v, f.c.y);
+    const start = Math.atan2(f.dir[1], f.dir[0]) - Math.PI * 0.75, sw = Math.min(1, age / (B.sweepHit * 2));   // たけの向きの少し手前から振り抜く
+    for (let i = 0; i < 3; i++) {   // 弧の残像（先頭がいちばん濃い）
+      const ang = start + Math.PI * 2 * Math.max(0, sw - i * 0.08);
+      dbDraw(g, dbImg('giga_slash'), x + Math.cos(ang) * ts * 0.9, y + Math.sin(ang) * ts * 0.9, ts * 1.3, ang + Math.PI / 2, 0.5, 0.5, (1 - a) * (1 - i * 0.3));
+    }
+    for (const t of f.tiles) { const d = age - B.sweepHit; if (d >= 0 && d < 260) dbDraw(g, dbImg('giga_bolt'), cx(v, t.x), cy(v, t.y) + ts * 0.35, ts * 0.45, 0, 0.5, 1, 0.6 * (1 - d / 260)); }
+    if (f.hit) { const d = age - B.sweepHit; if (d >= 0 && d < 300) dbDraw(g, dbImg('giga_impact'), cx(v, f.hit.x), cy(v, f.hit.y), ts * (1.1 + 0.5 * d / 300), 0, 0.5, 0.5, 1 - d / 300); }
   };
   /* ギガブレイク：f.from → f.to を f.move ミリ秒で一気に（バランの位置と突進のポーズは render.js がこの演出から決める）。
    * 通ったマスに短い雷と斬撃の残像、止まった所で斬撃の弧、当たったマスに衝撃。f.path：通ったマス、f.hit：当たったマス（無ければ null） */

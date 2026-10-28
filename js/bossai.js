@@ -307,7 +307,7 @@
     else { G.log(run, E.name + 'の' + c.label + 'をかわした！'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
   /* ---------------- 竜魔神バラン（隠しダンジョン35階の裏ボス） ----------------
-   * 数値は D.DRAGON_KING。技の順：竜闘気（条件を満たしたとき）→ ギガブレイク（一直線 minDist〜range マス）→ ドルオーラ（一直線 minDist〜range マス）→ 通常攻撃・移動。
+   * 数値は D.DRAGON_KING。技の順：竜闘気（条件を満たしたとき）→ ギガブレイクのなぎ払い（隣）→ ギガブレイクの突進（一直線 minDist〜range マス）→ ドルオーラ（一直線 minDist〜range マス）→ 通常攻撃・移動。
    * ドルオーラ・ギガブレイクは予告1ターン（向きと範囲は予告のときに決まり、発動まで変えない）→ 次の行動で発動。
    * 竜闘気の間（e.dora＝残りのターン）は1ターンに2回、通常攻撃か移動だけ。防御は上がる（e.def）。終わると1ターン動けない（e.rest） */
   AI.dragonbaran = function (S, e, ev, sees, H) {
@@ -340,6 +340,13 @@
       return true;
     }
     const d = H.cheb(e, p), a = aligned(e, p);
+    // ギガブレイク（なぎ払い）：隣にいるとき、まわり1マスを予告
+    if (d === 1 && H.adjacent(run, e, p) && !cd.sweep) {
+      H.startCharge(S, e, ev, H.areaTiles(run, e, 1), K.sweep.mult, 0, '', K.sweep.name);
+      Object.assign(e.charge, { kind: 'gigasweep', fx: 'giga' });
+      cd.sweep = K.sweep.cd;
+      return true;
+    }
     if (!a || d < 2) return false;   // 通常攻撃（隣）か、近づく
     const onLine = (tiles) => tiles.some((t) => t.x === p.x && t.y === p.y);
     if (!cd.giga && d >= K.giga.minDist && d <= K.giga.range) {
@@ -361,6 +368,23 @@
       }
     }
     return false;
+  };
+  /* ギガブレイク（なぎ払い）の発動：予告したまわりのマス（c.tiles）にたけがいれば当たり、たけを1マス後ろ（バランから離れる向き）へ押す。
+   * 押す先が壁・通れない所・ほかの敵なら、その場のまま。隙は無い */
+  RES.gigasweep = function (S, e, ev, c, H) {
+    const run = S.run, p = run.player, E = D.ENEMIES[e.type], K = D.DRAGON_KING.sweep;
+    const hit = c.tiles.some((t) => t.x === p.x && t.y === p.y), dx = sgn(p.x - e.x), dy = sgn(p.y - e.y);
+    let pushed = null;
+    if (hit && (dx || dy)) {
+      const nx = p.x + dx, ny = p.y + dy;
+      if (G.canStep(run.map, p.x, p.y, dx, dy) && DG.passable(run.map, nx, ny) && !G.enemyAt(run, nx, ny)) pushed = { x: nx, y: ny };
+    }
+    const at = { x: p.x, y: p.y };
+    if (pushed) { p.x = pushed.x; p.y = pushed.y; if (G.updateVision) G.updateVision(run); }
+    e.dir = G.dirOf(dx, dy) || e.dir;
+    ev.push({ t: 'gigaSweep', id: e.id, tiles: c.tiles, hit: hit ? at : null, pushed, dir: [dx, dy] });
+    if (hit) H.damagePlayer(S, e, H.calcDamage(run.rng, e.atk * K.mult, G.playerDef(run)), ev, E.name + 'の' + K.name, { big: true });
+    else { G.log(run, E.name + 'の' + K.name + 'をかわした！'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
   /* ギガブレイクの発動：予告した直線（c.tiles。向き c.dir）を一気に突進する。途中のマスを飛ばさずに1マスずつ調べ、たけがいれば1回だけ当たる（通り抜ける）。
    * 壁・通れない所・ほかの敵の手前で止まる。止まるマスにたけがいれば、たけを1マス先へ押してそのマスで止まる（押せなければ手前で止まる）。隙は無い */

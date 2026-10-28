@@ -1949,6 +1949,14 @@
           if (e.hit) hitD = Math.max(hitD, Math.round(B.gigaMove * hitI / n));
           break;
         }
+        // 竜魔神バラン：ギガブレイク（なぎ払い）。たけへの命中の表示は振り抜いた時。押された移動は描画側の補間で見える
+        case 'gigaSweep': {
+          const B = TS.FX.DB, b = run.enemies.find((q) => q.id === e.id);
+          if (b) RD.addFx({ t: 'gigaSweep', id: e.id, c: { x: b.x, y: b.y }, tiles: e.tiles, hit: e.hit, dir: e.dir, dur: B.sweepDur });
+          AU.sfx('bolt'); TS.FX.shake(RD, 4, 280);
+          if (e.hit) hitD = Math.max(hitD, B.sweepHit);
+          break;
+        }
         // 竜魔神バラン：竜闘気の始まり（足元の輪）・終わり（炎がはじける）。まとっている間の炎は render.js が e.dora で出す
         case 'dora': { const b = run.enemies.find((q) => q.id === e.id); if (b) RD.addFx({ t: 'doraStart', x: b.x, y: b.y, dur: 520 }); toast(e.name || '竜闘気', 'danger'); AU.sfx('warn'); break; }
         case 'doraEnd': { const b = run.enemies.find((q) => q.id === e.id); if (b) RD.addFx({ t: 'doraBurst', x: b.x, y: b.y, dur: 520 }); AU.sfx('bump'); break; }   // 天地魔闘の構え：技名だけ（構えのポーズと光は render.js が e.stance で出す）
