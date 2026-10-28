@@ -5,7 +5,7 @@
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const THEME = process.argv[2] || 'brick';
-const FLOOR = { gold: 27, brick: 2, roots: 5, ruins: 8, ruins_deep: 12, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
+const FLOOR = { crystal: 22, gold: 27, brick: 2, roots: 5, ruins: 8, ruins_deep: 12, sunken: 17, temple: 22, sealed: 27, demon: 31 }[THEME] || 2;
 const ROOT = path.join(__dirname, '..'), OUT = process.argv[3] || path.join(ROOT, 'docs', 'dungeon-art-v1', THEME);
 const MODE = process.argv[4] || '';
 const SEED = +(process.env.SEED || 2024);   // 地図の種（別の地図を撮るとき）

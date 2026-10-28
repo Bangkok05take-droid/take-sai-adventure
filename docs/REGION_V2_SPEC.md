@@ -58,3 +58,7 @@
   - 300枚の平均（強めたB案 side 3 と組み合わせ）：輪 0.52→1.99（輪なしの地図 164→0枚、2つ以上 18→296枚）、出口1つの部屋 1.78→0.37、行き止まりの通路 0.35→0.12、床 228→236マス、階段までの歩数 33→25、作る時間 0.7→0.8ms、予備の地図 0。
   - 印つきの全体図：`node tools/dungeon-art-preview.js`（SEED・LOOPS=2）→ `python3 -I tools/dungeon-loop-marks.py <フォルダ>`。`docs/sunken-loops/loops_s101|s202|s303.png`。
 - 2026年10月28日：強めたB案（side 3）と周回ルート（target 2）を本番に反映。全地域の新しく作る通常階が対象。既存のセーブの地図とボス部屋はそのまま。
+
+## 2026年10月28日：地底の古代神殿 v2（ZIP temple_match_v1）をプレビュー
+- 内部名 crystal（21〜24階）。`python3 -I tools/make-region-v2.py crystal assets/reference/temple-match-v1` → `assets/dungeon/crystal_v2/`。壁は 太陽4・旗3・日輪3、残り3は旗、2・1は細い壁。暗くしない。25階のボス部屋は変えない。
+- 本番はまだ。プレビュー：`node tools/dungeon-art-preview.js crystal docs/temple-v2 e5`（強めたB案＋周回ルートの地図）。代表 `docs/temple-v2/temple_21-24_390.jpg`、全体 `docs/temple-v2/temple_overview.png`。

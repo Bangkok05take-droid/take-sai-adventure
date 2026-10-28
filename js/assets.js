@@ -253,6 +253,9 @@
       // 水没した古代都市（ZIP sunken_match_v1。tools/region-v2/sunken.json）。壁は 水の守護像4・波3・侵食3 のくり返し、残り3は波、2・1は細い壁。水は壁の足元の絵だけ
       sunken_v2: regionV2('sunken_v2', { walls: { wallDeity: 'wall_water_deity', wallWave: 'wall_wave', wallEroded: 'wall_eroded', narrow3: 'wall_narrow' },
         seq: ['wallDeity', 'wallWave', 'wallEroded'], fill: ['wallWave', 'narrow3'], e4ends: false, thin: false }),   // thin：ZIP sunken_thin_v1（2026年10月27日：採用を保留。プランBで薄い壁ができないため）
+      // 地底の古代神殿（内部名 crystal。ZIP temple_match_v1。tools/region-v2/crystal.json）。壁は 太陽4・旗3・日輪3 のくり返し、残り3は旗、2・1は細い壁
+      crystal_v2: regionV2('crystal_v2', { walls: { wallSun: 'wall_sun', wallBanner: 'wall_banner', wallSolar: 'wall_solar', narrow3: 'wall_narrow' },
+        seq: ['wallSun', 'wallBanner', 'wallSolar'], fill: ['wallBanner', 'narrow3'], e4ends: false }),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' } },

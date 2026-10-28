@@ -1,0 +1,19 @@
+{
+  "_note": "地底の古代神殿（21〜24階。内部名 crystal）：ZIP temple_match_v1（assets/reference/temple-match-v1/）。暗くしない。床中央の太陽紋は今回なし",
+  "out": "crystal_v2",
+  "walls": { "wallSun": "wall_sun", "wallBanner": "wall_banner", "wallSolar": "wall_solar", "narrow3": "wall_narrow" },
+  "files": {
+    "floor_0": "assets/floor_4x4.png",
+    "wallSun": "assets/wall_sun.png",
+    "wallBanner": "assets/wall_banner.png",
+    "wallSolar": "assets/wall_solar.png",
+    "narrow3": "assets/wall_narrow.png",
+    "rimE": "assets/edge_left.png",
+    "rimW": "assets/edge_right.png",
+    "rimN": "assets/edge_bottom.png",
+    "jInNE": "assets/corner_bottom_left.png",
+    "jInNW": "assets/corner_bottom_right.png"
+  },
+  "e4": "edge_fit",
+  "e5": "ends_fit"
+}
