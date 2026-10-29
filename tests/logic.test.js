@@ -3258,6 +3258,19 @@ test('竜の紋章：HP0で最大HPの50%（四捨五入）で復活し、紋章
     if (want === 1) eq(p.hp, 301); else assert(p.hp === Math.round(301 * 0.5) || p.hp === Math.round(301 * 0.5) - 0, 'half hp ' + p.hp);
   }
 });
+test('2マス攻撃：勇者の剣＋勇者の盾でも正面2マス目に届く（片方だけ・ほかの組み合わせでは届かない）。モッはモッチャンに改名', () => {
+  const hit0 = D.PLAYER.hitRate; D.PLAYER.hitRate = 1;
+  try {
+    const S = newRun(1605); bigRoomFloor(S); const run = S.run, p = run.player;
+    equipSet(S, ['hero_sword_relic', 'hero_shield_relic']); assert(G.sets(run).heroSet && G.sets(run).reach && !G.sets(run).swordShield);
+    const far = addEnemy(S, 'frog', p.x + 2, p.y); far.hp = far.maxhp = 999; far.sleep = 99;
+    const r = G.act(S, { type: 'move', dir: 'right' });
+    assert(r.consumed && p.x === 5 && far.hp < 999 && r.events.some((e) => e.t === 'reach'), 'reach with the hero set');
+    equipSet(S, ['hero_sword_relic', 'dragonic_shield']); assert(!G.sets(run).reach, 'mixed set: no reach');
+    equipSet(S, ['shinma_sword', 'hero_shield_relic']); assert(!G.sets(run).reach, 'mixed set: no reach');
+  } finally { D.PLAYER.hitRate = hit0; }
+  eq(D.CAST.mot.name, 'モッチャン'); eq(D.CAST.friend1.name, 'モッチャン');
+});
 test('2マス攻撃（剣＋盾）：命中を固定して、正面2マス目に届く・手前の敵を貫通して2体ともダメージ・壁や角の向こうには当たらない・待っているボスには届かない', () => {
   const hit0 = D.PLAYER.hitRate; D.PLAYER.hitRate = 1;   // 命中の乱数を固定（外れなし）
   try {

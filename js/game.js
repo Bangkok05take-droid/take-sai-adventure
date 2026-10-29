@@ -115,7 +115,9 @@
     const id = (t) => { const it = G.equipped(bag, t); return it ? it.id : null; };
     const w = id('weapon'), s = id('shield'), a = id('accessory');
     const sword = w === 'shinma_sword', crest = a === 'dragon_crest', aura = s === 'dragonic_shield';
+    const hero = w === 'hero_sword_relic' && s === 'hero_shield_relic';   // 勇者の剣＋勇者の盾（2026年10月29日）
     return { swordCrest: sword && crest, swordShield: sword && aura, crestShield: crest && aura, all3: sword && crest && aura,
+      heroSet: hero, reach: (sword && aura) || hero,   // reach：通常攻撃が正面2マス（真魔剛竜剣＋ドラゴニックオーラの盾、または勇者の剣＋勇者の盾）
       shieldRobe: s === 'phantom_shield' && a === 'demon_robe', robe: a === 'demon_robe' };
   };
   G.sets = (run) => G.setsOf(run.bag);
@@ -847,10 +849,10 @@
     if (G.merchantAt(run, nx, ny)) { ev.push({ t: 'merchant' }); return false; }
     const e = G.enemyAt(run, nx, ny);
     if (e && G.bossWaiting(run, e)) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; }
-    /* 真魔剛竜剣＋ドラゴニックオーラの盾：正面2マス目の敵にも届く（1マス目から2マス目へも壁・角を越えない）。
+    /* 真魔剛竜剣＋ドラゴニックオーラの盾（または勇者の剣＋勇者の盾）：正面2マス目の敵にも届く（1マス目から2マス目へも壁・角を越えない）。
      * 戦いの前で待っているボスと商人には届かない（ふつうに歩ける）。手前に敵がいれば貫通して奥の敵にも当たる（2体まで） */
     const far = (() => {
-      if (!G.sets(run).swordShield || !G.canStep(run.map, nx, ny, d[0], d[1])) return null;
+      if (!G.sets(run).reach || !G.canStep(run.map, nx, ny, d[0], d[1])) return null;
       const e2 = G.enemyAt(run, nx + d[0], ny + d[1]);
       return e2 && !G.bossWaiting(run, e2) && !G.merchantAt(run, nx + d[0], ny + d[1]) ? e2 : null;
     })();
