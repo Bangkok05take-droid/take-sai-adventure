@@ -3524,7 +3524,7 @@ test('なくしたボスの報酬の買い戻し：対象と値段（ボスご�
   const want = { croc_tear: 1000, croc_axe: 1000, iceflame_shield: 2000, iceflame_crystal: 2000, phantom_shield: 3000, phantom_mask: 3000,
     shinma_sword: 4000, hero_sword: 5000, hero_shield: 5000, demon_robe: 6000 };
   for (const [id, pr] of Object.entries(want)) eq(G.buybackPrice(id).price, pr, id);
-  for (const id of ['golden_elephant', 'hero_sword_relic', 'hero_shield_relic', 'amber_shard', 'dragonic_shield', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
+  for (const id of ['golden_elephant', 'amber_shard', 'dragonic_shield', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
   const S = findMerchant(8300, 3, 13), r = S.run, V = S.village;
   const ids = () => G.buybackList(S).map((x) => x.id).sort().join();
   // 倒しただけ・未入手：出ない
@@ -3979,6 +3979,22 @@ test('勇者の剣・盾と無限強化：鍛冶屋が+8の段階なら、オリ
   const L = TS.Save.deserialize(TS.Save.serialize(S)); assert(L.village.story.heroSword && L.village.story.heroShield); assert(!G.canGetHeroShield(L.village) && !G.canGetHeroSword(L.village));
 });
 
+test('勇者の剣・勇者の盾の買い戻し：受け取ったことがあり、今は持っていないときだけ旅商人に並ぶ（+0の新しい品）', () => {
+  const S = G.newState(), V = S.village;
+  const ids = () => G.buybackList(S).map((g) => g.id).filter((id) => /hero_.*_relic/.test(id)).join();
+  eq(ids(), '', 'never obtained');
+  V.story.heroSword = true; V.story.heroShield = true;
+  eq(ids(), 'hero_sword_relic,hero_shield_relic', 'obtained and lost');
+  const sw = G.makeItem(S, 'hero_sword_relic'); sw.plus = 12; V.storage.push(sw);
+  eq(ids(), 'hero_shield_relic', 'still owns the sword');
+  const S2 = G.newState(); S2.village.story.heroForge = true; eq(G.buybackList(S2).map((g) => g.id).filter((id) => id === 'hero_sword_relic').join(), 'hero_sword_relic', 'old save (Koi forged it)');
+  // 旅商人から買う：+0・持ち物へ
+  V.storage = []; V.funds = 20000;
+  assert(G.depart(S, 55).ok); const run = S.run; run.merchant = { x: 1, y: 1 };
+  const r = G.merchantBuyback(S, 'hero_sword_relic'); assert(r.ok, r.msg);
+  const got = run.bag.find((i) => i.id === 'hero_sword_relic'); assert(got && !got.plus, '+0');
+  eq(G.buybackList(S).some((g) => g.id === 'hero_sword_relic'), false, 'not listed after buying');
+});
 test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {
   const name = (ch, f) => D.THEMES[D.floorFor(ch, f).theme].name;
   const want = { 1: 'レンガの回廊', 3: 'レンガの回廊', 4: '木の根の遺跡', 6: '木の根の遺跡', 7: '地下の遺跡', 10: '地下の遺跡', 11: '地下の遺跡', 14: '地下の遺跡',

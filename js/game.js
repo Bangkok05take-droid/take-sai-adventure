@@ -585,9 +585,10 @@
     }
     // 竜の紋章など：入手履歴（竜魔神バランの報酬を拾った）か、村で拾ったことがあれば（D.VILLAGE_PICKUPS）
     const found = (V.story || {}).found || {};
-    for (const id of Object.keys(D.MERCHANT.buybackItems || {})) {
+    for (const [id, X] of Object.entries(D.MERCHANT.buybackItems || {})) {
       const bp = G.buybackPrice(id), pk = Object.keys(D.VILLAGE_PICKUPS || {}).find((k) => D.VILLAGE_PICKUPS[k].item === id);
-      if (out.some((x) => x.id === id) || !((V.bossObtained || {})[id] || (pk && found[pk])) || G.holdsItem(S, id)) continue;
+      const got = (V.bossObtained || {})[id] || (pk && found[pk]) || (X.story || []).some((k) => (V.story || {})[k]);   // 勇者の剣・盾：村で受け取った記録
+      if (out.some((x) => x.id === id) || !got || G.holdsItem(S, id)) continue;
       out.push({ id, boss: null, price: bp.price, note: bp.note });
     }
     return out;
