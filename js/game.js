@@ -2600,8 +2600,8 @@
   };
 
   // ---- 鍛冶屋 ----
-  // 強化の上限：設備の段階（+3/+5/+8）。コイが勇者の剣を打ったあと（V.story.heroForge）は、設備が +8 まで届いていれば上限なし（無限強化）
-  G.smithMax = (V) => { const m = D.SMITH.maxPlusByLv[V.smithLv || 0]; return m >= D.SMITH.maxPlus && V.story && V.story.heroForge ? Infinity : m; };
+  // 強化の上限：設備の段階（+3/+5/+8）。設備が +8 まで届いていれば上限なし（+9からはオリハルコンを使う。2026年10月29日：勇者の剣を打つ条件は無くなった）
+  G.smithMax = (V) => { const m = D.SMITH.maxPlusByLv[V.smithLv || 0]; return m >= D.SMITH.maxPlus ? Infinity : m; };
   G.smithCost = (it) => D.SMITH.cost(it.plus || 0);
   G.smithMats = (it) => D.SMITH.mats(it.plus || 0);
   G.canSmith = function (V, it) {
@@ -2613,8 +2613,7 @@
     const it = V.bag.find((i) => i.uid === uid) || V.storage.find((i) => i.uid === uid);
     if (!it) return { ok: false, msg: '見つかりません。' };
     if (!V.smithLv) return { ok: false, msg: '鍛冶屋がまだありません。' };
-    if (!G.canSmith(V, it)) return { ok: false, msg: (it.plus || 0) >= G.smithMax(V) && G.smithMax(V) < D.SMITH.maxPlus ? '今の設備ではここまで。鍛冶屋を拡張しよう。'
-      : (it.plus || 0) >= D.SMITH.maxPlus && !(V.story && V.story.heroForge) ? 'ここから先は、伝説の金属が要りそうだ……。' : 'これ以上強化できません。' };
+    if (!G.canSmith(V, it)) return { ok: false, msg: (it.plus || 0) >= G.smithMax(V) && G.smithMax(V) < D.SMITH.maxPlus ? '今の設備ではここまで。鍛冶屋を拡張しよう。' : 'これ以上強化できません。' };
     const cost = G.smithCost(it), mats = G.smithMats(it);
     if (V.funds < cost) return { ok: false, msg: 'お金が足りません。（' + cost + 'G 必要）' };
     for (const [m, n] of Object.entries(mats)) if ((V.materials[m] || 0) < n) return { ok: false, msg: '素材が足りません：' + D.ITEMS[m].name + '×' + n };
@@ -2626,8 +2625,9 @@
 
   /* ---- オリハルコンと勇者の剣・盾（2026年10月21日） ----
    *  ティウ：30階の救援で持ち帰ったオリハルコンを、町で1回だけ渡す（V.story.oriTiw：'holding' → 'given'）
-   *  コイ：オリハルコン（素材箱）を持って話しかけると勇者の剣を打つ（1個・お金なし）。1回だけ。無限強化の解放（V.story.heroForge）
-   *    ティウとの会話は条件にしない（ダンジョンで拾ったオリハルコンでもよい）。鍛冶屋が建っていること
+   *  コイ：オリハルコン（素材箱）を持って初めて話しかけると、上限なく鍛えられることを話す（1回だけ。V.story.koiOri）。強化そのものは鍛冶屋の画面で
+   *  モッチャン（こもれびの家）：お宝（展示室）を全部集め、村の飾りを全部作ったあと、勇者の剣を渡す（昔マスターヤナイが村に寄付した剣。V.story.heroSword）。1回だけ
+   *    以前の版でコイに打ってもらった（V.story.heroForge）なら、もう持っているので渡さない
    *  ワーン：マスターヤナイの像があり、まだ受け取っていなければ勇者の盾を渡す（V.story.heroShield）。1回だけ
    *  剣・盾はバッグに入れる（いっぱいなら倉庫。倉庫もいっぱいでも、なくさないよう倉庫へ） */
   const giveVillageItem = (S, id) => { const V = S.village, it = G.makeItem(S, id); if (V.bag.length < D.BAG_SIZE) V.bag.push(it); else V.storage.push(it); return it; };
@@ -2639,12 +2639,15 @@
     V.materials.orichalcum = (V.materials.orichalcum || 0) + D.ORICHALCUM.tiw;
     return { ok: true, n: D.ORICHALCUM.tiw };
   };
-  G.canForgeHeroSword = (V) => !V.story.heroForge && (V.smithLv || 0) >= 1 && (V.materials.orichalcum || 0) >= D.ORICHALCUM.sword;
-  G.forgeHeroSword = function (S) {
+  G.canKoiOri = (V) => !V.story.koiOri && (V.smithLv || 0) >= 1 && (V.materials.orichalcum || 0) >= 1;
+  G.markKoiOri = (V) => { V.story.koiOri = true; };
+  // 勇者の剣の条件：展示室のお宝を全部、村の飾りを全部
+  G.heroSwordReady = (V) => G.donatedCount(V) >= D.MUSEUM_ITEMS.length && D.FACILITIES.filter((f) => f.kind === 'decor').every((f) => !!(V.built && V.built[f.id]));
+  G.canGetHeroSword = (V) => !V.story.heroSword && !V.story.heroForge && G.heroSwordReady(V);
+  G.giveHeroSword = function (S) {
     const V = S.village;
-    if (!G.canForgeHeroSword(V)) return { ok: false };
-    V.materials.orichalcum -= D.ORICHALCUM.sword;
-    V.story.heroForge = true;
+    if (!G.canGetHeroSword(V)) return { ok: false };
+    V.story.heroSword = true;
     const it = giveVillageItem(S, 'hero_sword_relic');
     return { ok: true, item: it, inStorage: V.storage.includes(it) };
   };

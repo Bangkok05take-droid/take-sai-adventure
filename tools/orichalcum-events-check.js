@@ -2,7 +2,8 @@
 // PCのブラウザ、幅360・390・430。実際の画面の操作で：
 //  ① 30階の救援：オオカミの配送を見終えると、ティウが「オリハルコンを町まで持って帰る」と話す（その場では渡さない）
 //  ② 村でティウに話しかける → オリハルコンを1個受け取る（2回目は冒険案内）
-//  ③ 鍛冶屋（コイ）→ 勇者の剣を打つ会話 → 勇者の剣がバッグに・オリハルコン1個減る・お金は変わらない → 鍛冶屋の画面（上限なし）。2回目は鍛冶屋だけ
+//  ③ 鍛冶屋（コイ）→ 上限なく鍛えられるという会話（1回だけ。勇者の剣は打たない。2026年10月29日）→ 鍛冶屋の画面（上限なし）。2回目は鍛冶屋だけ
+//  ⑤ お宝を全部飾り、村の飾りを全部作ったあと、こもれびの家（モッチャン）→ 勇者の剣の会話 → 剣がバッグに → 村の発展の画面。2回目は村の発展だけ
 //  ④ マスターヤナイの像のあと、食堂（ワーン）→ 勇者の盾の会話 → 盾がバッグに → 食堂の画面。2回目は食堂だけ
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -74,15 +75,12 @@ const closeModals = (p) => p.evaluate(() => { while (TS.UI.modals.length) TS.UI.
     const f0 = await p.evaluate(() => TS.UI.S.village.funds);
     await p.tap('.fac[data-fac="smith"]'); await p.waitForTimeout(300);
     if (W === 390) await p.screenshot({ path: path.join(OUT, `3-koi-see_${W}.jpg`), quality: 85 });
-    const l3a = []; for (let i = 0; i < 3 && await p.$('.talk'); i++) { l3a.push(await p.evaluate(() => document.querySelector('.talk .who').textContent + '：' + document.querySelector('.talk .txt').textContent)); await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(200); }
-    if (W === 390) await p.screenshot({ path: path.join(OUT, `3-koi-done_${W}.jpg`), quality: 85 });
-    const l3b = await readTalk(p);
-    const l3 = l3a.concat(l3b);
-    const st3 = await p.evaluate(() => { const V = TS.UI.S.village; return { forge: !!V.story.heroForge, mats: V.materials.orichalcum || 0, sword: V.bag.concat(V.storage).filter((i) => i.id === 'hero_sword_relic').length, funds: V.funds }; });
-    chk(/オリハルコンじゃねえか/.test(l3.join()) && /アタイに任せな/.test(l3.join()) && /アタイもひとつ腕が上がった/.test(l3.join()) && l3.every((s) => !/^コイ：/.test(s) || /コイ/.test(s)), `${W} ③ コイの会話（アタイ） ${l3.join(' / ')}`);
-    chk(st3.forge && st3.mats === 0 && st3.sword === 1 && st3.funds === f0, `${W} ③ 勇者の剣（オリハルコン1個・お金なし）・無限強化の解放 ${JSON.stringify(st3)}`);
+    const l3 = await readTalk(p);
+    const st3 = await p.evaluate(() => { const V = TS.UI.S.village; return { koi: !!V.story.koiOri, mats: V.materials.orichalcum || 0, sword: V.bag.concat(V.storage).filter((i) => i.id === 'hero_sword_relic').length, funds: V.funds }; });
+    chk(/オリハルコンじゃねえか/.test(l3.join()) && /上限なし/.test(l3.join()), `${W} ③ コイの会話（アタイ・上限なし） ${l3.join(' / ')}`);
+    chk(st3.koi && st3.mats === 1 && st3.sword === 0 && st3.funds === f0, `${W} ③ 勇者の剣は打たない・オリハルコンは減らない ${JSON.stringify(st3)}`);
     const smithTitle = await modalTitle(p), smithText = await p.evaluate(() => (document.querySelector('.modal') || {}).textContent || '');
-    chk(/鍛冶屋/.test(smithTitle) && /上限：なし/.test(smithText) && /勇者の剣/.test(smithText), `${W} ③ そのまま鍛冶屋の画面（上限なし・勇者の剣が並ぶ）`);
+    chk(/鍛冶屋/.test(smithTitle) && /上限：なし/.test(smithText), `${W} ③ そのまま鍛冶屋の画面（上限なし）`);
     if (W === 390) await p.screenshot({ path: path.join(OUT, `3-smith_${W}.jpg`), quality: 85 });
     await closeModals(p); await p.waitForTimeout(200);
     await p.tap('.fac[data-fac="smith"]'); await p.waitForTimeout(300);
@@ -103,6 +101,22 @@ const closeModals = (p) => p.evaluate(() => { while (TS.UI.modals.length) TS.UI.
     await closeModals(p); await p.waitForTimeout(200);
     await p.tap('.fac[data-fac="diner"]'); await p.waitForTimeout(300);
     chk(!(await p.$('.talk')), `${W} ④ 2回目は食堂だけ（二重に起きない）`);
+    await closeModals(p);
+    // ⑤ こもれびの家（モッチャン）：そろう前は村の発展だけ → お宝と村の飾りを全部そろえると勇者の剣
+    await p.tap('.fac[data-fac="develop"]'); await p.waitForTimeout(300);
+    chk(!(await p.$('.talk')) && /村の発展/.test(await modalTitle(p)), `${W} ⑤ そろう前は村の発展だけ`);
+    await closeModals(p);
+    await p.evaluate(() => { const V = TS.UI.S.village, D = TS.Data; for (const id of D.MUSEUM_ITEMS) V.donated[id] = true; for (const f of D.FACILITIES) if (f.kind === 'decor') V.built[f.id] = true; TS.Game.applyFacilities(V); TS.Save.save(TS.UI.S); });
+    await p.reload(); await p.waitForTimeout(800); await p.tap('#btn-continue'); await p.waitForTimeout(900); await closeModals(p); await p.waitForTimeout(200);
+    await p.tap('.fac[data-fac="develop"]'); await p.waitForTimeout(300);
+    if (W === 390) await p.screenshot({ path: path.join(OUT, `5-mot-sword_${W}.jpg`), quality: 85 });
+    const l5 = await readTalk(p);
+    const st5 = await p.evaluate(() => { const V = TS.UI.S.village; return { got: !!V.story.heroSword, n: V.bag.concat(V.storage).filter((i) => i.id === 'hero_sword_relic').length }; });
+    chk(/マスターヤナイがこの村に寄付/.test(l5.join()) && /^モッチャン：/.test(l5[0]) && st5.got && st5.n === 1, `${W} ⑤ モッチャンから勇者の剣 ${JSON.stringify(st5)} ${l5[0]}`);
+    chk(/村の発展/.test(await modalTitle(p)), `${W} ⑤ そのまま村の発展の画面`);
+    await closeModals(p); await p.waitForTimeout(200);
+    await p.tap('.fac[data-fac="develop"]'); await p.waitForTimeout(300);
+    chk(!(await p.$('.talk')), `${W} ⑤ 2回目は村の発展だけ（二重に起きない）`);
     await closeModals(p);
     chk(!errs.length, `${W} エラーなし ${errs.join(' / ')}`);
     await ctx.close();

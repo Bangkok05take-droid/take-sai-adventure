@@ -1258,7 +1258,7 @@ test('村の発展の一覧：完成した項目は出さず、段階式の拡�
   for (let k = 0; k < 40; k++) { const f = G.unbuiltFacilities(V).find((f) => G.facilityStatus(S, f.id).unlocked); if (!f) break; G.buildFacility(S, f.id); V.funds = 1e6; }
   V.donated = {}; for (const id of D.MUSEUM_ITEMS) V.donated[id] = true;
   for (let k = 0; k < 40; k++) { const f = G.unbuiltFacilities(V).find((f) => G.facilityStatus(S, f.id).unlocked); if (!f) break; G.buildFacility(S, f.id); V.funds = 1e6; }
-  eq(G.unbuiltFacilities(V).length, 0, 'all built'); eq(G.storageSize(V), 30); eq(G.smithMax(V), 8);
+  eq(G.unbuiltFacilities(V).length, 0, 'all built'); eq(G.storageSize(V), 30); eq(G.smithMax(V), Infinity);   // +8 の段階なら上限なし（オリハルコン）
 });
 
 // ---- 謎の旅商人 ----
@@ -3897,7 +3897,7 @@ test('33階・真大魔王バーン（版4）：正方形の決戦場（15×15�
 
 test('オリハルコン：30階から床・敵（各5%）。29階まで・33階の決戦場には置かない。ティウが救援で持ち帰り、町で1回だけ1個。倒れても受け取れる', () => {
   const O = D.ORICHALCUM;
-  eq(O.from, 30); eq(O.floor, 0.05); eq(O.drop, 0.05); eq(O.tiw, 1); eq(O.sword, 1);
+  eq(O.from, 30); eq(O.floor, 0.05); eq(O.drop, 0.05); eq(O.tiw, 1);
   eq(D.ITEMS.orichalcum.type, 'material');
   // 床：最終章の31・32階に置かれることがある。29階までは置かない
   const S = G.newState(); S.village.story.chapter = 6; for (const k of ['croc', 'flame', 'kill', 'baran', 'mist']) S.village.story.defeated[k] = true;
@@ -3928,7 +3928,7 @@ test('オリハルコン：30階から床・敵（各5%）。29階まで・33階
   assert(G.takeTiwOri(R).ok); eq(R.village.materials.orichalcum, 1); eq(st.oriTiw, 'given');
   assert(!G.takeTiwOri(R).ok); eq(R.village.materials.orichalcum, 1, 'only once');
 });
-test('勇者の剣・盾と無限強化：コイはオリハルコン1個（お金なし）で勇者の剣を1回だけ。+9からはオリハルコンと+1000Gずつ。ワーンは像のあと勇者の盾を1回だけ', () => {
+test('勇者の剣・盾と無限強化：鍛冶屋が+8の段階なら、オリハルコンで上限なく（+9からはオリハルコンと+1000Gずつ）。勇者の剣はお宝と村の飾りが全部そろったあとモッチャンから。ワーンは像のあと勇者の盾を1回だけ', () => {
   const I = D.ITEMS;
   eq(I.hero_sword_relic.atk, 30); eq(I.hero_shield_relic.def, 24);
   const maxW = Math.max(...Object.entries(I).filter(([id, d]) => d.type === 'weapon' && id !== 'hero_sword_relic').map(([, d]) => d.atk));
@@ -3941,23 +3941,30 @@ test('勇者の剣・盾と無限強化：コイはオリハルコン1個（お�
   eq(D.SMITH.cost(10), 4200); eq(JSON.stringify(D.SMITH.mats(10)), JSON.stringify({ orichalcum: 3 }));
   const S = G.newState(), V = S.village; V.funds = 99999;
   for (const id of ['storage2', 'smith1', 'smith2', 'smith3']) V.built[id] = true; G.applyFacilities(V);
-  // コイ：オリハルコンが無ければ起きない
-  assert(!G.canForgeHeroSword(V));
+  // コイ（2026年10月29日）：勇者の剣は打たない。オリハルコンを持って初めて話すと、上限なく鍛えられることを話すだけ（1回）
+  assert(!G.canKoiOri(V), 'no orichalcum: no talk');
   const sw = G.makeItem(S, 'golden_shield'); sw.plus = 8; V.storage.push(sw);
-  V.materials.orichalcum = 3;
-  eq(G.smithMax(V), 8, 'cap before the event'); assert(!G.smith(S, sw.uid).ok);
-  // 勇者の剣：1個使う・お金は変わらない・バッグへ・無限強化の解放
-  const f0 = V.funds; assert(G.canForgeHeroSword(V)); const r = G.forgeHeroSword(S); assert(r.ok);
-  eq(V.materials.orichalcum, 2); eq(V.funds, f0); assert(V.bag.some((i) => i.id === 'hero_sword_relic')); assert(V.story.heroForge);
-  assert(!G.canForgeHeroSword(V) && !G.forgeHeroSword(S).ok, 'only once');
-  eq(V.bag.filter((i) => i.id === 'hero_sword_relic').length, 1);
+  V.materials.orichalcum = 3; assert(G.canKoiOri(V)); G.markKoiOri(V); assert(!G.canKoiOri(V), 'once');
+  // 鍛冶屋が +8 の段階なら、条件なしで上限なし
+  eq(V.bag.concat(V.storage).filter((i) => i.id === 'hero_sword_relic').length, 0, 'koi does not forge the sword');
+  // 勇者の剣：お宝を全部飾り、村の飾りを全部作ったあと、モッチャンが渡す（1回だけ）
+  assert(!G.canGetHeroSword(V), 'not ready');
+  for (const id of D.MUSEUM_ITEMS) V.donated[id] = true;
+  assert(!G.canGetHeroSword(V), 'decor not complete');
+  for (const f of D.FACILITIES) if (f.kind === 'decor') V.built[f.id] = true; G.applyFacilities(V);
+  assert(G.canGetHeroSword(V)); assert(G.giveHeroSword(S).ok);
+  eq(V.bag.concat(V.storage).filter((i) => i.id === 'hero_sword_relic').length, 1);
+  assert(!G.canGetHeroSword(V) && !G.giveHeroSword(S).ok, 'only once');
+  // 以前の版でコイに打ってもらった（heroForge）なら、もう渡さない
+  const SO = G.newState(); for (const id of D.MUSEUM_ITEMS) SO.village.donated[id] = true; for (const f of D.FACILITIES) if (f.kind === 'decor') SO.village.built[f.id] = true;
+  SO.village.story.heroForge = true; assert(!G.canGetHeroSword(SO.village), 'old save: already has it');
   // +9（盾も対象）：1個・2200G。+10：2個・3200G。強化値は引き継ぐ
-  eq(G.smithMax(V), Infinity);
+  eq(G.smithMax(V), Infinity); V.materials.orichalcum = 2;
   const f1 = V.funds; assert(G.smith(S, sw.uid).ok); eq(sw.plus, 9); eq(V.materials.orichalcum, 1); eq(f1 - V.funds, 2200);
   const m = G.smith(S, sw.uid); assert(!m.ok && /オリハルコン/.test(m.msg), 'needs 2 for +10');
   V.materials.orichalcum = 2; assert(G.smith(S, sw.uid).ok); eq(sw.plus, 10); eq(V.materials.orichalcum, 0);
   // 鍛冶屋の設備が +8 まで届いていなければ、+9 へは行けない
-  const S2 = G.newState(); S2.village.built.storage2 = true; S2.village.built.smith1 = true; G.applyFacilities(S2.village); S2.village.story.heroForge = true; eq(G.smithMax(S2.village), 3);
+  const S2 = G.newState(); S2.village.built.storage2 = true; S2.village.built.smith1 = true; G.applyFacilities(S2.village); eq(G.smithMax(S2.village), 3);
   // アクセサリーは対象外
   const acc = G.makeItem(S, 'poison_ring'); acc.plus = 0; V.storage.push(acc); assert(!G.canSmith(V, acc));
   // 勇者の剣も強化できる
@@ -3969,7 +3976,7 @@ test('勇者の剣・盾と無限強化：コイはオリハルコン1個（お�
   eq(V.bag.concat(V.storage).filter((i) => i.id === 'hero_shield_relic').length, 1);
   assert(!G.canGetHeroShield(V) && !G.giveHeroShield(S).ok, 'only once');
   // セーブして読み込んでも、二度は起きない
-  const L = TS.Save.deserialize(TS.Save.serialize(S)); assert(L.village.story.heroForge && L.village.story.heroShield); assert(!G.canGetHeroShield(L.village) && !G.canForgeHeroSword(L.village));
+  const L = TS.Save.deserialize(TS.Save.serialize(S)); assert(L.village.story.heroSword && L.village.story.heroShield); assert(!G.canGetHeroShield(L.village) && !G.canGetHeroSword(L.village));
 });
 
 test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {

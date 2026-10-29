@@ -553,10 +553,10 @@
     switch (id) {
       case 'shop': return openShop('buy');
       case 'storage': return openStorage('in');
-      case 'smith': return G.canForgeHeroSword(UI.S.village) ? forgeHeroSword() : openSmith();
+      case 'smith': return G.canKoiOri(UI.S.village) ? koiOriTalk() : openSmith();
       case 'diner': return G.canGetHeroShield(UI.S.village) ? heroShieldEvent() : openDiner();
       case 'museum': return openMuseum();
-      case 'develop': return openDevelop();
+      case 'develop': return G.canGetHeroSword(UI.S.village) ? heroSwordEvent() : openDevelop();
       case 'bag': return openVillageBag();
       case 'depart': return openDepart();
     }
@@ -688,14 +688,18 @@
     const all = ['amber_shard', 'bronze_shard', 'crystal_shard', 'gold_leaf', 'orichalcum'];
     return '<div class="kv">' + all.map((m) => `<span>${esc(D.ITEMS[m].name)}</span><span>${V.materials[m] || 0}個 <small class="note">（${D.ITEMS[m].depth}階〜）</small></span>`).join('') + '</div>';
   }
-  // コイが勇者の剣を打つ（オリハルコンを持って鍛冶屋へ。1回だけ。打ち終えると無限強化が解放）→ そのまま鍛冶屋の画面へ
-  function forgeHeroSword() {
-    const O = D.STORY.orichalcum;
-    talk(O.koiSee, () => {
-      const r = G.forgeHeroSword(UI.S); villageChanged();
+  // オリハルコンを持って初めて鍛冶屋へ：コイが上限なく鍛えられることを話す（1回だけ）→ そのまま鍛冶屋の画面へ
+  function koiOriTalk() {
+    G.markKoiOri(UI.S.village); save();
+    talk(D.STORY.orichalcum.koiSee, () => openSmith());
+  }
+  // モッチャンが勇者の剣を渡す（お宝と村の飾りが全部そろったあと。1回だけ）→ そのまま村の発展の画面へ
+  function heroSwordEvent() {
+    talk(D.STORY.orichalcum.motSword, () => {
+      const r = G.giveHeroSword(UI.S); villageChanged();
       if (!r.ok) return;
       AU.sfx('levelup');
-      talk(O.koiDone.concat(r.inStorage ? [['narration', '（持ち物がいっぱいなので、倉庫に入れた）']] : []), () => openSmith());
+      if (r.inStorage) talk([['narration', '（持ち物がいっぱいなので、倉庫に入れた）']], () => openDevelop()); else openDevelop();
     });
   }
   // ワーンが勇者の盾を渡す（マスターヤナイの像のあと。1回だけ）→ そのまま食堂の画面へ
