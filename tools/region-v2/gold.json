@@ -1,0 +1,19 @@
+{
+  "_note": "封印の最深部（26〜29階。内部名 gold）：ZIP sealed_match_v1（assets/reference/sealed-match-v1/）。暗くしない。床中央の封印紋は今回なし。30階のボス部屋は別",
+  "out": "gold_v2",
+  "walls": { "wallChains": "wall_chains", "wallSeal": "wall_seal", "wallRunes": "wall_runes", "narrow3": "wall_narrow" },
+  "files": {
+    "floor_0": "assets/floor_4x4.png",
+    "wallChains": "assets/wall_chains.png",
+    "wallSeal": "assets/wall_seal.png",
+    "wallRunes": "assets/wall_runes.png",
+    "narrow3": "assets/wall_narrow.png",
+    "rimE": "assets/edge_left.png",
+    "rimW": "assets/edge_right.png",
+    "rimN": "assets/edge_bottom.png",
+    "jInNE": "assets/corner_bottom_left.png",
+    "jInNW": "assets/corner_bottom_right.png"
+  },
+  "e4": "edge_fit",
+  "e5": "ends_fit"
+}

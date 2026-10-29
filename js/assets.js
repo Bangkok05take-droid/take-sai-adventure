@@ -252,6 +252,9 @@
       // 地底の古代神殿（内部名 crystal。ZIP temple_match_v1。tools/region-v2/crystal.json）。壁は 太陽4・旗3・日輪3 のくり返し、残り3は旗、2・1は細い壁
       crystal_v2: regionV2('crystal_v2', { walls: { wallSun: 'wall_sun', wallBanner: 'wall_banner', wallSolar: 'wall_solar', narrow3: 'wall_narrow' },
         seq: ['wallSun', 'wallBanner', 'wallSolar'], fill: ['wallBanner', 'narrow3'], e4ends: false }),
+      // 封印の最深部（内部名 gold。ZIP sealed_match_v1。tools/region-v2/gold.json）。壁は 鎖3・封印紋3・ルーン3 のくり返し、残り3は封印紋、2・1は細い壁。紫の光は壁の絵の中だけ
+      gold_v2: regionV2('gold_v2', { walls: { wallChains: 'wall_chains', wallSeal: 'wall_seal', wallRunes: 'wall_runes', narrow3: 'wall_narrow' },
+        seq: ['wallChains', 'wallSeal', 'wallRunes'], fill: ['wallSeal', 'narrow3'], e4ends: false }),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     // dragonbaran：竜魔神バラン（3倍の細かさ）。doruora：ドルオーラの構え、sword：ギガブレイクの溜め（剣を頭上に）、dash：突進・斬撃（128×128 の枠・足の裏 y=124。右向き）
