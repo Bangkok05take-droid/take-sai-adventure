@@ -2228,6 +2228,74 @@ test('竜魔神バランの技：竜闘気（HP70%で1ターン使う → 3タ�
   assert(b.enraged && b.atk === Math.round(atk0 * K.aura), 'atk x1.15');
   assert(b.charge && b.charge.fx === 'doruora' && b.charge.tiles.every((t) => t.y === 5), 'no cross');
 });
+// ボスとの再戦（たけの日記）：全章クリア後の村（大魔王バーン・真大魔王バーンまで倒した）
+function clearedVillage() {
+  const S = G.newState(), V = S.village, st = V.story;
+  st.introDone = true; V.seenIntro = true; st.chapter = 6; st.endingDone = true;
+  for (const k of ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn', 'truevearn']) { st.defeated[k] = true; st.introSeen[k] = true; st.returnDone[k] = true; st.rewardClaimed[k] = true; }
+  return S;
+}
+test('ボスとの再戦：大魔王バーンを倒すと日記が開く。倒したボスだけ選べる（大魔王バーンは真大魔王バーンとセット・竜魔神バランは無い）。ローブの21階スタートはボスの階が21階より深い章だけ', () => {
+  const S = G.newState(), st = S.village.story;
+  assert(!G.rematchOpen(S), 'closed at first');
+  st.defeated.croc = true; st.defeated.vearn = true;
+  assert(G.rematchOpen(S), 'open after vearn');
+  const L = G.rematchList(S);
+  eq(L.map((b) => b.id).join(), 'croc,flame,kill,baran,mist,vearn');
+  eq(L.filter((b) => b.ok).map((b) => b.id).join(), 'croc', 'only defeated; vearn set needs truevearn');
+  assert(!G.depart(S, 1, { rematch: 'flame' }).ok, 'not defeated: cannot');
+  st.defeated.truevearn = true; assert(G.rematchList(S).find((b) => b.id === 'vearn').ok);
+  // 大魔王のローブ：キルバーン（25階）は21階から、クロコダイン（15階）は1階から
+  st.defeated.kill = true; const robe = G.makeItem(S, 'demon_robe'); robe.eq = true; S.village.bag.push(robe);
+  assert(G.canDeepStart(S, G.rematchChapter('kill')) && !G.canDeepStart(S, G.rematchChapter('croc')));
+  const r = G.depart(S, 77, { rematch: 'kill', deep: true }); assert(r.ok); eq(S.run.floor, 21); eq(S.run.chapter, 3); eq(G.maxFloor(S.run), 25);
+});
+test('ボスとの再戦（章のボス）：その章のダンジョンをボスの階まで。強さは戦いの始まりに、たけの攻撃力・防御・最大HPに合わせる（本編より下げない）。報酬は持っていない品だけ。章・物語は進まない', () => {
+  const S = clearedVillage(), V = S.village, st = V.story, RM = D.REMATCH;
+  const sw = G.makeItem(S, 'hero_sword'); sw.eq = true; sw.plus = 10; const sh = G.makeItem(S, 'hero_shield'); sh.eq = true; sh.plus = 8; V.bag.push(sw, sh);
+  assert(G.depart(S, 4321, { rematch: 'croc' }).ok);
+  const run = S.run; eq(run.chapter, 1); eq(run.rematch.boss, 'croc'); eq(G.maxFloor(run), 15); eq(run.final, null);
+  while (run.floor < 15) goDown(S);
+  run.player.lvl = 30; run.player.maxhp = run.player.hp = G.maxHpFor(30, run);
+  const b = run.enemies.find((e) => e.boss), E = D.ENEMIES.croc; eq(b.hp, E.hp, 'not scaled before the fight');
+  // 戦いの始まり：登場ムービーは見たことがあっても再戦では流す
+  const A = run.bossFight, c = G.arenaCenter(run, run.enemies); run.player.x = c.x; run.player.y = c.y; G.checkBossRoom(S, []);
+  eq(A.intro, 'pending', 'intro movie every time in rematch'); G.finishBossIntro(S);
+  const pa = G.playerAtk(run), pd = G.playerDef(run), ph = run.player.maxhp;
+  eq(b.def, Math.max(E.def, Math.round(pa * RM.defRate)));
+  eq(b.atk, Math.max(E.atk, Math.round(ph / RM.hpDiv + pd * 0.7)));
+  eq(b.maxhp, Math.max(E.hp, Math.round(RM.hits * (pa - b.def * 0.7)))); assert(b.maxhp > E.hp && b.def > E.def && b.atk > E.atk, 'stronger than the story');
+  // 報酬：持っていない品だけ
+  const C = D.CHAPTERS[1]; V.storage = V.storage.filter((i) => !C.reward.items.includes(i.id));
+  defeatBoss(S);
+  const drops = run.floorItems.filter((f) => f.item.bossReward).map((f) => f.item.id);
+  eq(drops.sort().join(), C.reward.items.slice().sort().join(), 'same reward as the first time');
+  eq(V.rematchWins.croc, 1); assert(run.portal);
+  run.player.x = run.portal.x; run.player.y = run.portal.y; G.act(S, { type: 'returnHome' }); const res = G.finishRun(S);
+  eq(st.chapter, 6, 'chapter unchanged'); assert(!res.chapterClear && !st.pending, 'no story progress');
+  // 2回目：全部持っている → 黄金の象
+  for (const id of C.reward.items) if (!G.holdsItem(S, id)) V.storage.push(G.makeItem(S, id));
+  assert(G.depart(S, 4322, { rematch: 'croc' }).ok); while (S.run.floor < 15) goDown(S); defeatBoss(S);
+  eq(S.run.floorItems.filter((f) => f.item.bossReward).map((f) => f.item.id).join(), 'golden_elephant');
+});
+test('ボスとの再戦（大魔王バーンのセット）：30階の大魔王バーン → ムービー・救援なしで亀裂 → 31・32階 → 33階の真大魔王バーン（着いたらムービー）→ 帰還口。物語の状態は変えない', () => {
+  const S = clearedVillage(), V = S.village, st = V.story, clears = V.clears;
+  assert(G.depart(S, 9876, { rematch: 'vearn' }).ok);
+  const run = S.run; eq(run.chapter, D.FINAL_CHAPTER); eq(G.maxFloor(run), 33);
+  while (run.floor < 30) goDown(S);
+  assert(run.enemies.some((e) => e.boss && e.type === 'vearn'), 'vearn appears');
+  defeatBoss(S);
+  assert(!G.canRescue(run) && !run.postMovie, 'no rescue / no movie'); eq(G.crackState(S), 'next');
+  run.player.x = run.crack.x; run.player.y = run.crack.y; G.act(S, { type: 'descend' }); eq(run.floor, 31);
+  goDown(S); const r = goDown(S); eq(run.floor, 33);
+  assert(run.enemies.some((e) => e.boss && e.type === 'truevearn')); eq(run.bossFight.intro, 'pending', 'awakening movie every time');
+  assert(r.events.some((e) => e.t === 'bossIntro'));
+  G.finishBossIntro(S); const tv = run.enemies.find((e) => e.boss); assert(tv.rematchScaled);
+  defeatBoss(S); assert(run.portal); eq(V.rematchWins.vearn, 1);
+  run.player.x = run.portal.x; run.player.y = run.portal.y; G.act(S, { type: 'returnHome' }); G.finishRun(S);
+  eq(V.clears, clears, 'clears unchanged'); eq(st.finalStage === 'battle2' || st.finalStage === 'won', false, 'finalStage untouched');
+  assert(!st.pending);
+});
 test('商人の呼鈴の寄付：村の発展（施設と飾り）をすべて建てるまで寄付できない。開いたら1000Gで1個（何度でも）', () => {
   const S = G.newState(), V = S.village; V.funds = 2500;
   assert(!G.bellDonationOpen(S), 'closed at first');

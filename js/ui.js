@@ -790,7 +790,11 @@
       html += '<div class="list">' + list.map(facilityRow).join('') + '</div>';
       // 街のイベントをコンプリートしたあと：1,000Gの寄付で商人の呼鈴（何度でも）
       if (t === 'facility' && G.bellDonationOpen(UI.S)) html += `<h3>こもれびの家への寄付</h3><div class="list"><button class="row bell-donate"><img src="${SP.iconURL(D.ITEMS.merchant_bell)}" alt=""><span class="nm">寄付して商人の呼鈴をもらう<small>${esc(D.ITEMS.merchant_bell.desc)}</small></span><span class="pr">${D.BELL.donation}G</span></button></div>`;
+      // 大魔王バーンを倒したあと：たけの日記（倒したボスと再戦）
+      if (t === 'facility' && G.rematchOpen(UI.S)) html += `<h3>たけの日記</h3><div class="list"><button class="row diary-open"><span class="dish">📖</span><span class="nm">たけの日記を読む<small>これまでに戦ったボスを思い出して、もう一度戦える。</small></span></button></div>`;
       h.body.innerHTML = html;
+      const dy = h.body.querySelector('.diary-open');
+      if (dy) dy.addEventListener('click', () => { AU.sfx('tap'); setTimeout(openDiary, 0); });
       const bd = h.body.querySelector('.bell-donate');
       if (bd) bd.addEventListener('click', () => confirmBox('こもれびの家への寄付', `<p><b>${D.BELL.donation}G</b> を寄付して、商人の呼鈴を1個もらいますか？</p><p class="note">資金 ${V.funds}G → ${V.funds - D.BELL.donation}G／バッグ ${V.bag.length}/${D.BAG_SIZE}</p>`, '寄付する', () => {
         const res = G.donateForBell(UI.S);
@@ -1002,8 +1006,21 @@
     fork: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 5v14a5 5 0 0 0 4 5v19h4V24a5 5 0 0 0 4-5V5h-3v12h-2V5h-3v12h-2V5Z M31 5c5 2 7 9 7 16v4h-4v18h-4V5Z" fill="currentColor"/></svg>',
     fist: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 20a4 4 0 0 1 8 0v-3a4 4 0 0 1 8 0v1a4 4 0 0 1 8 0v4a4 4 0 0 1 4 4v6c0 7-5 12-12 12h-4c-7 0-12-5-12-12Z" fill="currentColor"/></svg>',
   };
-  function openDepart() {
-    const V = UI.S.village;
+  /* たけの日記（こもれびの家）：倒したボスの一覧。選ぶと、そのボスとの再戦の出発画面へ（G.rematchList・D.REMATCH） */
+  function openDiary() {
+    const list = G.rematchList(UI.S);
+    let html = '<p class="note">大魔王バーンとの戦いを終えた、たけの日記。思い出したボスと、もう一度戦える。</p>';
+    html += '<p class="note">そのボスの階まで1階から降りていく（大魔王のローブなら21階から）。ボスの強さは、ボス部屋に入ったときのたけの攻撃力・防御に合わせる。勝てば、持っていない報酬の品が出る。章は進まない。</p>';
+    html += '<div class="list">' + list.map((b) => `<button class="row diary-boss ${b.ok ? '' : 'disabled'}" data-id="${b.id}"><span class="nm">${esc(b.ok ? b.name : '？？？')}<small>${b.ok ? `地下${b.id === 'vearn' ? '30階・33階' : b.floor + '階'}${b.wins ? '・再戦で' + b.wins + '勝' : ''}` : 'まだ日記に書かれていない'}</small></span></button>`).join('') + '</div>';
+    const h = modal({ title: '📖 たけの日記', html, buttons: [{ label: '閉じる' }] });
+    h.body.querySelectorAll('.diary-boss').forEach((r) => r.addEventListener('click', () => {
+      const b = list.find((x) => x.id === r.dataset.id); if (!b || !b.ok) return;
+      AU.sfx('tap');
+      confirmBox('再戦', `<p><b>${esc(b.name)}</b>と、もう一度戦いますか？</p><p class="note">出発の準備の画面へ進みます。</p>`, '準備へ', () => setTimeout(() => openDepart(b.id), 0));
+    }));
+  }
+  function openDepart(rematch) {
+    const V = UI.S.village, rm = rematch ? G.rematchList(UI.S).find((b) => b.id === rematch) : null;
     const chk = G.canDepart(UI.S);
     const w = G.equipped(V.bag, 'weapon'), s = G.equipped(V.bag, 'shield'), ac = G.equipped(V.bag, 'accessory');
     const sc = G.scrollStatus(UI.S);
@@ -1024,12 +1041,14 @@
     if (V.meal) notes.push([DP_ICON.fork, `${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）`]);
     else if (V.diner) notes.push([DP_ICON.fork, 'ワーンの食堂の料理で、冒険の準備を。']);
     if (!w) notes.push([DP_ICON.fist, '武器なし：素手で出発します。']);
-    if (G.canDeepStart(UI.S)) notes.push([DP_ICON.compass, `大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。`]);
+    if (rm) notes.unshift([DP_ICON.warn, `再戦：<b>${esc(rm.name)}</b>（地下${rm.id === 'vearn' ? '30階・33階' : rm.floor + '階'}）。ボスの強さは、ボス部屋に入ったときのたけに合わせます。`]);
+    if (G.canDeepStart(UI.S, rm ? rm.ch : null)) notes.push([DP_ICON.compass, `大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。`]);
     if (notes.length) html += '<div class="dp-rule"><i></i></div><div class="dp-notes">' + notes.map(([i, t]) => `<p>${i}<span>${t}</span></p>`).join('') + '</div>';
     if (!chk.ok) html += `<p class="warnbox">${esc(chk.msg)}</p>`;
-    const reopen = () => setTimeout(openDepart, 0);
+    const reopen = () => setTimeout(() => openDepart(rematch), 0);
+    const go = (o) => depart(Object.assign({}, o, rm ? { rematch: rm.id } : {}));
     const buttons = [];
-    if (G.canDeepStart(UI.S)) buttons.push({ label: G.DEEP_START + '階から出発', cls: 'dp-btn dp-paper dp-wide', disabled: !chk.ok, onClick: () => depart({ deep: true }) });
+    if (G.canDeepStart(UI.S, rm ? rm.ch : null)) buttons.push({ label: G.DEEP_START + '階から出発', cls: 'dp-btn dp-paper dp-wide', disabled: !chk.ok, onClick: () => go({ deep: true }) });
     // 左上：ティウと話す（竜の紋章を拾うまではヒント。拾ったあとは見送りのことば）
     buttons.push({ label: 'ティウと話す', cls: 'dp-btn dp-teal', html: `${DP_ICON.chat}<span>ティウと話す</span>`, onClick: () => {
       setTimeout(() => openTiwGuide(reopen), 0);   // 村のティウ本人と同じ冒険案内。閉じると出発画面に戻る
@@ -1043,8 +1062,8 @@
         reopen();
       } });
     buttons.push({ label: 'やめる', cls: 'dp-btn dp-light', html: `${DP_ICON.close}<span>やめる</span>` });
-    buttons.push({ label: '出発する', cls: 'dp-btn dp-gold primary', disabled: !chk.ok, html: `${DP_ICON.compass}<span>出発する</span>`, onClick: () => depart() });
-    modal({ title: `<span class="dp-title">${DP_ICON.compass}<span>遺跡へ出発</span></span>`, cls: 'depart-modal', html, buttons });
+    buttons.push({ label: '出発する', cls: 'dp-btn dp-gold primary', disabled: !chk.ok, html: `${DP_ICON.compass}<span>出発する</span>`, onClick: () => go() });
+    modal({ title: `<span class="dp-title">${DP_ICON.compass}<span>${rm ? '再戦へ出発' : '遺跡へ出発'}</span></span>`, cls: 'depart-modal', html, buttons });
   }
   function depart(opts) {
     const res = G.depart(UI.S, undefined, opts);
@@ -1055,6 +1074,7 @@
     pushLog();
     const V = UI.S.village;
     const ch = UI.S.run.chapter;
+    if (UI.S.run.rematch) { const b = UI.S.run.rematch.boss; toast('再戦：' + (b === 'vearn' ? '大魔王バーン' : D.ENEMIES[b].name) + '（地下' + G.maxFloor(UI.S.run) + '階）', 'danger'); return; }
     if (V.story.endingDone) talk([['sai', '大魔王はもういないけど、遺跡にはまだお宝が眠ってるよ。気をつけてね！'], ['take', 'いってきます！']]);
     else storyTalk('depart' + ch, D.STORY.depart[ch]);
   }
@@ -1485,13 +1505,13 @@
     const run = UI.S.run;
     if (!run || !G.onStairs(run) || G.layoutOf(run) < 4) return null;
     const b = G.F(run, run.floor + 1).boss, st = UI.S.village.story;
-    if (!b || !(D.BOSS_ARRIVAL && D.BOSS_ARRIVAL[b]) || !introMovie(b) || (st.introSeen && st.introSeen[D.introSeenKey(b)])) return null;
+    if (!b || !(D.BOSS_ARRIVAL && D.BOSS_ARRIVAL[b]) || !introMovie(b) || G.introSeen(UI.S, b)) return null;
     return b;
   }
   const introMovie = (id) => { const M = TS.ASSETS && TS.ASSETS.movies, n = id && D.BOSS_INTROS && D.BOSS_INTROS[id]; return (M && n && M[n]) || null; };
   function prepareBossIntro(id) {
     const m = introMovie(id), st = UI.S.village.story;
-    if (!m || (st.introSeen && st.introSeen[D.introSeenKey(id)]) || (UI.moviePre && UI.moviePre.id === id)) return;
+    if (!m || G.introSeen(UI.S, id) || (UI.moviePre && UI.moviePre.id === id)) return;
     try { const v = document.createElement('video'); v.preload = 'auto'; v.muted = true; v.setAttribute('playsinline', ''); v.poster = m.poster; v.src = m.video; UI.moviePre = { id, v }; } catch (e) { UI.moviePre = null; }
   }
   function playBossIntro(id) {
@@ -1794,7 +1814,7 @@
       const b = res.events.find((e) => e.t === 'bossStart').boss;
       stopHold(); AU.playBgm(G.dungeonBgm(S.run));
       flash(); AU.sfx('warn'); toast((b ? D.ENEMIES[b].name : 'ボス') + 'との戦いが始まった！', 'danger');
-      if (b && G.chapterOf(S.run) !== 'legacy' && D.STORY.bossPre[b]) setTimeout(() => storyTalk('pre_' + b, D.STORY.bossPre[b]), 350);
+      if (b && G.chapterOf(S.run) !== 'legacy' && !S.run.rematch && D.STORY.bossPre[b]) setTimeout(() => storyTalk('pre_' + b, D.STORY.bossPre[b]), 350);
       return;
     }
     if (res.events.some((e) => e.t === 'bossDown')) {
@@ -1806,13 +1826,13 @@
       // 撃破のあと：（通常のバラン）撃破の演出 → 連れ去るムービー → 会話／（版3の30階・大魔王バーン）会話 → 連れ去るムービー → ティウの救援
       const fall = res.events.some((e) => e.t === 'vearnFall');
       const after = () => { if (fall) { if (outro) openRescue(); else playStoryMovie('vearnTaken', () => openRescue()); } };
-      const post = () => { if (D.STORY.bossPost[b]) storyTalk('post_' + b, D.STORY.bossPost[b], after); else after(); };
+      const post = () => { if (D.STORY.bossPost[b] && !(S.run && S.run.rematch)) storyTalk('post_' + b, D.STORY.bossPost[b], after); else after(); };
       // 撃破後ムービー（通常のバラン）：撃破の演出 → ムービー → いつもの撃破後の会話。ムービーまでの間も曲と操作は止めておく
       setTimeout(() => { flash(); toast(D.ENEMIES[b].name + 'を倒した！', 'levelup'); if (outro) setTimeout(() => playPostMovie(post), 1100); else post(); }, 500);
       return;
     }
     if (res.events.some((e) => e.t === 'finalTransform')) { stopHold(); setTimeout(() => finalCutscene(), 500); return; }
-    if (res.events.some((e) => e.t === 'finalWin')) { stopHold(); AU.playBgm(G.dungeonBgm(S.run)); setTimeout(() => { flash(); storyTalk('final_win', D.STORY.finalWin); }, 500); return; }
+    if (res.events.some((e) => e.t === 'finalWin')) { stopHold(); AU.playBgm(G.dungeonBgm(S.run)); setTimeout(() => { flash(); if (S.run && S.run.rematch) toast(D.ENEMIES.truevearn.name + 'を倒した！', 'levelup'); else storyTalk('final_win', D.STORY.finalWin); }, 500); return; }
     // 階段などに乗ったら確認
     const ev = res.events;
     if (ev.some((e) => e.t === 'onCrack')) { stopHold(); setTimeout(() => promptCrack(), 60); }

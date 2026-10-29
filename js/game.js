@@ -256,14 +256,36 @@
 
   /* 大魔王のローブ（装備して出発）：21階から始められる。今の章のボスの階が21階より深いときだけ（ボスの階を飛ばさない） */
   G.DEEP_START = 21;
-  G.canDeepStart = function (S) {
+  G.canDeepStart = function (S, ch) {
     const ac = G.equipped(S.village.bag, 'accessory');
-    return !!(ac && G.def(ac).acc === 'deep' && D.bossFloorOf(S.village.story.chapter) > G.DEEP_START);
+    return !!(ac && G.def(ac).acc === 'deep' && D.bossFloorOf(ch || S.village.story.chapter) > G.DEEP_START);
   };
+  /* ---------- ボスとの再戦（たけの日記。D.REMATCH） ---------- */
+  G.rematchOpen = (S) => !!S.village.story.defeated.vearn;
+  G.rematchChapter = (id) => id === 'vearn' ? D.FINAL_CHAPTER : +Object.keys(D.CHAPTERS).find((c) => D.CHAPTERS[c].boss === id);
+  // 日記の一覧：ok＝選べる（倒したことがある。大魔王バーンのセットは真大魔王バーンも）、wins＝再戦で勝った回数
+  G.rematchList = function (S) {
+    const st = S.village.story, W = S.village.rematchWins || {};
+    return D.REMATCH.bosses.map((id) => ({ id, ch: G.rematchChapter(id), floor: D.bossFloorOf(G.rematchChapter(id), D.LAYOUT),
+      name: id === 'vearn' ? D.ENEMIES.vearn.name + '・' + D.ENEMIES.truevearn.name : D.ENEMIES[id].name,
+      ok: !!(st.defeated[id] && (id !== 'vearn' || st.defeated.truevearn)), wins: W[id] || 0 }));
+  };
+  // 再戦のボスの強さ：たけの攻撃力・防御・最大HPに合わせる（本編の強さより下げない）。戦いが始まるときに1回だけ
+  G.rematchScale = function (run, e) {
+    const RM = D.REMATCH, E = D.ENEMIES[e.type], pa = G.playerAtk(run), pd = G.playerDef(run), ph = run.player.maxhp;
+    const def = Math.max(E.def, Math.round(pa * RM.defRate));
+    const atk = Math.max(E.atk, Math.round(ph / RM.hpDiv + pd * 0.7));
+    const hp = Math.max(E.hp, Math.round(RM.hits * Math.max(1, pa - def * 0.7)));
+    e.def = def; e.atk = atk; e.maxhp = e.hp = hp; e.rematchScaled = true;
+  };
+  // 登場ムービーを見たことがあるか（再戦では毎回流すので「まだ」）
+  G.introSeen = (S, id) => !(S.run && S.run.rematch) && !!(S.village.story.introSeen && S.village.story.introSeen[D.introSeenKey(id)]);
   G.depart = function (S, seed, opts) {
     const chk = G.canDepart(S);
     if (!chk.ok) return chk;
-    const deep = !!(opts && opts.deep && G.canDeepStart(S));
+    const rm = opts && opts.rematch ? G.rematchList(S).find((b) => b.id === opts.rematch) : null;
+    if (opts && opts.rematch && !(rm && rm.ok && G.rematchOpen(S))) return { ok: false, msg: 'そのボスとはまだ再戦できません。' };
+    const deep = !!(opts && opts.deep && G.canDeepStart(S, rm ? rm.ch : null));
     const V = S.village;
     V.runs++;
     if (seed === undefined) seed = (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
@@ -281,6 +303,12 @@
       final: V.story.chapter === D.FINAL_CHAPTER ? { v: 3, stage: 'none', healed: false, cutsceneSeen: false, rescue: null,
         skip: { vearn: !!V.story.defeated.vearn, truevearn: !!V.story.defeated.truevearn } } : null,
     };
+    // 再戦：そのボスの章のダンジョン（章は進まない）。大魔王バーンのセットは最終章（30階・33階のどちらも出る）
+    if (rm) {
+      S.run.rematch = { boss: rm.id };
+      S.run.chapter = rm.ch;
+      S.run.final = rm.id === 'vearn' ? { v: 3, stage: 'none', healed: false, cutsceneSeen: false, rescue: null, skip: { vearn: false, truevearn: false } } : null;
+    }
     // 食堂の料理（この探索だけ）
     if (V.meal && D.MEALS[V.meal]) {
       S.run.meal = V.meal;
@@ -729,7 +757,7 @@
    *  'open'     … （D.POSTGAME_FLOORS があれば。作らないので使わない） */
   G.crackState = function (S) {
     const run = S.run, st = S.village.story;
-    if (run && run.crack && run.crack.kind === 'throne30') return G.canRescue(run) ? 'rescue' : !st.defeated.truevearn ? 'next' : D.HIDDEN_DUNGEON ? 'hidden' : 'hiddenNotReady';
+    if (run && run.crack && run.crack.kind === 'throne30') return G.canRescue(run) ? 'rescue' : (!st.defeated.truevearn || run.rematch) ? 'next' : D.HIDDEN_DUNGEON ? 'hidden' : 'hiddenNotReady';
     if (!run || !run.crack || !st.defeated.truevearn) return 'none';
     if (!st.endingDone) return 'unstable';
     return D.POSTGAME_FLOORS ? 'open' : 'notReady';
@@ -1002,6 +1030,11 @@
   function bossDefeated(S, e, ev) {
     const run = S.run, V = S.village, E = D.ENEMIES[e.type], st = V.story;
     V.bossKills[e.type] = (V.bossKills[e.type] || 0) + 1;
+    // 再戦の勝ち（日記に残す）。大魔王バーンのセットは真大魔王バーンを倒したとき
+    const rmb = run.rematch && run.rematch.boss;
+    if (rmb && (rmb === 'vearn' ? e.type === 'truevearn' : rmb === e.type)) { V.rematchWins = V.rematchWins || {}; V.rematchWins[rmb] = (V.rematchWins[rmb] || 0) + 1; }
+    // 再戦の報酬：初回と同じ品のうち、持っていない品だけ（全部持っていれば黄金の象）
+    const rematchGifts = (items, fallback) => { const g = items.filter((id) => !G.holdsItem(S, id)); return g.length || !fallback ? g : [fallback]; };
     // ボスがいなくなったら戦いは終わり（大魔王バーン1戦目のあとは、真大魔王バーンとの戦いが続く）
     if (run.bossFight && !(e.type === 'vearn' && run.final && !G.finalV3(run))) run.bossFight.won = true;
     // 分身・呼ばれた手下・床の危険は消える
@@ -1043,11 +1076,14 @@
       run.final.skip.vearn = true;
       run.stairs = null;
       run.crack = G.throneCrack(run.map);   // 報酬より先に決める（ローブを亀裂のマスに置かない）
-      if (first) for (const id of D.CHAPTERS[D.FINAL_CHAPTER].reward.items) drop(id);
-      run.final.rescue = 'pending';
+      const gifts = run.rematch ? rematchGifts(D.CHAPTERS[D.FINAL_CHAPTER].reward.items) : first ? D.CHAPTERS[D.FINAL_CHAPTER].reward.items : [];
+      for (const id of gifts) drop(id);
       G.updateVision(run);
-      G.log(run, '大魔王バーンを倒した！' + (first ? ' 大魔王のローブが残された。' : ''));
+      G.log(run, '大魔王バーンを倒した！' + (gifts.length ? ' ' + gifts.map((id) => D.ITEMS[id].name).join('と') + 'が残された。' : ''));
       ev.push({ t: 'bossDown', boss: e.type });
+      // 再戦：連れ去るムービーとティウの救援は無し。すぐ時空の亀裂から真大魔王バーンへ（31階・32階 → 33階）
+      if (run.rematch) { G.log(run, '時空の亀裂が開いた。真大魔王バーンが待っている……！'); return; }
+      run.final.rescue = 'pending';
       ev.push({ t: 'vearnFall' });
       /* 撃破後ムービー（ミストバーンが大魔王バーンを時の裂け目へ連れ去る）。通常のバランと同じ run.postMovie の仕組み：
        * 撃破の演出のあとに流し、流すまでの間・流している間は行動を受けつけない。終わったらこの部屋のまま、ティウの救援へ */
@@ -1087,7 +1123,7 @@
       st.defeated.truevearn = true;
       if (run.final) run.final.stage = 'won';
       if (G.finalV3(run)) run.final.skip.truevearn = true;
-      st.finalStage = 'won';
+      if (!run.rematch) st.finalStage = 'won';
       // 版3：ローブは30階の大魔王バーンの報酬。真大魔王バーンの品の報酬は無い（再戦も無い）
       if (!G.finalV3(run)) for (const id of firstFinal ? D.CHAPTERS[D.FINAL_CHAPTER].reward.items : ['golden_elephant']) drop(id);
       openPortal();
@@ -1101,7 +1137,7 @@
     const firstTime = !st.defeated[e.type];
     st.defeated[e.type] = true;
     const C = D.CHAPTERS[run.chapter];
-    const items = C && C.boss === e.type && firstTime ? C.reward.items : ['golden_elephant'];
+    const items = run.rematch && C && C.boss === e.type ? rematchGifts(C.reward.items, 'golden_elephant') : C && C.boss === e.type && firstTime ? C.reward.items : ['golden_elephant'];
     for (const id of items) drop(id);
     openPortal();
     G.log(run, E.name + 'を倒した！ ' + items.map((id) => D.ITEMS[id].name).join('と') + 'が現れた。');
@@ -1109,7 +1145,7 @@
     ev.push({ t: 'bossDown', boss: e.type });
     /* 撃破後ムービー（通常のバラン：ミストバーンが連れ去る）。報酬・撃破の記録・帰還口は上で1回だけ済んでいる。
      * run.postMovie の間は行動を受けつけない（画面がムービーを流し、終わり・スキップ・失敗のどれでも G.finishPostMovie） */
-    const outro = D.BOSS_OUTROS && D.BOSS_OUTROS[e.type];
+    const outro = !run.rematch && D.BOSS_OUTROS && D.BOSS_OUTROS[e.type];   // 再戦では本編の撃破後ムービーは流さない
     if (outro) { run.postMovie = outro; ev.push({ t: 'bossOutro', boss: e.type, movie: outro }); }
   }
   /* 撃破後ムービーの終わり（何度呼んでも1回だけ）。ターンは進めない。戻り値：終えたムービーの名前（無ければ null） */
@@ -1774,7 +1810,7 @@
     const run = S.run, A = run.bossFight, p = run.player;
     if (!A || A.engaged || A.intro === 'pending' || !G.inArena(run, p.x, p.y)) return;
     const boss = run.enemies.find((e) => e.boss), id = boss ? boss.type : null, st = S.village.story;
-    if (id && D.BOSS_INTROS && D.BOSS_INTROS[id] && A.intro !== 'done' && !(st.introSeen && st.introSeen[D.introSeenKey(id)])) {
+    if (id && D.BOSS_INTROS && D.BOSS_INTROS[id] && A.intro !== 'done' && !G.introSeen(S, id)) {
       A.intro = 'pending';
       ev.push({ t: 'bossIntro', boss: id });
       return;
@@ -1808,12 +1844,14 @@
     // 戦いの開始（engaged）と同じ1回だけ。登場ムービーの途中で読み込み直しても、開始は1回なので重ならない
     if (G.finalV3(run) && bosses.some((b) => b.type === 'truevearn')) {
       G.fullRecover(run);
-      run.final.stage = 'battle2'; S.village.story.finalStage = 'battle2';
+      run.final.stage = 'battle2'; if (!run.rematch) S.village.story.finalStage = 'battle2';
       G.log(run, 'サイたちの祈りが届いた！ HPと満腹度が回復し、体の不調も消えた。');
       ev.push({ t: 'prayer' });
     }
     // ムービーのあとは、入室のターンはもう終わっているので、待たせるターンは足さない（次のターンから動く＝今までと同じ間合い）
     for (const b of bosses) { if (!afterIntro) b.hold = Math.max(b.hold || 0, 1); b.awake = true; }
+    // 再戦：ボスの強さを、いまのたけ（攻撃力・防御・最大HP）に合わせる（D.REMATCH）
+    if (run.rematch) for (const b of bosses) if (!b.rematchScaled) G.rematchScale(run, b);
     const name = bosses.length ? D.ENEMIES[bosses[0].type].name : 'ボス';
     G.log(run, name + 'との戦いが始まった！');
     ev.push({ t: 'bossStart', boss: bosses.length ? bosses[0].type : null });
@@ -2392,7 +2430,7 @@
    * 支援金は rewardClaimed で1回だけ。進んだあと村で見せる会話は story.pending に残す（読み込み直しても失われない）。 */
   function applyStoryOnReturn(S, run, res) {
     const V = S.village, st = V.story, ch = G.chapterOf(run);
-    if (ch === 'legacy') return;
+    if (ch === 'legacy' || run.rematch) return;   // 再戦では章も物語も進めない
     // 版2（35階で連戦）だけ：勝たずに帰ったら、大魔王バーンは倒していない扱いに戻す。版3では30階で倒したらそのまま
     if (run.final && !G.finalV3(run) && run.final.stage !== 'won') { st.finalStage = 'none'; st.defeated.vearn = st.defeated.vearn && st.endingDone; }
     const C = D.CHAPTERS[st.chapter];
