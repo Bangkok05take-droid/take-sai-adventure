@@ -1391,7 +1391,9 @@
       // 全部そろったら、すでに描いた地形を描き直す（読み込みより先に探索した所が今までの絵のまま残らないように）
       if (Object.values(o).every((l) => !Array.isArray(l) || l.every(Boolean)) && TS.Render && TS.Render.resetLayer) TS.Render.resetLayer(); })); } }
     for (const [k, poses] of Object.entries(A.bossPoses || {})) for (const [pose, src] of Object.entries(poses)) load(src, (img) => { const c = bossCanvas(k, img); (SP.art.bossPoses[k] = SP.art.bossPoses[k] || {})[pose] = c;
-      if (pose === 'dash') { const f = flipCanvas(c); Object.assign(f, { art: true, logical: c.logical }); SP.art.bossPoses[k].dashL = f; } });   // 左向き（反転）
+      // 反転した向き：dash（右向き）→ dashL（左向き）、sweep（左向き）→ sweepR（右向き）
+      const fl = { dash: 'dashL', sweep: 'sweepR' }[pose];
+      if (fl) { const f = flipCanvas(c); Object.assign(f, { art: true, logical: c.logical }); SP.art.bossPoses[k][fl] = f; } });
     // 通常の敵：横に並んだコマ（正方形）を分ける。1コマなら同じ絵を2回使う
     for (const [k, src] of Object.entries(A.enemies || {})) if (src) load(src, (img) => {
       const n = Math.max(1, Math.round(img.width / img.height)), w = img.width / n;

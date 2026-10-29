@@ -603,8 +603,10 @@
       // 竜魔神バランの技のポーズ：ギガブレイクの溜め（剣を頭上に）→ 突進・斬撃（突進の演出の間。左へは反転）、ドルオーラの構え（予告から放ち終わるまで）
       if (kind === 'dragonbaran') {
         const fire = RD.fx.some((f) => f.t === 'dbDoruora' && f.id === e.id && now - f.t0 < f.dur);
-        const gs = RD.fx.find((f) => f.t === 'gigaSweep' && f.id === e.id && now - f.t0 < f.dur);   // なぎ払い：専用の絵が届くまで突進・斬撃の絵（たけの方を向く）
-        const dp = gd ? (gd.dir[0] < 0 ? 'dashL' : 'dash') : gs ? (gs.dir[0] < 0 ? 'dashL' : 'dash') : e.charge && e.charge.fx === 'giga' ? 'sword' : (e.charge && e.charge.fx === 'doruora') || fire ? 'doruora' : null;
+        const gs = RD.fx.find((f) => f.t === 'gigaSweep' && f.id === e.id && now - f.t0 < f.dur);   // なぎ払い：たけの方を向く（真上・真下はそのまま左向き）
+        // 突進の向き：真上・真下は背面・正面の絵、横・斜めは横向きの絵（左へは反転）
+        const dashPose = (d) => d[0] === 0 && d[1] > 0 ? 'dashDown' : d[0] === 0 && d[1] < 0 ? 'dashUp' : d[0] < 0 ? 'dashL' : 'dash';
+        const dp = gd ? dashPose(gd.dir) : gs ? (gs.dir[0] > 0 ? 'sweepR' : 'sweep') : e.charge && e.charge.fx === 'giga' ? 'sword' : (e.charge && e.charge.fx === 'doruora') || fire ? 'doruora' : null;
         if (dp && SP.bossPose(kind, dp)) img = SP.bossPose(kind, dp);
       }
       const hit = hitFx(e.x, e.y, 'enemy', now);

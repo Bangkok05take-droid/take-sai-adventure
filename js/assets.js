@@ -259,7 +259,9 @@
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     // dragonbaran：竜魔神バラン（3倍の細かさ）。doruora：ドルオーラの構え、sword：ギガブレイクの溜め（剣を頭上に）、dash：突進・斬撃（128×128 の枠・足の裏 y=124。右向き）
     bossPoses: { truevearn: { stance: 'assets/bosses/truevearn-stance.png' },
-      dragonbaran: { doruora: 'assets/bosses/dragonbaran-doruora.png', sword: 'assets/bosses/dragonbaran-sword.png', dash: 'assets/bosses/dragonbaran-dash.png' } },
+      // dashDown・dashUp：上下への突進（正面・背面）、sweep：ギガブレイクのなぎ払い（左向き。右へは反転）。ZIP baran_giga_break_extra_poses（どれも 128×128 の枠）
+      dragonbaran: { doruora: 'assets/bosses/dragonbaran-doruora.png', sword: 'assets/bosses/dragonbaran-sword.png', dash: 'assets/bosses/dragonbaran-dash.png',
+        dashDown: 'assets/bosses/dragonbaran-dash-down.png', dashUp: 'assets/bosses/dragonbaran-dash-up.png', sweep: 'assets/bosses/dragonbaran-sweep.png' } },
     /* 通常の敵（assets/enemies/）：見本の一覧画像から tools/extract-enemies.py で作る透過PNG。まだ素材が無いので空。
      * 1コマは 64×64（足の裏 y=60、足元の中央 x=32）、待機2コマなら横に並べた 128×64。キーは js/data.js の敵の sprite 名。
      * 書いた敵だけ画像に替わり、書かない敵は今までのコードで描いた絵のまま。必要な素材の一覧は docs/ENEMY_ART.md */

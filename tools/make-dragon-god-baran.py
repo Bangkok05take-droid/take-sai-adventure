@@ -51,6 +51,13 @@ KP = K * 1137 / 795
 place(cut(poses.crop((0, 0, 768, 1024))), KP, 96, 92, 'dragonbaran-doruora')
 place(cut(poses.crop((768, 0, 1536, 1024))), KP, 96, 92, 'dragonbaran-sword')
 place(cut(Image.open(SRC + '01_character/baran_giga_break_dash.png').convert('RGBA')), KP / 1.08, 128, 124, 'dragonbaran-dash')
+# 追加のポーズ（ZIP baran_giga_break_extra_poses。03_giga_extra/）：枠は突進と同じ 128×128（足の裏 y=124）
+#   dash_down・dash_up：上下への突進。正面・背面なので、額の飾り（水色）の幅を構えの原画（215px）とそろえる（下向き 241px。上向きは飾りが見えないので下向きと同じ倍率）
+#   sweep：ギガブレイクのなぎ払い（左向き。右へはゲームで反転）。斜めの顔なので、飾りの高さを構えの原画（150px）とそろえる（なぎ払い 192px）
+X = SRC + '03_giga_extra/baran_giga_break_'
+place(cut(Image.open(X + 'dash_down.png').convert('RGBA')), KP * 215 / 241, 128, 124, 'dragonbaran-dash-down')
+place(cut(Image.open(X + 'dash_up.png').convert('RGBA')), KP * 215 / 241, 128, 124, 'dragonbaran-dash-up')
+place(cut(Image.open(X + 'sweep.png').convert('RGBA')), KP * 150 / 192, 128, 124, 'dragonbaran-sweep')
 
 # 技の演出：区画 → 名前
 SHEETS = {
