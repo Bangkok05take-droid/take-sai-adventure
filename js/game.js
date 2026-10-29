@@ -1033,8 +1033,8 @@
     // 再戦の勝ち（日記に残す）。大魔王バーンのセットは真大魔王バーンを倒したとき
     const rmb = run.rematch && run.rematch.boss;
     if (rmb && (rmb === 'vearn' ? e.type === 'truevearn' : rmb === e.type)) { V.rematchWins = V.rematchWins || {}; V.rematchWins[rmb] = (V.rematchWins[rmb] || 0) + 1; }
-    // 再戦の報酬：初回と同じ品のうち、持っていない品だけ（全部持っていれば黄金の象）
-    const rematchGifts = (items, fallback) => { const g = items.filter((id) => !G.holdsItem(S, id)); return g.length || !fallback ? g : [fallback]; };
+    // 再戦の報酬：初回と同じ品のうち、持っていない品だけ（全部持っていれば命つなぎの首飾り。D.REMATCH.fallback）
+    const rematchGifts = (items) => { const g = items.filter((id) => !G.holdsItem(S, id)); return g.length ? g : [D.REMATCH.fallback]; };
     // ボスがいなくなったら戦いは終わり（大魔王バーン1戦目のあとは、真大魔王バーンとの戦いが続く）
     if (run.bossFight && !(e.type === 'vearn' && run.final && !G.finalV3(run))) run.bossFight.won = true;
     // 分身・呼ばれた手下・床の危険は消える
@@ -1137,7 +1137,7 @@
     const firstTime = !st.defeated[e.type];
     st.defeated[e.type] = true;
     const C = D.CHAPTERS[run.chapter];
-    const items = run.rematch && C && C.boss === e.type ? rematchGifts(C.reward.items, 'golden_elephant') : C && C.boss === e.type && firstTime ? C.reward.items : ['golden_elephant'];
+    const items = run.rematch && C && C.boss === e.type ? rematchGifts(C.reward.items) : C && C.boss === e.type && firstTime ? C.reward.items : ['golden_elephant'];
     for (const id of items) drop(id);
     openPortal();
     G.log(run, E.name + 'を倒した！ ' + items.map((id) => D.ITEMS[id].name).join('と') + 'が現れた。');

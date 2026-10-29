@@ -2273,10 +2273,10 @@ test('ボスとの再戦（章のボス）：その章のダンジョンをボ�
   eq(V.rematchWins.croc, 1); assert(run.portal);
   run.player.x = run.portal.x; run.player.y = run.portal.y; G.act(S, { type: 'returnHome' }); const res = G.finishRun(S);
   eq(st.chapter, 6, 'chapter unchanged'); assert(!res.chapterClear && !st.pending, 'no story progress');
-  // 2回目：全部持っている → 黄金の象
+  // 2回目：全部持っている → 命つなぎの首飾り
   for (const id of C.reward.items) if (!G.holdsItem(S, id)) V.storage.push(G.makeItem(S, id));
   assert(G.depart(S, 4322, { rematch: 'croc' }).ok); while (S.run.floor < 15) goDown(S); defeatBoss(S);
-  eq(S.run.floorItems.filter((f) => f.item.bossReward).map((f) => f.item.id).join(), 'golden_elephant');
+  eq(S.run.floorItems.filter((f) => f.item.bossReward).map((f) => f.item.id).join(), 'life_necklace');
 });
 test('ボスとの再戦（大魔王バーンのセット）：30階の大魔王バーン → ムービー・救援なしで亀裂 → 31・32階 → 33階の真大魔王バーン（着いたらムービー）→ 帰還口。物語の状態は変えない', () => {
   const S = clearedVillage(), V = S.village, st = V.story, clears = V.clears;
