@@ -1874,7 +1874,8 @@
   G.dungeonBgm = function (run) {
     const A = run && run.bossFight;
     if (A && A.engaged && !A.won) return 'boss';
-    return 'dungeon';
+    const f = run && run.floor, B = f && (D.DUNGEON_BGM || []).find((b) => f >= b.from && f <= b.to);   // 階ごとの曲（D.DUNGEON_BGM）
+    return B ? B.scene : 'dungeon';
   };
   const WAIT_MSG = '部屋に入ってから戦おう';
 

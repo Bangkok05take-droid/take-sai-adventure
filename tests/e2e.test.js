@@ -1361,7 +1361,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'overture,yanai,villageTheme,dungeon,boss,fanfare,village,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,dungeon,boss,fanfare,village,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
@@ -1626,24 +1626,24 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.tap('.fac.depart'); await q.waitForTimeout(200); await q.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await q.waitForTimeout(200); await q.click('text=出発する'); await q.waitForTimeout(300); await talkThrough();
       await closeAllQ(q);
       await q.waitForTimeout(800);
-      c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer, 'dungeon music ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'stoneLabyrinth' && c.bgm && !c.timer, 'dungeon music ' + JSON.stringify(c));
       await keep('__d');
       // 通常の階を降りても、道具・メニュー・履歴を開いても最初に戻らない
       for (let i = 0; i < 2; i++) { await q.evaluate(() => { const r = TS.UI.S.run; r.enemies = []; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); }); await q.waitForTimeout(300); }
       for (const b of ['#b-items', '#b-menu', '#b-log']) { await q.tap(b); await q.waitForTimeout(200); await q.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await q.waitForTimeout(100); }
       assert(await same('__d'), 'dungeon music continues across floors and menus');
       // ダッシュ・高速足踏みで曲のテンポは変わらない（曲の拍の長さは BPM だけで決まる）
-      eq2(await q.evaluate(() => TS.Music.current.song.spb), 60 / 72, 'dungeon tempo');
+      eq2(await q.evaluate(() => TS.Music.current.id), 'stoneLabyrinth', 'recorded dungeon song on 1-14F');
       // ミュート → 解除で今の場面の曲
       await q.tap('#b-menu'); await q.waitForTimeout(150); await q.tap('.modal-buttons button >> text=音：オン'); await q.waitForTimeout(500);
       c = await cur(); assert(!c.id && !c.timer, 'muted: nothing scheduled ' + JSON.stringify(c));
       await q.tap('.modal-buttons button >> text=音：オフ'); await q.waitForTimeout(500);
-      c = await cur(); assert(c.id === 'dungeon', 'unmute plays current scene ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'stoneLabyrinth', 'unmute plays current scene ' + JSON.stringify(c));
       await q.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); });
       await keep('__d2');
       // 裏に回す → 一時停止、戻ると同じ曲の続き（重ならない）
       await q.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); }); await q.waitForTimeout(300);
-      c = await cur(); assert(c.ctx === 'suspended' && c.id === 'dungeon', 'paused in background ' + JSON.stringify(c));
+      c = await cur(); assert(c.ctx === 'suspended' && c.id === 'stoneLabyrinth', 'paused in background ' + JSON.stringify(c));
       await q.evaluate(() => { Object.defineProperty(document, 'hidden', { value: false, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); }); await q.waitForTimeout(400);
       c = await cur(); assert(c.ctx === 'running' && await same('__d2'), 'resumed same playback ' + JSON.stringify(c));
       // ボスの階：以前のボス曲（新しい曲は止まる）

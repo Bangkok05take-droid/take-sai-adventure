@@ -3995,6 +3995,11 @@ test('勇者の剣・勇者の盾の買い戻し：受け取ったことがあ�
   const got = run.bag.find((i) => i.id === 'hero_sword_relic'); assert(got && !got.plus, '+0');
   eq(G.buybackList(S).some((g) => g.id === 'hero_sword_relic'), false, 'not listed after buying');
 });
+test('ダンジョンの曲：地下1〜14階は録音の曲（Stone Labyrinth Depths）、15階からは今までの曲。ボス戦の間はボス戦の曲', () => {
+  const run = { floor: 1, bossFight: null };
+  for (const [f, want] of [[1, 'dungeon1'], [14, 'dungeon1'], [15, 'dungeon'], [30, 'dungeon'], [33, 'dungeon']]) { run.floor = f; eq(G.dungeonBgm(run), want, 'floor ' + f); }
+  run.floor = 5; run.bossFight = { engaged: true, won: false }; eq(G.dungeonBgm(run), 'boss');
+});
 test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {
   const name = (ch, f) => D.THEMES[D.floorFor(ch, f).theme].name;
   const want = { 1: 'レンガの回廊', 3: 'レンガの回廊', 4: '木の根の遺跡', 6: '木の根の遺跡', 7: '地下の遺跡', 10: '地下の遺跡', 11: '地下の遺跡', 14: '地下の遺跡',

@@ -708,7 +708,9 @@
     // 村の音楽（2026年11月2日：届いた録音「Whimsical Village Theme」。約37秒の曲を最後まで流して頭に戻る（曲の終わりは音が消えて0.4秒ほど静か））
     villageTheme: { title: '村の音楽', group: 'new', note: 'Whimsical Village Theme（録音・約37秒・ループ）', file: 'assets/music/whimsical-village-theme.mp3', seconds: 37, loop: true },
     village: { title: '村の音楽', group: 'old', note: '以前の村の曲（お祭りのにぎわい。比較用）', build: village },
-    dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）', build: dungeon },
+    // ダンジョン 地下1〜14階（2026年11月2日：届いた録音「Stone Labyrinth Depths」。約43秒の曲を最後まで流して頭に戻る。どの階で使うかは js/data.js の D.DUNGEON_BGM）
+    stoneLabyrinth: { title: 'ダンジョンの音楽（1〜14階）', group: 'new', note: 'Stone Labyrinth Depths（録音・約43秒・ループ）', file: 'assets/music/stone-labyrinth-depths.mp3', seconds: 43, loop: true },
+    dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）。15階から（録音の曲が届くまで）', build: dungeon },
     boss: { title: 'ボス戦', group: 'new', note: '強敵との対峙（ループ）。ボス部屋に入ったときから倒すまで', build: bossBattle },
     fanfare_v1: { title: '冒険のファンファーレ', group: 'old', note: '第1版（比較用）', build: fanfareV1 },
     yanai_v1: { title: 'マスターヤナイのテーマ', group: 'old', note: '第1版（比較用）', build: yanaiV1 },
@@ -720,6 +722,7 @@
     title: { song: 'overture', once: true },   // 2026年11月2日から録音の曲（以前は合成のファンファーレ fanfare）
     village: { song: 'villageTheme' },   // 2026年11月2日から録音の曲（以前は合成の village）
     dungeon: { song: 'dungeon' },
+    dungeon1: { song: 'stoneLabyrinth' },   // 地下1〜14階（D.DUNGEON_BGM）
     boss: { song: 'boss' },   // ボス戦（以前は合成の短いループ。今は新しい曲）
     yanai: { song: 'yanai' },
   };
