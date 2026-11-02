@@ -1096,7 +1096,7 @@
     const row = (id) => { const L = MU.LIBRARY[id], f = MU.info(id);
       return `<div class="mrow" data-song="${id}"><div class="mtitle"><b><span class="mtag ${L.group}">${L.group === 'old' ? '旧' : '新'}</span>${esc(L.title)}</b>` +
         `<small>${esc(L.note)}${f.bpm ? '・BPM' + f.bpm : ''}・${f.loop ? '1周' + fmt(f.seconds) : fmt(f.seconds + f.tail)}</small></div>` +
-        `${f.loop ? `<button class="mseam" data-seam="${id}" aria-label="ループのつなぎ目を聴く">つなぎ目</button>` : ''}<button class="mplay" data-play="${id}">▶ 再生</button></div>`; };
+        `${f.loop && !f.file ? `<button class="mseam" data-seam="${id}" aria-label="ループのつなぎ目を聴く">つなぎ目</button>` : ''}<button class="mplay" data-play="${id}">▶ 再生</button></div>`; };
     const ids = Object.keys(MU.LIBRARY);
     const html = `<p class="note">試聴している間は時間が進みません。閉じると元の音楽に戻ります。「つなぎ目」はループの直前から再生します。</p>
       <h3 class="sub">第2版（今回の試作）</h3>${ids.filter((i) => MU.LIBRARY[i].group !== 'old').map(row).join('')}

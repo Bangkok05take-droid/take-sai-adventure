@@ -705,7 +705,9 @@
     overture: { title: 'タイトルの音楽', group: 'new', note: 'Rising Kingdom Overture（録音・約30秒・ループなし）', file: 'assets/music/rising-kingdom-overture.mp3', seconds: 30 },
     fanfare: { title: '冒険のファンファーレ', group: 'old', note: '以前のタイトル曲（第2版。比較用）', build: fanfare2 },
     yanai: { title: 'マスターヤナイのテーマ', group: 'new', note: '第2版・英雄のテーマ（主題Aからループ）', build: yanai2 },
-    village: { title: '村の音楽', group: 'new', note: 'お祭りのにぎわい（ループ）', build: village },
+    // 村の音楽（2026年11月2日：届いた録音「Whimsical Village Theme」。約37秒の曲を最後まで流して頭に戻る（曲の終わりは音が消えて0.4秒ほど静か））
+    villageTheme: { title: '村の音楽', group: 'new', note: 'Whimsical Village Theme（録音・約37秒・ループ）', file: 'assets/music/whimsical-village-theme.mp3', seconds: 37, loop: true },
+    village: { title: '村の音楽', group: 'old', note: '以前の村の曲（お祭りのにぎわい。比較用）', build: village },
     dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）', build: dungeon },
     boss: { title: 'ボス戦', group: 'new', note: '強敵との対峙（ループ）。ボス部屋に入ったときから倒すまで', build: bossBattle },
     fanfare_v1: { title: '冒険のファンファーレ', group: 'old', note: '第1版（比較用）', build: fanfareV1 },
@@ -716,7 +718,7 @@
    * ここに無い場面は TS.Audio の以前の合成BGMを使う。title の曲は1回だけ鳴らす（once） */
   M.SCENES = {
     title: { song: 'overture', once: true },   // 2026年11月2日から録音の曲（以前は合成のファンファーレ fanfare）
-    village: { song: 'village' },
+    village: { song: 'villageTheme' },   // 2026年11月2日から録音の曲（以前は合成の village）
     dungeon: { song: 'dungeon' },
     boss: { song: 'boss' },   // ボス戦（以前は合成の短いループ。今は新しい曲）
     yanai: { song: 'yanai' },
@@ -788,13 +790,17 @@
     }
   }
   // 録音した音源ファイルの再生（差し替え用。loopStart/loopEnd は秒）
+  // 読み込んだ音源は覚えておく（村とダンジョンを行き来するたびに読み直さない）
+  const fileCache = {};
+  const loadFile = (ctx, url) => fileCache[url] || (fileCache[url] = fetch(url).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).catch((e) => { delete fileCache[url]; throw e; }));
   function playFile(id, L, opts) {
     const A = TS.Audio, ctx = A.ctx, out = ctx.createGain();
     out.connect(A.musicBus);
     const pb = { id, out, file: true, bgm: !!opts.bgm, done: false, onEnd: opts.onEnd, t0: ctx.currentTime };
     M.current = pb;
-    fetch(L.file).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).then((buf) => {
+    loadFile(ctx, L.file).then((buf) => {
       if (M.current !== pb) return;
+      if (opts.fadeIn) { out.gain.setValueAtTime(0, ctx.currentTime); out.gain.linearRampToValueAtTime(1, ctx.currentTime + opts.fadeIn); }
       const src = ctx.createBufferSource(); src.buffer = buf;
       if (L.loop) { src.loop = true; src.loopStart = L.loopStart || 0; src.loopEnd = L.loopEnd || buf.duration; }
       src.connect(out); src.start(); pb.src = src; pb.t0 = ctx.currentTime;

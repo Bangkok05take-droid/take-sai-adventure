@@ -248,7 +248,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       // 最初のタップが「つづきから」：待たせずに村へ、ファンファーレは始めない。保存したBGM音量
       ({ c, q } = await open({ sound: true, bgmVol: 0.4 }));
       await q.tap('#btn-continue'); await q.waitForTimeout(700); s = await st(q);
-      assert(s.screen === 'village' && !s.plays.includes('overture') && s.cur === 'village' && s.plays.length === 1, 'continue first ' + JSON.stringify(s));
+      assert(s.screen === 'village' && !s.plays.includes('overture') && s.cur === 'villageTheme' && s.plays.length === 1, 'continue first ' + JSON.stringify(s));
       assert(await q.evaluate(() => Math.abs(TS.Audio.musicBus.gain.value - 0.4) < 0.02), 'saved bgm volume');
       await c.close();
       // 音オフで保存：案内なし・鳴らない・オンにならない。オンに切り替えるとファンファーレ1回
@@ -1361,7 +1361,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'overture,yanai,village,dungeon,boss,fanfare,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'overture,yanai,villageTheme,dungeon,boss,fanfare,village,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
@@ -1608,7 +1608,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.tap('#btn-continue'); await q.waitForTimeout(300); await talkThrough();
       await closeAllQ(q);
       await q.waitForTimeout(700);
-      c = await cur(); assert(c.id === 'village' && c.bgm && !c.timer, 'village music ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'villageTheme' && c.bgm && !c.timer, 'village music ' + JSON.stringify(c));
       await keep('__v');
       // 施設のボタン：開くまで待ってから閉じる（決まった時間だけ待つと、開く前に閉じようとして失敗することがあった）
       for (const fac of ['shop', 'storage', 'develop']) { await q.tap(`.fac[data-fac="${fac}"]`); for (let i = 0; i < 30 && !(await q.evaluate(() => TS.UI.modals.length)); i++) await q.waitForTimeout(100); await closeTopQ(q); await q.waitForTimeout(100); }
@@ -1617,11 +1617,11 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.evaluate(() => TS.UI.debug.showRecords()); await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'yanai' && c.bgm, 'yanai theme for records ' + JSON.stringify(c));
       await closeTopQ(q); await q.waitForTimeout(800);
-      c = await cur(); assert(c.id === 'village', 'back to village after records ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'villageTheme', 'back to village after records ' + JSON.stringify(c));
       await q.evaluate(() => TS.UI.debug.statueTalk()); await q.waitForTimeout(800);
       c = await cur(); assert(c.id === 'yanai', 'yanai theme at statue ' + JSON.stringify(c));
       await talkThrough(); await q.waitForTimeout(800);
-      c = await cur(); assert(c.id === 'village', 'back to village after statue ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'villageTheme', 'back to village after statue ' + JSON.stringify(c));
       // 出発 → ダンジョンの曲
       await q.tap('.fac.depart'); await q.waitForTimeout(200); await q.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await q.waitForTimeout(200); await q.click('text=出発する'); await q.waitForTimeout(300); await talkThrough();
       await closeAllQ(q);
@@ -1671,7 +1671,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.waitForTimeout(1800); await talkThrough();
       await closeAllQ(q);
       await q.waitForTimeout(800);
-      c = await cur(); assert(c.id === 'village' && !c.timer, 'village after return ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'villageTheme' && !c.timer, 'village after return ' + JSON.stringify(c));
       // 読み込み直して「つづきから」：ファンファーレ → 村の曲。ボスの進行・所持品はそのまま
       const before = await q.evaluate(() => JSON.stringify({ v: TS.UI.S.village.bag.map((i) => i.id), st: TS.UI.S.village.story.chapter, f: TS.UI.S.village.funds }));
       await q.reload(); await q.waitForTimeout(800);
@@ -1679,7 +1679,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.tap('#btn-continue'); await q.waitForTimeout(300); await talkThrough();
       await closeAllQ(q);
       await q.waitForTimeout(800);
-      c = await cur(); assert(c.id === 'village', 'village after reload ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'villageTheme', 'village after reload ' + JSON.stringify(c));
       eq2(await q.evaluate(() => JSON.stringify({ v: TS.UI.S.village.bag.map((i) => i.id), st: TS.UI.S.village.story.chapter, f: TS.UI.S.village.funds })), before, 'save intact');
     } finally { await c2.close(); }
   });
