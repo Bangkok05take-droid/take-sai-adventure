@@ -701,7 +701,9 @@
   // 曲の一覧（選ぶ処理）。file を書けば録音した音源で同じように再生する
   // group：'new'＝第2版（試聴の方向性確認用）、'old'＝第1版（比較用）
   M.LIBRARY = {
-    fanfare: { title: '冒険のファンファーレ', group: 'new', note: '第2版・冒険の始まり（ループなし）', build: fanfare2 },
+    // タイトルの音楽（2026年11月2日：届いた録音「Rising Kingdom Overture」。元のWAVは assets/reference/music/。ゲームはMP3 192kbps。約30秒・終わりは自然に消える・ループなし）
+    overture: { title: 'タイトルの音楽', group: 'new', note: 'Rising Kingdom Overture（録音・約30秒・ループなし）', file: 'assets/music/rising-kingdom-overture.mp3', seconds: 30 },
+    fanfare: { title: '冒険のファンファーレ', group: 'old', note: '以前のタイトル曲（第2版。比較用）', build: fanfare2 },
     yanai: { title: 'マスターヤナイのテーマ', group: 'new', note: '第2版・英雄のテーマ（主題Aからループ）', build: yanai2 },
     village: { title: '村の音楽', group: 'new', note: 'お祭りのにぎわい（ループ）', build: village },
     dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）', build: dungeon },
@@ -711,9 +713,9 @@
   };
   M.YANAI_MOTIF = YANAI_MOTIF; M.YANAI_MOTIF_V1 = YANAI_MOTIF_V1;
   /* 場面 → 曲（通常プレイで使う曲を選ぶ表）。ここを書きかえれば、場面の曲や録音音源への差し替えができる。
-   * ここに無い場面（boss など）は TS.Audio の以前の合成BGMを使う。title のファンファーレは1回だけ鳴らす（once） */
+   * ここに無い場面は TS.Audio の以前の合成BGMを使う。title の曲は1回だけ鳴らす（once） */
   M.SCENES = {
-    title: { song: 'fanfare', once: true },
+    title: { song: 'overture', once: true },   // 2026年11月2日から録音の曲（以前は合成のファンファーレ fanfare）
     village: { song: 'village' },
     dungeon: { song: 'dungeon' },
     boss: { song: 'boss' },   // ボス戦（以前は合成の短いループ。今は新しい曲）
@@ -722,7 +724,7 @@
   const cache = {};
   M.song = function (id) {
     const L = M.LIBRARY[id];
-    if (!L) return null;
+    if (!L || L.file) return null;   // 録音の曲は楽譜が無い（再生は playFile）
     if (!cache[id]) {
       const s = L.build();
       s.events.sort((a, b) => a.b - b.b);
@@ -733,6 +735,8 @@
     return cache[id];
   };
   M.info = function (id) {
+    const L = M.LIBRARY[id];
+    if (L && L.file) return { title: L.title, bpm: null, seconds: L.seconds || 0, tail: 0, loop: !!L.loop, file: true };
     const s = M.song(id); if (!s) return null;
     return { title: M.LIBRARY[id].title, bpm: s.bpm, seconds: s.length, tail: s.tail, loop: s.loop,
       loopStartSec: s.loop ? s.loopStart * s.spb : null, loopEndSec: s.loop ? s.loopEnd * s.spb : null, notes: s.events.length };

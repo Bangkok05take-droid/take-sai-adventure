@@ -240,15 +240,15 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       let s = await st(q);
       assert(s.ctx === 'suspended' && s.hint && !s.plays.length, 'blocked + hint ' + JSON.stringify(s));
       await tapBg(q); s = await st(q);
-      assert(s.cur === 'fanfare' && !s.hint && s.plays.filter((x) => x === 'fanfare').length === 1, 'fanfare after tap ' + JSON.stringify(s));
-      await tapBg(q); s = await st(q); eq2(s.plays.filter((x) => x === 'fanfare').length, 1, 'only once');
+      assert(s.cur === 'overture' && !s.hint && s.plays.filter((x) => x === 'overture').length === 1, 'fanfare after tap ' + JSON.stringify(s));
+      await tapBg(q); s = await st(q); eq2(s.plays.filter((x) => x === 'overture').length, 1, 'only once');
       await q.tap('#btn-newgame'); await q.waitForTimeout(500); s = await st(q);
       assert(s.screen === 'village' && s.cur === 'yanai', 'newgame goes on, one song ' + JSON.stringify(s));
       await c.close();
       // 最初のタップが「つづきから」：待たせずに村へ、ファンファーレは始めない。保存したBGM音量
       ({ c, q } = await open({ sound: true, bgmVol: 0.4 }));
       await q.tap('#btn-continue'); await q.waitForTimeout(700); s = await st(q);
-      assert(s.screen === 'village' && !s.plays.includes('fanfare') && s.cur === 'village' && s.plays.length === 1, 'continue first ' + JSON.stringify(s));
+      assert(s.screen === 'village' && !s.plays.includes('overture') && s.cur === 'village' && s.plays.length === 1, 'continue first ' + JSON.stringify(s));
       assert(await q.evaluate(() => Math.abs(TS.Audio.musicBus.gain.value - 0.4) < 0.02), 'saved bgm volume');
       await c.close();
       // 音オフで保存：案内なし・鳴らない・オンにならない。オンに切り替えるとファンファーレ1回
@@ -256,7 +256,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       s = await st(q); assert(!s.hint && !s.sound, 'sound off: no hint');
       await tapBg(q); s = await st(q); assert(!s.sound && !s.plays.length, 'sound stays off ' + JSON.stringify(s));
       await q.tap('#btn-sound-title'); await q.waitForTimeout(600); s = await st(q);
-      assert(s.sound && s.cur === 'fanfare' && !s.hint, 'sound on plays fanfare ' + JSON.stringify(s));
+      assert(s.sound && s.cur === 'overture' && !s.hint, 'sound on plays fanfare ' + JSON.stringify(s));
       await c.close();
     } finally { await strict.close(); }
   });
@@ -1361,7 +1361,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'fanfare,yanai,village,dungeon,boss,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'overture,yanai,village,dungeon,boss,fanfare,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
@@ -1601,7 +1601,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       // （読み込み時に自動再生を試すので、音の処理は作られるが止まったまま。曲は始めない）
       let c = await cur(); assert(!c.id && c.ctx !== 'running', 'silent before gesture ' + JSON.stringify(c));
       await q.touchscreen.tap(20, 20); await q.waitForTimeout(400);
-      c = await cur(); assert(c.id === 'fanfare' && c.bgm, 'fanfare after gesture ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'overture' && c.bgm, 'fanfare after gesture ' + JSON.stringify(c));
       await keep('__f'); await q.touchscreen.tap(30, 30); await q.waitForTimeout(200);
       assert(await same('__f'), 'fanfare not restarted by another tap');
       // つづきから → 村の曲（ファンファーレはフェードして切り替わる）
