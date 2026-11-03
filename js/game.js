@@ -1730,7 +1730,7 @@
       const fire = run.hazards.filter((h) => h.t <= 0);
       run.hazards = run.hazards.filter((h) => h.t > 0);
       if (fire.length) {
-        ev.push({ t: 'blast', tiles: fire.map((h) => ({ x: h.x, y: h.y, kind: h.kind, circle: h.name === '魔法陣の炎' })), kind: fire[0].kind });
+        ev.push({ t: 'blast', tiles: fire.map((h) => ({ x: h.x, y: h.y, kind: h.kind, circle: h.name === '魔法陣の炎' })), kind: fire[0].kind, from: fire[0].from || null });   // from：演出の起点（フレイザードの床）
         const h0 = fire.find((o) => o.x === p.x && o.y === p.y), h = h0 && !G.sets(run).all3 ? h0 : null;   // 3点セット：飛んでいるので床の印のダメージを受けない
         if (h0 && !h) G.log(run, '宙を舞って、' + h0.name + 'を受けなかった！');
         if (h) {

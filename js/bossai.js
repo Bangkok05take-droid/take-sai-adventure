@@ -87,6 +87,8 @@
       const tiles = freeTiles(run, room, (x, y) => !(x === e.x && y === e.y) &&
         (fire ? (((x - room.x) >> 1) + shift) % 2 === 0 : (((y - room.y) >> 1) + shift) % 2 === 0));
       for (const t of tiles) H.addHazard(run, t.x, t.y, fire ? 'fire' : 'ice', 2, e.atk * (fire ? 1.25 : 1.0), fire ? '炎の床' : '氷の床', 0.45);
+      // 演出の起点（炎の波はここから外へ）：印を描いた時点のフレイザードの位置で固定（見た目だけ。判定には使わない）
+      for (const h of run.hazards) if (!h.from) h.from = { x: e.x, y: e.y };
       say(run, '！ ' + D.ENEMIES[e.type].name + 'が床に' + (fire ? '炎' : '氷') + 'の印を描いた！（数字が0になる前に、印のない床へ）');
       ev.push({ t: 'telegraph', id: e.id, tiles: [], msg: (fire ? '炎' : '氷') + 'の床が来る！' });
       cd.floor = 5;

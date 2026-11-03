@@ -4000,6 +4000,16 @@ test('ダンジョンの曲：地下1〜15階は Stone Labyrinth Depths、16〜2
   for (const [f, want] of [[1, 'dungeon1'], [14, 'dungeon1'], [15, 'dungeon1'], [16, 'dungeon2'], [24, 'dungeon2'], [25, 'dungeon2'], [26, 'dungeon3'], [30, 'dungeon3'], [32, 'dungeon3'], [33, 'dungeon3'], [35, 'dungeon3']]) { run.floor = f; eq(G.dungeonBgm(run), want, 'floor ' + f); }
   run.floor = 5; run.bossFight = { engaged: true, won: false }; eq(G.dungeonBgm(run), 'boss');
 });
+test('フレイザードの床：演出の起点は印を描いた時点の位置で固定（あとで動いても変わらない）。判定は今までどおり0のあとのターンの終わりに1回', () => {
+  const S = toBossFloor(2, 4040), run = S.run, b = run.enemies.find((e) => e.boss); engage(S);
+  run.player.hp = run.player.maxhp = 99999; b.cds = { floor: 0, ball: 99 }; b.hold = 0; b.sleep = 0;
+  G.act(S, { type: 'wait' });
+  assert(run.hazards.length && run.hazards.every((h) => h.from && h.from.x === b.x && h.from.y === b.y), 'origin stored');
+  const at = { x: b.x, y: b.y }; b.x += 1; eq(run.hazards[0].t - 1, 1, 'shown 1');
+  G.act(S, { type: 'wait' }); const r = G.act(S, { type: 'wait' });
+  const bl = r.events.find((e) => e.t === 'blast' && e.tiles.length && e.tiles[0].kind);
+  assert(bl && bl.from && bl.from.x === at.x && bl.from.y === at.y, 'blast carries the marking origin');
+});
 test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {
   const name = (ch, f) => D.THEMES[D.floorFor(ch, f).theme].name;
   const want = { 1: 'レンガの回廊', 3: 'レンガの回廊', 4: '木の根の遺跡', 6: '木の根の遺跡', 7: '地下の遺跡', 10: '地下の遺跡', 11: '地下の遺跡', 14: '地下の遺跡',

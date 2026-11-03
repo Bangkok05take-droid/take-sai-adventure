@@ -2114,9 +2114,9 @@
       const by = {};
       for (const t of tiles) (by[t.kind] = by[t.kind] || []).push(t);
       /* フレイザードの床の技 v2（試写中。D.HAZARD_FX_V2）：判定は今までどおり、0になったターンの終わりに全部のマスで1回だけ（ゲーム側）。
-       * 見た目：氷は一斉に、炎はフレイザードに近いマスから順に。たけへの命中の表示は、たけのマスで大きく噴き出すコマに合わせ、それまで次の入力を待たせる */
+       * 見た目：氷は一斉に、炎は印を描いた時点のフレイザードの位置（e.from）に近いマスから順に。たけへの命中の表示は、たけのマスで大きく噴き出すコマに合わせ、それまで次の入力を待たせる */
       if (D.HAZARD_FX_V2 && (by.fire || by.ice) && SP.fxFrames('freyIce') && SP.fxFrames('freyFire')) {
-        const FR = TS.FX.FREY, boss = run.enemies.find((q) => q.boss), from = boss || p, dist = (t) => Math.max(Math.abs(t.x - from.x), Math.abs(t.y - from.y));
+        const FR = TS.FX.FREY, boss = run.enemies.find((q) => q.boss), from = e.from || boss || p, dist = (t) => Math.max(Math.abs(t.x - from.x), Math.abs(t.y - from.y));
         let hd = 0;
         for (const [kind, list] of [['ice', by.ice], ['fire', by.fire]]) {
           if (!list) continue;
