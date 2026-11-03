@@ -35,6 +35,9 @@
    * カウント・範囲・ダメージ・判定のタイミングは変えない（見た目と、たけへの命中の表示のタイミングだけ）。11月3日：本番に反映。
    * 炎の波の起点は印を描いた時点のフレイザードの位置（hazard.from）。たけが印の上にいたら、命中の表示（とそれまで入力待ち）はたけのマスで大きく噴き出すコマ */
   D.HAZARD_FX_V2 = true;
+  /* レベルの引き継ぎ（2026年11月3日・試験）：true なら、生きて村へ帰還したときのレベルと経験値を、次の探索の始まりに引き継ぐ（V.keptLevel）。
+   * 倒れたらレベル1・経験値0に戻す（覚えていたレベルも消す）。false で以前の仕様（毎回レベル1から）。装備・持ち物・お金・開始階・敵の強さは変わらない */
+  D.KEEP_LEVEL = true;
   D.DUNGEON_BGM = [{ from: 1, to: 15, scene: 'dungeon1' }, { from: 16, to: 25, scene: 'dungeon2' }, { from: 26, to: 999, scene: 'dungeon3' }];
   D.REMATCH = { bosses: ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn'], hits: 27, hpDiv: 6, defRate: 0.5, fallback: 'life_necklace' };
   /* 登場ムービーを見た記録の名前（story.introSeen のキー）。書いていないボスはボスIDのまま。

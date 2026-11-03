@@ -1046,7 +1046,9 @@
     else if (V.diner) notes.push([DP_ICON.fork, 'ワーンの食堂の料理で、冒険の準備を。']);
     if (!w) notes.push([DP_ICON.fist, '武器なし：素手で出発します。']);
     if (rm) notes.unshift([DP_ICON.warn, `再戦：<b>${esc(rm.name)}</b>（地下${rm.id === 'vearn' ? '30階・33階' : rm.floor + '階'}）。ボスの強さは、ボス部屋に入ったときのたけに合わせます。`]);
-    if (G.canDeepStart(UI.S, rm ? rm.ch : null)) notes.push([DP_ICON.compass, `大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは1から）。`]);
+    const kl = D.KEEP_LEVEL && V.keptLevel && V.keptLevel.lvl > 1 ? V.keptLevel.lvl : 1;   // 前回、無事に帰還したときのレベル
+    if (kl > 1) notes.push([DP_ICON.compass, `前回の帰還で鍛えた<b>レベル${kl}</b>から出発します（倒れるとレベル1に戻ります）。`]);
+    if (G.canDeepStart(UI.S, rm ? rm.ch : null)) notes.push([DP_ICON.compass, `大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは${kl}から）。`]);
     if (notes.length) html += '<div class="dp-rule"><i></i></div><div class="dp-notes">' + notes.map(([i, t]) => `<p>${i}<span>${t}</span></p>`).join('') + '</div>';
     if (!chk.ok) html += `<p class="warnbox">${esc(chk.msg)}</p>`;
     const reopen = () => setTimeout(() => openDepart(rematch), 0);

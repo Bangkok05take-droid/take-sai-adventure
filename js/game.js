@@ -311,12 +311,15 @@
       S.run.chapter = rm.ch;
       S.run.final = rm.id === 'vearn' ? { v: 3, stage: 'none', healed: false, cutsceneSeen: false, rescue: null, skip: { vearn: false, truevearn: false } } : null;
     }
+    // 無事に帰還したときのレベル（D.KEEP_LEVEL。2026年11月3日・試験）：前回の探索で生きて帰っていれば、そのレベルと経験値から始める
+    const kept = D.KEEP_LEVEL && V.keptLevel;
+    if (kept && kept.lvl > 1) { const p = S.run.player; p.lvl = kept.lvl; p.exp = kept.exp || 0; p.maxhp = p.hp = G.maxHpFor(p.lvl, S.run); }
     // 食堂の料理（この探索だけ）
     if (V.meal && D.MEALS[V.meal]) {
       S.run.meal = V.meal;
       V.meal = null;
       const p = S.run.player;
-      p.maxhp = p.hp = G.maxHpFor(1, S.run);
+      p.maxhp = p.hp = G.maxHpFor(p.lvl, S.run);
     }
     G.log(S.run, 'たけは遺跡へ出発した！' + (S.run.meal ? '（' + D.MEALS[S.run.meal].name + 'で元気いっぱい）' : ''));
     if (deep) G.log(S.run, '大魔王のローブの力で、' + G.DEEP_START + '階へ降り立った！');
@@ -2404,6 +2407,9 @@
       V.rewardNotice = (V.rewardNotice || []).concat(left.map((it) => it.id));
       res.rewardToStorage = left.map((it) => it.id);
     }
+    // レベルの引き継ぎ（D.KEEP_LEVEL）：生きて帰還（帰還の巻物・祠・帰還口。イベントの帰還口も）ならレベルと経験値を覚える。倒れたらレベル1に戻す（覚えたものも消す）
+    if (res.type === 'dead') V.keptLevel = null;
+    else if (D.KEEP_LEVEL) { V.keptLevel = { lvl: run.player.lvl, exp: run.player.exp }; res.keptLevel = run.player.lvl; }
     if (res.type === 'dead') {
       V.bag = [];
       V.defeats++;

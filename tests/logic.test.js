@@ -4010,6 +4010,42 @@ test('フレイザードの床：演出の起点は印を描いた時点の位�
   const bl = r.events.find((e) => e.t === 'blast' && e.tiles.length && e.tiles[0].kind);
   assert(bl && bl.from && bl.from.x === at.x && bl.from.y === at.y, 'blast carries the marking origin');
 });
+test('レベルの引き継ぎ（D.KEEP_LEVEL）：生きて帰還したらレベル・経験値・最大HPを次へ。再読み込みしても同じ。倒れたらレベル1（覚えたレベルも消える）。隠しダンジョンでも同じ', () => {
+  const S = G.newState(), V = S.village; V.story.introDone = true;
+  eq(D.KEEP_LEVEL, true);
+  const back = (how) => { const run = S.run; if (how === 'dead') { run.player.hp = 0; G._H.die(S, 'テスト'); } else { run.bag.push(G.makeItem(S, 'return_scroll')); G.useReturnScroll(S); } return G.finishRun(S); };
+  // 1回目：レベル1から → レベル12にして帰還の巻物で帰る
+  assert(G.depart(S, 11).ok); eq(S.run.player.lvl, 1);
+  S.run.player.lvl = 12; S.run.player.exp = D.EXP_TABLE[12] + 5; S.run.player.maxhp = G.maxHpFor(12, S.run);
+  const r1 = back('return'); eq(r1.type, 'return'); eq(V.keptLevel.lvl, 12); eq(r1.keptLevel, 12);
+  // 2回目：レベル12・経験値・最大HP（満タン）から。開始階は1階のまま
+  assert(G.depart(S, 12).ok); let p = S.run.player;
+  eq(p.lvl, 12); eq(p.exp, D.EXP_TABLE[12] + 5); eq(p.maxhp, G.maxHpFor(12, S.run)); eq(p.hp, p.maxhp); eq(S.run.floor, 1);
+  assert(G.playerAtk(S.run) === D.PLAYER.baseAtk + D.PLAYER.atkPerLevel * 11, 'atk grows with level');
+  // 帰還 → 保存して読み込み直し → 再挑戦でも同じ
+  back('return'); const L = SV.deserialize(SV.serialize(S)); eq(L.village.keptLevel.lvl, 12);
+  assert(G.depart(L, 13).ok); eq(L.run.player.lvl, 12);
+  // 倒れる → レベル1。覚えていたレベルも消え、次も1から
+  const rd = (() => { const run = L.run; run.player.hp = 0; G._H.die(L, 'テスト'); return G.finishRun(L); })();
+  eq(rd.type, 'dead'); eq(L.village.keptLevel, null);
+  assert(G.depart(L, 14).ok); eq(L.run.player.lvl, 1); eq(L.run.player.exp, 0); eq(L.run.player.maxhp, G.maxHpFor(1, L.run));
+  // 料理の最大HPは今までどおり上乗せ
+  L.run = null; L.village.keptLevel = { lvl: 8, exp: D.EXP_TABLE[8] }; const mealId = Object.keys(D.MEALS).find((k) => D.MEALS[k].maxhp); 
+  if (mealId) { L.village.meal = mealId; assert(G.depart(L, 15).ok); eq(L.run.player.maxhp, G.maxHpFor(8, L.run)); assert(L.run.player.maxhp > G.maxHpFor(8)); L.run = null; }
+  // 設定で元の仕様へ：false なら毎回レベル1から
+  D.KEEP_LEVEL = false; try { L.village.keptLevel = { lvl: 9, exp: 0 }; assert(G.depart(L, 16).ok); eq(L.run.player.lvl, 1); } finally { D.KEEP_LEVEL = true; }
+});
+test('レベルの引き継ぎ：隠しダンジョンで生きて帰れば次へ、隠しダンジョンで倒れたらレベル1', () => {
+  const S = toBossFloor(6, 979); defeatBoss(S); G.commitRescue(S);
+  S.village.story.defeated.truevearn = true; S.village.story.endingDone = true;
+  S.run.player.x = S.run.crack.x; S.run.player.y = S.run.crack.y; G.act(S, { type: 'descend' });
+  assert(S.run.hidden); S.run.player.lvl = 30; S.run.player.exp = D.EXP_TABLE[30];
+  S.run.bag.push(G.makeItem(S, 'return_scroll')); G.useReturnScroll(S); G.finishRun(S);
+  eq(S.village.keptLevel.lvl, 30);
+  assert(G.depart(S, 21).ok); eq(S.run.player.lvl, 30);
+  S.run.player.hp = 0; G._H.die(S, 'テスト'); G.finishRun(S); eq(S.village.keptLevel, null);
+  assert(G.depart(S, 22).ok); eq(S.run.player.lvl, 1);
+});
 test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {
   const name = (ch, f) => D.THEMES[D.floorFor(ch, f).theme].name;
   const want = { 1: 'レンガの回廊', 3: 'レンガの回廊', 4: '木の根の遺跡', 6: '木の根の遺跡', 7: '地下の遺跡', 10: '地下の遺跡', 11: '地下の遺跡', 14: '地下の遺跡',
