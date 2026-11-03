@@ -686,16 +686,33 @@
       const attacking = !!atkFx || RD.fx.some((f) => f.t === 'lunge' && f.id === 'p' && now - f.t0 < 180);
       const pa = anims.p, moving = !!pa && now - pa.t0 < pa.dur;
       const walking = moving;
+      const flying = G.sets(run).all3;
+      // 3点セット：滑空（2026年11月4日）。移動中は歩きのコマを使わず（足を動かさない）、進む向きへ少し傾けて滑るように。
+      //  傾きは短くなめらかに変え、止まると元の姿勢へ。上下の揺れ（浮遊）は止まっている間だけ。見た目だけ（位置・速さ・判定は変えない）
+      const G2 = RD.glide || (RD.glide = { ang: 0, t: now, until: 0, dx: 0 });
+      if (moving) { G2.until = now + 140; G2.dx = Math.sign(pa.x - pa.fx); }   // 連続の移動（ダッシュ）の切れ目で姿勢が戻りすぎないよう、少し保つ
+      const gliding = flying && now < G2.until && !atkFx;
+      const target = gliding ? G2.dx * RD.GLIDE.tilt * Math.PI / 180 : 0;   // 横・ななめの移動だけ傾ける。真上・真下は向きの絵のまま
+      G2.ang += (target - G2.ang) * (1 - Math.exp(-Math.max(0, now - G2.t) / RD.GLIDE.ease)); G2.t = now;
+      if (!flying) G2.ang = 0;
       let img;
-      if (set.art && set.idle) img = atkFx ? RD.attackFrame(set, (now - atkFx.t0) / atkFx.dur) : RD.walkFrame(set, moving, moving ? (now - pa.t0) / pa.dur : 0, RD.stepCount || 0);
-      else img = attacking ? set.atk : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
+      if (flying && set.art && set.idle && !atkFx) img = set.idle;   // 足を動かさない
+      else if (set.art && set.idle) img = atkFx ? RD.attackFrame(set, (now - atkFx.t0) / atkFx.dur) : RD.walkFrame(set, moving, moving ? (now - pa.t0) / pa.dur : 0, RD.stepCount || 0);
+      else img = attacking ? set.atk : flying ? set.walk[0] : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
       const hurt = hitFx(p.x, p.y, 'player', now);
-      // 3点セット：飛ぶ見た目（仮。絵はChatGPT側で用意する予定）。影は床に残し、体を少し浮かせてゆっくり上下させる
-      const fly = G.sets(run).all3 ? Math.round((5 + Math.sin(now / 420) * 1.5) * k) : 0;
+      // 浮かせる高さ：滑空中は一定、止まっている間だけ小さくゆっくり上下（揺れは止まった瞬間から少しずつ戻す）
+      const bobAmt = gliding ? 0 : Math.min(1, (now - G2.until) / 300);
+      const fly = flying ? Math.round((5 + Math.sin(now / 420) * 1.5 * Math.max(0, bobAmt)) * k) : 0;
       const sx = Math.round(ox + pp.x * ts + l[0] + (hurt ? Math.sin(now / 18) * k * 2 : 0)), sy = Math.round(oy + pp.y * ts + l[1]) - fly;
       shadow(sx + ts / 2, sy + fly + ts * 0.92, ts * (fly ? 0.24 : 0.3));
       // 見本から作った絵（52×64、足元そろえ）は1マスより背が高いので、足元をマスの下端に合わせて描く
-      const drawP = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, 0) : g.drawImage(img, sx, sy, ts, ts);
+      const drawP0 = () => set.art ? RD.drawChar(g, img, sx + ts / 2, sy + ts - k, k, 0) : g.drawImage(img, sx, sy, ts, ts);
+      // 傾け：体の中心（足元から体の高さの半分ほど上）を軸に回す（足元・位置がずれない）
+      const drawP = () => {
+        if (Math.abs(G2.ang) < 0.002) { drawP0(); return; }
+        const pcx = sx + ts / 2, pcy = set.art ? sy + ts - k - RD.GLIDE.center * k : sy + ts / 2;
+        g.save(); g.translate(pcx, pcy); g.rotate(G2.ang); g.translate(-pcx, -pcy); drawP0(); g.restore();
+      };
       // 帰還口から帰る演出（portalgo）：光の柱の間に、たけが薄くなる
       const pgo = RD.fx.find((f) => f.t === 'portalgo'), pgt = pgo ? (now - pgo.t0) / 1000 : 0;
       if (pgo) g.globalAlpha = pgt < 0.25 ? 1 : Math.max(0.12, 1 - (pgt - 0.25) / 0.4 * 0.88);
@@ -917,6 +934,8 @@
   };
 
   /* 人物の絵（見本から作った 52×64 の絵）を、足元 (fx, fy) にそろえて描く。k：1ドットの大きさ */
+  // 3点セットの滑空の傾き：tilt＝横移動の傾き（度）、ease＝傾きが変わる速さ（ミリ秒。小さいほど速い）、center＝回す軸の足元からの高さ（ドット）
+  RD.GLIDE = { tilt: 20, ease: 55, center: 28 };
   RD.drawChar = function (g, img, fx, fy, k, bob) {
     const B = (TS.ASSETS && TS.ASSETS.charBox) || { w: 52, h: 64, foot: 62 };
     g.drawImage(img, Math.round(fx - B.w / 2 * k), Math.round(fy - (B.foot + (bob || 0)) * k), Math.round(img.width * k), Math.round(img.height * k));
