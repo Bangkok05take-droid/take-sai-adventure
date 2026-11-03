@@ -1,0 +1,7 @@
+{
+  "PNG_dimensions_alpha_decode": "pass",
+  "individual_frames": 12,
+  "spritesheet_dimensions": "384x64",
+  "game_test": "not_run",
+  "countdown_and_damage": "not_decided"
+}

@@ -1,0 +1,229 @@
+{
+  "version": "frey_floor_fx_v1",
+  "tile_px": 32,
+  "frame_size": [
+    64,
+    64
+  ],
+  "anchor": [
+    32,
+    48
+  ],
+  "anchor_target": "tile_center",
+  "render_offset_from_tile_top_left": [
+    -16,
+    -32
+  ],
+  "assets": [
+    {
+      "file": "assets/ice/frame_00.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "ice",
+      "frame": 0,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "a7beb107662728bcb8172c2d7617aa683256ef527a08c80af1ddfee300d0f1db"
+    },
+    {
+      "file": "assets/ice/frame_01.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "ice",
+      "frame": 1,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "340dd7f69ce83664c11c3e7849bd3f2b264a3b01cd78765beb6f1474febf2800"
+    },
+    {
+      "file": "assets/ice/frame_02.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "ice",
+      "frame": 2,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "19c2410f9bc4ba0087494c021424023ad846151fed5b277d335c33f31b63534a"
+    },
+    {
+      "file": "assets/ice/frame_03.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "ice",
+      "frame": 3,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "db89f0edd4a352a74e64831f1db761b5244963320ab917bbf079f13785757818"
+    },
+    {
+      "file": "assets/ice/frame_04.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "ice",
+      "frame": 4,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "2dc1c12878df5e4c98ede85aca40b541837a88e60b918747c4bc5661d4ce4f4b"
+    },
+    {
+      "file": "assets/ice/frame_05.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "ice",
+      "frame": 5,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "7ea9ffd08149471e695ae896b397b51daff44313092cc3db9ebd2ab57c92bbec"
+    },
+    {
+      "file": "assets/fire/frame_00.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "fire",
+      "frame": 0,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "3cd08c04b2255ccd8ceb6340135f64c84ca3d998ce5616e863b73a4a9ddcc413"
+    },
+    {
+      "file": "assets/fire/frame_01.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "fire",
+      "frame": 1,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "22c758a024a12b83a27fcbb13e0f291ea1d69105daf08ecd1d7be822ba83f439"
+    },
+    {
+      "file": "assets/fire/frame_02.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "fire",
+      "frame": 2,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "0fcbde0286d6eda5fa2a4dc4772dace810c9f087f8accc40b77dafcbeefa67ee"
+    },
+    {
+      "file": "assets/fire/frame_03.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "fire",
+      "frame": 3,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "716c041683865a1c1510a8f605bf2ee574aee8f77a2da0ddce859dd92a06594b"
+    },
+    {
+      "file": "assets/fire/frame_04.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "fire",
+      "frame": 4,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "a860e0af276dc791dbe9f6d4fedf98bc1d28d45d26d588e0a9e006d53fe32a64"
+    },
+    {
+      "file": "assets/fire/frame_05.png",
+      "size": [
+        64,
+        64
+      ],
+      "effect": "fire",
+      "frame": 5,
+      "anchor": [
+        32,
+        48
+      ],
+      "sha256": "105dba5f10dcf629ad5e094a1de3ee870d1791dbb2d41254f1aba32d25aa3144"
+    }
+  ],
+  "strips": [
+    {
+      "file": "ice_strip.png",
+      "size": [
+        384,
+        64
+      ],
+      "frames": 6,
+      "frame_size": [
+        64,
+        64
+      ]
+    },
+    {
+      "file": "fire_strip.png",
+      "size": [
+        384,
+        64
+      ],
+      "frames": 6,
+      "frame_size": [
+        64,
+        64
+      ]
+    }
+  ],
+  "preview_only": {
+    "frame_duration_ms": [
+      70,
+      60,
+      70,
+      100,
+      90,
+      130
+    ],
+    "fire_row_delay_ms": 140
+  },
+  "countdown": "UNDECIDED - preserve existing until discussion",
+  "damage_timing": "UNDECIDED - do not derive from preview",
+  "input_during_animation": "UNDECIDED",
+  "loop": false,
+  "blend": "source-over"
+}

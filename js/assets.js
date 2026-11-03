@@ -223,6 +223,9 @@
       calamityEnd: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_end_' + i + '.png'),
       calamityWall: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_wall_' + i + '.png'),
       tenchiMato: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/tenchi_mato_' + i + '.png'),
+      /* フレイザードの床の技（ZIP frey_floor_fx_v1。そのまま写しただけ）：各6コマ・64×64・接地点 (32,48)＝マスの中央。D.HAZARD_FX_V2 のときだけ使う（試写中） */
+      freyIce: [0, 1, 2, 3, 4, 5].map((i) => 'assets/fx/frey/ice_' + i + '.png'),
+      freyFire: [0, 1, 2, 3, 4, 5].map((i) => 'assets/fx/frey/fire_' + i + '.png'),
     },
     /* 通常ダンジョンの地域の背景（ZIP dungeon_7themes_art_v1 の原画を tools/make-dungeon-art.py で切り出し・縮小）。
      * 床 floor：64×64＝2×2マス。壁 wall：64×64＝2マス幅・2マス高（下が壁の正面、上が壁の上の段）。

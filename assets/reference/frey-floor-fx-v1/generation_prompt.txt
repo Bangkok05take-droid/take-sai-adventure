@@ -1,0 +1,1 @@
+Built-in imagegen: transparent 6-column x 2-row pixel-art VFX atlas. Ice crack, rise, impact, peak, shatter, sparks; fire flare, rise, burst, peak, shrink, embers. No floor, characters or countdown. Technical crop to fixed cells, uniform resize into 64x64, anchor (32,48), fade final two frames. Source retained.

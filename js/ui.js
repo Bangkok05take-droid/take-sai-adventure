@@ -2113,6 +2113,21 @@
       // 床の危険の発動：種類ごとに分けて出す（炎は上へ舞う火の粉、氷はひし形のかけら、罠は×の破裂、雷は落雷）
       const by = {};
       for (const t of tiles) (by[t.kind] = by[t.kind] || []).push(t);
+      /* フレイザードの床の技 v2（試写中。D.HAZARD_FX_V2）：判定は今までどおり、0になったターンの終わりに全部のマスで1回だけ（ゲーム側）。
+       * 見た目：氷は一斉に、炎はフレイザードに近いマスから順に。たけへの命中の表示は、たけのマスで大きく噴き出すコマに合わせ、それまで次の入力を待たせる */
+      if (D.HAZARD_FX_V2 && (by.fire || by.ice) && SP.fxFrames('freyIce') && SP.fxFrames('freyFire')) {
+        const FR = TS.FX.FREY, boss = run.enemies.find((q) => q.boss), from = boss || p, dist = (t) => Math.max(Math.abs(t.x - from.x), Math.abs(t.y - from.y));
+        let hd = 0;
+        for (const [kind, list] of [['ice', by.ice], ['fire', by.fire]]) {
+          if (!list) continue;
+          const d0 = Math.min(...list.map(dist)), delays = list.map((t) => kind === 'fire' ? (dist(t) - d0) * FR.fireStep : 0);
+          RD.addFx({ t: 'freyFloor', frames: kind === 'fire' ? 'freyFire' : 'freyIce', tiles: list, delays, dur: Math.max(...delays) + FR.total() });
+          const i = list.findIndex((t) => t.x === p.x && t.y === p.y); if (i >= 0) hd = Math.max(hd, delays[i] + FR.hitAt());
+        }
+        if (by.ice) TS.FX.shake(RD, 3, 220);
+        AU.sfx('bolt');
+        return hd;
+      }
       if (by.fire) RD.addFx({ t: 'embers', tiles: by.fire, dur: 560 });
       if (by.ice) RD.addFx({ t: 'shards', tiles: by.ice, dur: 560 });
       if (by.trap) RD.addFx({ t: 'trapburst', tiles: by.trap, dur: 480 });

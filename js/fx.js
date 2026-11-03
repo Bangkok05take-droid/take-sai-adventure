@@ -645,5 +645,23 @@
     if (age >= f.move) { const d = (age - f.move) / (f.dur - f.move); dbDraw(g, dbImg('giga_slash'), x1 + Math.cos(ang) * ts * 0.55, y1 + Math.sin(ang) * ts * 0.55 - ts * 0.4, ts * 1.7, ang, 0.5, 0.5, d < 0.5 ? 1 : (1 - d) / 0.5); }
   };
 
+  /* フレイザードの床の技 v2（ZIP frey_floor_fx_v1・試写中。D.HAZARD_FX_V2）：マスごとに6コマ（64×64・接地点＝マスの中央）を最近傍で等倍に。
+   * f.delays[i]：そのマスの始まりの遅れ（ミリ秒）。氷は全部0（一斉）、炎はフレイザードからの距離で遅らせる（波）。
+   * コマの長さは FX.FREY.frames（ZIPの試写用の値。ゲームの仕様ではない）。見た目だけ：判定はゲーム側で1回だけ済んでいる */
+  FX.FREY = { frames: [70, 60, 70, 100, 90, 130], fireStep: 140, hitFrame: 2 };
+  FX.FREY.total = () => FX.FREY.frames.reduce((a, b) => a + b, 0);
+  FX.FREY.hitAt = () => FX.FREY.frames.slice(0, FX.FREY.hitFrame).reduce((a, b) => a + b, 0);   // 大きく噴き出すコマの始まり
+  FX.draw.freyFloor = function (g, f, a, v) {
+    const fr = TS.Sprites && TS.Sprites.fxFrames(f.frames); if (!fr) return;
+    const age = a * f.dur, L = FX.FREY.frames, ts = v.ts;
+    g.imageSmoothingEnabled = false;
+    f.tiles.forEach((t, i) => {
+      let lt = age - (f.delays ? f.delays[i] : 0); if (lt < 0) return;
+      let j = 0; while (j < L.length && lt >= L[j]) { lt -= L[j]; j++; }
+      if (j >= L.length) return;
+      g.drawImage(fr[j], v.ox + t.x * ts - ts / 2, v.oy + t.y * ts - ts, ts * 2, ts * 2);
+    });
+  };
+
   TS.FX = FX;
 })(globalThis.TS = globalThis.TS || {});

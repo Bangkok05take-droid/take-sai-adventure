@@ -31,6 +31,9 @@
    * ボス戦の間はボス戦の曲（G.dungeonBgm）。隠しダンジョン（31〜35階）も階の番号で選ぶ */
   //  2026年11月3日：15階・25階（ボスの階）もボス戦が始まるまでは、その前の階と同じ曲。26〜32階は dungeon3（30階のボスの階・隠しダンジョンの31〜32階も）
   //  11月3日：ダンジョンの曲はこの3つで全部。26階から最後（33階・隠しダンジョンの35階まで）は dungeon3
+  /* フレイザードの床の技（炎の床・氷の床）の演出 v2（ZIP frey_floor_fx_v1・2026年11月3日・試写中）。true で氷柱の一斉噴出・火柱の波。
+   * カウント・範囲・ダメージ・判定のタイミングは変えない（見た目と、たけへの命中の表示のタイミングだけ）。相談のあと本番で true にする */
+  D.HAZARD_FX_V2 = false;
   D.DUNGEON_BGM = [{ from: 1, to: 15, scene: 'dungeon1' }, { from: 16, to: 25, scene: 'dungeon2' }, { from: 26, to: 999, scene: 'dungeon3' }];
   D.REMATCH = { bosses: ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn'], hits: 27, hpDiv: 6, defRate: 0.5, fallback: 'life_necklace' };
   /* 登場ムービーを見た記録の名前（story.introSeen のキー）。書いていないボスはボスIDのまま。
