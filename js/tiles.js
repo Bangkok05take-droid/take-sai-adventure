@@ -580,6 +580,29 @@
    *  正面の壁：3マスの高さ。いちばん下を床との境目（壁の正面のマス）にそろえ、その上の2マスに上の段を描く。各マスは自分のマスの中だけ
    *    （上の段のマスが床なら描かない＝床・通路・隣の部屋は覆わない）。壁の並びは左の端から アーチ4・旗2・アーチ4…、残りは旗2か細い1
    *  それ以外の壁：暗い単色（部屋の外と同じ）。床に面した辺と、正面の壁のとなりに縁（左右16px・下24px）。部屋の左下・右下の角に角の絵 */
+  /* 赤いカーペット（ZIP castle_match_v1。2026年11月3日・試作）：5×5以上の部屋だけ、中央に長方形で（まわりに1マス以上の床の余白。
+   * 余白は部屋の短い辺の4分の1、最低1マス）。3×3より小さくなる・階段や帰還の祠が中に入る・ボス部屋・モンスターハウスの部屋には敷かない。
+   * 通行は今までの床のまま（見た目だけ）。部屋ごとの長方形は地図ごとに1回だけ計算して覚えておく。戻り値：'top_left' などの部品名か null */
+  const carpetCache = new WeakMap();
+  function carpetRects(run) {
+    const m = run.map; let list = carpetCache.get(m);
+    if (list) return list;
+    list = [];
+    const inR = (r, p) => p && p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+    for (const rm of m.rooms || []) {
+      if (rm.w < 5 || rm.h < 5 || inR(rm, run.bossFight) || (run.bossFight && rm.x === run.bossFight.x && rm.y === run.bossFight.y) || (m.monsterHouse != null && m.monsterHouse === rm.id)) continue;
+      const mg = Math.max(1, Math.floor(Math.min(rm.w, rm.h) / 4)), r = { x: rm.x + mg, y: rm.y + mg, w: rm.w - 2 * mg, h: rm.h - 2 * mg };
+      if (r.w < 3 || r.h < 3 || inR(r, run.stairs) || inR(r, run.returnPoint)) continue;
+      list.push(r);
+    }
+    carpetCache.set(m, list);
+    return list;
+  }
+  function carpetAt(run, x, y) {
+    const r = carpetRects(run).find((q) => x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h);
+    if (!r) return null;
+    return (y === r.y ? 'top' : y === r.y + r.h - 1 ? 'bottom' : 'middle') + '_' + (x === r.x ? 'left' : x === r.x + r.w - 1 ? 'right' : 'center');
+  }
   function artOverlayV2(run, L, x, y, A, at, walk, out, e4, dark, bg) {
     const ready = (l) => l && l.length && l.every(Boolean);
     if (!A || !A.seq || ![...A.seq, ...A.fill, 'floor', 'rimW', 'rimE', 'rimN', 'jInNE', 'jInNW'].every((k) => ready(A[k]))) return;
@@ -588,6 +611,11 @@
     if (k !== WALL) {
       const F = A.floor[0], n = F.width / 32;
       g.drawImage(F, (x % n) * 32, (y % n) * 32, 32, 32, x0, y0, 32, 32);
+      // 赤いカーペット（部品のある地域だけ。床の上・道具や人物の下）
+      if (A.carpet_middle_center && A.carpet_middle_center[0]) {
+        const c = carpetAt(run, x, y);
+        if (c) { const im = A['carpet_' + c][0]; if (im) g.drawImage(im, x0, y0, 32, 32); }
+      }
       return;
     }
     const isFace = (xx, yy) => at(xx, yy) === WALL && walk(xx, yy + 1);

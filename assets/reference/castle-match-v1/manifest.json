@@ -1,0 +1,1691 @@
+{
+  "version": "castle_match_v1",
+  "region": "大魔王の城",
+  "floors": [
+    31,
+    34
+  ],
+  "tile_px": 32,
+  "render_scale": 1,
+  "wall_height": 96,
+  "wall_order": [
+    "wall_crest",
+    "wall_banner",
+    "wall_lamps"
+  ],
+  "wall_remainder": {
+    "3": "wall_banner",
+    "2": [
+      "wall_narrow",
+      "wall_narrow"
+    ],
+    "1": "wall_narrow"
+  },
+  "phase": {
+    "bottom": "x%4",
+    "left": "y%4",
+    "right": "y%2"
+  },
+  "assets": [
+    {
+      "file": "assets/wall_crest.png",
+      "size": [
+        96,
+        96
+      ],
+      "kind": "wall",
+      "tiles": 3,
+      "sha256": "e7f0f4ca58c7f44339c4dc6658d261e7ec6e41d892aa898ce41cdac5bfc75bcf"
+    },
+    {
+      "file": "assets/wall_banner.png",
+      "size": [
+        96,
+        96
+      ],
+      "kind": "wall",
+      "tiles": 3,
+      "sha256": "af20e87cd4a7ad1b2915d062ae57b1f9bb1d789b4ac9b973b986a58438fca901"
+    },
+    {
+      "file": "assets/wall_lamps.png",
+      "size": [
+        96,
+        96
+      ],
+      "kind": "wall",
+      "tiles": 3,
+      "sha256": "244ad3e7b80e1a71001a8cc88268f5e0cdf792732a03f683e069a28f03918ba9"
+    },
+    {
+      "file": "assets/wall_narrow.png",
+      "size": [
+        32,
+        96
+      ],
+      "kind": "wall",
+      "tiles": 1,
+      "sha256": "bede3344117d1d18b11d99c4f469be7cc8470dc0334e9091d77776d976ffc25f"
+    },
+    {
+      "file": "assets/floor_4x4.png",
+      "size": [
+        128,
+        128
+      ],
+      "kind": "floor",
+      "sha256": "d578d17bde9752587f82f3ca62bef7958c32abf2b0a4dd9f427029a1d5c1de32"
+    },
+    {
+      "file": "assets/edge_left.png",
+      "size": [
+        16,
+        128
+      ],
+      "kind": "edge",
+      "sha256": "3761401e3d4e5b085e6f4195224c9bfcb8748c883dfadc792b1383c653f2912b"
+    },
+    {
+      "file": "assets/edge_right.png",
+      "size": [
+        16,
+        64
+      ],
+      "kind": "edge",
+      "sha256": "9b288e0c628a901a9a73c0792c5d839f8edd5a4bb3b64d35ffbdc398c4179377"
+    },
+    {
+      "file": "assets/edge_bottom.png",
+      "size": [
+        128,
+        24
+      ],
+      "kind": "edge",
+      "sha256": "bfcb2deb6211aafc78a11bc042ef467a15d2f23cde7a12e4eef8d55b6bcbab74"
+    },
+    {
+      "file": "edge_fit/upper_left_v0.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "upper",
+      "v_phase": 0,
+      "tile_offset": [
+        16,
+        0
+      ],
+      "sha256": "3f7f1f6ba968f6dd0d4487b6097b2ff9e7871db7d15d9a4639e39fce45495acb"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v0__wall_crest.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_crest",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "43cd5bcc90f03ae3c758500f62454236af09a20ff4c5e42a18fdbbd16350c7c8"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v0__wall_banner.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_banner",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "43cd5bcc90f03ae3c758500f62454236af09a20ff4c5e42a18fdbbd16350c7c8"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v0__wall_lamps.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_lamps",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "43cd5bcc90f03ae3c758500f62454236af09a20ff4c5e42a18fdbbd16350c7c8"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v0__wall_narrow.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_narrow",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "3085dd524a1df3bf15c6782b637060a2cb86ae5c79372ae8fea1787fc585dd54"
+    },
+    {
+      "file": "edge_fit/upper_left_v1.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "upper",
+      "v_phase": 1,
+      "tile_offset": [
+        16,
+        0
+      ],
+      "sha256": "81fd7cc8699d0b6ca1edfe2e1d83d1ec8e1e1fb7e490ac9b36209baf8074e721"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v1__wall_crest.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_crest",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "87dbeb17c7d2aa0af270574f990d3dcf172288d1771fdb1d727d3bf3b5b2fcfc"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v1__wall_banner.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_banner",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "87dbeb17c7d2aa0af270574f990d3dcf172288d1771fdb1d727d3bf3b5b2fcfc"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v1__wall_lamps.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_lamps",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "87dbeb17c7d2aa0af270574f990d3dcf172288d1771fdb1d727d3bf3b5b2fcfc"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v1__wall_narrow.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_narrow",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "5ea5b0682b98b92725841bb8ee81b2f7b72f49772aebd52d41aaf109e034e079"
+    },
+    {
+      "file": "edge_fit/upper_left_v2.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "upper",
+      "v_phase": 2,
+      "tile_offset": [
+        16,
+        0
+      ],
+      "sha256": "915e253f8b09d8705e5b63529a160d64e9ce331e04346ebb05016144364b0741"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v2__wall_crest.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 2,
+      "wall": "wall_crest",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "67f248e8d242f309bfd6f2883d2fa168b104b729c16813976a5f8df4ec27cc56"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v2__wall_banner.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 2,
+      "wall": "wall_banner",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "67f248e8d242f309bfd6f2883d2fa168b104b729c16813976a5f8df4ec27cc56"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v2__wall_lamps.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 2,
+      "wall": "wall_lamps",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "67f248e8d242f309bfd6f2883d2fa168b104b729c16813976a5f8df4ec27cc56"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v2__wall_narrow.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 2,
+      "wall": "wall_narrow",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "99ab0c92c4385a905e3260d1808abe2d560fcc1c52c92141ac61c2c1ecc8b958"
+    },
+    {
+      "file": "edge_fit/upper_left_v3.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "upper",
+      "v_phase": 3,
+      "tile_offset": [
+        16,
+        0
+      ],
+      "sha256": "5849d34fa39e19b240f80a84e0101c5075f6ad63cd6ce2b66129095a595fbd35"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v3__wall_crest.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 3,
+      "wall": "wall_crest",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "baf1a97aeda44a8a4288f41736f31bf3bac540c8f0bdddbf356196610050505b"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v3__wall_banner.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 3,
+      "wall": "wall_banner",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "baf1a97aeda44a8a4288f41736f31bf3bac540c8f0bdddbf356196610050505b"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v3__wall_lamps.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 3,
+      "wall": "wall_lamps",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "baf1a97aeda44a8a4288f41736f31bf3bac540c8f0bdddbf356196610050505b"
+    },
+    {
+      "file": "ends_fit/end_vertical_left_v3__wall_narrow.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 3,
+      "wall": "wall_narrow",
+      "tile_offset": [
+        16,
+        8
+      ],
+      "sha256": "10f900bec152534eae55358342dcd2d68c7b45cb992b9060b8f8f21bffd85101"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h0_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 0,
+      "v_phase": 0,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "b8fa3d06b8ff6f9a8d1e4d3ab83ac7b741f2f4b2207fec9648f5508b148f7b36"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h0_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 0,
+      "v_phase": 1,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "0dfc78fc5ec47d3ca1a7250cb6d5dda9a7a94cd406da52596fe04e7ffb241b08"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h0_v2.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 0,
+      "v_phase": 2,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "9a52a666fd44487f44f66ef39ac8ba970df29d53b659c34c6d311b33a4864954"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h0_v3.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 0,
+      "v_phase": 3,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "4751fb672f4f67837ffecfafba2c5a93676d0a8fe46e50b69c6d59c75f93576c"
+    },
+    {
+      "file": "ends_fit/end_bottom_left_h0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 0,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "ec3293a4330f0456fcc44398b07c61a64e53ab177de2c2201a38b617dcd21bf9"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h1_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 1,
+      "v_phase": 0,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "048ab3553f83c1a5de4b5ae492a5b417051fbdc75df8de02751233a5926f95d4"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h1_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 1,
+      "v_phase": 1,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "8725a8e3077bd25bf3e259bd50074a313d905102996fc21d7bb0476d976eec3c"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h1_v2.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 1,
+      "v_phase": 2,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "32106583baf83190fa8008b1cf4542e3b6d6f6c2a6b48aea43cbb7f619fca587"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h1_v3.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 1,
+      "v_phase": 3,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "2cb18ae09997cacd0c5628b9bcc206cf19b575b6670e02b83df2041c740bbe76"
+    },
+    {
+      "file": "ends_fit/end_bottom_left_h1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 1,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "3232867adef8c5543a83f4daabb192eae857d4b664afad4c18258705471e7814"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h2_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 2,
+      "v_phase": 0,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "d3d65e8ab3b27762b81753371ab295007666e80e9950d006593c93b9536f7669"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h2_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 2,
+      "v_phase": 1,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "45f50dd81796504b193f406a11e8d3cde8bd0a47c36edde65edf7568061f6171"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h2_v2.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 2,
+      "v_phase": 2,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "25ecbb999f86513bec223514465c954ecab1e9a7514d5b1ee81d1d21d23ef659"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h2_v3.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 2,
+      "v_phase": 3,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "c27e38215dd1ade5785d2f8e3078a2e899f43d9238cf6a7aa33211abb65f078b"
+    },
+    {
+      "file": "ends_fit/end_bottom_left_h2.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 2,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "6713df51192f0fbcece9e2266d8fa233216383c6e8d4c0579773a763b157ff2c"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h3_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 3,
+      "v_phase": 0,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "b5d14080738f1cbfd4c04165a78283438ccfd0bb7b064e8884fbc42677056b18"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h3_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 3,
+      "v_phase": 1,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "b5aa74b714ee98b70160ccfa5369d071391354a41da5ec8bb5cea0fb50382d9c"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h3_v2.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 3,
+      "v_phase": 2,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "a9633c867d1d6fa8cfb48f07556fb26ad2306fb19d70d14de9b782ad236541bd"
+    },
+    {
+      "file": "edge_fit/corner_bottom_left_h3_v3.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 3,
+      "v_phase": 3,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "37bfe702c8dacdb12f9ad36cf6530253e986adfd29d5c6295a1814e04636eb2b"
+    },
+    {
+      "file": "ends_fit/end_bottom_left_h3.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 3,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "9917c5b6d520feacc9e94e4c9a303de3d8af91920cb11953edf0d2006dc60bfb"
+    },
+    {
+      "file": "edge_fit/upper_right_v0.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "upper",
+      "v_phase": 0,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "d39f49730e3118622f28cd6162d76135fb210e40af2adac6501de3a1b4ffe60b"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v0__wall_crest.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_crest",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "7d13007184c46e558deb5cdd771feb4286eb81b5b5b58c0582a917e33034bbee"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v0__wall_banner.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_banner",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "7d13007184c46e558deb5cdd771feb4286eb81b5b5b58c0582a917e33034bbee"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v0__wall_lamps.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_lamps",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "7d13007184c46e558deb5cdd771feb4286eb81b5b5b58c0582a917e33034bbee"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v0__wall_narrow.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 0,
+      "wall": "wall_narrow",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "aa1631eb2bfbd3560e4d7c857cd3f076b10d7ec4277e95de8a5dd3e0c4280ea6"
+    },
+    {
+      "file": "edge_fit/upper_right_v1.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "upper",
+      "v_phase": 1,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "c8a6bb180a89d5d4dc315e3fda4dfe16cee63e43b76a538fba56b49521950ba6"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v1__wall_crest.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_crest",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "cc4245c4e4e3eed3ea183a969406f2331b85010b13b7a4d0844e507ba3ca68f1"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v1__wall_banner.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_banner",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "cc4245c4e4e3eed3ea183a969406f2331b85010b13b7a4d0844e507ba3ca68f1"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v1__wall_lamps.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_lamps",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "cc4245c4e4e3eed3ea183a969406f2331b85010b13b7a4d0844e507ba3ca68f1"
+    },
+    {
+      "file": "ends_fit/end_vertical_right_v1__wall_narrow.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "end_vertical",
+      "v_phase": 1,
+      "wall": "wall_narrow",
+      "tile_offset": [
+        0,
+        8
+      ],
+      "sha256": "a817b9a69ca779404003e1fb2e491c0a150c91510489e57bd3700401f2cf3b5e"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h0_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 0,
+      "v_phase": 0,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "d807ade3ff60377e9a014a2d03ab2d2f9da3dfa3913b4550eb451a93b53a89ae"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h0_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 0,
+      "v_phase": 1,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "01221aab13746211165a563ea816e0a0b2385922decb9a7f06a2247855935985"
+    },
+    {
+      "file": "ends_fit/end_bottom_right_h0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 0,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "3927edf6fbf7600e54cf3a85d308b29d3202c0a3c14fefb6321e75cb226dfe80"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h1_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 1,
+      "v_phase": 0,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "0608799b369f990af5a133a8a5d11bbffa3210cfcd514bb7fd33b8739f567116"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h1_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 1,
+      "v_phase": 1,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "db9f614b448fe6c3f25b4fe387adb4b36991d1c97e926be6e970ae1bd8c679ef"
+    },
+    {
+      "file": "ends_fit/end_bottom_right_h1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 1,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "fa970645ce8adab4d7167a824d53ec1d38d64341b7546ad377e7d266164c7873"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h2_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 2,
+      "v_phase": 0,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "6e48dae4ab43ba582c2c7ed3aa92199dc647b8f7786dda748b513da0dad132f3"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h2_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 2,
+      "v_phase": 1,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "5dd308426be5f0b9d3b1d31d3d4ee058e5229cb2e4d823e1b55f5877cd8fa170"
+    },
+    {
+      "file": "ends_fit/end_bottom_right_h2.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 2,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "16131f5e09e81a0a602b84698c7a6f87b874878167c99591f4032dc54dc64dec"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h3_v0.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 3,
+      "v_phase": 0,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "2ee58806f8b97f1419e9e5e5975ddba329cff8193ebe565b251920bf9deaaab8"
+    },
+    {
+      "file": "edge_fit/corner_bottom_right_h3_v1.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "corner_bottom",
+      "h_phase": 3,
+      "v_phase": 1,
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "075c692107e34adc05558c0bdba7e33b88edbb8ca479bbce076f0e9c750c0136"
+    },
+    {
+      "file": "ends_fit/end_bottom_right_h3.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "end_bottom",
+      "h_phase": 3,
+      "tile_offset": [
+        8,
+        0
+      ],
+      "sha256": "58336bba04e5413116a54908681727912ecf9f5ec302c08d4e56c077adaa0398"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h0_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 0,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "f8df7c1f3beef8064036cc06acdd786ef85afd12c7e216ea8960b7b56223f373"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h0_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 0,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "27b766634b2f30f8bff970c638c8cf0e35264a86af464bcfc400953f39156b14"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h1_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 1,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "56ff8c80cdf6f22e06890f75fa014417412c9883c7b56102c5a62874be930b35"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h1_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 1,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "756cf69bc679dc566a755385725b08c9c05b624ae7ffbc05ab7ef4a0fc4d7a82"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h2_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 2,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "be3a82edb6e1fe07ae66ef048813caac4599e0e3c06955933ae29155a6c28fd0"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h2_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 2,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "c7fbcf33bb96493a9c288a89b6896b2be691e033b13e9406d3b3683867d25914"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h3_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 3,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "264de5494fd4f2cc6d459b968519b009f4f8979cdbdd85b4e1a6777f783611b2"
+    },
+    {
+      "file": "edge_fit/outer_floor_nw_h3_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 3,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "w"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "6fec9cfe0d442024b317218f41dab926c19026150bbaabd54c4c20f6cb82f099"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h0_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 0,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "0af50598c926801ba2ea928826696e620e935a41e08162975b2ee1fb8b6c74c2"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h0_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 0,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "5c136b51272b8949260a7e197ec0deeafaf1adaa814f55a460d4f3ddcd7df1e0"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h0_v2.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 0,
+      "v_phase": 2,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "65d901bf28787c08ca764bc2798f1730a6a13f2dd2f813fd2fcb41b18f70eeb8"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h0_v3.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 0,
+      "v_phase": 3,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "72bcdd9b7f45b55118a14092821c0370f51fe17d0226b7dc8d450c7332714e09"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h1_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 1,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "4688d0bac847c30c65da718f3ebaac01c98a94256f30bbbeac307dda31d0d262"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h1_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 1,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "4bcb8163afd16b31a3d2500db81181166f43c495ecd687a33fe594b7e8ca2c07"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h1_v2.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 1,
+      "v_phase": 2,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "16c00858be039c3d9ca7c71756d030397eb680f02e3ef916e499a929493c3b52"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h1_v3.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 1,
+      "v_phase": 3,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "dcdde706441f70c8ea4cc48b9d39d00b10f7184c0a67a4384d9db9943ce1659d"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h2_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 2,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "a671da66648a47a30e4e4d115ec8b2882dfec28ec5f355890ca87de9c48c3875"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h2_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 2,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "8e31612b49e852ee486989261107ca4ff3681cd36e48942b83453ef827759c74"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h2_v2.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 2,
+      "v_phase": 2,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "e37d105dff3d73e8be56e8579c4db96bfb4e7a477dfe13d243ccac1e7d745924"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h2_v3.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 2,
+      "v_phase": 3,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "817b36a66cfcc28f07c66b2ebaafb1ec2f7efd8282d9171d59a0230bcab95f47"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h3_v0.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 3,
+      "v_phase": 0,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "01241e6c49a3df061a6d07ff68706b27e53e632a6d3c90cba66605dec4652b95"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h3_v1.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 3,
+      "v_phase": 1,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "8d3a3d9ba6006bdf2c2bea59a9d8c5ef04a2fde1793a21c6d9d3a87bea66299f"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h3_v2.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 3,
+      "v_phase": 2,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "f6099c5243448fcb11e4b71b1724812b421711938b551b8e1827bc5cdbe5a743"
+    },
+    {
+      "file": "edge_fit/outer_floor_ne_h3_v3.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "outer",
+      "h_phase": 3,
+      "v_phase": 3,
+      "floor_sides": [
+        "n",
+        "e"
+      ],
+      "tile_offset": [
+        0,
+        0
+      ],
+      "sha256": "ca679121a2a5efaa4a5837553d664aa543dee0d742e0f2a28e33c6e717c1c7df"
+    },
+    {
+      "file": "assets/corner_bottom_left.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "default",
+      "variant": "corner_bottom_left_h0_v0",
+      "sha256": "b8fa3d06b8ff6f9a8d1e4d3ab83ac7b741f2f4b2207fec9648f5508b148f7b36"
+    },
+    {
+      "file": "assets/upper_left.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "default",
+      "variant": "upper_left_v0",
+      "sha256": "3f7f1f6ba968f6dd0d4487b6097b2ff9e7871db7d15d9a4639e39fce45495acb"
+    },
+    {
+      "file": "assets/corner_bottom_right.png",
+      "size": [
+        24,
+        24
+      ],
+      "kind": "default",
+      "variant": "corner_bottom_right_h0_v0",
+      "sha256": "d807ade3ff60377e9a014a2d03ab2d2f9da3dfa3913b4550eb451a93b53a89ae"
+    },
+    {
+      "file": "assets/upper_right.png",
+      "size": [
+        16,
+        24
+      ],
+      "kind": "default",
+      "variant": "upper_right_v0",
+      "sha256": "d39f49730e3118622f28cd6162d76135fb210e40af2adac6501de3a1b4ffe60b"
+    },
+    {
+      "file": "assets/carpet_top_left.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        0,
+        0
+      ],
+      "sha256": "204224f8c633b38659a5ab80b0f7392ec2a229a5a9d4b6b3428e5766634b0605"
+    },
+    {
+      "file": "assets/carpet_top_center.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        1,
+        0
+      ],
+      "sha256": "6448db985134845325b529cb3111f57099b96fa03572ee4a7ae4cda4e2426271"
+    },
+    {
+      "file": "assets/carpet_top_right.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        2,
+        0
+      ],
+      "sha256": "a260b41e6694466a030b73a93c2929da8341b697479166360f61e3036415a20d"
+    },
+    {
+      "file": "assets/carpet_middle_left.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        0,
+        1
+      ],
+      "sha256": "f7485208bb36ffd4026834d5af09460f6a1f52e32d6045f04c7b1c7d21617618"
+    },
+    {
+      "file": "assets/carpet_middle_center.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        1,
+        1
+      ],
+      "sha256": "5ac69d90fde4d28b6c779a76cb8a3669fbdff1931933c60db35da1049a3e2b4b"
+    },
+    {
+      "file": "assets/carpet_middle_right.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        2,
+        1
+      ],
+      "sha256": "8857d26523c095c883a297baefd09cbf26bc737c6cad18b8a895839c12acda69"
+    },
+    {
+      "file": "assets/carpet_bottom_left.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        0,
+        2
+      ],
+      "sha256": "16231d3b5d16a4244b19e895e41fa1b89faafa268bd49671e53c003496c64c20"
+    },
+    {
+      "file": "assets/carpet_bottom_center.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        1,
+        2
+      ],
+      "sha256": "586e60165160e0fe11199a4ba89220cf89d9d8d5d27074b6e79aa38210445d60"
+    },
+    {
+      "file": "assets/carpet_bottom_right.png",
+      "size": [
+        32,
+        32
+      ],
+      "kind": "carpet_overlay",
+      "grid": [
+        2,
+        2
+      ],
+      "sha256": "5ce96fe5b31669b27824a3e3ac5186527348449b3288faaf34df798772b14ebe"
+    }
+  ],
+  "wall_end_lookup": [
+    {
+      "wall": "wall_crest",
+      "left": "ends_fit/end_vertical_left_v{v}__wall_crest.png",
+      "right": "ends_fit/end_vertical_right_v{v}__wall_crest.png"
+    },
+    {
+      "wall": "wall_banner",
+      "left": "ends_fit/end_vertical_left_v{v}__wall_banner.png",
+      "right": "ends_fit/end_vertical_right_v{v}__wall_banner.png"
+    },
+    {
+      "wall": "wall_lamps",
+      "left": "ends_fit/end_vertical_left_v{v}__wall_lamps.png",
+      "right": "ends_fit/end_vertical_right_v{v}__wall_lamps.png"
+    },
+    {
+      "wall": "wall_narrow",
+      "left": "ends_fit/end_vertical_left_v{v}__wall_narrow.png",
+      "right": "ends_fit/end_vertical_right_v{v}__wall_narrow.png"
+    }
+  ],
+  "scope": {
+    "normal_floors": [
+      31,
+      32,
+      33,
+      34
+    ],
+    "hidden_floors": [
+      31,
+      32,
+      33,
+      34
+    ],
+    "exclude": [
+      "33F fixed battle arena",
+      "all boss rooms"
+    ],
+    "precedence": "special rooms override region theme"
+  },
+  "region_dimming": 0,
+  "carpet_overlay": {
+    "optional": true,
+    "layout": "nine_slice_rectangle",
+    "tile_px": 32,
+    "minimum_size_tiles": [
+      3,
+      3
+    ],
+    "floor_type_unchanged": true,
+    "room_only": true,
+    "minimum_floor_margin_tiles": 1,
+    "layer": "above_floor_below_items_characters_telegraph"
+  }
+}

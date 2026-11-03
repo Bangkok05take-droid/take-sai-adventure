@@ -255,6 +255,11 @@
       // 封印の最深部（内部名 gold。ZIP sealed_match_v1。tools/region-v2/gold.json）。壁は 鎖3・封印紋3・ルーン3 のくり返し、残り3は封印紋、2・1は細い壁。紫の光は壁の絵の中だけ
       gold_v2: regionV2('gold_v2', { walls: { wallChains: 'wall_chains', wallSeal: 'wall_seal', wallRunes: 'wall_runes', narrow3: 'wall_narrow' },
         seq: ['wallChains', 'wallSeal', 'wallRunes'], fill: ['wallSeal', 'narrow3'], e4ends: false }),
+      // 大魔王の城（内部名 demon。通常・隠しダンジョンの31〜34階。ZIP castle_match_v1。tools/region-v2/demon.json）。壁は 紋章3・旗3・灯り3 のくり返し、残り3は旗、2・1は細い壁。
+      //  carpet_*：赤いカーペット（32×32の9分割。床に重ねる。js/tiles.js の carpetRect が敷く部屋と場所を決める）
+      demon_v2: regionV2('demon_v2', { walls: { wallCrest: 'wall_crest', wallBanner: 'wall_banner', wallLamps: 'wall_lamps', narrow3: 'wall_narrow' },
+        seq: ['wallCrest', 'wallBanner', 'wallLamps'], fill: ['wallBanner', 'narrow3'], e4ends: false,
+        extra: ['top', 'middle', 'bottom'].flatMap((r) => ['left', 'center', 'right'].map((c) => 'carpet_' + r + '_' + c)) }),
     },
     /* ボスの専用ポーズ（96×96・足の裏 y=92。待機の絵と同じ置き方）。truevearn.stance：天地魔闘の構え（tools/make-truevearn-fx.py が待機の絵と高さ・足元をそろえて作る） */
     // dragonbaran：竜魔神バラン（3倍の細かさ）。doruora：ドルオーラの構え、sword：ギガブレイクの溜め（剣を頭上に）、dash：突進・斬撃（128×128 の枠・足の裏 y=124。右向き）
