@@ -30,7 +30,8 @@
   /* ダンジョンの探索中の曲（階で選ぶ。2026年11月2日）：from〜to 階なら scene（TS.Music.SCENES の名前）。どれにも当たらない階は 'dungeon'（今までの合成の曲）。
    * ボス戦の間はボス戦の曲（G.dungeonBgm）。隠しダンジョン（31〜35階）も階の番号で選ぶ */
   //  2026年11月3日：15階・25階（ボスの階）もボス戦が始まるまでは、その前の階と同じ曲。26〜32階は dungeon3（30階のボスの階・隠しダンジョンの31〜32階も）
-  D.DUNGEON_BGM = [{ from: 1, to: 15, scene: 'dungeon1' }, { from: 16, to: 25, scene: 'dungeon2' }, { from: 26, to: 32, scene: 'dungeon3' }];
+  //  11月3日：ダンジョンの曲はこの3つで全部。26階から最後（33階・隠しダンジョンの35階まで）は dungeon3
+  D.DUNGEON_BGM = [{ from: 1, to: 15, scene: 'dungeon1' }, { from: 16, to: 25, scene: 'dungeon2' }, { from: 26, to: 999, scene: 'dungeon3' }];
   D.REMATCH = { bosses: ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn'], hits: 27, hpDiv: 6, defRate: 0.5, fallback: 'life_necklace' };
   /* 登場ムービーを見た記録の名前（story.introSeen のキー）。書いていないボスはボスIDのまま。
    * truevearn：以前は仮の会話（「ムービー準備中」）を見ると truevearn に記録していた。正式の動画は、その記録とは別に1回だけ流す */

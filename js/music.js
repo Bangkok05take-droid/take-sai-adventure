@@ -714,9 +714,12 @@
     //  前後0.5秒の余白つきで書き出し（tools/make-loop-mp3.py）、0.5〜48.5秒をループする）
     sunkenTemple: { title: 'ダンジョンの音楽（16〜25階）', group: 'new', note: 'Sunken Temple Depths（録音・約48秒・ループ）', file: 'assets/music/sunken-temple-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
     // ダンジョン 地下26〜32階（2026年11月3日：届いた録音「Cursed Castle Depths」。約48秒。同じく前後0.5秒の余白つきで、0.5〜48.5秒をループ）
-    cursedCastle: { title: 'ダンジョンの音楽（26〜32階）', group: 'new', note: 'Cursed Castle Depths（録音・約48秒・ループ）', file: 'assets/music/cursed-castle-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
-    dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）。33階から（録音の曲が届くまで）', build: dungeon },
-    boss: { title: 'ボス戦', group: 'new', note: '強敵との対峙（ループ）。ボス部屋に入ったときから倒すまで', build: bossBattle },
+    cursedCastle: { title: 'ダンジョンの音楽（26階から）', group: 'new', note: 'Cursed Castle Depths（録音・約48秒・ループ）', file: 'assets/music/cursed-castle-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
+    dungeon: { title: 'ダンジョンの音楽', group: 'old', note: '以前のダンジョンの曲（比較用）', build: dungeon },
+    // ボス戦（2026年11月3日：届いた録音「Crimson Throne Clash」。150BPM・16小節＝25.6秒で、元の音源は最後に0.3秒ほど無音。
+    //  25.6秒（小節の切れ目）で切って頭につなぎ（つなぎ目の「プチッ」を防ぐため、切る直前の8ミリ秒だけ消していく）、前後0.5秒の余白つきで書き出し（tools/make-loop-mp3.py）、0.5〜26.1秒をループ）
+    crimsonThrone: { title: 'ボス戦', group: 'new', note: 'Crimson Throne Clash（録音・25.6秒・ループ）。ボス部屋に入ったときから倒すまで', file: 'assets/music/crimson-throne-clash.mp3', seconds: 25.6, loop: true, loopStart: 0.5, loopEnd: 26.1 },
+    boss: { title: 'ボス戦', group: 'old', note: '以前のボス戦の曲（比較用）', build: bossBattle },
     fanfare_v1: { title: '冒険のファンファーレ', group: 'old', note: '第1版（比較用）', build: fanfareV1 },
     yanai_v1: { title: 'マスターヤナイのテーマ', group: 'old', note: '第1版（比較用）', build: yanaiV1 },
   };
@@ -729,8 +732,8 @@
     dungeon: { song: 'dungeon' },
     dungeon1: { song: 'stoneLabyrinth' },   // 地下1〜15階（D.DUNGEON_BGM）
     dungeon2: { song: 'sunkenTemple' },   // 地下16〜25階（D.DUNGEON_BGM）
-    dungeon3: { song: 'cursedCastle' },   // 地下26〜32階（D.DUNGEON_BGM）
-    boss: { song: 'boss' },   // ボス戦（以前は合成の短いループ。今は新しい曲）
+    dungeon3: { song: 'cursedCastle' },   // 地下26階から最後まで（D.DUNGEON_BGM）
+    boss: { song: 'crimsonThrone' },   // 2026年11月3日から録音の曲（以前は合成の boss）
     yanai: { song: 'yanai' },
   };
   const cache = {};

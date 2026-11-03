@@ -1361,7 +1361,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,cursedCastle,dungeon,boss,fanfare,village,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,cursedCastle,crimsonThrone,fanfare,village,dungeon,boss,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
@@ -1653,14 +1653,14 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.waitForTimeout(1200); await talkThrough();
       await closeAllQ(q);
       // ボスの階に着いただけ：探索の曲のまま（同じ再生が続く）。ボス部屋に入るとボス戦の新しい曲（以前の合成ループは使わない）
-      c = await cur(); assert(c.id !== 'boss' && c.bgm && !c.timer && /^dungeon/.test(c.scene), 'dungeon music on the boss floor before the fight ' + JSON.stringify(c));
+      c = await cur(); assert(c.id !== 'crimsonThrone' && c.bgm && !c.timer && /^dungeon/.test(c.scene), 'dungeon music on the boss floor before the fight ' + JSON.stringify(c));
       await q.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let x = A.x; while (!TS.Dungeon.passable(r.map, x, A.y + A.h)) x++; r.player.x = x; r.player.y = A.y + A.h; TS.Game.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'up' }); });
       await q.waitForTimeout(800); await talkThrough();
       await closeAllQ(q);
       // クロコダインの登場ムービー（いま閉じた＝スキップ）のあとに、戦いの前の会話が開くので、それも進める
       await q.waitForTimeout(600); await talkThrough();
       await closeAllQ(q);
-      c = await cur(); assert(c.id === 'boss' && c.bgm && !c.timer && c.scene === 'boss', 'boss music after entering ' + JSON.stringify(c));
+      c = await cur(); assert(c.id === 'crimsonThrone' && c.bgm && !c.timer && c.scene === 'boss', 'boss music after entering ' + JSON.stringify(c));
       // メニューの開閉・部屋から出ても、ボス戦の曲は最初から流し直さない
       await keep('__b');
       await q.tap('#b-menu'); await q.waitForTimeout(200); await q.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await q.waitForTimeout(200);

@@ -3995,9 +3995,9 @@ test('勇者の剣・勇者の盾の買い戻し：受け取ったことがあ�
   const got = run.bag.find((i) => i.id === 'hero_sword_relic'); assert(got && !got.plus, '+0');
   eq(G.buybackList(S).some((g) => g.id === 'hero_sword_relic'), false, 'not listed after buying');
 });
-test('ダンジョンの曲：地下1〜15階は Stone Labyrinth Depths、16〜25階は Sunken Temple Depths、26〜32階は Cursed Castle Depths、33階からは今までの曲。ボス戦の間はボス戦の曲', () => {
+test('ダンジョンの曲：地下1〜15階は Stone Labyrinth Depths、16〜25階は Sunken Temple Depths、26階から最後までは Cursed Castle Depths。ボス戦の間はボス戦の曲', () => {
   const run = { floor: 1, bossFight: null };
-  for (const [f, want] of [[1, 'dungeon1'], [14, 'dungeon1'], [15, 'dungeon1'], [16, 'dungeon2'], [24, 'dungeon2'], [25, 'dungeon2'], [26, 'dungeon3'], [30, 'dungeon3'], [32, 'dungeon3'], [33, 'dungeon'], [35, 'dungeon']]) { run.floor = f; eq(G.dungeonBgm(run), want, 'floor ' + f); }
+  for (const [f, want] of [[1, 'dungeon1'], [14, 'dungeon1'], [15, 'dungeon1'], [16, 'dungeon2'], [24, 'dungeon2'], [25, 'dungeon2'], [26, 'dungeon3'], [30, 'dungeon3'], [32, 'dungeon3'], [33, 'dungeon3'], [35, 'dungeon3']]) { run.floor = f; eq(G.dungeonBgm(run), want, 'floor ' + f); }
   run.floor = 5; run.bossFight = { engaged: true, won: false }; eq(G.dungeonBgm(run), 'boss');
 });
 test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {
