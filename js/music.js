@@ -713,8 +713,10 @@
     // ダンジョン 地下16〜25階（2026年11月2日。25階は3日から：届いた録音「Sunken Temple Depths」。約48秒で途切れずにループする曲。
     //  前後0.5秒の余白つきで書き出し（tools/make-loop-mp3.py）、0.5〜48.5秒をループする）
     sunkenTemple: { title: 'ダンジョンの音楽（16〜25階）', group: 'new', note: 'Sunken Temple Depths（録音・約48秒・ループ）', file: 'assets/music/sunken-temple-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
-    // ダンジョン 地下26〜32階（2026年11月3日：届いた録音「Cursed Castle Depths」。約48秒。同じく前後0.5秒の余白つきで、0.5〜48.5秒をループ）
-    cursedCastle: { title: 'ダンジョンの音楽（26階から）', group: 'new', note: 'Cursed Castle Depths（録音・約48秒・ループ）', file: 'assets/music/cursed-castle-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
+    // ダンジョン 地下26階から最後まで（2026年11月4日：届いた録音「Sealed Evil Stirs」に差し替え。約51秒。前後0.5秒の余白つきで、0.5〜51.5秒をループ）
+    sealedEvil: { title: 'ダンジョンの音楽（26階から）', group: 'new', note: 'Sealed Evil Stirs（録音・約51秒・ループ）', file: 'assets/music/sealed-evil-stirs.mp3', seconds: 51, loop: true, loopStart: 0.5, loopEnd: 51.5 },
+    // 以前の26階からの曲（11月3日〜4日。比較用）
+    cursedCastle: { title: 'ダンジョンの音楽（26階から）', group: 'old', note: 'Cursed Castle Depths（以前の26階からの曲。比較用）', file: 'assets/music/cursed-castle-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
     dungeon: { title: 'ダンジョンの音楽', group: 'old', note: '以前のダンジョンの曲（比較用）', build: dungeon },
     // ボス戦（2026年11月3日：届いた録音「Crimson Throne Clash」。150BPM・16小節＝25.6秒で、元の音源は最後に0.3秒ほど無音。
     //  25.6秒（小節の切れ目）で切って頭につなぎ（つなぎ目の「プチッ」を防ぐため、切る直前の8ミリ秒だけ消していく）、前後0.5秒の余白つきで書き出し（tools/make-loop-mp3.py）、0.5〜26.1秒をループ）
@@ -732,7 +734,7 @@
     dungeon: { song: 'dungeon' },
     dungeon1: { song: 'stoneLabyrinth' },   // 地下1〜15階（D.DUNGEON_BGM）
     dungeon2: { song: 'sunkenTemple' },   // 地下16〜25階（D.DUNGEON_BGM）
-    dungeon3: { song: 'cursedCastle' },   // 地下26階から最後まで（D.DUNGEON_BGM）
+    dungeon3: { song: 'sealedEvil' },   // 地下26階から最後まで（D.DUNGEON_BGM。11月4日から Sealed Evil Stirs）
     boss: { song: 'crimsonThrone' },   // 2026年11月3日から録音の曲（以前は合成の boss）
     yanai: { song: 'yanai' },
   };

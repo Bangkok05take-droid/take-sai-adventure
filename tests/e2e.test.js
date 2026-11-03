@@ -1361,7 +1361,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,cursedCastle,crimsonThrone,fanfare,village,dungeon,boss,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,sealedEvil,crimsonThrone,fanfare,village,cursedCastle,dungeon,boss,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
