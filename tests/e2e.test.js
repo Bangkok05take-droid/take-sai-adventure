@@ -908,7 +908,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     // 着いただけでは戦いは始まらない（会話なし・HPバーなし・探索の曲・ボスは部屋の中央で待つ）
     const arrive = await p.evaluate(() => { const r = TS.UI.S.run, b = r.enemies.find((e) => e.boss), A = r.bossFight;
       return { talk: !!document.querySelector('.talk'), engaged: A.engaged, center: Math.max(Math.abs(b.x - (A.x + (A.w >> 1))), Math.abs(b.y - (A.y + (A.h >> 1)))), song: TS.Music.current && TS.Music.current.id, bgm: TS.Audio.bgmName }; });
-    assert(!arrive.talk && !arrive.engaged && arrive.center <= 1 && arrive.bgm === 'dungeon', 'waiting on arrival ' + JSON.stringify(arrive));
+    assert(!arrive.talk && !arrive.engaged && arrive.center <= 1 && arrive.bgm === 'dungeon1', 'waiting on arrival ' + JSON.stringify(arrive));
     // 入口の手前（通路）からダッシュで入る：部屋に入った所でダッシュが止まり、戦闘開始の表示・会話・ボス戦の曲・HPバー
     // 2026年10月20日から、ボス部屋は下の前室・通路から上へ入る
     await p.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let x = A.x; while (!TS.Dungeon.passable(r.map, x, A.y + A.h)) x++; r.player.x = x; r.player.y = A.y + A.h + 2; r.player.dir = 'up'; TS.Game.updateVision(r); });
@@ -1361,7 +1361,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,dungeon,boss,fanfare,village,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,cursedCastle,dungeon,boss,fanfare,village,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
@@ -1653,7 +1653,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await q.waitForTimeout(1200); await talkThrough();
       await closeAllQ(q);
       // ボスの階に着いただけ：探索の曲のまま（同じ再生が続く）。ボス部屋に入るとボス戦の新しい曲（以前の合成ループは使わない）
-      c = await cur(); assert(c.id === 'dungeon' && c.bgm && !c.timer && c.scene === 'dungeon', 'dungeon music on the boss floor before the fight ' + JSON.stringify(c));
+      c = await cur(); assert(c.id !== 'boss' && c.bgm && !c.timer && /^dungeon/.test(c.scene), 'dungeon music on the boss floor before the fight ' + JSON.stringify(c));
       await q.evaluate(() => { const r = TS.UI.S.run, A = r.bossFight; let x = A.x; while (!TS.Dungeon.passable(r.map, x, A.y + A.h)) x++; r.player.x = x; r.player.y = A.y + A.h; TS.Game.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'move', dir: 'up' }); });
       await q.waitForTimeout(800); await talkThrough();
       await closeAllQ(q);

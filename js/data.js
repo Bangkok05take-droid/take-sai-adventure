@@ -29,7 +29,8 @@
    *  報酬は初回と同じ品（持っていない品だけ。全部持っていれば命つなぎの首飾り。fallback）。章は進まない。登場ムービーは毎回（スキップ可）。本編の会話・撃破後ムービーは出さない */
   /* ダンジョンの探索中の曲（階で選ぶ。2026年11月2日）：from〜to 階なら scene（TS.Music.SCENES の名前）。どれにも当たらない階は 'dungeon'（今までの合成の曲）。
    * ボス戦の間はボス戦の曲（G.dungeonBgm）。隠しダンジョン（31〜35階）も階の番号で選ぶ */
-  D.DUNGEON_BGM = [{ from: 1, to: 14, scene: 'dungeon1' }, { from: 16, to: 24, scene: 'dungeon2' }];
+  //  2026年11月3日：15階・25階（ボスの階）もボス戦が始まるまでは、その前の階と同じ曲。26〜32階は dungeon3（30階のボスの階・隠しダンジョンの31〜32階も）
+  D.DUNGEON_BGM = [{ from: 1, to: 15, scene: 'dungeon1' }, { from: 16, to: 25, scene: 'dungeon2' }, { from: 26, to: 32, scene: 'dungeon3' }];
   D.REMATCH = { bosses: ['croc', 'flame', 'kill', 'baran', 'mist', 'vearn'], hits: 27, hpDiv: 6, defRate: 0.5, fallback: 'life_necklace' };
   /* 登場ムービーを見た記録の名前（story.introSeen のキー）。書いていないボスはボスIDのまま。
    * truevearn：以前は仮の会話（「ムービー準備中」）を見ると truevearn に記録していた。正式の動画は、その記録とは別に1回だけ流す */

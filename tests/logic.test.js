@@ -1985,7 +1985,7 @@ test('最終章（版3）：30階の大魔王バーン（ボス戦の曲・部�
   assert(run.bossFight.engaged); eq(G.dungeonBgm(run), 'boss');
   for (let i = 0; i < 10; i++) { G.act(S, { type: 'wait' }); run.player.hp = run.player.maxhp; assert(insideAll(run)); }
   defeatBoss(S);
-  assert(run.bossFight.won); eq(G.dungeonBgm(run), 'dungeon'); assert(st.defeated.vearn);
+  assert(run.bossFight.won); eq(G.dungeonBgm(run), 'dungeon3'); assert(st.defeated.vearn);
   eq(run.floorItems.filter((f) => f.item && f.item.id === 'demon_robe').length, 1, 'robe once');
   // 玉座の間：下り階段は無く、玉座の右手前に時空の亀裂が残る（ローブとは別のマス）。帰還口も無い
   assert(run.map.throne && !run.stairs && !run.portal, 'no stairs, no portal'); eq(run.final.rescue, 'pending'); assert(G.canRescue(run));
@@ -3995,9 +3995,9 @@ test('勇者の剣・勇者の盾の買い戻し：受け取ったことがあ�
   const got = run.bag.find((i) => i.id === 'hero_sword_relic'); assert(got && !got.plus, '+0');
   eq(G.buybackList(S).some((g) => g.id === 'hero_sword_relic'), false, 'not listed after buying');
 });
-test('ダンジョンの曲：地下1〜14階は Stone Labyrinth Depths、16〜24階は Sunken Temple Depths、15階・25階からは今までの曲。ボス戦の間はボス戦の曲', () => {
+test('ダンジョンの曲：地下1〜15階は Stone Labyrinth Depths、16〜25階は Sunken Temple Depths、26〜32階は Cursed Castle Depths、33階からは今までの曲。ボス戦の間はボス戦の曲', () => {
   const run = { floor: 1, bossFight: null };
-  for (const [f, want] of [[1, 'dungeon1'], [14, 'dungeon1'], [15, 'dungeon'], [16, 'dungeon2'], [24, 'dungeon2'], [25, 'dungeon'], [30, 'dungeon'], [33, 'dungeon']]) { run.floor = f; eq(G.dungeonBgm(run), want, 'floor ' + f); }
+  for (const [f, want] of [[1, 'dungeon1'], [14, 'dungeon1'], [15, 'dungeon1'], [16, 'dungeon2'], [24, 'dungeon2'], [25, 'dungeon2'], [26, 'dungeon3'], [30, 'dungeon3'], [32, 'dungeon3'], [33, 'dungeon'], [35, 'dungeon']]) { run.floor = f; eq(G.dungeonBgm(run), want, 'floor ' + f); }
   run.floor = 5; run.bossFight = { engaged: true, won: false }; eq(G.dungeonBgm(run), 'boss');
 });
 test('地域の割り当て（2026年10月21日）：1〜3レンガ・4〜6木の根・7〜14地下の遺跡（7〜10灯り多め・11〜15暗く荘厳）・16〜19水没都市・21〜24地底の古代神殿・26〜29封印の最深部・31〜32大魔王の城。ボスの階は各ボスの景観', () => {

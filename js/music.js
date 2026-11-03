@@ -708,12 +708,14 @@
     // 村の音楽（2026年11月2日：届いた録音「Whimsical Village Theme」。約37秒の曲を最後まで流して頭に戻る（曲の終わりは音が消えて0.4秒ほど静か））
     villageTheme: { title: '村の音楽', group: 'new', note: 'Whimsical Village Theme（録音・約37秒・ループ）', file: 'assets/music/whimsical-village-theme.mp3', seconds: 37, loop: true },
     village: { title: '村の音楽', group: 'old', note: '以前の村の曲（お祭りのにぎわい。比較用）', build: village },
-    // ダンジョン 地下1〜14階（2026年11月2日：届いた録音「Stone Labyrinth Depths」。約43秒の曲を最後まで流して頭に戻る。どの階で使うかは js/data.js の D.DUNGEON_BGM）
-    stoneLabyrinth: { title: 'ダンジョンの音楽（1〜14階）', group: 'new', note: 'Stone Labyrinth Depths（録音・約43秒・ループ）', file: 'assets/music/stone-labyrinth-depths.mp3', seconds: 43, loop: true },
-    // ダンジョン 地下16〜24階（2026年11月2日：届いた録音「Sunken Temple Depths」。約48秒で途切れずにループする曲。
+    // ダンジョン 地下1〜15階（2026年11月2日。15階は3日から：届いた録音「Stone Labyrinth Depths」。約43秒の曲を最後まで流して頭に戻る。どの階で使うかは js/data.js の D.DUNGEON_BGM）
+    stoneLabyrinth: { title: 'ダンジョンの音楽（1〜15階）', group: 'new', note: 'Stone Labyrinth Depths（録音・約43秒・ループ）', file: 'assets/music/stone-labyrinth-depths.mp3', seconds: 43, loop: true },
+    // ダンジョン 地下16〜25階（2026年11月2日。25階は3日から：届いた録音「Sunken Temple Depths」。約48秒で途切れずにループする曲。
     //  前後0.5秒の余白つきで書き出し（tools/make-loop-mp3.py）、0.5〜48.5秒をループする）
-    sunkenTemple: { title: 'ダンジョンの音楽（16〜24階）', group: 'new', note: 'Sunken Temple Depths（録音・約48秒・ループ）', file: 'assets/music/sunken-temple-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
-    dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）。15階・25階から（録音の曲が届くまで）', build: dungeon },
+    sunkenTemple: { title: 'ダンジョンの音楽（16〜25階）', group: 'new', note: 'Sunken Temple Depths（録音・約48秒・ループ）', file: 'assets/music/sunken-temple-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
+    // ダンジョン 地下26〜32階（2026年11月3日：届いた録音「Cursed Castle Depths」。約48秒。同じく前後0.5秒の余白つきで、0.5〜48.5秒をループ）
+    cursedCastle: { title: 'ダンジョンの音楽（26〜32階）', group: 'new', note: 'Cursed Castle Depths（録音・約48秒・ループ）', file: 'assets/music/cursed-castle-depths.mp3', seconds: 48, loop: true, loopStart: 0.5, loopEnd: 48.5 },
+    dungeon: { title: 'ダンジョンの音楽', group: 'new', note: '地下の静けさと緊張（ループ）。33階から（録音の曲が届くまで）', build: dungeon },
     boss: { title: 'ボス戦', group: 'new', note: '強敵との対峙（ループ）。ボス部屋に入ったときから倒すまで', build: bossBattle },
     fanfare_v1: { title: '冒険のファンファーレ', group: 'old', note: '第1版（比較用）', build: fanfareV1 },
     yanai_v1: { title: 'マスターヤナイのテーマ', group: 'old', note: '第1版（比較用）', build: yanaiV1 },
@@ -725,8 +727,9 @@
     title: { song: 'overture', once: true },   // 2026年11月2日から録音の曲（以前は合成のファンファーレ fanfare）
     village: { song: 'villageTheme' },   // 2026年11月2日から録音の曲（以前は合成の village）
     dungeon: { song: 'dungeon' },
-    dungeon1: { song: 'stoneLabyrinth' },   // 地下1〜14階（D.DUNGEON_BGM）
-    dungeon2: { song: 'sunkenTemple' },   // 地下16〜24階（D.DUNGEON_BGM）
+    dungeon1: { song: 'stoneLabyrinth' },   // 地下1〜15階（D.DUNGEON_BGM）
+    dungeon2: { song: 'sunkenTemple' },   // 地下16〜25階（D.DUNGEON_BGM）
+    dungeon3: { song: 'cursedCastle' },   // 地下26〜32階（D.DUNGEON_BGM）
     boss: { song: 'boss' },   // ボス戦（以前は合成の短いループ。今は新しい曲）
     yanai: { song: 'yanai' },
   };
