@@ -227,6 +227,11 @@
       calamityWall: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_wall_' + i + '.png'),
       tenchiMato: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/tenchi_mato_' + i + '.png'),
       /* フレイザードの床の技（ZIP frey_floor_fx_v1。そのまま写しただけ）：各6コマ・64×64・接地点 (32,48)＝マスの中央。D.HAZARD_FX_V2 のときだけ使う（試写中） */
+      /* 真魔剛竜剣＋ドラゴニックオーラの盾の2マス攻撃の斬撃（ZIP slash_aura_v2。そのまま写しただけ）：64×64・中心(32,32)・右向き（ゲームで向きに合わせて回す）。
+       *  launch：たけの前で振り抜いた刃（3コマ）、wave：2マス目へ飛ぶ刃（3コマ）、hit：当たったマスの衝撃（4コマ） */
+      slashLaunch: [0, 1, 2].map((i) => 'assets/fx/slash/launch_' + i + '.png'),
+      slashWave: [0, 1, 2].map((i) => 'assets/fx/slash/wave_' + i + '.png'),
+      slashHit: [0, 1, 2, 3].map((i) => 'assets/fx/slash/hit_' + i + '.png'),
       freyIce: [0, 1, 2, 3, 4, 5].map((i) => 'assets/fx/frey/ice_' + i + '.png'),
       freyFire: [0, 1, 2, 3, 4, 5].map((i) => 'assets/fx/frey/fire_' + i + '.png'),
     },

@@ -1,0 +1,69 @@
+{
+  "frame_size": [
+    64,
+    64
+  ],
+  "anchor": [
+    32,
+    32
+  ],
+  "direction": "right",
+  "tile_size": 32,
+  "timing_status": "preview_only_not_game_constants",
+  "preview_action_ms": 300,
+  "effects": {
+    "slash_launch": {
+      "frames": [
+        "assets/launch/frame_00.png",
+        "assets/launch/frame_01.png",
+        "assets/launch/frame_02.png"
+      ],
+      "anchor": [
+        32,
+        32
+      ],
+      "preview_frame_ms": [
+        30,
+        30,
+        30
+      ],
+      "strip": "slash_launch_strip.png"
+    },
+    "slash_wave": {
+      "frames": [
+        "assets/wave/frame_00.png",
+        "assets/wave/frame_01.png",
+        "assets/wave/frame_02.png"
+      ],
+      "anchor": [
+        32,
+        32
+      ],
+      "preview_frame_ms": [
+        30,
+        30,
+        30
+      ],
+      "strip": "slash_wave_strip.png"
+    },
+    "slash_hit": {
+      "frames": [
+        "assets/hit/frame_00.png",
+        "assets/hit/frame_01.png",
+        "assets/hit/frame_02.png",
+        "assets/hit/frame_03.png"
+      ],
+      "anchor": [
+        32,
+        32
+      ],
+      "preview_frame_ms": [
+        30,
+        30,
+        30,
+        30
+      ],
+      "strip": "slash_hit_strip.png"
+    }
+  }
+}

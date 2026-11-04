@@ -1863,7 +1863,19 @@
         RD.addFx({ t: armed ? 'slash' : 'punch', x: atkDir.x, y: atkDir.y, dx, dy, delay: 40, dur: armed ? 150 : 140 });
       }
     }
-    const atkTile = (e) => atkDir && e.x === atkDir.x && e.y === atkDir.y;
+    const atkTile0 = (e) => atkDir && e.x === atkDir.x && e.y === atkDir.y;
+    /* 2マス攻撃（真魔剛竜剣＋ドラゴニックオーラの盾）の斬撃：絵があれば青い斬撃を飛ばし、奥のマスの命中の表示は刃が届いた時に（ZIP slash_aura_v2）。
+     * 絵が無ければ今までの「バシュン！」の文字。当たりの処理はゲーム側で1回だけ済んでいる */
+    const reachEv = events.find((e) => e.t === 'reach'), slashArt = !!(reachEv && SP.fxFrames('slashLaunch') && SP.fxFrames('slashWave') && SP.fxFrames('slashHit'));
+    let slashFx = null;
+    if (reachEv && slashArt) {
+      const d = G.DIRS[(action && action.dir) || p.dir] || [1, 0], S0 = TS.FX.SLASH;
+      slashFx = RD.addFx({ t: 'slashAura', from: { x: p.x, y: p.y }, dx: d[0], dy: d[1], hits: reachEv.tiles, dur: S0.launch() + S0.wave() + 4 * S0.frame });
+      AU.sfx('bolt');
+    }
+    const farTile = (e) => slashFx && Math.max(Math.abs(e.x - p.x), Math.abs(e.y - p.y)) >= 2 && reachEv.tiles.some((t) => t.x === e.x && t.y === e.y);
+    const atkTile = (e) => atkTile0(e) || farTile(e);
+    const ATKD = (e) => farTile(e) ? TS.FX.SLASH.hitAt(e, slashFx) : ATK_HIT;   // 命中の表示の遅れ（奥のマスは刃が届いた時）
     let throwD = 0;   // 投げた道具が届くまで、命中の演出を遅らせる
     let hitD = 0;     // ボスの飛ぶ技（カイザーフェニックス）が届くまで、たけへの命中の表示を遅らせる
     let held = 0;     // その間、HPゲージに出さずにおくダメージ（届いた時に減らす）
@@ -1884,14 +1896,14 @@
         case 'prayer': { const p = UI.S.run.player; RD.addFx({ t: 'healrise', x: p.x, y: p.y, dur: 900 }); toast('サイたちの祈りで、HPが全回復した！', 'levelup'); break; }
         // ドラゴンの炎：吐いた所から、止まった所（壁か、最初に当たった相手）まで。当たり判定と同じ所で止める
         case 'breath': RD.addFx({ t: 'breath', from: e.from, to: e.to || e.from, hit: e.hit, dur: 420 }); AU.sfx('bolt'); break;
-        case 'reach': for (const t of e.tiles) RD.addFx({ t: 'num', x: t.x, y: t.y, text: 'バシュン！', color: '#9ad8ff', small: true, dur: 600 }); break;
+        case 'reach': if (!slashFx) for (const t of e.tiles) RD.addFx({ t: 'num', x: t.x, y: t.y, text: 'バシュン！', color: '#9ad8ff', small: true, dur: 600 }); break;   // 斬撃の絵が無いときだけ文字
         case 'revive':
           stopAllInput(); UI.lockUntil = performance.now() + 700;
           RD.addFx({ t: 'healrise', x: e.x, y: e.y, dur: 900 }); RD.addFx({ t: 'sparkle', x: e.x, y: e.y, color: '#ff8aa0', dur: 1100 });
           flash(); toast((e.name || '命つなぎの首飾り') + 'が光った！ 立ち上がった！', 'levelup'); AU.sfx('levelup');
           break;
         case 'hit': {
-          const d = e.target === 'enemy' && atkTile(e) ? ATK_HIT : (e.target === 'enemy' ? throwD : hitD);
+          const d = e.target === 'enemy' && atkTile(e) ? ATKD(e) : (e.target === 'enemy' ? throwD : hitD);
           RD.addFx({ t: 'num', x: e.x, y: e.y, text: String(e.n), color: e.target === 'player' ? '#ff6a6a' : '#ffffff', delay: d, dur: 650 });
           RD.addFx({ t: 'flash', x: e.x, y: e.y, target: e.target, dur: 160, delay: d });
           if (d > 100) setTimeout(() => AU.sfx(e.target === 'player' ? 'hurt' : 'hit'), d); else AU.sfx(e.target === 'player' ? 'hurt' : 'hit');
@@ -1899,12 +1911,12 @@
           break;
         }
         // ミス：命中の演出は出さず「ミス」の文字だけ
-        case 'miss': RD.addFx({ t: 'num', x: e.x, y: e.y, text: 'ミス', color: '#aaccff', delay: atkTile(e) ? ATK_HIT : hitD, dur: 600 }); AU.sfx('miss'); break;
+        case 'miss': RD.addFx({ t: 'num', x: e.x, y: e.y, text: 'ミス', color: '#aaccff', delay: atkTile(e) ? ATKD(e) : hitD, dur: 600 }); AU.sfx('miss'); break;
         case 'kill':
           AU.sfx('kill');
           if (e.boss) RD.addFx({ t: 'bossdie', x: e.x, y: e.y, sprite: e.sprite, dur: 1500 }); // ボスの撃破：白く光って沈みながら消える
           else {
-            RD.addFx({ t: 'die', x: e.x, y: e.y, sprite: e.sprite, delay: atkTile(e) ? ATK_HIT : throwD, dur: 240 });   // 通常の敵：短く消える
+            RD.addFx({ t: 'die', x: e.x, y: e.y, sprite: e.sprite, delay: atkTile(e) ? ATKD(e) : throwD, dur: 240 });   // 通常の敵：短く消える
             if (e.exp) RD.addFx({ t: 'num', x: e.x, y: e.y, text: '+' + e.exp + ' EXP', color: '#bfe4ff', small: true, delay: 260, dur: 700 });
           }
           break;
