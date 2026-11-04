@@ -1461,12 +1461,22 @@
         const fin = (o) => { o.art = true; o.walk = [o.idle, o.w1, o.idle, o.w2]; o.atk = o.a2; return o; };   // 以前の呼び方にも合わせる
         fin(set);
         set.nw = F[v + '_nw'] ? fin({ idle: F[v + '_nw'], w1: F[v + '_nw_w1'] || F[v + '_nw'], w2: F[v + '_nw_w2'] || F[v + '_nw'], a1: F[v + '_nw_a1'] || F[v + '_nw'], a2: F[v + '_nw_a2'] || F[v + '_nw'] }) : set;
+        // 3点セットの飛行のポーズ（無ければ今までどおり立ち絵）。武器なしの飛行の絵が無い向きは、武器ありの飛行の絵
+        set.fly = F['fly_' + v] || null;
+        if (set.nw !== set) set.nw.fly = F['fly_' + v + '_nw'] || set.fly;
         return set;
       };
       const down = pack('front'), up = pack('back'), left = pack('side');
       let right = pack('right');
       if (!right.idle) right = { idle: t.sideR, w1: t.sideR, w2: t.sideR, a1: t.sideR, a2: t.sideR, art: true, walk: [t.sideR, t.sideR, t.sideR, t.sideR], atk: t.sideR };
       if (!right.nw) right.nw = right;
+      // 右向きの飛行のポーズは、左向き（side）の飛行の絵を反転
+      if (left.fly) {
+        right.fly = flipCanvas(left.fly);
+        const nwFly = left.nw !== left && left.nw.fly ? flipCanvas(left.nw.fly) : right.fly;
+        if (right.nw === right) right.nw = Object.assign({}, right, { fly: nwFly });   // 右向きの武器なしの立ち絵は無い（今までどおり右の絵）。飛行だけ武器なしの絵
+        else right.nw.fly = nwFly;
+      }
       if (down.idle && up.idle && left.idle) s.take = { down, up, left, right };
     }
     for (const who of Object.keys(ch)) if (ch[who].front) s.portrait[who] = headCrop(ch[who].front);
