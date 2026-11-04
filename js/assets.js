@@ -64,8 +64,9 @@
       const out = {};
       for (const v of ['front', 'back', 'side', 'right']) for (const f of ['', '_w1', '_w2', '_a1', '_a2']) out[v + f] = C + 'take_' + v + f + '.png';
       for (const v of ['front', 'side']) for (const f of ['', '_w1', '_w2', '_a1', '_a2']) out[v + '_nw' + f] = C + 'take_' + v + '_nw' + f + '.png';
-      // 3点セットの飛行のポーズ（2026年11月4日、ChatGPT制作 take_flying_sprites。元は assets/reference/take-flying-v1/）。右向きは fly_side を反転
-      for (const v of ['front', 'back', 'side', 'front_nw', 'side_nw']) out['fly_' + v] = C + 'take_fly_' + v + '.png';
+      // 3点セットの飛行のポーズ（2026年11月4日、ChatGPT制作 take_flying_sprites。元は assets/reference/take-flying-v1/。色は tools/fix-take-flying-colors.py で立ち絵にそろえた）。
+      //  右向きは fly_side を反転。3点セットは剣を装備しているので、武器なしの飛行の絵は使わない
+      for (const v of ['front', 'back', 'side']) out['fly_' + v] = C + 'take_fly_' + v + '.png';
       return out;
     })(),
     items: {
