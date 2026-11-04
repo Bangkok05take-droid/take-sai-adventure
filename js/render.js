@@ -696,7 +696,8 @@
       G2.ang += (target - G2.ang) * (1 - Math.exp(-Math.max(0, now - G2.t) / RD.GLIDE.ease)); G2.t = now;
       if (!flying) G2.ang = 0;
       let img;
-      if (flying && set.art && set.idle && !atkFx) img = set.fly || set.idle;   // 飛行のポーズ（無ければ立ち絵）。足を動かさない
+      // 飛行のポーズは滑空中（移動中）だけ。止まって浮いている間は今までどおりの立ち絵（2026年11月4日のご指示）。どちらも足は動かさない
+      if (flying && set.art && set.idle && !atkFx) img = gliding ? (set.fly || set.idle) : set.idle;
       else if (set.art && set.idle) img = atkFx ? RD.attackFrame(set, (now - atkFx.t0) / atkFx.dur) : RD.walkFrame(set, moving, moving ? (now - pa.t0) / pa.dur : 0, RD.stepCount || 0);
       else img = attacking ? set.atk : flying ? set.walk[0] : set.walk[walking ? (Math.floor(now / 85) % 4) : (Math.floor(now / 600) % 2 ? 0 : 2)];
       const hurt = hitFx(p.x, p.y, 'player', now);
