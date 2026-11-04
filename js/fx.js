@@ -666,7 +666,7 @@
   /* 真魔剛竜剣＋ドラゴニックオーラの盾の2マス攻撃：青い斬撃（ZIP slash_aura_v2）。見た目だけ（当たりはゲーム側で1回だけ済んでいる）。
    *  launch（たけの前）→ wave（1マス目から2マス目へ飛ぶ）→ hit（当たった各マス。手前は飛んでいる途中、奥は届いた時）。
    *  コマの時間は ZIP の試写用の値（1コマ30ms・全体約0.3秒）。f.from：たけのマス、f.dx・f.dy：向き、f.hits：当たったマス */
-  FX.SLASH = { frame: 30 };
+  FX.SLASH = { frame: 30, scale: 1.5 };   // scale：絵の大きさ（1＝等倍。11月4日「もう少し大きく」で1.5倍）
   FX.SLASH.launch = () => 3 * FX.SLASH.frame;
   FX.SLASH.wave = () => 3 * FX.SLASH.frame;
   FX.SLASH.hitAt = (t, f) => (Math.max(Math.abs(t.x - f.from.x), Math.abs(t.y - f.from.y)) >= 2 ? FX.SLASH.launch() + FX.SLASH.wave() : FX.SLASH.launch());   // 当たりの表示の時間
@@ -674,7 +674,7 @@
     const SP = TS.Sprites, L = SP && SP.fxFrames('slashLaunch'), W = SP && SP.fxFrames('slashWave'), H = SP && SP.fxFrames('slashHit');
     if (!L || !W || !H) return;
     const age = a * f.dur, fr = FX.SLASH.frame, ts = v.ts, ang = Math.atan2(f.dy, f.dx);
-    const put = (img, tx, ty, rot) => { const x = v.ox + (tx + 0.5) * ts, y = v.oy + (ty + 0.5) * ts; g.save(); g.translate(x, y); if (rot) g.rotate(ang); g.imageSmoothingEnabled = false; g.drawImage(img, -ts, -ts, ts * 2, ts * 2); g.restore(); };
+    const put = (img, tx, ty, rot) => { const x = v.ox + (tx + 0.5) * ts, y = v.oy + (ty + 0.5) * ts; g.save(); g.translate(x, y); if (rot) g.rotate(ang); g.imageSmoothingEnabled = false; const S = ts * FX.SLASH.scale; g.drawImage(img, -S, -S, S * 2, S * 2); g.restore(); };
     const lt = FX.SLASH.launch(), wt = FX.SLASH.wave();
     if (age < lt) put(L[Math.min(2, Math.floor(age / fr))], f.from.x + f.dx * 0.6, f.from.y + f.dy * 0.6, true);
     else if (age < lt + wt) { const q = (age - lt) / wt; put(W[Math.min(2, Math.floor((age - lt) / fr))], f.from.x + f.dx * (1 + q), f.from.y + f.dy * (1 + q), true); }
