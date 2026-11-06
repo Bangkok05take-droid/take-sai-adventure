@@ -69,9 +69,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('#btn-newgame');
     await p.waitForTimeout(200);
     await closeTalk();
-    assert(await p.isVisible('.modal h2:has-text("遊び方")'), 'help shown');
+    assert(await p.isVisible('.modal h2:has-text("冒険のヒント")'), 'hint shown');
+    assert((await p.textContent('.modal-buttons')).includes('冒険をはじめる'), 'hint button');
     await shot('02_help');
-    await p.tap('.modal-buttons button'); await p.waitForTimeout(100);
     await p.tap('.modal-buttons button'); await p.waitForTimeout(100);
     assert(await p.isVisible('#screen-village'));
     await shot('03_village');
@@ -282,10 +282,10 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await p.tap('.fac.depart'); await p.waitForTimeout(150);
     assert(await p.isVisible('text=倒れると'), 'risk text');
     await shot('05_depart');
-    // 帰還の巻物は自動では配らない。借りると「受取済み」（押せない）
+    // 帰還の巻物は自動では配らない。借りると「受け取り済み」（押せない）
     const sc0 = await p.evaluate(() => TS.UI.S.village.bag.filter((i) => i.id === 'return_scroll').length);
     await p.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p.waitForTimeout(250);
-    const sc1 = await p.evaluate(() => ({ n: TS.UI.S.village.bag.filter((i) => i.id === 'return_scroll').length, dis: [...document.querySelectorAll('.depart-modal .modal-buttons button')].find((b) => b.textContent.includes('受取済み')).disabled }));
+    const sc1 = await p.evaluate(() => ({ n: TS.UI.S.village.bag.filter((i) => i.id === 'return_scroll').length, dis: [...document.querySelectorAll('.depart-modal .modal-buttons button')].find((b) => b.textContent.includes('受け取り済み')).disabled }));
     assert(sc0 === 0 && sc1.n === 1 && sc1.dis, 'scroll borrowed once ' + JSON.stringify(sc1));
     await p.click('text=出発する'); await p.waitForTimeout(150);
     await closeTalk();

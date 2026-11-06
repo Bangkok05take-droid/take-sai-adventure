@@ -417,3 +417,7 @@ details summary { cursor: pointer; margin: 4px 0; }
 .tg-item { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 18px; color: #ffe8b0; }
 .tg-item img { width: 44px; height: 44px; object-fit: contain; }
 .tiw-guide .modal-buttons button[hidden] { display: none; }
+.hint-list { margin: 4px 0; padding-left: 1.2em; line-height: 1.6; }
+.hint-list li { margin-bottom: 6px; }
+.help-more { margin: 4px 0; border-top: 1px solid rgba(255,255,255,.12); padding-top: 4px; }
+.help-more summary { cursor: pointer; font-weight: bold; color: var(--accent); padding: 4px 0; }

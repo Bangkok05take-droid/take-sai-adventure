@@ -1,6 +1,6 @@
 // 出発画面と帰還の巻物の貸し出しの確認：node tools/depart-check.js [リポジトリ] [出力フォルダ]（幅360・390・430）
-// ボタンの並び（左上 ティウと話す／右上 帰還の巻物／左下 やめる／右下 出発する）・受け取り → 受取済み（閉じる・開き直す・読み込み直しで戻らない）・
-// 持ち物がいっぱいなら受取済みにしない・出発時に二重に配らない・村へ戻ると次の1枚・借りずに出発できる・はみ出さない
+// ボタンの並び（左上 ティウと話す／右上 帰還の巻物／左下 やめる／右下 出発する）・受け取り → 受け取り済み（閉じる・開き直す・読み込み直しで戻らない）・
+// 持ち物がいっぱいなら受け取り済みにしない・出発時に二重に配らない・村へ戻ると次の1枚・借りずに出発できる・はみ出さない
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
 const http = require('http'), fs = require('fs'), path = require('path');
 const ROOT = process.argv[2] || path.join(__dirname, '..'), OUT = process.argv[3] || path.join(ROOT, 'tests', 'screenshots', 'depart'); fs.mkdirSync(OUT, { recursive: true });
@@ -34,17 +34,17 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await p.evaluate(() => { const b = [...document.querySelectorAll('.depart-modal .modal-buttons button')].find((x) => x.textContent.includes('帰還の巻物')); b.click(); b.click(); b.click(); });
     await p.waitForTimeout(400);
     s = await st();
-    chk(s.n === 1 && s.taken && s.btn.find((x) => x.t.includes('受取済み')).dis && s.txt.includes('受取済み'), `${w} 受け取ると受取済み（押せない）・1枚だけ ${JSON.stringify({ n: s.n, t: s.txt })}`);
+    chk(s.n === 1 && s.taken && s.btn.find((x) => x.t.includes('受け取り済み')).dis && s.txt.includes('受け取り済み'), `${w} 受け取ると受け取り済み（押せない）・1枚だけ ${JSON.stringify({ n: s.n, t: s.txt })}`);
     await p.screenshot({ path: path.join(OUT, `depart_taken_${w}.png`) });
-    // 閉じて開き直す・読み込み直す → 受取済みのまま
+    // 閉じて開き直す・読み込み直す → 受け取り済みのまま
     await p.tap('.depart-modal .modal-buttons button >> text=やめる'); await p.waitForTimeout(200); await open();
-    s = await st(); chk(s.taken && s.btn.find((x) => x.t.includes('受取済み')).dis && s.n === 1, `${w} 閉じて開き直しても受取済み`);
+    s = await st(); chk(s.taken && s.btn.find((x) => x.t.includes('受け取り済み')).dis && s.n === 1, `${w} 閉じて開き直しても受け取り済み`);
     await p.reload(); await p.waitForTimeout(500); await p.tap('#btn-continue'); await p.waitForTimeout(800);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await open();
-    s = await st(); chk(s.taken && s.btn.find((x) => x.t.includes('受取済み')).dis && s.n === 1, `${w} 読み込み直しても受取済み`);
+    s = await st(); chk(s.taken && s.btn.find((x) => x.t.includes('受け取り済み')).dis && s.n === 1, `${w} 読み込み直しても受け取り済み`);
     // 手放しても再支給しない（持ち物から取り除く）
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); const V = TS.UI.S.village; V.bag = V.bag.filter((i) => i.id !== 'return_scroll'); }); await open();
-    s = await st(); chk(s.n === 0 && s.btn.find((x) => x.t.includes('受取済み')).dis, `${w} 手放しても同じ準備中は再支給しない`);
+    s = await st(); chk(s.n === 0 && s.btn.find((x) => x.t.includes('受け取り済み')).dis, `${w} 手放しても同じ準備中は再支給しない`);
     // 出発 → 自動では配らない（二重にならない）→ 村へ戻る → 次の1枚
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); const V = TS.UI.S.village; V.bag.push(TS.Game.makeItem(TS.UI.S, 'return_scroll')); }); await open();
     await p.tap('.depart-modal .modal-buttons button >> text=出発する'); await p.waitForTimeout(500);
@@ -55,11 +55,11 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
     await p.reload(); await p.waitForTimeout(500); await p.tap('#btn-continue'); await p.waitForTimeout(800);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await open();
     s = await st(); chk(!s.taken && !s.btn.find((x) => x.t.includes('帰還の巻物')).dis && s.n === 0, `${w} 村へ戻ると、次の冒険の1枚を借りられる`);
-    // 持ち物がいっぱい：押すと案内・受取済みにしない → 空きを作ると受け取れる
+    // 持ち物がいっぱい：押すと案内・受け取り済みにしない → 空きを作ると受け取れる
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); const S = TS.UI.S; while (S.village.bag.length < TS.Data.BAG_SIZE) S.village.bag.push(TS.Game.makeItem(S, 'herb')); }); await open();
     await p.tap('.depart-modal .modal-buttons button:has-text("帰還の巻物")'); await p.waitForTimeout(300);
     const full = await p.evaluate(() => ({ msg: [...document.querySelectorAll('.modal h2')].some((h) => h.textContent === '帰還の巻物') && document.querySelector('#modal-root').textContent.includes('1枠空けると受け取れます'), taken: !!TS.UI.S.village.scrollTaken }));
-    chk(full.msg && !full.taken, `${w} 持ち物がいっぱい：受け取れず、受取済みにしない ${JSON.stringify(full)}`);
+    chk(full.msg && !full.taken, `${w} 持ち物がいっぱい：受け取れず、受け取り済みにしない ${JSON.stringify(full)}`);
     if (w === 390) await p.screenshot({ path: path.join(OUT, `depart_full_${w}.png`) });
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); TS.UI.S.village.bag.pop(); }); await p.waitForTimeout(150);
     await p.evaluate(() => { while (TS.UI.modals.length) TS.UI.modals[TS.UI.modals.length - 1].close(); }); await open();   // 案内を閉じると出発画面に戻るので、閉じ直して開く

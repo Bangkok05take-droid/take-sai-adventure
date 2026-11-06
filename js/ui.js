@@ -205,61 +205,84 @@
   }
 
   // ================= 遊び方 =================
-  const HELP_HTML = `<div class="help">
-    <h3>目的</h3>
-    <p>師匠マスターヤナイが大魔王を封じた遺跡へ、勇者たけが挑む。第1〜5章は、1階からその章のボスの階（第1章15階・第2章20階・第3章25階・第4章と第5章30階）をめざし、そこで待つ魔王軍の将を倒す。倒すと報酬と帰還口が現れ、村へ帰ると次の章へ進む。第5章のあと、30階の大魔王バーン、33階の真大魔王バーンに挑む最終章が始まる。</p>
-    <p>途中で帰還しても、倒れても、章はそのまま（クリアした章をやり直すことはない）。拾ったお宝はサイの店で売って村を復興させ、次の挑戦の準備をしよう。</p>
+  /* 遊び方（2026年11月6日に整理）：ふだん見る短い説明と、任意で開く「詳しい操作・ルール」（<details>。最初は閉じている）。
+   * 先の展開（章ごとのボスの階・変身など）は書かない。今の目標は村の画面上の表示で確かめる。
+   * 村の施設は、まだ建っていなければ「村の発展で建てると使えます」と添える（開くたびに今の村で作る） */
+  function helpHtml() {
+    const V = UI.S && UI.S.village, later = '<small>（村の発展で建てると使えます）</small>';
+    const built = { smith: !!(V && V.smithLv), diner: !!(V && V.diner), museum: !!(V && V.museum) };
+    const det = (title, items) => `<details class="help-more"><summary>${title}</summary><ul>${items.filter(Boolean).map((t) => '<li>' + t + '</li>').join('')}</ul></details>`;
+    return `<div class="help">
+    <h3>冒険の目的</h3>
+    <p>遺跡を進み、ボスを倒そう。お宝を持ち帰ると、装備を整えたり村を発展させたりできます。</p>
+    <h3>基本操作</h3>
+    <ul>
+      <li>方向ボタンで移動。敵のいる方向へ進むと攻撃。</li>
+      <li>移動・攻撃・道具の使用で1ターン進みます。</li>
+      <li>メニューや説明を見ている間は、時間が止まります。</li>
+    </ul>
     <h3>ボス戦</h3>
     <ul>
-      <li>大技の前には必ず予告がある：<b>赤いマス</b>（次の行動で攻撃）と、<b>色つきの床の印</b>（数字は発動までに動ける回数。0で発動）。印のない床へ移ればかわせる。</li>
-      <li>大技のあとには隙ができる。反撃のチャンス。ボスにも眠り・鈍足が短く効く。</li>
-      <li>分身には影がない。霧の中でも予告と印は見える。拘束（移動できない）の間も、攻撃・道具・足踏みはできる。</li>
-      <li>章ごとにお店へ並ぶ護符・お香が、そのボスへの備えになる。</li>
-    </ul>
-    <h3>操作</h3>
-    <ul>
-      <li><b>方向ボタン</b>（3×3）：8方向に1マス移動。斜めも1ターン。押し続けると連続で進む（敵が隣に来た・道具や階段の上などで止まる）。</li>
-      <li>敵のいる方向へ動くと攻撃（斜めの敵にも攻撃できる）。押しっぱなしで攻撃を繰り返すことはない。</li>
-      <li>壁の角をはさんだ斜めには移動・攻撃できない（敵も同じ）。</li>
-      <li><b>中央の「向き」</b>（PCはF）：タップでオン/オフ。オンの間は方向ボタンで向きだけ変わる（移動・攻撃なし、時間も進まない）。杖などはこの向きに使う。</li>
-      <li><b>「向き」を長押し</b>（PCはRを押し続ける）：休息（連続足踏み）。1回ごとに普通に1ターン待ち、自然回復でHPが戻る。敵の行動や満腹度も普通に進む。指を離す・HP全回復・敵が見える・ダメージ・満腹度が少ない・毒のときは止まる。</li>
-      <li><b>足踏み</b>（スペース）：その場で1ターンだけ待つ。</li>
-      <li>PC：矢印キー/WASDで上下左右、Q・E・Z・C（またはテンキー7・9・1・3）で斜め。</li>
-      <li><b>ダッシュ</b>（PCはX）：オンにして方向ボタンを押し続けると、その方向へ速く進む（1マスごとに1ターン）。指を離すとすぐ止まる。新しい敵・ダメージ・敵が隣・壁・分かれ道・道具・階段・帰還地点・HPや満腹度の危険で自動で止まり、止まった理由が表示される。押し直すと再び進む。</li>
-      <li><b>足元</b>（Enter）：階段を降りる・道具を拾う・帰還する。</li>
-      <li><b>道具</b>（I）：使う・装備する・投げる・置く・整理。<b>メニュー</b>（Esc）：地図・説明・音。</li>
-      <li><b>投げる</b>：8方向を選び、直線上の最初の敵に当てる（10マスまで。壁や角は通らない）。ねむり草は眠り、どんそくの粉は鈍足、回復の道具は敵が回復、武器は強さに応じたダメージ、ほかは小さなダメージ。外れると床に落ちる。足元の道具はバッグがいっぱいでも投げられる。</li>
-      <li><b>アクセサリー</b>：1つだけ装備でき、装備している間だけ効く（毒よけ・盗まれない・満腹度が減らない・一度だけ復活）。</li>
-      <li>メッセージ欄の右の<b>「履歴」</b>で過去のメッセージを読める（欄のほかの所を触っても開かない）。</li>
-    </ul>
-    <h3>ターン</h3>
-    <ul>
-      <li>移動・攻撃・待つ・道具を使う・装備変更で1ターン。そのあと敵が1回ずつ動く。</li>
-      <li>壁にぶつかる、メニューや道具の説明を見るだけなら時間は進まない。</li>
+      <li>赤いマスや床の印は、大技の予告。安全な場所へ移動しよう。</li>
+      <li>大技のあとは反撃のチャンス。</li>
     </ul>
     <h3>満腹度とHP</h3>
     <ul>
-      <li>満腹度は行動するたびに少しずつ減る。食べ物で回復。</li>
-      <li>満腹度があればHPはゆっくり回復。0になるとHPが減っていく。</li>
+      <li>お腹がすいてきたら食べ物で回復。</li>
+      <li>満腹度があれば、HPは少しずつ回復します。</li>
+      <li>満腹度が0になると、HPが減っていきます。</li>
     </ul>
     <h3>帰還と敗北</h3>
     <ul>
-      <li><b>帰還の巻物</b>（出発時に1枚無料）を使うと、その場で持ち物とお金を持って村へ帰れる。</li>
-      <li>地下25階に1か所だけ<b>帰還の祠</b>がある（25階がボスの階の章にはない）。ボスを倒すと帰還口が開く。それ以外は帰還の巻物で帰ろう。</li>
-      <li>帰って再出発すると1階から。帰る・進むの判断が大事。探索の途中で中断しても、続きから再開できる。</li>
-      <li>倒れると、持ち物と探索中のお金を失う。村の資金・倉庫・施設は残る。</li>
+      <li>帰還の巻物を使うと、持ち物とお金を持って村へ帰れます。</li>
+      <li>倒れると、持ち物と探索中のお金を失います。</li>
+      <li>村の資金・倉庫・施設は残ります。</li>
+      <li>再出発は1階から。クリアした章は戻りません。</li>
     </ul>
-    <h3>村</h3>
+    <h3>村でできること</h3>
     <ul>
-      <li><b>サイの店</b>：お宝を売る・食料や薬・武器を買う。旅人のおにぎりは無料で借りられる。</li>
-      <li><b>倉庫</b>：大事な物を預けておけば、倒れても失わない（10→15→20→30枠）。</li>
-      <li><b>村の発展</b>：施設と飾りの価格・効果・解放条件を見て建てる。画面上に「次の目標」が出る。</li>
-      <li><b>鍛冶屋</b>：武器・盾を強化（設備しだいで+3→+5→+8。+4以降は深い階の素材が必要）。</li>
-      <li><b>ワーンの食堂</b>：出発前に料理を1品。次の探索だけ能力が上がる。</li>
-      <li><b>お宝展示室</b>：珍しいお宝を売らずに寄贈して飾れる。集めると称号と特別な飾りが解放。</li>
-      <li>深い階ほど高価なお宝と素材が見つかる。素材は持ち帰ると素材箱へ。</li>
-    </ul></div>`;
-  function showHelp(cb) { modal({ title: '遊び方', html: HELP_HTML, onClose: cb }); }
+      <li>サイの店：道具の売買。無料のおにぎりもあります。</li>
+      <li>倉庫：大切な持ち物を預ける。</li>
+      <li>村の発展：施設や飾りを増やす。</li>
+      <li>鍛冶屋：武器と盾を強化する。${built.smith ? '' : later}</li>
+      <li>ワーンの食堂：料理で次の冒険を助ける。${built.diner ? '' : later}</li>
+      <li>お宝展示室：お宝を寄贈して飾る。${built.museum ? '' : later}</li>
+    </ul>
+    <h3>詳しい操作・ルール</h3>
+    ${det('移動と向き', [
+      '方向ボタン（3×3）で8方向に1マス。斜めも1ターン。押し続けると連続で進む（敵が隣に来た・道具や階段の上などで止まる）。',
+      '壁の角をはさんだ斜めには、移動も攻撃もできない（敵も同じ）。押しっぱなしで攻撃を繰り返すことはない。',
+      '中央の「向き」：タップでオン/オフ。オンの間は方向ボタンで向きだけ変わる（時間は進まない）。杖などはこの向きに使う。',
+    ])}
+    ${det('休息・足踏み・ダッシュ', [
+      '足踏み：その場で1ターン待つ。',
+      '「向き」を長押し：休息（連続の足踏み）。HPが自然に戻る。指を離す・HP全回復・敵が見える・ダメージ・満腹度が少ない・毒のときは止まる。',
+      'ダッシュ：オンにして方向ボタンを押し続けると速く進む（1マスごとに1ターン）。新しい敵・ダメージ・敵が隣・壁・分かれ道・道具・階段・帰還地点・HPや満腹度の危険で止まり、理由が出る。',
+    ])}
+    ${det('道具・投げる・アクセサリー', [
+      '足元：階段を降りる・道具を拾う・帰還する。道具：使う・装備する・投げる・置く・整理。',
+      '投げる：8方向を選び、直線上の最初の敵に当てる（10マスまで。壁や角は通らない）。ねむり草は眠り、どんそくの粉は鈍足、回復の道具は敵が回復、武器は強さに応じたダメージ、ほかは小さなダメージ。外れると床に落ちる。',
+      'アクセサリー：1つだけ装備でき、装備している間だけ効く。',
+    ])}
+    ${det('ボスの予告と状態異常', [
+      '赤いマス：次の行動で攻撃が来る。床の印の数字：発動までに動ける回数（0で発動）。印のない床へ移ればかわせる。',
+      'ボスにも眠り・鈍足が短く効く。分身には影がない。霧の中でも予告と印は見える。',
+      '拘束（移動できない）の間も、攻撃・道具・足踏みはできる。',
+    ])}
+    ${det('帰還・中断・メッセージ', [
+      '帰還の巻物は、出発画面で1枚無料で借りられる（冒険1回につき1枚）。',
+      '地下25階に1か所だけ帰還の祠がある（25階がボスの階の章にはない）。ボスを倒すと帰還口が開く。',
+      D.KEEP_LEVEL ? '無事に帰還すると、レベルは次の冒険に引き継がれる。倒れるとレベル1に戻る。' : null,
+      '探索の途中でやめても、「つづきから」で続きから再開できる。',
+      'メッセージ欄の右の「履歴」で、過去のメッセージを読める。',
+    ])}
+    ${det('PCのキー操作', [
+      '矢印キー/WASD：上下左右。Q・E・Z・C（またはテンキー7・9・1・3）：斜め。',
+      'F：向き（Rを押し続けると休息）。スペース：足踏み。X：ダッシュ。Enter：足元。I：道具。Esc：メニュー。',
+    ])}
+    </div>`;
+  }
+  function showHelp(cb) { modal({ title: '遊び方', html: helpHtml(), onClose: cb }); }
 
   // ================= タイトル =================
   function bindTitle() {
@@ -349,10 +372,12 @@
     save();
     AU.startEventBgm('yanai');   // 冒頭：師匠ヤナイが封印する場面はヤナイのテーマ
     showScreen('village');
-    talk(D.STORY.intro.concat([['sai', 'おにぎりは無料で持たせるね。武器は遺跡で拾えるし、お金がたまったらお店でも買えるよ。危なくなったら帰還の巻物で帰ってきて！']]), () => {
+    // 冒頭：短いナレーション3つ → 冒険のヒント（1画面）→ 村。詳しい遊び方はメニューの「遊び方」（2026年11月6日に整理）
+    talk(D.STORY.intro, () => {
       UI.S.village.seenIntro = true; UI.S.village.story.introDone = true; save();
       AU.endEventBgm();
-      showHelp(() => info('はじめの一歩', '<p>下の<b>「遺跡へ出発」</b>から探索に出かけよう。</p><p class="note">はじめは素手です。出発前にサイの店で<b>旅人のおにぎりを無料で借りられます</b>。武器や盾は遺跡で拾えます。</p>'));
+      modal({ title: '冒険のヒント', html: '<ul class="hint-list"><li>敵のいる方向へ進むと攻撃。動くたびに敵も動きます。</li><li>お宝を持ち帰って、装備と村を育てよう。</li><li>危なくなったら「帰還の巻物」で村へ！</li></ul>',
+        buttons: [{ label: '冒険をはじめる', cls: 'primary' }] });
     });
   }
   function continueGame() {
@@ -591,20 +616,20 @@
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
       let html = '';
       if (t === 'buy') {
-        html += `<p class="note">バッグ ${V.bag.length}/${D.BAG_SIZE}　食料と回復薬はここで買えます。</p><div class="list">`;
+        html += `<p class="note">道具を買えます。　バッグ ${V.bag.length}/${D.BAG_SIZE}</p><div class="list">`;
         for (const id of G.shopStock(V)) html += defRow(id, D.ITEMS[id].price + 'G', V.funds < D.ITEMS[id].price ? 'disabled' : '');
         html += '</div>';
         if (V.stage < 3) html += '<p class="note">村が発展すると品ぞろえが増えます。</p>';
       } else if (t === 'sell') {
-        html += '<p class="note">売ったお金は村の資金になり、探索で倒れても失いません。</p><div class="list">';
+        html += '<p class="note">売ったお金は村の資金になります（倒れても失いません）。</p><div class="list">';
         if (!V.bag.length) html += '<p>バッグは空です。</p>';
         for (const it of V.bag) html += itemRow(it, (G.canSell(it) ? G.sellPrice(it) + 'G' : '売れない') + (G.canDonate(V, it) ? '<br><small>展示室に未展示</small>' : ''), G.canSell(it) ? '' : 'disabled');
         html += '</div>';
       } else {
         const ls = G.loanStatus(UI.S);
-        html += '<p>お金がなくても大丈夫。おにぎりはサイが無料で持たせてくれます。</p><div class="list">';
+        html += '<p class="note">旅人のおにぎりを無料で借りられます（持っていないときに1つ。売る・預けるはできません）。</p><div class="list">';
         html += defRow('loan_rice', ls.food ? '無料' : '持っている', ls.food ? '' : 'disabled');
-        html += '</div><p class="note">貸出品は売ったり預けたりできません。持っていないときに1つ借りられます。</p>';
+        html += '</div>';
       }
       h.body.innerHTML = html;
       h.body.querySelectorAll('.row').forEach((r) => r.addEventListener('click', () => {
@@ -613,7 +638,7 @@
           const id = r.dataset.id, d = D.ITEMS[id];
           confirmBox('買う', `<p><b>${esc(d.name)}</b>を <b>${d.price}G</b> で買いますか？</p><p class="note">${esc(d.desc)}</p><p class="note">資金 ${V.funds}G → ${V.funds - d.price}G</p>`, '買う', () => {
             const res = G.buy(UI.S, id);
-            if (res.ok) AU.sfx('buy');
+            if (res.ok) { AU.sfx('buy'); toast('買いました'); }
             villageChanged(); render(tab);
             if (!res.ok) info('サイの店', res.msg);
           });
@@ -624,12 +649,12 @@
           const p = G.sellPrice(it);
           confirmBox('売る', `<p><b>${esc(G.itemName(it))}</b>を <b>${p}G</b> で売りますか？</p>${it.eq ? '<p class="warnbox">装備中の品です。</p>' : ''}<p class="note">資金 ${V.funds}G → ${V.funds + p}G</p>`, '売る', () => {
             const res = G.sell(UI.S, it.uid);
-            if (res.ok) AU.sfx('gold');
+            if (res.ok) { AU.sfx('gold'); toast('売りました'); }
             villageChanged(); render(tab);
           });
         } else {
           const res = G.takeLoan(UI.S, 'food');
-          if (res.ok) AU.sfx('pickup');
+          if (res.ok) { AU.sfx('pickup'); toast('おにぎりを借りました'); }
           villageChanged(); render(tab);
           if (!res.ok) info('貸出', res.msg);
         }
@@ -656,7 +681,7 @@
         h.body.innerHTML = materialsList(V);
         return;
       }
-      let html = `<p class="note">「整理」は${t === 'in' ? 'バッグ' : '倉庫'}を種類順に並べます。<br>倉庫 ${V.storage.length}/${G.storageSize(V)}　バッグ ${V.bag.length}/${D.BAG_SIZE}</p><div class="list">`;
+      let html = `<p class="note">預けた品は、倒れても失いません。<br>倉庫 ${V.storage.length}/${G.storageSize(V)}　バッグ ${V.bag.length}/${D.BAG_SIZE}</p><div class="list">`;
       const list = t === 'in' ? V.bag : V.storage;
       if (!list.length) html += '<p>' + (t === 'in' ? 'バッグは空です。' : '倉庫は空です。') + '</p>';
       for (const it of list) html += itemRow(it, t === 'in' ? (G.canStore(it) ? '預ける' : '不可') : '出す', t === 'in' && !G.canStore(it) ? 'disabled' : '');
@@ -668,7 +693,8 @@
         const res = t === 'in' ? G.deposit(UI.S, +r.dataset.uid) : G.withdraw(UI.S, +r.dataset.uid);
         AU.sfx(res.ok ? 'pickup' : 'bump');
         villageChanged(); render(t);
-        if (!res.ok) info('倉庫', res.msg);
+        if (res.ok) toast(t === 'in' ? '倉庫に預けました' : '倉庫から取り出しました');
+        else info('倉庫', res.msg);
       }));
     }
     render(tab);
@@ -723,9 +749,9 @@
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
       const list = V.bag.concat(V.storage).filter((i) => ['weapon', 'shield'].includes(G.def(i).type));
       const nx = ['smith2', 'smith3'].map(G.facility).find((f) => !G.hasFacility(V, f.id));
-      let html = `<p>設備：<b>Lv${V.smithLv}</b>　強化の上限：<b>${G.smithMax(V) === Infinity ? 'なし（オリハルコンで +9 から）' : '+' + G.smithMax(V)}</b>${nx ? `<br><span class="note">次の設備「${esc(nx.name)}」${nx.price}G＋${matsText(nx.mats)}</span>` : ''}</p>`;
+      let html = `<p class="note">武器と盾を強化します（バッグと倉庫の品）。</p><p>設備：<b>Lv${V.smithLv}</b>　強化の上限：<b>${G.smithMax(V) === Infinity ? 'なし（オリハルコンで +9 から）' : '+' + G.smithMax(V)}</b>${nx ? `<br><span class="note">次の設備「${esc(nx.name)}」${nx.price}G＋${matsText(nx.mats)}</span>` : ''}</p>`;
       html += '<details><summary class="note">素材箱を見る</summary>' + materialsBox(V) + '</details><div class="list">';
-      if (!list.length) html += '<p>強化できる武器・盾がありません（バッグと倉庫の品が対象）。</p>';
+      if (!list.length) html += '<p>強化できる武器・盾がありません。</p>';
       for (const it of list) {
         const ok = G.canSmith(V, it);
         const m = G.smithMats(it);
@@ -785,7 +811,7 @@
       tab = t;
       tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
-      let html = t === 'facility' ? '<p class="note">価格・効果・解放条件を確認して建てられます。</p>' : '<p class="note">好きな飾りを選んで村を整えよう。お宝を寄贈すると特別な飾りが解放されます。</p>';
+      let html = t === 'facility' ? '<p class="note">施設を建てて、村でできることを増やします。</p>' : '<p class="note">好きな飾りを選んで村を整えよう。お宝を寄贈すると特別な飾りが解放されます。</p>';
       // 完成済みは一覧から外す（効果・外観・記録はそのまま）。段階式の拡張（倉庫・鍛冶屋）は次の1段階だけ
       const left = G.unbuiltFacilities(V);
       const list = left.filter((f) => f.kind === t);
@@ -814,7 +840,7 @@
           const res = G.buildFacility(UI.S, f.id);
           if (res.ok) {
             AU.sfx('levelup'); villageChanged(); render(tab);
-            const say = () => talk(BUILD_TALK[f.id] || [['sai', res.msg]]);
+            const say = () => { toast(res.msg); if (BUILD_TALK[f.id]) talk(BUILD_TALK[f.id]); };   // 完成の短い通知（施設ごとの会話はそのまま）
             // 赤い橋：完成のムービー（未受領なので仮の会話）。紋章を拾えるかは橋の完成だけで決まり、ムービーとは関係ない
             if (f.id === 'bridge') { closeAllModals(); playStoryMovie('bridge', say); } else say();
           }
@@ -832,7 +858,7 @@
     const h = modal({ title: 'ワーンの食堂', right: V.funds + 'G', buttons: [{ label: '閉じる' }] });
     function render() {
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
-      let html = `<p class="note">料理は次の探索だけ効果があります。1品だけ選べて、重ねがけはできません（帰還・敗北で終わります）。</p>`;
+      let html = `<p class="note">料理は次の探索だけ効きます（1品まで）。</p>`;
       html += V.meal ? `<div class="okbox">注文済み：<b>${esc(D.MEALS[V.meal].name)}</b> — ${esc(D.MEALS[V.meal].desc)}</div>` : '';
       html += '<div class="list">' + Object.entries(D.MEALS).map(([id, m]) => `<button class="row ${V.meal === id || V.funds < m.price ? 'disabled' : ''}" data-id="${id}"><span class="dish">🍛</span><span class="nm">${esc(m.name)}<small>${esc(m.desc)}</small></span><span class="pr">${m.price}G</span></button>`).join('') + '</div>';
       h.body.innerHTML = html;
@@ -841,7 +867,7 @@
         if (V.meal === id) return;
         confirmBox('料理', `<p><b>${esc(m.name)}</b>を <b>${m.price}G</b> で注文しますか？</p><p class="note">${esc(m.desc)}</p>${V.meal ? `<p class="warnbox">今の注文（${esc(D.MEALS[V.meal].name)}）は取り消しになり、お金は戻りません。</p>` : ''}`, '注文する', () => {
           const res = G.buyMeal(UI.S, id);
-          if (res.ok) { AU.sfx('buy'); villageChanged(); render(); talk([['sai', m.name + 'だね。出発前に用意しておくよ！']]); }
+          if (res.ok) { AU.sfx('buy'); villageChanged(); render(); toast('料理を注文しました（次の探索で効きます）'); }
           else info('ワーンの食堂', res.msg);
         });
       }));
@@ -861,7 +887,7 @@
         const d = D.ITEMS[id], has = V.donated[id];
         html += `<div class="pedestal ${has ? 'has' : ''}"><img src="${SP.iconURL(d)}" alt=""><small>${has ? esc(d.name) : '？？？'}</small></div>`;
       }
-      html += '</div><p class="note">' + D.TITLES.map(([n, t]) => `${n}種：${esc(t)}`).join('　') + '<br>3・6・9種で特別な飾り（象の像・噴水・黄金の門）が解放されます。初めて寄贈したお宝だけ、売値の3割をお礼としてもらえます。</p>';
+      html += '</div><p class="note">お宝を寄贈して飾れます（初めての1つは売値の3割のお礼）。<br>' + D.TITLES.map(([n, t]) => `${n}種：${esc(t)}`).join('　') + '<br>3・6・9種で特別な飾り（象の像・噴水・黄金の門）が解放されます。</p>';
       const cand = V.bag.concat(V.storage).filter((it) => D.MUSEUM_ITEMS.includes(it.id));
       html += '<h3 class="sub">寄贈できるお宝（バッグと倉庫）</h3><div class="list">';
       if (!cand.length) html += '<p class="note">寄贈できるお宝を持っていません。</p>';
@@ -875,9 +901,8 @@
           const res = G.donate(UI.S, it.uid);
           if (res.ok) {
             AU.sfx('levelup'); villageChanged(); render();
-            const lines = [['sai', esc(G.def(it).name).replace(/&amp;/g, '&') + '、きれいに飾ったよ！']];
-            if (res.newTitle) lines.push(['sai', 'たけ、村のみんなが「' + res.newTitle + '」って呼んでるよ！']);
-            talk(lines);
+            toast('展示室に飾りました（お礼 ' + thanks + 'G）');
+            if (res.newTitle) setTimeout(() => toast('新しい称号「' + res.newTitle + '」', 'levelup'), 1400);   // 称号はここでしか知らせないので残す
           } else info('展示室', res.msg);
         });
       }));
@@ -1038,13 +1063,13 @@
       ${ac ? `<div class="dp-cell dp-wide"><img src="${SP.iconURL(G.def(ac))}" alt=""><span>アクセサリー：${esc(G.itemName(ac))}</span></div>` : ''}
     </div>`;
     html += `<div class="dp-panel dp-warn">${DP_ICON.warn}<div><b>倒れると、持ち物と探索中のお金を失います。</b><small>村の資金・倉庫・施設は残ります。</small></div></div>`;
+    // 2026年11月6日に整理：巻物は「1枚、無料で借りられます」か「受け取り済み」。条件（冒険1回につき1枚）は短く添える
     html += `<div class="dp-panel dp-scroll${sc.taken ? ' taken' : ''}">${ic('return_scroll')}<div>` + (sc.taken
-      ? '<b>帰還の巻物は受取済みです。</b><small>冒険1回につき1枚。村へ戻ると、次の冒険の1枚を受け取れます。</small>'
-      : `<b>帰還の巻物を無料で1枚借りられます。</b><small>${sc.full ? '持ち物がいっぱいです。1枠空けると受け取れます。' : '冒険1回につき1枚。下のボタンで受け取れます。'}</small>`) + '</div></div>';
+      ? '<b>帰還の巻物：受け取り済み</b><small>冒険1回につき1枚。</small>'
+      : `<b>帰還の巻物を1枚、無料で借りられます。</b><small>${sc.full ? '持ち物がいっぱいです。1枠空けると受け取れます。' : '冒険1回につき1枚。'}</small>`) + '</div></div>';
     const notes = [];
     if (V.meal) notes.push([DP_ICON.fork, `${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）`]);
-    else if (V.diner) notes.push([DP_ICON.fork, 'ワーンの食堂の料理で、冒険の準備を。']);
-    if (!w) notes.push([DP_ICON.fist, '武器なし：素手で出発します。']);
+    if (!w) notes.push([DP_ICON.fist, '武器は遺跡で拾えます。']);
     if (rm) notes.unshift([DP_ICON.warn, `再戦：<b>${esc(rm.name)}</b>（地下${rm.id === 'vearn' ? '30階・33階' : rm.floor + '階'}）。ボスの強さは、ボス部屋に入ったときのたけに合わせます。`]);
     const kl = D.KEEP_LEVEL && V.keptLevel && V.keptLevel.lvl > 1 ? V.keptLevel.lvl : 1;   // 前回、無事に帰還したときのレベル
     if (kl > 1) notes.push([DP_ICON.compass, `前回の帰還で鍛えた<b>レベル${kl}</b>から出発します（倒れるとレベル1に戻ります）。`]);
@@ -1060,11 +1085,11 @@
       setTimeout(() => openTiwGuide(reopen), 0);   // 村のティウ本人と同じ冒険案内。閉じると出発画面に戻る
     } });
     // 右上：帰還の巻物を借りる／受取済み
-    buttons.push({ label: sc.taken ? '受取済み' : '帰還の巻物を借りる', cls: 'dp-btn dp-paper' + (sc.taken ? ' dp-done' : ''), disabled: sc.taken,
-      html: `${ic('return_scroll')}<span>${sc.taken ? '受取済み' : '帰還の巻物を<br>借りる'}</span>`, onClick: () => {
+    buttons.push({ label: sc.taken ? '受け取り済み' : '帰還の巻物を借りる', cls: 'dp-btn dp-paper' + (sc.taken ? ' dp-done' : ''), disabled: sc.taken,
+      html: `${ic('return_scroll')}<span>${sc.taken ? '受け取り済み' : '帰還の巻物を<br>借りる'}</span>`, onClick: () => {
         const r = G.takeReturnScroll(UI.S);
         if (!r.ok) { setTimeout(() => info('帰還の巻物', `<p>${esc(r.msg)}</p>`, reopen), 0); return; }
-        AU.sfx('pickup'); villageChanged(); toast('帰還の巻物を借りた！');
+        AU.sfx('pickup'); villageChanged(); toast('帰還の巻物を借りました');
         reopen();
       } });
     buttons.push({ label: 'やめる', cls: 'dp-btn dp-light', html: `${DP_ICON.close}<span>やめる</span>` });

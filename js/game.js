@@ -2561,7 +2561,7 @@
     for (const [m, n] of Object.entries(f.mats || {})) V.materials[m] -= n;
     V.built[id] = true;
     G.applyFacilities(V);
-    return { ok: true, msg: '「' + f.name + '」が完成した！' };
+    return { ok: true, msg: f.name + 'が完成しました' };
   };
   // 建てた施設から村の各段階を決める（旧セーブの stage とも整合させる）
   G.applyFacilities = function (V) {

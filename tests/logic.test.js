@@ -2415,8 +2415,9 @@ test('マドハンド：つかむと移動できない（攻撃・道具・装�
   assert(G.sets(run).all3); h = put('madhand', 6, 5); G.updateVision(run);
   for (let i = 0; i < 3; i++) G.act(S, { type: 'wait' }); eq(p.bound, 0, 'immune with the set');
 }));
-test('冒頭の会話：大魔王は地下33階へ封じる', () => {
-  assert(D.STORY.intro.some((l) => l[1].includes('地下33階へ封じる')) || JSON.stringify(D.STORY).includes('地下33階へ封じる'));
+test('冒頭の会話：語りだけの3行（名前なし）・ヤナイの封印・先の階の話はしない', () => {
+  eq(D.STORY.intro.length, 3); assert(D.STORY.intro.every((l) => l[0] === 'narration'));
+  assert(D.STORY.intro[0][1].includes('マスターヤナイ') && !/\d+階/.test(JSON.stringify(D.STORY.intro)));
   assert(!JSON.stringify(D.STORY).includes('地下35階へ封じる'));
 });
 test('30階・玉座の間（デザインの絵）：下の通路から上へ入る。玉座・柱・炎の台・旗は通れない。中央の床は広い。撃破後、亀裂へ歩いて行ける・ムービーのあとも同じ状態', () => {
