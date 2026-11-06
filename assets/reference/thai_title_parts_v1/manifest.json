@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "reference_canvas": [
+    1024,
+    1536
+  ],
+  "assets": [
+    {
+      "file": "title_bg.png",
+      "size": [
+        1024,
+        1536
+      ],
+      "alpha": false
+    },
+    {
+      "file": "title_logo.png",
+      "size": [
+        1200,
+        480
+      ],
+      "alpha": true
+    }
+  ],
+  "buttons": "reuse_existing_runtime_buttons",
+  "logo_text_included": true,
+  "button_text_included": false,
+  "reference_only": "reference/approved_layout.png"
+}
