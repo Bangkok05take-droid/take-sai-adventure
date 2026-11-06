@@ -277,7 +277,8 @@
       desc: 'HPを35回復し、毒も治す。' },
     elixir:        { name: 'いのちの霊薬', type: 'heal', heal: 999, price: 150, sell: 55, icon: 'potion',
       desc: 'HPを全回復し、毒も治す。' },
-    banana:        { name: '甘いバナナ', type: 'food', food: 45, price: 20, sell: 8, icon: 'banana',
+    // 2026年11月：「甘いバナナ」を「甘いムーピン」（タイの豚の串焼き）に。内部IDは banana のまま（セーブの持ち物をそのまま引き継ぐ）。効果・値段は同じ
+    banana:        { name: '甘いムーピン', type: 'food', food: 45, price: 20, sell: 8, icon: 'banana',
       desc: '満腹度を45回復する。' },
     khaoniao:      { name: '特製お弁当', type: 'food', food: 100, price: 45, sell: 18, icon: 'bento',
       desc: 'もち米のカオニャオが入った{sai}の特製弁当。満腹度を100回復する。' },

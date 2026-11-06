@@ -90,7 +90,7 @@
        * ここに書いた道具は、上の map（アイコン名:色分け）よりこちらの絵を優先する。読み込めなければ今までの絵のまま。 */
       byIdDir: 'assets/items-v2/',
       byId: {
-        elixir: 'elixir', banana: 'banana', loan_rice: 'riceball', smoke_ball: 'smoke_ball', clear_incense: 'clear_incense',
+        elixir: 'elixir', banana: 'moo_ping', loan_rice: 'riceball', smoke_ball: 'smoke_ball', clear_incense: 'clear_incense',
         water_charm: 'water_charm', truth_mirror: 'truth_mirror', bolt_charm: 'bolt_charm',
         jade_elephant: 'jade_elephant', golden_lotus: 'golden_lotus', bronze_bell: 'bronze_bell', sunken_crown: 'sunken_crown',
         giant_crystal: 'giant_crystal', prism_flower: 'prism_flower', golden_elephant: 'golden_elephant', dream_crown: 'dream_crown',
