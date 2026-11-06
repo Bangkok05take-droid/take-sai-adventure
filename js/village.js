@@ -32,7 +32,7 @@
     L.fac.push({ id: 'smith', name: lv.smith ? '鍛冶屋' : '鍛冶屋（空き地）', fp: [1, 6, 5, 3], at: [3, 9], face: 'up', npc: 'koi', npcAt: [5, 9], built: lv.smith > 0 });
     L.fac.push({ id: 'museum', name: lv.museum ? '展示室' : '展示室（空き地）', fp: [14, 6, 5, 3], at: [16, 9], face: 'up', built: lv.museum });
     // サイの店（2026年10月の素材）：左の入口の前にサイ、その下が店に入る位置。足元は左端の草地まで5マス
-    L.fac.push({ id: 'shop', name: 'サイの店', fp: [0, 11, 5, 3], at: [1, 15], face: 'up', npc: 'sai', npcAt: [1, 14], built: true });
+    L.fac.push({ id: 'shop', name: '{sai}の店', fp: [0, 11, 5, 3], at: [1, 15], face: 'up', npc: 'sai', npcAt: [1, 14], built: true });
     // 倉庫：v2の絵は扉が中央。扉を入る位置 (16,14) の真上に置くので、絵の左端（麻袋）は足元の外の (14,…) に少しかかる。
     // 足元（通れないマス）は15〜18のまま：x13〜14 の通路（広場の下半分と上半分をつなぐ）を2マスあけておく
     L.fac.push({ id: 'storage', name: '倉庫', fp: [15, 11, 4, 3], at: [16, 14], face: 'up', built: true });

@@ -4122,5 +4122,23 @@ test('ヤナイの記録（2026年11月6日・全8話）：最初は記録一だ
   const L = TS.Save.deserialize(TS.Save.serialize(S)); assert(L.village.story.letter); eq(G.openRecords(L.village).length, 8);
 });
 
+test('名前（2026年11月）：1〜8文字・前後の空白を取る・空欄や { } は断る。文章の {take}・{sai} を置きかえる。セーブに残り、名前の無い古いセーブは「たけ」「サイ」', () => {
+  const NM = TS.Names;
+  eq(NM.problem('  '), '名前を入力してください'); eq(NM.problem('あいうえおかきく'), null); eq(NM.problem('あいうえおかきくけ'), '8文字までです'); eq(NM.problem('a{b'), '{ } は使えません');
+  eq(NM.clean('　タイ　'), 'タイ'); eq(NM.problem('👨‍👩‍👧'), null);
+  const S = G.newState(); eq(S.names.take, 'たけ'); eq(S.names.sai, 'サイ');
+  S.names = NM.normalize({ take: ' ソムチャイ ', sai: '<b>&' });
+  eq(S.names.take, 'ソムチャイ'); eq(S.names.sai, '<b>&');
+  const L = SV.deserialize(SV.serialize(S)); eq(L.names.take, 'ソムチャイ'); eq(L.names.sai, '<b>&');
+  const old = JSON.parse(SV.serialize(G.newState())); delete old.names; const L2 = SV.deserialize(JSON.stringify(old)); eq(L2.names.take, 'たけ'); eq(L2.names.sai, 'サイ');
+  const bad = JSON.parse(SV.serialize(G.newState())); bad.names = { take: '', sai: 'x'.repeat(20) }; const L3 = SV.deserialize(JSON.stringify(bad)); eq(L3.names.take, 'たけ'); eq(L3.names.sai, 'サイ');
+  // 置きかえ（文章は印のまま。名前は表示するときに入る）
+  eq(NM.fill('{take}と{sai}ちゃん'), 'たけとサイちゃん');
+  assert(D.STORY.ending.some((l) => l[1].includes('{take}')) && D.CAST.take.name === '{take}' && D.CAST.sai.name === '{sai}');
+  // 名前の表示に関わる文に、もとの名前が直接書かれていない（内部ID・絵の名前・コメントは別）
+  const strs = []; const walk = (o) => { if (typeof o === 'string') strs.push(o); else if (o && typeof o === 'object') Object.values(o).forEach(walk); };
+  walk(D.STORY); walk(D.CAST); walk(D.ITEMS); walk(D.CHAPTERS); walk(D.ENEMIES);
+  const left = strs.filter((x) => /たけ|タケ|サイ(?!ン|ズ|コ|クル|レン)/.test(x)); eq(left.length, 0, 'left: ' + left.slice(0, 3).join(' / '));
+});
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

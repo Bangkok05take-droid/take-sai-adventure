@@ -79,7 +79,8 @@
     return V;
   };
   G.newState = function () {
-    return { version: D.SAVE_VERSION, village: G.newVillage(), run: null, settings: { sound: true, minimap: 1, bgmVol: 1, sfxVol: 1 } };
+    return { version: D.SAVE_VERSION, village: G.newVillage(), run: null, settings: { sound: true, minimap: 1, bgmVol: 1, sfxVol: 1 },
+      names: Object.assign({}, TS.Names.DEFAULT) };   // 主人公と恋人の名前（はじめからで決める。村のメニューの「名前の変更」で変えられる）
   };
 
   G.makeItem = function (S, id, extra) {
@@ -323,7 +324,7 @@
       const p = S.run.player;
       p.maxhp = p.hp = G.maxHpFor(p.lvl, S.run);
     }
-    G.log(S.run, 'たけは遺跡へ出発した！' + (S.run.meal ? '（' + D.MEALS[S.run.meal].name + 'で元気いっぱい）' : ''));
+    G.log(S.run, '{take}は遺跡へ出発した！' + (S.run.meal ? '（' + D.MEALS[S.run.meal].name + 'で元気いっぱい）' : ''));
     if (deep) G.log(S.run, '大魔王のローブの力で、' + G.DEEP_START + '階へ降り立った！');
     enterFloor(S, deep ? G.DEEP_START : 1);
     return { ok: true };
@@ -807,17 +808,17 @@
         if ((G.onStairs(run) || G.onCrack(run)) && G.canRescue(run)) { G.log(run, 'ティウの救援が終わってから、先へ進もう。'); ev.push({ t: 'warn', msg: '先に救援を終えよう' }); return { consumed: false, events: ev }; }
         // 30階の時空の亀裂：真大魔王バーンを倒す前は次の階（31階）へ
         if (G.onCrack(run) && run.crack.kind === 'throne30' && G.crackState(S) === 'next') {
-          G.log(run, 'たけは時空の亀裂へ飛びこんだ。');
+          G.log(run, '{take}は時空の亀裂へ飛びこんだ。');
           enterFloor(S, run.floor + 1);
           ev.push({ t: 'stairs' });
         } else if (G.onCrack(run) && run.crack.kind === 'throne30' && G.crackState(S) === 'hidden') {
           // 真大魔王バーンを倒したあと：同じ亀裂から隠しダンジョンへ（31階から。本編の31階とは別の階）
           run.hidden = true;
-          G.log(run, 'たけは時空の亀裂へ飛びこんだ。……ここは時空の狭間だ。');
+          G.log(run, '{take}は時空の亀裂へ飛びこんだ。……ここは時空の狭間だ。');
           enterFloor(S, D.HIDDEN_DUNGEON.from);
           ev.push({ t: 'stairs' }, { t: 'hiddenEnter' });
         } else if (G.onStairs(run)) {
-          G.log(run, 'たけは階段を降りた。');
+          G.log(run, '{take}は階段を降りた。');
           enterFloor(S, run.floor + 1);
           ev.push({ t: 'stairs' });
           G.arriveBossFloor(S, ev);   // 33階の真大魔王バーン：着いた直後に登場ムービー → 戦い
@@ -921,7 +922,7 @@
     const run = S.run;
     const name = D.ENEMIES[e.type].name;
     if (!R.chance(run.rng, D.PLAYER.hitRate)) {
-      G.log(run, 'たけの攻撃は外れた。');
+      G.log(run, '{take}の攻撃は外れた。');
       ev.push({ t: 'miss', x: e.x, y: e.y });
       return;
     }
@@ -984,7 +985,7 @@
     if (Math.max(Math.abs(p.x - e.x), Math.abs(p.y - e.y)) <= B.radius) {
       const dmg = calcDamage(run.rng, e.atk * B.mult, G.playerDef(run));
       p.hp -= dmg;
-      G.log(run, 'たけは爆発に巻きこまれ、' + dmg + 'のダメージ。');
+      G.log(run, '{take}は爆発に巻きこまれ、' + dmg + 'のダメージ。');
       ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player', big: true });
       if (p.hp <= 0) die(S, E.name + 'の自爆に巻きこまれた');
     }
@@ -1111,7 +1112,7 @@
       }
       run.enemies = [];
       G.log(run, '大魔王バーンを倒した……！');
-      G.log(run, 'しかし、影が集まり、真大魔王バーンがよみがえった！ サイたちの祈りでHPが全回復した。');
+      G.log(run, 'しかし、影が集まり、真大魔王バーンがよみがえった！ {sai}たちの祈りでHPが全回復した。');
       ev.push({ t: 'finalTransform' });
       return;
     }
@@ -1191,7 +1192,7 @@
       const old = p.maxhp;
       p.maxhp = G.maxHpFor(p.lvl, run);
       p.hp += p.maxhp - old;
-      G.log(run, 'たけのレベルが' + p.lvl + 'に上がった！');
+      G.log(run, '{take}のレベルが' + p.lvl + 'に上がった！');
       ev.push({ t: 'levelup', x: p.x, y: p.y });
     }
   }
@@ -1438,7 +1439,7 @@
           if (d > bd) { bd = d; best = t; }
         }
         if (best) { p.x = best.x; p.y = best.y; G.updateVision(run); }
-        G.log(run, 'けむり玉を投げた！たけは煙にまぎれて逃げ出した。');
+        G.log(run, 'けむり玉を投げた！{take}は煙にまぎれて逃げ出した。');
         ev.push({ t: 'warp', from, to: { x: p.x, y: p.y } });
         checkMonsterHouse(run, ev);
         checkBossRoom(S, ev);
@@ -1743,7 +1744,7 @@
           if (G.hasCharm(run, h.kind === 'bolt' ? 'bolt' : (h.kind === 'fire' || h.kind === 'ice') ? 'fireice' : '')) dmg = Math.ceil(dmg / 2);
           dmg = Math.min(dmg, Math.max(1, Math.round(p.maxhp * (h.cap || 0.6))));   // 罠などで一撃で倒れない上限
           p.hp -= dmg;
-          G.log(run, h.name + '！ たけは' + dmg + 'のダメージ。');
+          G.log(run, h.name + '！ {take}は' + dmg + 'のダメージ。');
           ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player', big: true });
           if (p.hp <= 0 && die(S, h.name + 'にやられた')) return;
         } else if (fire.some((o) => Math.max(Math.abs(o.x - p.x), Math.abs(o.y - p.y)) <= 1)) G.log(run, '床の印をかわした！');
@@ -1853,7 +1854,7 @@
     if (G.finalV3(run) && bosses.some((b) => b.type === 'truevearn')) {
       G.fullRecover(run);
       run.final.stage = 'battle2'; if (!run.rematch) S.village.story.finalStage = 'battle2';
-      G.log(run, 'サイたちの祈りが届いた！ HPと満腹度が回復し、体の不調も消えた。');
+      G.log(run, '{sai}たちの祈りが届いた！ HPと満腹度が回復し、体の不調も消えた。');
       ev.push({ t: 'prayer' });
     }
     // ムービーのあとは、入室のターンはもう終わっているので、待たせるターンは足さない（次のターンから動く＝今までと同じ間合い）
@@ -1967,7 +1968,7 @@
           if (sees && !e.cds.blaze && cheb(e, p) <= E.blaze.range) {
             const tiles = [];
             for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (DG.passable(run.map, p.x + dx, p.y + dy)) tiles.push({ x: p.x + dx, y: p.y + dy });
-            startCharge(S, e, ev, tiles, E.blaze.mult, E.blaze.rest, 'が両手に炎を集めた！ たけのまわりが燃え上がる！');
+            startCharge(S, e, ev, tiles, E.blaze.mult, E.blaze.rest, 'が両手に炎を集めた！ {take}のまわりが燃え上がる！');
             e.cds.blaze = E.blaze.every;
             return;
           }
@@ -2127,7 +2128,7 @@
     if (c.tiles.some((t) => t.x === p.x && t.y === p.y)) {
       const dmg = calcDamage(run.rng, e.atk * c.mult, G.playerDef(run));
       p.hp -= dmg;
-      G.log(run, E.name + 'の大技！たけは' + dmg + 'のダメージ。');
+      G.log(run, E.name + 'の大技！{take}は' + dmg + 'のダメージ。');
       ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player', big: true });
       if (p.hp <= 0) die(S, E.name + 'の大技にやられた');
     } else {
@@ -2225,7 +2226,7 @@
     if (target === 'player') {
       const dmg = calcDamage(run.rng, atk, G.playerDef(run));
       p.hp -= dmg;
-      G.log(run, E.name + 'の炎！ たけは' + dmg + 'のダメージ。');
+      G.log(run, E.name + 'の炎！ {take}は' + dmg + 'のダメージ。');
       ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player' });
       if (p.hp <= 0) die(S, E.name + 'の炎にやられた');
     } else if (target) {
@@ -2268,14 +2269,14 @@
     }
     const dmg = calcDamage(run.rng, atk, G.playerDef(run));
     p.hp -= dmg;
-    G.log(run, E.name + (ranged ? 'の' + (E.shot || '矢') + '！' : 'の攻撃！') + 'たけは' + dmg + 'のダメージ。');
+    G.log(run, E.name + (ranged ? 'の' + (E.shot || '矢') + '！' : 'の攻撃！') + '{take}は' + dmg + 'のダメージ。');
     ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player' });
     if (p.hp <= 0) { die(S, E.name + 'にやられた'); return; }
     // マドハンド：つかむ（移動できなくなる。攻撃・道具・装備はできる）。3点セットでは無効
     if (E.ai === 'grab' && !p.bound && !p.bindGuard) {
       if (G.sets(run).all3) { G.log(run, '竜の気がマドハンドの手をはねのけた！'); return; }
       p.bound = D.STRONG.madhand.turns + 1; p.boundBy = e.id;   // +1：つかんだ手番の終わりに1減るので、たけの手番で turns 回動けない
-      G.log(run, E.name + 'がたけをつかんだ！（移動できない。攻撃・道具・装備はできる。このマドハンドを倒すと解ける）');
+      G.log(run, E.name + 'が{take}をつかんだ！（移動できない。攻撃・道具・装備はできる。このマドハンドを倒すと解ける）');
       ev.push({ t: 'warn', msg: 'つかまれた！' });
       return;
     }
@@ -2285,7 +2286,7 @@
       if (G.sets(run).all3) { G.log(run, '竜の気が毒をはねのけた！'); return; }   // 3点セット：新しい状態異常を受けない
       if (G.robeGuard(run)) { G.log(run, '大魔王のローブが毒をはねのけた！'); return; }
       p.poison = D.POISON.turns;
-      G.log(run, 'たけは毒におかされた！（やくそう・どくけしそうで治る）');
+      G.log(run, '{take}は毒におかされた！（やくそう・どくけしそうで治る）');
       ev.push({ t: 'warn', msg: '毒になった！' });
     }
   }
@@ -2336,7 +2337,7 @@
   function damagePlayer(S, e, dmg, ev, label, opts) {
     const run = S.run, p = run.player;
     p.hp -= dmg;
-    G.log(run, label + '！ たけは' + dmg + 'のダメージ。');
+    G.log(run, label + '！ {take}は' + dmg + 'のダメージ。');
     ev.push({ t: 'hit', x: p.x, y: p.y, n: dmg, target: 'player', big: !!(opts && opts.big) });
     if (p.hp <= 0) die(S, label + 'にやられた');
   }
@@ -2369,13 +2370,13 @@
       p.reviveTurn = run.turn;
       p.lowWarned = false;
       run.revived = G.def(neck).name;
-      G.log(run, G.def(neck).name + 'が光った！ たけは立ち上がった！（' + G.def(neck).name + 'はなくなった）');
+      G.log(run, G.def(neck).name + 'が光った！ {take}は立ち上がった！（' + G.def(neck).name + 'はなくなった）');
       return false;
     }
     run.player.hp = 0;
     run.over = true;
     run.result = { type: 'dead', cause, floor: run.floor, lostGold: run.runGold, lostItems: run.bag.filter((i) => i.id !== 'return_scroll').length };
-    G.log(run, 'たけは倒れてしまった…。');
+    G.log(run, '{take}は倒れてしまった…。');
     return true;
   }
 

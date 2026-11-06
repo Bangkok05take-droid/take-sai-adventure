@@ -213,7 +213,7 @@
       const robe = G.robeGuard(run);
       if (!G.sets(run).all3 && !robe) p.bound = 2;   // 3点セット・大魔王のローブ：拘束（状態異常）を受けない
       H.damagePlayer(S, e, H.calcDamage(run.rng, e.atk * c.mult, G.playerDef(run)), ev, E.name + 'の闇の糸', {});
-      if (!run.over && p.bound) { G.log(run, 'たけは闇の糸にからめとられた！（2ターン移動できない。攻撃・道具・足踏みはできる）'); ev.push({ t: 'warn', msg: '拘束された！' }); }
+      if (!run.over && p.bound) { G.log(run, '{take}は闇の糸にからめとられた！（2ターン移動できない。攻撃・道具・足踏みはできる）'); ev.push({ t: 'warn', msg: '拘束された！' }); }
       else if (!run.over) G.log(run, robe && !G.sets(run).all3 ? '大魔王のローブが闇の糸をはねのけた！' : '竜の気が闇の糸をはねのけた！');
     } else { G.log(run, E.name + 'の闇の糸をかわした！'); ev.push({ t: 'miss', x: p.x, y: p.y }); }
   };
@@ -228,7 +228,7 @@
     if (!cd.circle && !run.hazards.length) {
       const room = arena(run, e);
       for (const t of freeTiles(run, room, (x, y) => (x === p.x || y === p.y) && !(x === e.x && y === e.y))) H.addHazard(run, t.x, t.y, 'fire', 2, e.atk * 1.1, '魔法陣の炎', 0.45);
-      say(run, '！ ' + E.name + 'が魔法陣を描いた！ たけのいる縦と横の列が燃え上がる！（斜めへよけよう）');
+      say(run, '！ ' + E.name + 'が魔法陣を描いた！ {take}のいる縦と横の列が燃え上がる！（斜めへよけよう）');
       ev.push({ t: 'telegraph', id: e.id, tiles: [], msg: '魔法陣の炎が来る！' });
       cd.circle = 6;
       return true;

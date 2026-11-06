@@ -433,3 +433,14 @@ details summary { cursor: pointer; margin: 4px 0; }
 .records .rec-lock { margin: 10px 0; }
 .records .rec-sep { margin: 16px 0 2px; }
 .records .rec-letter .rec-body { background: rgba(255, 240, 200, .06); border-radius: 8px; padding: 10px 12px 2px; }
+/* 名前の入力（はじめから・名前の変更）。キーボードが開いても入力欄とボタンが見えるよう、画面の上寄せ。文字は16px以上（iPhoneで拡大されない） */
+#modal-root .back:has(.name-modal) { align-items: flex-start; overflow-y: auto; padding-top: max(10px, env(safe-area-inset-top)); }
+.name-modal .nm-field { display: block; margin: 10px 0 4px; }
+.name-modal .nm-label { display: block; font-weight: bold; color: var(--accent); margin-bottom: 4px; }
+.name-modal input { box-sizing: border-box; width: 100%; min-height: 48px; font-size: 20px; padding: 6px 12px; border-radius: 10px;
+  border: 2px solid var(--line); background: #08202a; color: #fff6dc; font-family: inherit; }
+.name-modal input:focus { outline: none; border-color: #e8c56a; box-shadow: 0 0 0 2px rgba(232, 197, 106, .35); }
+.name-modal .nm-info { display: flex; justify-content: space-between; gap: 8px; min-height: 20px; font-size: 14px; margin-top: 2px; }
+.name-modal .nm-err { color: #ff9a8a; }
+.name-modal .nm-count { margin-left: auto; opacity: .75; }
+.name-modal .nm-field.bad input { border-color: #ff8a7a; }

@@ -167,6 +167,8 @@
     const st = fill(data.village.story, G.newStory());
     for (const k of ['defeated', 'rewardClaimed', 'returnDone']) fill(st[k], G.newStory()[k]);
     fill(data.settings, def.settings);
+    // 名前（2026年11月）：無いセーブは「たけ」「サイ」。読めない値も既定に戻す
+    data.names = TS.Names.normalize(data.names);
     /* ボスの報酬の入手履歴（2026年10月、買い戻し用）が無いセーブ：一度だけ、今わかる範囲で作る。
      * ・今持っている品（持ち物・倉庫・探索中の持ち物・展示室）は手に入れた
      * ・第1〜5章：章をクリアして村へ帰った（returnDone）なら、その章の報酬はどれも手に入れた（拾ったか、倉庫に届いている）

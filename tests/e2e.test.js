@@ -68,6 +68,9 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
   await test('はじめから → 会話・説明 → 村', async () => {
     await p.tap('#btn-newgame');
     await p.waitForTimeout(200);
+    // 名前の入力（初期値「たけ」「サイ」のまま始める）
+    assert(await p.isVisible('.name-modal'), 'name entry');
+    await p.tap('.name-modal .modal-buttons button.primary'); await p.waitForTimeout(300);
     await closeTalk();
     assert(await p.isVisible('.modal h2:has-text("冒険のヒント")'), 'hint shown');
     assert((await p.textContent('.modal-buttons')).includes('冒険をはじめる'), 'hint button');
@@ -242,7 +245,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await tapBg(q); s = await st(q);
       assert(s.cur === 'overture' && !s.hint && s.plays.filter((x) => x === 'overture').length === 1, 'fanfare after tap ' + JSON.stringify(s));
       await tapBg(q); s = await st(q); eq2(s.plays.filter((x) => x === 'overture').length, 1, 'only once');
-      await q.tap('#btn-newgame'); await q.waitForTimeout(500); s = await st(q);
+      await q.tap('#btn-newgame'); await q.waitForTimeout(300); await q.tap('.name-modal .modal-buttons button.primary'); await q.waitForTimeout(500); s = await st(q);   // 名前の入力（初期値のまま）
       assert(s.screen === 'village' && s.cur === 'yanai', 'newgame goes on, one song ' + JSON.stringify(s));
       await c.close();
       // 最初のタップが「つづきから」：待たせずに村へ、ファンファーレは始めない。保存したBGM音量

@@ -16,6 +16,7 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
   const shot = (n) => p.screenshot({ path: path.join(OUT, n + '.jpg'), quality: 85 });
   const txt = () => p.evaluate(() => { const m = document.querySelector('.modal:last-of-type') || document.querySelector('.modal'); return m ? m.innerText : ''; });
   await p.tap('#btn-newgame'); await p.waitForTimeout(400);
+  await p.tap('.name-modal .modal-buttons button.primary'); await p.waitForTimeout(400);   // 名前は初期値のまま
   const lines = [];
   for (let i = 0; i < 10 && await p.$('.talk'); i++) { lines.push(await txt()); if (i === 0) await shot('01_intro'); await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(150); }
   console.log('冒頭:', JSON.stringify(lines));

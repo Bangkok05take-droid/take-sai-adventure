@@ -260,7 +260,7 @@
    * loan: 貸出品（売却・預入不可） noSell / noStore: 売却不可・預入不可 */
   D.ITEMS = {
     wood_sword:    { name: 'かしだしの木刀', type: 'weapon', atk: 1, sell: 0, loan: true, noSell: true, noStore: true, icon: 'sword', tint: 'wood',
-      desc: '以前サイの店で貸し出していた木刀。売却・預入はできない。' },
+      desc: '以前{sai}の店で貸し出していた木刀。売却・預入はできない。' },
     bronze_sword:  { name: 'どうのつるぎ', type: 'weapon', atk: 3, price: 150, sell: 60, icon: 'sword', tint: 'copper',
       desc: '銅でできた、旅立ちにちょうどいい剣。' },
     iron_katana:   { name: 'てつのつるぎ', type: 'weapon', atk: 6, sell: 130, icon: 'sword', tint: 'iron',
@@ -280,9 +280,9 @@
     banana:        { name: '甘いバナナ', type: 'food', food: 45, price: 20, sell: 8, icon: 'banana',
       desc: '満腹度を45回復する。' },
     khaoniao:      { name: '特製お弁当', type: 'food', food: 100, price: 45, sell: 18, icon: 'bento',
-      desc: 'もち米のカオニャオが入ったサイの特製弁当。満腹度を100回復する。' },
+      desc: 'もち米のカオニャオが入った{sai}の特製弁当。満腹度を100回復する。' },
     loan_rice:     { name: '旅人のおにぎり', type: 'food', food: 50, sell: 0, loan: true, noSell: true, noStore: true, icon: 'onigiri',
-      desc: 'サイが無料で持たせてくれるおにぎり。満腹度を50回復。売却・預入はできない。' },
+      desc: '{sai}が無料で持たせてくれるおにぎり。満腹度を50回復。売却・預入はできない。' },
     sleep_incense: { name: 'ねむり草', type: 'sleep', turns: 10, price: 90, sell: 35, icon: 'sleepgrass',
       desc: '香りで見えている敵を10ターン眠らせる（ボスは3ターン）。' },
     thunder_staff: { name: 'いかずちの杖', type: 'staff', dmg: 30, sell: 60, icon: 'staff',
@@ -355,7 +355,7 @@
     sight_scroll:  { name: 'みとおしの巻物', type: 'map', price: 80, sell: 30, icon: 'scroll', tint: 'sight',
       desc: 'その階の地形・階段・道具の場所がわかる。' },
     old_coin:      { name: 'アユタヤの古金貨', type: 'treasure', sell: 40, icon: 'coin',
-      desc: '昔の王国の金貨。サイの店で売れる。' },
+      desc: '昔の王国の金貨。{sai}の店で売れる。' },
     jade_elephant: { name: 'ひすいの象', type: 'treasure', sell: 120, icon: 'elephant',
       desc: '小さなひすいの置物。高く売れる。' },
     golden_lotus:  { name: '黄金の蓮', type: 'treasure', sell: 260, icon: 'lotus',
@@ -529,7 +529,7 @@
      *  range：使う距離（一直線でなくてよい。見えていて5マス以内）。発動のあと1行動の隙 */
     imp:    { name: 'ベビーサタン',   hp: 62,  atk: 24, def: 8, exp: 80,  ai: 'magic',   sprite: 'imp', base: 31, shoot: 32, range: 5, shot: '火の玉',
       blaze: { every: 5, mult: 1.6, range: 5, rest: 1 },
-      tip: '離れた所から火の玉を撃つ。ときどき、たけのまわりを焼く大きな炎の呪文（予告あり）。赤いマスの外へ逃げよう。' },
+      tip: '離れた所から火の玉を撃つ。ときどき、{take}のまわりを焼く大きな炎の呪文（予告あり）。赤いマスの外へ逃げよう。' },
     /* ---- 章のボス（30階）と最終章（30階・33階）。boss：専用の行動（js/bossai.js）。arena：ボス部屋の景観 ----
      * 単にHPが多いだけにしないよう、予告つきの大技・床の危険・分身・霧などで戦い方を変える。大技のあとは隙ができる。 */
     croc:   { name: 'クロコダイン', hp: 640, atk: 34, def: 15, exp: 700, ai: 'boss', sprite: 'croc', noScale: true, arena: 'arena_croc', big: true },

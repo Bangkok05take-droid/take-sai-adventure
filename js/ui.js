@@ -45,6 +45,7 @@
       else AU.resume();
     });
     applyFxSetting();
+    watchNames();
     bindTitle(); bindVillage(); bindDungeon();
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup', onKeyUp);
@@ -155,7 +156,98 @@
     const c = D.CAST[w] || D.CAST.villager;
     return { name: c.name, portrait: c.portrait && (TS.ASSETS && TS.ASSETS.portraits && TS.ASSETS.portraits[w] ? w : c.portrait) };
   }
-  const fillNames = (t) => String(t).replace(/\{(\w+)\}/g, (m, k) => (D.CAST[k] ? D.CAST[k].name : m));
+  const fillNames = (t) => TS.Names.fill(String(t).replace(/\{(friend\d)\}/g, (m, k) => (D.CAST[k] ? D.CAST[k].name : m)));
+  UI.fillNames = fillNames;
+  /* 名前の置きかえ（2026年11月）：画面に出た文字の {take}・{sai} を、いま決まっている名前に置きかえる。
+   * 文章は {take}・{sai} の印のまま作り、画面に入った時点で文字（テキスト）として置きかえるので、名前はHTMLとして解釈されない。
+   * 会話・メッセージ・お知らせ・説明・ボタンなど、どこから出た文字でも漏れなく置きかわる（描く前に置きかえるので印は見えない） */
+  const NAME_RE = /\{(take|sai)\}/;
+  const NAME_ATTRS = ['alt', 'title', 'aria-label', 'placeholder'];
+  // 置きかえた場所を覚えておき、名前を変えたら置きかえ直す（もとの印つきの文を持つ。画面から消えたものは忘れる）
+  const nameMemo = new WeakMap(), nameRefs = new Set();
+  function putName(node, attr, tpl) {
+    const out = TS.Names.fill(tpl), key = attr ? node : node;
+    let m = nameMemo.get(key); if (!m) { m = {}; nameMemo.set(key, m); nameRefs.add(new WeakRef(key)); }
+    m[attr || '#'] = { tpl, out };
+    if (attr) node.setAttribute(attr, out); else node.nodeValue = out;
+    if (nameRefs.size > 3000) for (const r of nameRefs) { const n = r.deref(); if (!n || !n.isConnected) nameRefs.delete(r); }
+  }
+  function fillAttrs(el) { for (const a of NAME_ATTRS) { const v = el.getAttribute(a); if (v && NAME_RE.test(v)) putName(el, a, v); } }
+  function fillNode(root) {
+    if (root.nodeType === 3) {
+      const m = nameMemo.get(root), v = root.nodeValue;
+      if (NAME_RE.test(v)) putName(root, null, v);
+      else if (m && m['#'] && m['#'].out !== v) delete m['#'];   // ほかの文に書きかわった：覚えていた文は捨てる
+      return;
+    }
+    if (root.nodeType !== 1 || root.tagName === 'SCRIPT' || root.tagName === 'STYLE') return;
+    fillAttrs(root);
+    root.querySelectorAll('[alt],[title],[aria-label],[placeholder]').forEach(fillAttrs);
+    if (!NAME_RE.test(root.textContent)) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (NAME_RE.test(n.nodeValue)) putName(n, null, n.nodeValue);
+  }
+  // 名前を変えたあと：画面に出ている文字を新しい名前で置きかえ直す
+  function refillNames() {
+    for (const r of nameRefs) {
+      const n = r.deref(); if (!n || !n.isConnected) { nameRefs.delete(r); continue; }
+      const m = nameMemo.get(n); if (!m) continue;
+      for (const k of Object.keys(m)) {
+        const e = m[k], cur = k === '#' ? n.nodeValue : n.getAttribute(k);
+        if (cur !== e.out) { delete m[k]; continue; }   // 途中で別の文になっていたら触らない
+        putName(n, k === '#' ? null : k, e.tpl);
+      }
+    }
+  }
+  UI.refillNames = refillNames;
+  function watchNames() {
+    fillNode(document.body);
+    new MutationObserver((list) => {
+      for (const m of list) {
+        if (m.type === 'characterData' || m.type === 'attributes') fillNode(m.target);
+        else m.addedNodes.forEach(fillNode);
+      }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: NAME_ATTRS });
+  }
+  /* 名前の入力（はじめから・村のメニューの「名前の変更」）。1〜8文字・前後の空白は取る・空欄なら入力を促す。
+   * 決定ボタンを押したときだけ onOk（やめる・外側のタップでは何も変えない）。変換中の Enter では決定しない */
+  function openNameEntry(o) {
+    const cur = TS.Names.normalize(o.names), NM = TS.Names;
+    const field = (k, label) => `<label class="nm-field"><span class="nm-label">${label}</span>
+      <input type="text" data-k="${k}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="${k === 'take' ? 'next' : 'done'}" inputmode="text">
+      <span class="nm-info"><span class="nm-err" aria-live="polite"></span><span class="nm-count"></span></span></label>`;
+    let done = false;
+    const h = modal({ title: o.title, cls: 'name-modal', html: `<p class="note">${o.lead || ''}</p>` + field('take', '主人公の名前') + field('sai', '恋人の名前'),
+      onClose: () => { if (!done && o.onCancel) o.onCancel(); },
+      buttons: [{ label: 'やめる' }, { label: o.okLabel, cls: 'primary', keep: true, onClick: () => submit() }] });
+    const ins = [...h.body.querySelectorAll('input')];
+    ins.forEach((el) => { el.value = cur[el.dataset.k]; });
+    const check = (el, show) => {
+      const p = NM.problem(el.value), lab = el.closest('.nm-field');
+      lab.querySelector('.nm-count').textContent = NM.len(NM.clean(el.value)) + '/' + NM.MAX;
+      lab.querySelector('.nm-err').textContent = show && p ? p : '';
+      lab.classList.toggle('bad', !!(show && p));
+      return p;
+    };
+    ins.forEach((el) => {
+      check(el, false);
+      el.addEventListener('input', () => check(el, el.closest('.nm-field').classList.contains('bad') || NM.len(NM.clean(el.value)) > NM.MAX));
+      el.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        if (e.isComposing || e.keyCode === 229) return;   // 変換の確定は入力欄にまかせる
+        e.preventDefault();
+        if (el.dataset.k === 'take') ins[1].focus(); else el.blur();   // Enter では決定しない（決定はボタンで）
+      });
+    });
+    function submit() {
+      let bad = null;
+      for (const el of ins) if (check(el, true) && !bad) bad = el;
+      if (bad) { bad.focus(); return; }
+      const names = { take: NM.clean(ins[0].value), sai: NM.clean(ins[1].value) };
+      done = true; h.close(); o.onOk(names);
+    }
+    return h;
+  }
   function talk(lines, done, opts) {
     let i = 0;
     lines = lines.filter(Boolean);
@@ -241,7 +333,7 @@
     </ul>
     <h3>村でできること</h3>
     <ul>
-      <li>サイの店：道具の売買。無料のおにぎりもあります。</li>
+      <li>{sai}の店：道具の売買。無料のおにぎりもあります。</li>
       <li>倉庫：大切な持ち物を預ける。</li>
       <li>村の発展：施設や飾りを増やす。</li>
       <li>鍛冶屋：武器と盾を強化する。${built.smith ? '' : later}</li>
@@ -289,11 +381,14 @@
     $('btn-continue').addEventListener('click', () => { AU.sfx('tap'); whenArtReady(continueGame); });
     $('btn-newgame').addEventListener('click', () => {
       AU.sfx('tap');
+      // はじめから：（セーブがあれば2回の確認）→ 名前の入力 →「この名前で始める」で初めてセーブを消して始める。やめればセーブはそのまま
+      const askNames = () => openNameEntry({ title: '名前を決める', lead: '主人公と恋人の名前を決めてください（1〜8文字）。あとから村のメニューで変えられます。',
+        okLabel: 'この名前で始める', names: TS.Names.DEFAULT, onOk: (names) => whenArtReady(() => newGame(names)) });
       if (SV.exists()) {
         confirmBox('はじめから', '<div class="warnbox">今のセーブデータ（村・倉庫・探索途中）はすべて消えます。本当にはじめからにしますか？</div>', '消してはじめる', () => {
-          setTimeout(() => confirmBox('最終確認', 'セーブデータを削除します。元には戻せません。', '削除する', () => whenArtReady(newGame)), 0);
+          setTimeout(() => confirmBox('最終確認', 'セーブデータを削除します。元には戻せません。', '削除する', () => setTimeout(askNames, 0)), 0);
         });
-      } else whenArtReady(newGame);
+      } else askNames();
     });
     $('btn-help-title').addEventListener('click', () => { AU.sfx('tap'); showHelp(); });
     $('btn-sound-title').addEventListener('click', () => { toggleSound(); });
@@ -360,10 +455,12 @@
   }
   function applyFxSetting() { document.body.classList.toggle('calm', !!(UI.S && UI.S.settings && UI.S.settings.fx === 'calm')); }
   UI.applyFxSetting = applyFxSetting;
-  function newGame() {
+  function newGame(names) {
     const sound = UI.S.settings.sound, fxs = UI.S.settings.fx, bgmVol = UI.S.settings.bgmVol, sfxVol = UI.S.settings.sfxVol;
     SV.clear();
     UI.S = G.newState();
+    if (names) UI.S.names = TS.Names.normalize(names);
+    refillNames();   // 画面にすでに出ている名前（村のボタンなど）も新しい名前に
     UI.S.settings.sound = sound;
     if (bgmVol != null) UI.S.settings.bgmVol = bgmVol;
     if (sfxVol != null) UI.S.settings.sfxVol = sfxVol;
@@ -384,6 +481,7 @@
     const L = SV.load();
     if (!L) { info('つづきから', 'セーブデータを読み込めませんでした。'); return; }
     UI.S = L;
+    refillNames();
     UI.started = true;
     AU.setEnabled(UI.S.settings.sound);
     applyVolumes();
@@ -507,7 +605,7 @@
   const KID_LINES = {
     play: [['kid_play', 'きょうも冒険に行くの？']],
     book: [['kid_book', '遺跡の本を読んでいるんだ。']],
-    cat: [['kid_cat', 'この子、サイちゃんが大好きなんだよ。']],
+    cat: [['kid_cat', 'この子、{sai}ちゃんが大好きなんだよ。']],
   };
   const CAT_LINES = {
     ginger: 'にゃー。すりすりと寄ってきた。',
@@ -608,7 +706,7 @@
   // ---- サイの店 ----
   function openShop(tab) {
     const V = UI.S.village;
-    const h = modal({ title: 'サイの店', right: V.funds + 'G', tabs: true, buttons: [{ label: '閉じる' }] });
+    const h = modal({ title: '{sai}の店', right: V.funds + 'G', tabs: true, buttons: [{ label: '閉じる' }] });
     const tabs = h.el.querySelector('.tabs');
     tabs.innerHTML = '<button data-t="buy">買う</button><button data-t="sell">売る</button><button data-t="loan">貸出</button>';
     tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { AU.sfx('tap'); render(b.dataset.t); }));
@@ -642,7 +740,7 @@
             const res = G.buy(UI.S, id);
             if (res.ok) { AU.sfx('buy'); toast('買いました'); }
             villageChanged(); render(tab);
-            if (!res.ok) info('サイの店', res.msg);
+            if (!res.ok) info('{sai}の店', res.msg);
           });
         } else if (t === 'sell') {
           const it = V.bag.find((i) => i.uid === +r.dataset.uid);
@@ -784,7 +882,7 @@
     museum: [['sai', '展示室ができたよ。珍しいお宝はここに飾れるんだ。'], ['take', '売るか飾るか、迷っちゃうね。']],
     storage3: [['sai', '倉庫を増築したよ。二階もあるんだ。'], ['take', 'これで深い階のお宝もしまえるね。']],
     smith2: [['sai', '鍛冶屋さん、大きな炉に大喜びだったよ。'], ['take', '+5まで鍛えられるのか…！']],
-    storage4: [['sai', '大倉庫が完成！村で一番大きな建物だよ。'], ['take', 'すごいなあ。サイのお店も有名になってきたね。']],
+    storage4: [['sai', '大倉庫が完成！村で一番大きな建物だよ。'], ['take', 'すごいなあ。{sai}のお店も有名になってきたね。']],
     smith3: [['sai', '黄金の炉に火が入ったよ。最高の装備を作れるって！'], ['take', '魔王軍の将にも負けないぞ。']],
     lanterns: [['sai', '灯籠が並ぶと、夕方の水路がきれいだね。'], ['take', '遺跡から帰るとき、遠くからでも村が見えるよ。']],
     garden: [['sai', '蓮の庭、気に入ってくれた？'], ['take', 'いい香り。ほっとするね。']],
@@ -823,7 +921,7 @@
       // 街のイベントをコンプリートしたあと：1,000Gの寄付で商人の呼鈴（何度でも）
       if (t === 'facility' && G.bellDonationOpen(UI.S)) html += `<h3>こもれびの家への寄付</h3><div class="list"><button class="row bell-donate"><img src="${SP.iconURL(D.ITEMS.merchant_bell)}" alt=""><span class="nm">寄付して商人の呼鈴をもらう<small>${esc(D.ITEMS.merchant_bell.desc)}</small></span><span class="pr">${D.BELL.donation}G</span></button></div>`;
       // 大魔王バーンを倒したあと：たけの日記（倒したボスと再戦）
-      if (t === 'facility' && G.rematchOpen(UI.S)) html += `<h3>たけの日記</h3><div class="list"><button class="row diary-open"><span class="dish">📖</span><span class="nm">たけの日記を読む<small>これまでに戦ったボスを思い出して、もう一度戦える。</small></span></button></div>`;
+      if (t === 'facility' && G.rematchOpen(UI.S)) html += `<h3>{take}の日記</h3><div class="list"><button class="row diary-open"><span class="dish">📖</span><span class="nm">{take}の日記を読む<small>これまでに戦ったボスを思い出して、もう一度戦える。</small></span></button></div>`;
       h.body.innerHTML = html;
       const dy = h.body.querySelector('.diary-open');
       if (dy) dy.addEventListener('click', () => { AU.sfx('tap'); setTimeout(openDiary, 0); });
@@ -981,13 +1079,13 @@
         if (deeper) out.push(`今の章で行けるのは地下${g.reach}階までだ。もっと先へ進めるようになってからだな。`);
       }
       for (const b of g.bosses.filter((b) => b.known)) out.push(`${D.CHAPTERS[b.ch].name}で${esc(D.ENEMIES[b.boss].name)}を初めて倒したときの報酬だ（1回だけ、必ず手に入る）。拾いそびれても、村へ帰れば倉庫に届くぞ。`);
-      if (g.shop) out.push('サイの店でも買えるぞ。');
+      if (g.shop) out.push('{sai}の店でも買えるぞ。');
       if (g.type === 'material') {
         const u = g.uses.map((x) => (x.kind === 'smith' ? `鍛冶屋で+${x.to}に強化するとき1個` : `「${esc(x.name)}」を建てるとき${x.n}個`));
         if (u.length) out.push('使い道：' + u.join('、') + '。持ち帰ると素材箱に入る（倉庫の枠は使わない）。');
       } else {
         const u = [];
-        if (g.sell) u.push(`サイの店で${g.sell}Gで売れる`);
+        if (g.sell) u.push(`{sai}の店で${g.sell}Gで売れる`);
         if (g.museum) u.push('展示室に寄贈できる');
         out.push(u.length ? u.join('。') + '。' : '今のところ、売ったり展示したりはできない。大切にしまっておくお宝だな。');
       }
@@ -1040,10 +1138,10 @@
   /* たけの日記（こもれびの家）：倒したボスの一覧。選ぶと、そのボスとの再戦の出発画面へ（G.rematchList・D.REMATCH） */
   function openDiary() {
     const list = G.rematchList(UI.S);
-    let html = '<p class="note">大魔王バーンとの戦いを終えた、たけの日記。思い出したボスと、もう一度戦える。</p>';
-    html += '<p class="note">そのボスの階まで1階から降りていく（大魔王のローブなら21階から）。ボスの強さは、ボス部屋に入ったときのたけの攻撃力・防御に合わせる。勝てば、持っていない報酬の品が出る。章は進まない。</p>';
+    let html = '<p class="note">大魔王バーンとの戦いを終えた、{take}の日記。思い出したボスと、もう一度戦える。</p>';
+    html += '<p class="note">そのボスの階まで1階から降りていく（大魔王のローブなら21階から）。ボスの強さは、ボス部屋に入ったときの{take}の攻撃力・防御に合わせる。勝てば、持っていない報酬の品が出る。章は進まない。</p>';
     html += '<div class="list">' + list.map((b) => `<button class="row diary-boss ${b.ok ? '' : 'disabled'}" data-id="${b.id}"><span class="nm">${esc(b.ok ? b.name : '？？？')}<small>${b.ok ? `地下${b.id === 'vearn' ? '30階・33階' : b.floor + '階'}${b.wins ? '・再戦で' + b.wins + '勝' : ''}` : 'まだ日記に書かれていない'}</small></span></button>`).join('') + '</div>';
-    const h = modal({ title: '📖 たけの日記', html, buttons: [{ label: '閉じる' }] });
+    const h = modal({ title: '📖 {take}の日記', html, buttons: [{ label: '閉じる' }] });
     h.body.querySelectorAll('.diary-boss').forEach((r) => r.addEventListener('click', () => {
       const b = list.find((x) => x.id === r.dataset.id); if (!b || !b.ok) return;
       AU.sfx('tap');
@@ -1075,7 +1173,7 @@
     // 第4章（バラン）の前：ヤナイの記録「遠い街から」をまだ読んでいなければ、短く知らせる（読まなくても出発できる）
     { const r4 = D.STORY.records.find((r) => r.id === 'r4');
       if (!rm && V.story.chapter === 4 && r4 && G.openRecords(V).includes(r4) && !G.recordRead(V, 'r4')) notes.push([DP_ICON.chat, `村のメニューで、ヤナイの記録「${esc(r4.title.replace(/^記録.　/, ''))}」が読めます。`]); }
-    if (rm) notes.unshift([DP_ICON.warn, `再戦：<b>${esc(rm.name)}</b>（地下${rm.id === 'vearn' ? '30階・33階' : rm.floor + '階'}）。ボスの強さは、ボス部屋に入ったときのたけに合わせます。`]);
+    if (rm) notes.unshift([DP_ICON.warn, `再戦：<b>${esc(rm.name)}</b>（地下${rm.id === 'vearn' ? '30階・33階' : rm.floor + '階'}）。ボスの強さは、ボス部屋に入ったときの{take}に合わせます。`]);
     const kl = D.KEEP_LEVEL && V.keptLevel && V.keptLevel.lvl > 1 ? V.keptLevel.lvl : 1;   // 前回、無事に帰還したときのレベル
     if (kl > 1) notes.push([DP_ICON.compass, `前回の帰還で鍛えた<b>レベル${kl}</b>から出発します（倒れるとレベル1に戻ります）。`]);
     if (G.canDeepStart(UI.S, rm ? rm.ch : null)) notes.push([DP_ICON.compass, `大魔王のローブ：<b>${G.DEEP_START}階から</b>探索を始められます（レベルは${kl}から）。`]);
@@ -1180,6 +1278,9 @@
       ${UI.S.village.legacyClear10 ? '<p class="note">旧記録：10階「宝珠の間」踏破（以前の版）</p>' : ''}`, buttons: [
       { label: 'ヤナイの記録' + (G.unreadRecords(UI.S.village).length ? '（新）' : ''), onClick: () => { setTimeout(showRecords, 0); } },
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
+      { label: '名前の変更', onClick: () => { setTimeout(() => openNameEntry({ title: '名前の変更', lead: '主人公と恋人の名前を変えます（1〜8文字）。レベル・持ち物・村・物語の進み具合はそのままです。',
+        okLabel: 'この名前にする', names: UI.S.names, onCancel: () => setTimeout(villageMenu, 0),
+        onOk: (names) => { UI.S.names = TS.Names.normalize(names); save(); refillNames(); updateVillageHud(); toast('名前を変更しました'); setTimeout(villageMenu, 0); } }), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(villageMenu, 0); } },
       { label: '音楽試聴・音量', onClick: () => { setTimeout(() => openMusicRoom(villageMenu), 0); } },
       { label: '演出：' + (UI.S.settings.fx === 'calm' ? '控えめ' : '通常'), onClick: () => { toggleFx(); setTimeout(villageMenu, 0); } },
@@ -1459,6 +1560,7 @@
   }
 
   function onKey(e) {
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;   // 名前の入力中：キーは入力欄だけで扱う
     if (UI.screen === 'title') return;
     if (UI.portalGoing) { e.preventDefault(); return; }   // 帰還口の演出の間は受けない
     const top = topModal();
@@ -1923,7 +2025,7 @@
         // 命つなぎの首飾り：光って立ち上がる。ダッシュ・連続足踏み・長押しの入力を止め、直後の連打も少しのあいだ受け付けない
         // 真魔剛竜剣＋ドラゴニックオーラの盾の2マス攻撃（仮の見た目：届いたマスに「バシュン！」。斬撃の絵はChatGPT側で用意する予定）
         // 版3の35階：決戦の前のサイたちの祈り（HP全回復・毒と拘束が治る）
-        case 'prayer': { const p = UI.S.run.player; RD.addFx({ t: 'healrise', x: p.x, y: p.y, dur: 900 }); toast('サイたちの祈りで、HPが全回復した！', 'levelup'); break; }
+        case 'prayer': { const p = UI.S.run.player; RD.addFx({ t: 'healrise', x: p.x, y: p.y, dur: 900 }); toast('{sai}たちの祈りで、HPが全回復した！', 'levelup'); break; }
         // ドラゴンの炎：吐いた所から、止まった所（壁か、最初に当たった相手）まで。当たり判定と同じ所で止める
         case 'breath': RD.addFx({ t: 'breath', from: e.from, to: e.to || e.from, hit: e.hit, dur: 420 }); AU.sfx('bolt'); break;
         case 'reach': if (!slashFx) for (const t of e.tiles) RD.addFx({ t: 'num', x: t.x, y: t.y, text: 'バシュン！', color: '#9ad8ff', small: true, dur: 600 }); break;   // 斬撃の絵が無いときだけ文字
@@ -2231,7 +2333,7 @@
    * 画面の下の欄では（ ）の中の補足を省いて短くする（全文は「履歴」で読める） */
   function logHtml(l, full) {
     let t = full ? l : l.replace(/（[^）]*）/g, '');
-    const cls = /たけは\d+のダメージ|たけは.*ダメージ|毒で/.test(t) ? 'n-hurt' : /回復/.test(t) ? 'n-heal' : 'n-dmg';
+    const cls = /\{take\}は\d+のダメージ|\{take\}は.*ダメージ|毒で/.test(t) ? 'n-hurt' : /回復/.test(t) ? 'n-heal' : 'n-dmg';
     return esc(t).replace(/(\d+)/g, `<b class="${cls}">$1</b>`);
   }
   function showLog() {
@@ -2620,7 +2722,7 @@
     const p = run.player, w = G.equipped(run.bag, 'weapon'), sh = G.equipped(run.bag, 'shield');
     const heal = run.bag.filter((i) => ['heal', 'food', 'cure'].includes(G.def(i).type)).length;
     UI.prepOpen = true;
-    modal({ title: '最終決戦の準備', noClose: true, html: `<p>サイたちの祈りで、たけのHPが全回復した。</p>
+    modal({ title: '最終決戦の準備', noClose: true, html: `<p>{sai}たちの祈りで、{take}のHPが全回復した。</p>
       <div class="kv"><span>HP</span><span>${p.hp}/${p.maxhp}</span><span>満腹度</span><span>${p.hunger}%</span>
       <span>武器</span><span>${w ? esc(G.itemName(w)) : 'なし'}</span><span>盾</span><span>${sh ? esc(G.itemName(sh)) : 'なし'}</span>
       <span>回復・食料</span><span>${heal}個</span><span>持ち物</span><span>${run.bag.length}/${D.BAG_SIZE}</span></div>
@@ -2684,7 +2786,7 @@
   function showRecords() {
     const V = UI.S.village, st = V.story, recs = D.STORY.records, open = G.openRecords(V).map((r) => r.id);
     const html = '<div class="records">' + recs.map((r) => open.includes(r.id) ? recordHtml(r) : '<p class="note rec-lock">？？？（章を進めると読める）</p>').join('')
-      + (st.letter ? '<h3 class="rec-sep">ヤナイの手紙</h3>' + recordHtml(Object.assign({}, D.STORY.letter, { title: 'タケへ' })) : '') + '</div>';
+      + (st.letter ? '<h3 class="rec-sep">ヤナイの手紙</h3>' + recordHtml(Object.assign({}, D.STORY.letter, { title: '{take}へ' })) : '') + '</div>';
     AU.startEventBgm('yanai');   // ヤナイの記録を読む間はヤナイのテーマ
     const h = modal({ title: 'マスターヤナイの記録', right: `${open.length}/${recs.length}`, cls: 'records-modal', html, buttons: [{ label: '閉じる', cls: 'primary' }], onClose: () => AU.endEventBgm() });
     h.el.querySelectorAll('details.rec').forEach((d) => d.addEventListener('toggle', () => {
@@ -2701,7 +2803,7 @@
     const r = S.run.result;
     if (r.type === 'dead') {
       const lostItems = S.run.bag.filter((i) => i.id !== 'return_scroll').length;
-      const html = `<div class="ending"><p class="big-t" style="color:#ff8a8a">たけは倒れた…</p></div>
+      const html = `<div class="ending"><p class="big-t" style="color:#ff8a8a">{take}は倒れた…</p></div>
         <div class="kv"><span>原因</span><span>${esc(r.cause)}</span><span>到達</span><span>地下${r.floor}階</span>
         <span>失った物</span><span>持ち物${lostItems}個・お金${r.lostGold}G</span></div>
         <div class="okbox">村の資金・倉庫・施設は無事です。</div>`;
@@ -2724,7 +2826,7 @@
     if (!res) return;
     if (res.type === 'dead') {
       talk([
-        ['sai', 'たけ！気がついた？遺跡の入口で倒れてたんだよ…。'],
+        ['sai', '{take}！気がついた？遺跡の入口で倒れてたんだよ…。'],
         ['take', 'ごめん、地下' + res.floor + '階で無理しちゃった。'],
         ['sai', '無事でよかった。お店のお金と倉庫はそのままだよ。おにぎりは無料で持たせるからね。'],
       ], () => { if (showStoryPending()) return; if (retry) openDepart(); }, { skip: UI.S.village.defeats > 1 });
@@ -2732,17 +2834,17 @@
     }
     const mats = Object.entries(res.materials || {}).map(([id, n]) => D.ITEMS[id].name + '×' + n).join('、');
     const html = `<div class="kv"><span>到達</span><span>地下${res.floor}階</span><span>持ち帰ったお金</span><span>${res.gold}G（村の資金へ）</span><span>持ち帰った道具</span><span>${res.items}個</span>${mats ? `<span>素材</span><span>${esc(mats)}（素材箱へ）</span>` : ''}</div>
-      <p class="note">お宝はサイの店で売るとお金になります。</p>`;
+      <p class="note">お宝は{sai}の店で売るとお金になります。</p>`;
     const after = () => {
       if (showStoryPending()) return;
       const V = S.village;
       const sellable = V.bag.filter((i) => G.def(i).type === 'treasure').length;
       const decor = Object.values(V.decor || {}).filter(Boolean).length;
       // サイのあいさつは村の発展に合わせて変わる
-      const hello = decor >= 4 ? 'おかえり！村のみんなも、たけの帰りを待ってたよ。'
-        : V.diner ? 'おかえり、たけ！ワーンの食堂でごはんができてるよ。'
-          : V.smithLv ? 'おかえり！鍛冶屋さんも、たけの装備を見たがってたよ。'
-            : V.stage >= 2 ? 'おかえり、たけ！倉庫もちゃんと空けてあるよ。' : 'おかえり、たけ！';
+      const hello = decor >= 4 ? 'おかえり！村のみんなも、{take}の帰りを待ってたよ。'
+        : V.diner ? 'おかえり、{take}！ワーンの食堂でごはんができてるよ。'
+          : V.smithLv ? 'おかえり！鍛冶屋さんも、{take}の装備を見たがってたよ。'
+            : V.stage >= 2 ? 'おかえり、{take}！倉庫もちゃんと空けてあるよ。' : 'おかえり、{take}！';
       const lines = [['sai', hello + (res.gold ? '　' + res.gold + 'Gも持って帰ってきたんだね。' : '')]];
       if (res.materials && Object.keys(res.materials).length) lines.push(['take', '深い階の素材も拾ってきたよ。鍛冶屋さんに見せてあげて。']);
       if (sellable) lines.push(['take', 'お宝も見つけたよ！'], ['sai', V.museum ? '売ってもいいし、展示室に飾ってもいいね。' : 'お店で見せて！売ったお金で村をもっとにぎやかにしよう。']);
@@ -2760,7 +2862,7 @@
     talk(D.STORY.ending, () => {
       V.seenEnding = true; save();
       modal({ title: 'エンディング', noClose: true, html: `<div class="ending"><p class="big-t">大魔王の封印は守られた！</p>
-        <p>勇者たけとサイ、そして村のみんなの力で、アユタヤの村に平和が戻りました。</p>
+        <p>勇者{take}と{sai}、そして村のみんなの力で、アユタヤの村に平和が戻りました。</p>
         <p>マスターヤナイの想いは、これからも村とともに。</p>
         <p>帰還 ${V.returns}回・敗北 ${V.defeats}回</p>
         <p class="big-t">THANK YOU FOR PLAYING!</p>

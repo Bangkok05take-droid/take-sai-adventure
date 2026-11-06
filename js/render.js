@@ -1119,10 +1119,11 @@
     const dpr = W / Math.max(1, canvas.clientWidth);
     g.font = `bold ${Math.round(11 * dpr)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const [t, x, y] of vc.labels) {
-      const tw = g.measureText(t).width + 10 * dpr, px = ox + x * k, py = oy + y * k, hh = Math.round(16 * dpr);
+      const nm = TS.Names.fill(t);   // 名札の {sai} などは、いまの名前に
+      const tw = g.measureText(nm).width + 10 * dpr, px = ox + x * k, py = oy + y * k, hh = Math.round(16 * dpr);
       g.fillStyle = 'rgba(10,32,40,0.86)'; g.fillRect(Math.round(px - tw / 2), Math.round(py - hh / 2), Math.round(tw), hh);
       g.fillStyle = 'rgba(226,178,60,0.95)'; g.fillRect(Math.round(px - tw / 2), Math.round(py + hh / 2) - dpr, Math.round(tw), dpr);
-      g.fillStyle = '#fff4dc'; g.fillText(t, px, py);
+      g.fillStyle = '#fff4dc'; g.fillText(nm, px, py);
     }
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     // 行き先の印
