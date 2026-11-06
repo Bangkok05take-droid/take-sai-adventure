@@ -2311,7 +2311,7 @@ test('ワーンの食堂：完成の会話はワーンの指定の文。古い�
   const fs = require('fs'), path = require('path');
   const src = ['js/ui.js', 'js/data.js', 'js/village.js', 'js/story.js', 'js/game.js'].map((f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')).join('\n');
   assert(!src.includes('サイの食堂'), 'no old name');
-  assert(src.includes("['waan', 'お待たせ！ ワーンの食堂ができたよ！\\n冒険に行く前は、ちゃんと食べていってね！\\n元気が出る料理を作ってあげる！！']"), 'line');
+  assert(src.includes("['waan', 'お待たせ！ ワーンの食堂が復活したよ！\\n冒険に行く前は、ちゃんと食べていってね！\\n元気が出る料理を作ってあげる！！']"), 'line');
   eq(D.FACILITIES.find((f) => f.id === 'diner').name, 'ワーンの食堂');
 });
 // 隠しダンジョンの強敵：テスト用の部屋に置く（攻撃は必ず当たる）
