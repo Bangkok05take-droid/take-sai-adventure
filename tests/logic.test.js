@@ -4140,5 +4140,20 @@ test('名前（2026年11月）：1〜8文字・前後の空白を取る・空欄
   walk(D.STORY); walk(D.CAST); walk(D.ITEMS); walk(D.CHAPTERS); walk(D.ENEMIES);
   const left = strs.filter((x) => /たけ|タケ|サイ(?!ン|ズ|コ|クル|レン)/.test(x)); eq(left.length, 0, 'left: ' + left.slice(0, 3).join(' / '));
 });
+test('攻撃ボタン（2026年11月）：向いている方へ攻撃。敵がいれば進んだときと同じ攻撃で1ターン。いなければ空振りで1ターン（動かない）。商人には攻撃しない', () => {
+  const S = newRun(4242); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 999;
+  run.enemies = [];
+  const e = G.makeEnemy(run, 'frog', p.x + 1, p.y); e.hp = e.maxhp = 999; e.sleep = 99; run.enemies.push(e); G.updateVision(run);
+  p.dir = 'right'; const t0 = run.turn, x0 = p.x;
+  let r = G.act(S, { type: 'attack', dir: 'right' });
+  assert(r.consumed && run.turn === t0 + 1 && p.x === x0, 'attack 1 turn');
+  assert(e.hp < 999 || run.log.slice(-3).some((l) => l.includes('外れた')), 'hit or miss');
+  r = G.act(S, { type: 'attack', dir: 'left' });
+  assert(r.consumed && run.turn === t0 + 2 && p.x === x0 && p.dir === 'left' && r.events.some((v) => v.t === 'swing'), 'swing');
+  assert(run.log[run.log.length - 1].includes('空を切った'));
+  // 方向ボタンで敵の方へ進む攻撃も今までどおり
+  const h = e.hp; let tries = 0; while (e.hp === h && tries++ < 10) G.act(S, { type: 'move', dir: 'right' });
+  assert(e.hp < h && p.x === x0, 'move-attack still works');
+});
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

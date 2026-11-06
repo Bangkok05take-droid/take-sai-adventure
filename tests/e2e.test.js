@@ -472,10 +472,13 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(t.turn === a.turn + 1 && t.x === 20, 'one attack per press');
     await p.evaluate(() => { TS.UI.S.run.enemies = []; });
   });
-  await test('「向き」オン：方向ボタンで向きだけ変わり、ターン・敵・満腹度が進まない。「足踏み」は1ターン', async () => {
+  const faceDown = () => p.evaluate(() => document.querySelector('#b-face').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 21 })));
+  const faceUp = (type = 'pointerup') => p.evaluate((type) => document.querySelector('#b-face').dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 21 })), type);
+  const faceOn = () => p.$eval('#b-face', (b) => b.classList.contains('on'));
+  await test('「攻撃」長押しで向き変更オン：方向ボタンで向きだけ変わり、ターン・敵・満腹度が進まない。「足踏み」は1ターン', async () => {
     await openRoom(); await center();
     await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game; const e = G.makeEnemy(r, 'frog', 9, 7); e.hp = e.maxhp = 999; e._keep = true; r.enemies.push(e); G.updateVision(r); });
-    await p.tap('#b-face'); await p.waitForTimeout(150);
+    await faceDown(); await p.waitForTimeout(550); await faceUp(); await p.waitForTimeout(100);   // 長押しで向き変更オン
     assert(await p.$eval('#b-face', (b) => b.classList.contains('on') && b.textContent.includes('変更中')), 'face mode shown');
     assert(await p.isVisible('#facenote'), 'facenote');
     const s0 = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hunger: TS.UI.S.run.player.hunger, acc: TS.UI.S.run.player.hungerAcc, acts: TS.UI.S.run.enemies[0].acts, x: TS.UI.S.run.player.x, y: TS.UI.S.run.player.y }));
@@ -491,42 +494,49 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     const hit = await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game; const e = r.enemies[0]; e.x = r.player.x - 3; e.y = r.player.y - 3; G.updateVision(r);
       const st = G.makeItem(S, 'thunder_staff', { charges: 2 }); r.bag.push(st); G.act(S, { type: 'use', uid: st.uid }); r.bag.splice(r.bag.indexOf(st), 1); return e.hp; });
     assert(hit === 969, 'staff used facing direction ' + hit);
-    await p.tap('#b-face'); await p.waitForTimeout(150);
-    assert(await p.$eval('#b-face', (b) => !b.classList.contains('on')), 'face off');
+    await p.tap('#b-face'); await p.waitForTimeout(150);   // 向き変更中のタップ：オフに戻すだけ（攻撃しない）
+    assert(await p.$eval('#b-face', (b) => !b.classList.contains('on') && b.textContent.includes('攻撃')), 'face off');
     const b = await run();
     await p.tap('#b-wait'); await p.waitForTimeout(200);
     const a = await run();
     assert(a.turn === b.turn + 1 && a.x === b.x && a.y === b.y, 'step in place = 1 turn');
     await p.evaluate(() => { TS.UI.S.run.enemies = []; });
   });
-  const faceDown = () => p.evaluate(() => document.querySelector('#b-face').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 21 })));
-  const faceUp = (type = 'pointerup') => p.evaluate((type) => document.querySelector('#b-face').dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 21 })), type);
-  const faceOn = () => p.$eval('#b-face', (b) => b.classList.contains('on'));
-  await test('「向き」短押し：離したときに向き変更モードを切り替え、ターンは進まない', async () => {
+  await test('「攻撃」：短押しで向いている方へ攻撃（1回1ターン・敵がいなくても空振りで1ターン）。長押しは向き変更のオン/オフで攻撃しない', async () => {
     await openRoom(); await center();
-    const b0 = await run(); const on0 = await faceOn();
-    await faceDown(); await p.waitForTimeout(80);
-    assert((await faceOn()) === on0, 'not toggled on press');
-    await faceUp(); await p.waitForTimeout(60);
-    assert((await faceOn()) === !on0, 'toggled on release');
-    await faceDown(); await p.waitForTimeout(80); await faceUp(); await p.waitForTimeout(60);
-    assert((await faceOn()) === on0, 'toggled back');
-    assert((await run()).turn === b0.turn, 'no turn');
+    await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game, pl = r.player; pl.dir = 'right'; const e = G.makeEnemy(r, 'frog', pl.x + 1, pl.y); e.hp = e.maxhp = 999; e.sleep = 99; e._keep = true; r.enemies.push(e); G.updateVision(r); TS.UI.lockUntil = 0; });
+    const b0 = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.enemies[0].hp, x: TS.UI.S.run.player.x }));
+    await faceDown(); await p.waitForTimeout(80); await faceUp(); await p.waitForTimeout(300);
+    const a = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.enemies[0].hp, x: TS.UI.S.run.player.x, log: TS.UI.S.run.log.slice(-3).join('|') }));
+    assert(a.turn === b0.turn + 1 && a.x === b0.x && (a.hp < b0.hp || /外れた/.test(a.log)), 'attack ahead ' + JSON.stringify([b0, a]));
+    await shot('26_attack_button');
+    // 敵のいない方へ：空振りで1ターン、動かない
+    await p.evaluate(() => { const r = TS.UI.S.run; r.player.dir = 'left'; TS.UI.lockUntil = 0; });
+    await faceDown(); await p.waitForTimeout(80); await faceUp(); await p.waitForTimeout(300);
+    const c = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, x: TS.UI.S.run.player.x, log: TS.UI.S.run.log.slice(-2).join('|') }));
+    assert(c.turn === a.turn + 1 && c.x === a.x && /空を切った/.test(c.log), 'swing ' + JSON.stringify(c));
+    // 長押し：向き変更オン（攻撃しない・ターンは進まない）→ タップでオフ（攻撃しない）
+    await faceDown(); await p.waitForTimeout(550); await faceUp(); await p.waitForTimeout(100);
+    assert((await faceOn()) && (await run()).turn === c.turn, 'long press = facing on, no turn');
+    await faceDown(); await p.waitForTimeout(80); await faceUp(); await p.waitForTimeout(100);
+    assert(!(await faceOn()) && (await run()).turn === c.turn, 'tap = facing off, no attack');
+    await p.evaluate(() => { TS.UI.S.run.enemies = []; });
   });
-  await test('「向き」長押し：400ms後から休息（1回1ターン・自然回復）。離すと即停止し短押しは発動しない。モードは維持', async () => {
+  const restDown = () => p.evaluate(() => document.querySelector('#b-wait').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 23 })));
+  const restUp = (type = 'pointerup') => p.evaluate((type) => document.querySelector('#b-wait').dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 23 })), type);
+  await test('「足踏み」長押し：400ms後から休息（1回1ターン・自然回復）。離すと即停止し短押しの1ターンは出ない', async () => {
     await openRoom(); await center();
     await p.evaluate(() => { const pl = TS.UI.S.run.player; pl.maxhp = 999; pl.hp = 500; pl.hunger = 90; });
     const b0 = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp, x: TS.UI.S.run.player.x, hunger: TS.UI.S.run.player.hunger, acc: TS.UI.S.run.player.hungerAcc }));
-    const on0 = await faceOn();
     const tHold = Date.now();
-    await faceDown(); await p.waitForTimeout(300);
+    await restDown(); await p.waitForTimeout(300);
     assert((await run()).turn === b0.turn, 'no rest before 400ms');
     await p.waitForTimeout(700);
     assert(await p.isVisible('#restnote'), '休息中 shown');
     await shot('28_resting');
     // 休息中の方向入力で動かない
     await pdown('right'); await p.waitForTimeout(100); await pup('right');
-    await faceUp();
+    await restUp();
     const held = Date.now() - tHold;
     const a = await p.evaluate(() => ({ turn: TS.UI.S.run.turn, hp: TS.UI.S.run.player.hp, x: TS.UI.S.run.player.x }));
     // 400ms後から約180msに1ターン（押していた時間から上限を出す。スクリーンショットの時間も含む）
@@ -535,40 +545,39 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     assert(a.hp > b0.hp && a.x === b0.x, 'regen, no move ' + JSON.stringify([b0, a]));
     await p.waitForTimeout(500);
     assert((await run()).turn === a.turn, 'stops on release, no extra turn');
-    assert((await faceOn()) === on0, 'mode kept after long press');
     assert(!(await p.isVisible('#restnote')), 'note hidden');
   });
   await test('休息：HP全回復で自動停止、敵が見えていると開始しない（理由を表示）、キャンセル・メニューで停止', async () => {
     await openRoom(); await center();
     await p.evaluate(() => { const pl = TS.UI.S.run.player; pl.maxhp = 999; pl.hp = 997; pl.regenAcc = 0; });
-    await faceDown(); await p.waitForTimeout(2200);
+    await restDown(); await p.waitForTimeout(2200);
     const full = await p.evaluate(() => ({ hp: TS.UI.S.run.player.hp, max: TS.UI.S.run.player.maxhp, stop: TS.UI.lastStop }));
     const t1 = (await run()).turn; await p.waitForTimeout(400);
     assert(full.hp === full.max && full.stop === 'full' && (await run()).turn === t1, 'stopped at full ' + JSON.stringify(full));
     assert(/休息終了：HPが満タン/.test(await p.textContent('#stopnote')), 'reason shown');
-    await faceUp();
+    await restUp();
     // 敵が見えている → 開始しない
     await p.evaluate(() => { const r = TS.UI.S.run, G = TS.Game; r.player.hp = 300; const e = G.makeEnemy(r, 'frog', 12, 9); e.sleep = 99; e._keep = true; r.enemies.push(e); G.updateVision(r); });
     const t2 = (await run()).turn;
-    await faceDown(); await p.waitForTimeout(800);
+    await restDown(); await p.waitForTimeout(800);
     assert((await run()).turn === t2 && /休めない：敵が見えている/.test(await p.textContent('#stopnote')), 'blocked by enemy');
-    await faceUp();
+    await restUp();
     await p.evaluate(() => { TS.UI.S.run.enemies = []; });
     // キャンセルで停止
-    await faceDown(); await p.waitForTimeout(700);
-    await faceUp('pointercancel');
+    await restDown(); await p.waitForTimeout(700);
+    await restUp('pointercancel');
     const t3 = (await run()).turn; await p.waitForTimeout(500);
     assert((await run()).turn === t3, 'cancel stops');
     // メニューで停止
-    await faceDown(); await p.waitForTimeout(700);
+    await restDown(); await p.waitForTimeout(700);
     await p.evaluate(() => document.querySelector('#b-menu').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
     const t4 = (await run()).turn; await p.waitForTimeout(500);
     assert((await run()).turn === t4, 'menu stops');
-    await faceUp();
+    await restUp();
     await p.tap('.modal-buttons button.primary'); await p.waitForTimeout(100);
     // 押し直すと再開できる
     const t5 = (await run()).turn;
-    await faceDown(); await p.waitForTimeout(800); await faceUp();
+    await restDown(); await p.waitForTimeout(800); await restUp();
     assert((await run()).turn > t5, 'resumes after re-press');
   });
 

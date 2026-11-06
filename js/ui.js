@@ -309,7 +309,7 @@
     <p>遺跡を進み、ボスを倒そう。お宝を持ち帰ると、装備を整えたり村を発展させたりできます。</p>
     <h3>基本操作</h3>
     <ul>
-      <li>方向ボタンで移動。敵のいる方向へ進むと攻撃。</li>
+      <li>方向ボタンで移動。敵のいる方向へ進むか、真ん中の「攻撃」ボタンで攻撃。</li>
       <li>移動・攻撃・道具の使用で1ターン進みます。</li>
       <li>メニューや説明を見ている間は、時間が止まります。</li>
     </ul>
@@ -344,11 +344,12 @@
     ${det('移動と向き', [
       '方向ボタン（3×3）で8方向に1マス。斜めも1ターン。押し続けると連続で進む（敵が隣に来た・道具や階段の上などで止まる）。',
       '壁の角をはさんだ斜めには、移動も攻撃もできない（敵も同じ）。押しっぱなしで攻撃を繰り返すことはない。',
-      '中央の「向き」：タップでオン/オフ。オンの間は方向ボタンで向きだけ変わる（時間は進まない）。杖などはこの向きに使う。',
+      '中央の「攻撃」：向いている方へ攻撃（敵がいなくても剣を振って1ターン）。敵の方へ方向ボタンを押しても攻撃できる。',
+      '「攻撃」を長押し：向き変更のオン/オフ。オンの間は方向ボタンで向きだけ変わる（時間は進まない）。杖などはこの向きに使う。',
     ])}
     ${det('休息・足踏み・ダッシュ', [
       '足踏み：その場で1ターン待つ。',
-      '「向き」を長押し：休息（連続の足踏み）。HPが自然に戻る。指を離す・HP全回復・敵が見える・ダメージ・満腹度が少ない・毒のときは止まる。',
+      '「足踏み」を長押し：休息（連続の足踏み）。HPが自然に戻る。指を離す・HP全回復・敵が見える・ダメージ・満腹度が少ない・毒のときは止まる。',
       'ダッシュ：オンにして方向ボタンを押し続けると速く進む（1マスごとに1ターン）。新しい敵・ダメージ・敵が隣・壁・分かれ道・道具・階段・帰還地点・HPや満腹度の危険で止まり、理由が出る。',
     ])}
     ${det('道具・投げる・アクセサリー', [
@@ -370,7 +371,7 @@
     ])}
     ${det('PCのキー操作', [
       '矢印キー/WASD：上下左右。Q・E・Z・C（またはテンキー7・9・1・3）：斜め。',
-      'F：向き（Rを押し続けると休息）。スペース：足踏み。X：ダッシュ。Enter：足元。I：道具。Esc：メニュー。',
+      'J：攻撃。F：向き変更（Rを押し続けると休息）。スペース：足踏み。X：ダッシュ。Enter：足元。I：道具。Esc：メニュー。',
     ])}
     </div>`;
   }
@@ -473,7 +474,7 @@
     talk(D.STORY.intro, () => {
       UI.S.village.seenIntro = true; UI.S.village.story.introDone = true; save();
       AU.endEventBgm();
-      modal({ title: '冒険のヒント', html: '<ul class="hint-list"><li>敵のいる方向へ進むと攻撃。動くたびに敵も動きます。</li><li>お宝を持ち帰って、装備と村を育てよう。</li><li>危なくなったら「帰還の巻物」で村へ！</li></ul>',
+      modal({ title: '冒険のヒント', html: '<ul class="hint-list"><li>敵のいる方向へ進むか、真ん中の「攻撃」ボタンで攻撃。動くたびに敵も動きます。</li><li>お宝を持ち帰って、装備と村を育てよう。</li><li>危なくなったら「帰還の巻物」で村へ！</li></ul>',
         buttons: [{ label: '冒険をはじめる', cls: 'primary' }] });
     });
   }
@@ -1382,7 +1383,7 @@
       b.classList.add('pressed');
       const fp = { long: false, timer: null };
       UI.facePress = fp;
-      fp.timer = setTimeout(() => { if (UI.facePress === fp) { fp.long = true; startRest(); } }, REST_DELAY);
+      fp.timer = setTimeout(() => { if (UI.facePress === fp) { fp.long = true; AU.sfx('tap'); toggleFacing(); } }, REST_DELAY);   // 長押し：向き変更のオン/オフ
     });
     const up = () => faceRelease(false);
     const cancel = () => faceRelease(true);
@@ -1397,8 +1398,17 @@
     UI.facePress = null;
     clearTimeout(fp.timer);
     $('b-face').classList.remove('pressed');
-    if (fp.long) { stopRest(); return; } // 長押しとして処理済み：短押しは発動しない
-    if (!cancel && !UI.modals.length) { AU.sfx('tap'); toggleFacing(); }
+    if (fp.long) return; // 長押しとして処理済み（向き変更）：攻撃はしない
+    if (cancel || UI.modals.length) return;
+    if (UI.facing) { AU.sfx('tap'); toggleFacing(); return; }   // 向き変更中のタップ：向き変更を終えるだけ
+    attackAhead();
+  }
+  // 攻撃ボタン：向いている方へ攻撃（敵がいなくても振って1ターン）。方向ボタンで敵の方へ進む攻撃もそのまま使える
+  function attackAhead() {
+    const run = UI.S.run;
+    if (!run || run.over) return;
+    stopHold();
+    doAct({ type: 'attack', dir: run.player.dir });
   }
   function startRest() {
     stopHold(); // 移動・ダッシュの連続処理を止める
@@ -1461,7 +1471,8 @@
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
     const f = $('b-face');
     f.classList.toggle('on', !!UI.facing);
-    f.innerHTML = UI.facing ? '向き<small>変更中</small>' : '向き';
+    f.innerHTML = UI.facing ? '向き<small>変更中</small>' : '攻撃';
+    f.setAttribute('aria-label', UI.facing ? '向き変更を終える' : '攻撃（長押しで向き変更）');
     f.setAttribute('aria-pressed', UI.facing ? 'true' : 'false');
     $('dpad').classList.toggle('facing', !!UI.facing);
     $('view').classList.toggle('facing', !!UI.facing);
@@ -1473,7 +1484,7 @@
    * ダッシュ：押している間、約85msごとに1マス。
    * どちらも指を離すと即停止し、入力はため込まない。安全停止したら押し直すまで再開しない。 */
   function pressDir(dir, source) {
-    if (UI.modals.length || UI.rest || (UI.facePress && UI.facePress.long)) return; // 休息中は方向入力で動かない
+    if (UI.modals.length || UI.rest) return; // 休息中は方向入力で動かない（「攻撃」の長押しで向き変更をオンにしたまま方向を押すと、向きだけ変わる）
     stopHold();
     const run = UI.S.run;
     if (!run || run.over) return;
@@ -1583,6 +1594,7 @@
     else if (e.key === 'i' || e.key === 'I') openItems();
     else if (e.key === 'x' || e.key === 'X' || e.key === 'Shift') toggleDash();
     else if (e.key === 'f' || e.key === 'F') toggleFacing();
+    else if (e.key === 'j' || e.key === 'J' || e.code === 'Numpad0') attackAhead();
     else if (e.key === 'r' || e.key === 'R') { UI.keyRest = true; startRest(); }
     else if (e.key === 'Escape' || e.key === 'm' || e.key === 'M') dungeonMenu();
     else if (e.key === 'Enter') footAction();
@@ -1984,14 +1996,15 @@
   const ATK_DUR = 200, ATK_HIT = 70;
   function handleEvents(events, action) {
     const run = UI.S.run, p = run.player;
-    const isAttack = action && action.type === 'move' && events.some((e) => (e.t === 'hit' && e.target === 'enemy') || e.t === 'miss') && !events.some((e) => e.t === 'move');
+    const isAttack = action && ((action.type === 'move' && events.some((e) => (e.t === 'hit' && e.target === 'enemy') || e.t === 'miss') && !events.some((e) => e.t === 'move'))
+      || (action.type === 'attack' && events.some((e) => (e.t === 'hit' && e.target === 'enemy') || e.t === 'miss' || e.t === 'swing')));
     let atkDir = null;
     if (isAttack) {
       const [dx, dy] = G.DIRS[action.dir];
       atkDir = { dx, dy, x: p.x + dx, y: p.y + dy };
       const armed = !!G.equipped(run.bag, 'weapon');
       RD.addFx({ t: 'patk', dx, dy, dur: ATK_DUR });
-      if (events.some((e) => e.t === 'hit' && e.target === 'enemy' && e.x === atkDir.x && e.y === atkDir.y)) {
+      if (events.some((e) => (e.t === 'hit' && e.target === 'enemy' || e.t === 'swing') && e.x === atkDir.x && e.y === atkDir.y)) {
         RD.addFx({ t: armed ? 'slash' : 'punch', x: atkDir.x, y: atkDir.y, dx, dy, delay: 40, dur: armed ? 150 : 140 });
       }
     }

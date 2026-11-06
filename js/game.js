@@ -803,6 +803,7 @@
       case 'drop': consumed = dropItem(S, a.uid, ev); break;
       case 'throw': consumed = throwItem(S, a.uid, a.dir, ev, !!a.fromFloor); break;
       case 'face': if (DIRS[a.dir]) run.player.dir = a.dir; break;
+      case 'attack': consumed = doAttack(S, DIRS[a.dir] ? a.dir : run.player.dir, ev); break;   // 攻撃ボタン：向いている方へ（敵がいなくても振る）
       case 'descend':
         // 30階：ティウの救援（倉庫との交換）が終わるまでは降りない
         if ((G.onStairs(run) || G.onCrack(run)) && G.canRescue(run)) { G.log(run, 'ティウの救援が終わってから、先へ進もう。'); ev.push({ t: 'warn', msg: '先に救援を終えよう' }); return { consumed: false, events: ev }; }
@@ -858,11 +859,7 @@
     if (e && G.bossWaiting(run, e)) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; }
     /* 真魔剛竜剣＋ドラゴニックオーラの盾（または勇者の剣＋勇者の盾）：正面2マス目の敵にも届く（1マス目から2マス目へも壁・角を越えない）。
      * 戦いの前で待っているボスと商人には届かない（ふつうに歩ける）。手前に敵がいれば貫通して奥の敵にも当たる（2体まで） */
-    const far = (() => {
-      if (!G.sets(run).reach || !G.canStep(run.map, nx, ny, d[0], d[1])) return null;
-      const e2 = G.enemyAt(run, nx + d[0], ny + d[1]);
-      return e2 && !G.bossWaiting(run, e2) && !G.merchantAt(run, nx + d[0], ny + d[1]) ? e2 : null;
-    })();
+    const far = farTarget(run, nx, ny, d);
     if (e) {
       playerAttack(S, e, ev);
       if (far && run.enemies.includes(far)) { playerAttack(S, far, ev); ev.push({ t: 'reach', tiles: [{ x: nx, y: ny }, { x: far.x, y: far.y }] }); }
@@ -884,6 +881,36 @@
     if (G.onReturnPoint(run)) ev.push({ t: 'onReturnPoint' });
     if (G.onPortal(run)) ev.push({ t: 'onPortal' });
     if (G.onCrack(run)) ev.push({ t: 'onCrack', state: G.crackState(S) });
+    return true;
+  }
+
+  // 2マス攻撃の組み合わせで、正面2マス目に届く敵（1マス目から2マス目へも壁・角を越えない。待っているボス・商人は除く）
+  function farTarget(run, nx, ny, d) {
+    if (!G.sets(run).reach || !G.canStep(run.map, nx, ny, d[0], d[1])) return null;
+    const e2 = G.enemyAt(run, nx + d[0], ny + d[1]);
+    return e2 && !G.bossWaiting(run, e2) && !G.merchantAt(run, nx + d[0], ny + d[1]) ? e2 : null;
+  }
+  /* 攻撃ボタン（2026年11月）：向いている方へ攻撃する。敵がいれば、その方向へ進んだときと同じ攻撃（2マス攻撃も同じ）。
+   * 敵がいない・壁に向かっていても剣を振って1ターン（空振り）。商人・戦いの前で待っているボスには攻撃しない（ターンは進まない） */
+  function doAttack(S, dir, ev) {
+    const run = S.run, p = run.player, d = DIRS[dir];
+    if (!d) return false;
+    p.dir = dir;
+    const nx = p.x + d[0], ny = p.y + d[1];
+    if (G.canStep(run.map, p.x, p.y, d[0], d[1])) {
+      if (G.merchantAt(run, nx, ny)) { ev.push({ t: 'merchant' }); return false; }
+      const e = G.enemyAt(run, nx, ny);
+      if (e && G.bossWaiting(run, e)) { G.log(run, WAIT_MSG); ev.push({ t: 'warn', msg: WAIT_MSG }); return false; }
+      const far = farTarget(run, nx, ny, d);
+      if (e) {
+        playerAttack(S, e, ev);
+        if (far && run.enemies.includes(far)) { playerAttack(S, far, ev); ev.push({ t: 'reach', tiles: [{ x: nx, y: ny }, { x: far.x, y: far.y }] }); }
+        return true;
+      }
+      if (far) { playerAttack(S, far, ev); ev.push({ t: 'reach', tiles: [{ x: far.x, y: far.y }] }); return true; }
+    }
+    G.log(run, '{take}の攻撃は空を切った。');
+    ev.push({ t: 'swing', x: nx, y: ny });
     return true;
   }
 
