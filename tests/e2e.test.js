@@ -108,8 +108,8 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     await tapAt(hitPt('statue', 'statue'));
     for (let i = 0; i < 80 && !(await p.$('.talk')); i++) await p.waitForTimeout(80);
     assert(await p.isVisible('.talk'), 'statue talk');
-    // 2026年10月23日：像は台詞なし。名札「〜街を守った英雄ヤナイ〜」だけ
-    assert(await p.evaluate(() => document.querySelector('.talk').textContent.includes('街を守った英雄ヤナイ')), 'statue plate');
+    // 2026年10月23日：像は台詞なし。名札「〜村を守った英雄ヤナイ〜」だけ（11月6日：街→村）
+    assert(await p.evaluate(() => document.querySelector('.talk').textContent.includes('村を守った英雄ヤナイ')), 'statue plate');
     await closeTalk();
     // キー操作：下へ1マス
     const k0 = await p.evaluate(() => ({ x: TS.UI.walker.x, y: TS.UI.walker.y }));

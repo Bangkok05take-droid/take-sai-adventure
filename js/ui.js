@@ -520,6 +520,8 @@
     if (kind === 'tiw') {
       // 30階の救援でティウが持ち帰ったオリハルコンを、町で1回だけ受け取る（そのあとはいつもの冒険案内）
       if (G.canTakeTiwOri(UI.S.village)) { G.takeTiwOri(UI.S); villageChanged(); talk(D.STORY.orichalcum.tiwTown); return; }
+      // 全章クリアのあと：30階の救援の帰り道に見つけたヤナイの手紙を、1回だけ渡す（読むのは村のメニューの「ヤナイの記録」）
+      if (G.takeLetter(UI.S.village)) { villageChanged(); talk(D.STORY.letterTiw); return; }
       openTiwGuide(); return;
     }
     if (kind === 'wolf') { talk([['narration', D.STORY.tiwGuide.wolf]]); return; }
@@ -777,7 +779,7 @@
   // ---- 村の発展（施設と飾り） ----
   const BUILD_TALK = {
     storage2: [['sai', '倉庫が広くなったよ！灯りも増えて、村がにぎやかになってきた。'], ['take', 'お宝をたくさん預けられるね。']],
-    smith1: [['sai', '鍛冶屋さんと屋台が来てくれたよ！夕方はいい匂いがするね。'], ['take', '装備を鍛えて、もっと奥まで行けそうだ！']],
+    smith1: [['sai', 'コイの鍛冶屋が復活したよ！ 屋台も来て、夕方はいい匂いがするね。'], ['take', '装備を鍛えて、もっと奥まで行けそうだ！']],
     diner: [['waan', 'お待たせ！ ワーンの食堂ができたよ！\n冒険に行く前は、ちゃんと食べていってね！\n元気が出る料理を作ってあげる！！']],   // 2026年10月指定の文
     museum: [['sai', '展示室ができたよ。珍しいお宝はここに飾れるんだ。'], ['take', '売るか飾るか、迷っちゃうね。']],
     storage3: [['sai', '倉庫を増築したよ。二階もあるんだ。'], ['take', 'これで深い階のお宝もしまえるね。']],
@@ -811,7 +813,7 @@
       tab = t;
       tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
       h.el.querySelector('h2 .right').textContent = V.funds + 'G';
-      let html = t === 'facility' ? '<p class="note">施設を建てて、村でできることを増やします。</p>' : '<p class="note">好きな飾りを選んで村を整えよう。お宝を寄贈すると特別な飾りが解放されます。</p>';
+      let html = t === 'facility' ? '<p class="note">昔はバランが暮らしていた家。今も、人や動物が自然と集まってくる。<br>施設を建てて、村でできることを増やします。</p>' : '<p class="note">好きな飾りを選んで村を整えよう。お宝を寄贈すると特別な飾りが解放されます。</p>';
       // 完成済みは一覧から外す（効果・外観・記録はそのまま）。段階式の拡張（倉庫・鍛冶屋）は次の1段階だけ
       const left = G.unbuiltFacilities(V);
       const list = left.filter((f) => f.kind === t);
@@ -1070,6 +1072,9 @@
     const notes = [];
     if (V.meal) notes.push([DP_ICON.fork, `${esc(D.MEALS[V.meal].name)}を食べて出発：${esc(D.MEALS[V.meal].desc)}（この探索だけ）`]);
     if (!w) notes.push([DP_ICON.fist, '武器は遺跡で拾えます。']);
+    // 第4章（バラン）の前：ヤナイの記録「遠い街から」をまだ読んでいなければ、短く知らせる（読まなくても出発できる）
+    { const r4 = D.STORY.records.find((r) => r.id === 'r4');
+      if (!rm && V.story.chapter === 4 && r4 && G.openRecords(V).includes(r4) && !G.recordRead(V, 'r4')) notes.push([DP_ICON.chat, `村のメニューで、ヤナイの記録「${esc(r4.title.replace(/^記録.　/, ''))}」が読めます。`]); }
     if (rm) notes.unshift([DP_ICON.warn, `再戦：<b>${esc(rm.name)}</b>（地下${rm.id === 'vearn' ? '30階・33階' : rm.floor + '階'}）。ボスの強さは、ボス部屋に入ったときのたけに合わせます。`]);
     const kl = D.KEEP_LEVEL && V.keptLevel && V.keptLevel.lvl > 1 ? V.keptLevel.lvl : 1;   // 前回、無事に帰還したときのレベル
     if (kl > 1) notes.push([DP_ICON.compass, `前回の帰還で鍛えた<b>レベル${kl}</b>から出発します（倒れるとレベル1に戻ります）。`]);
@@ -1173,7 +1178,7 @@
       <p>${(() => { const ss = G.storyStatus(UI.S.village); return ss.cleared ? '★ 全章クリア（最終決戦の勝利 ' + UI.S.village.clears + '回）' : '現在：' + esc(ss.name + '「' + ss.title + '」') + '　次のボス：' + esc(ss.bossName) + '（地下' + ss.goal + '階）'; })()}</p>
       ${UI.S.village.legacyClear30 ? '<p class="note">旧版のクリア記録：30階「願いの宝珠」（以前の版・' + (UI.S.village.legacyClears30 || 1) + '回）</p>' : ''}
       ${UI.S.village.legacyClear10 ? '<p class="note">旧記録：10階「宝珠の間」踏破（以前の版）</p>' : ''}`, buttons: [
-      { label: 'ヤナイの記録', onClick: () => { setTimeout(showRecords, 0); } },
+      { label: 'ヤナイの記録' + (G.unreadRecords(UI.S.village).length ? '（新）' : ''), onClick: () => { setTimeout(showRecords, 0); } },
       { label: '遊び方', onClick: () => { setTimeout(() => showHelp(), 0); } },
       { label: '音：' + (UI.S.settings.sound ? 'オン' : 'オフ'), onClick: () => { toggleSound(); setTimeout(villageMenu, 0); } },
       { label: '音楽試聴・音量', onClick: () => { setTimeout(() => openMusicRoom(villageMenu), 0); } },
@@ -2653,12 +2658,12 @@
     const finish = () => { st.pending = null; save(); updateVillageHud(); if (V.rewardNotice || V.giftNotice) setTimeout(showStoryPending, 300); };   // 章のできごとのあとに、届け物のお知らせ
     if (pend.type === 'chapterClear') {
       const ch = pend.chapter, C = D.CHAPTERS[ch], next = D.CHAPTERS[ch + 1];
-      const rec = D.STORY.records[ch];
+      const recs = G.recordsOfChapter(ch);
       talk(D.STORY.chapterClear[ch] || [], () => {
         modal({ title: C.name + ' クリア！', html: `<div class="ending"><p class="big-t">${esc(D.ENEMIES[C.boss].name)}を倒した！</p></div>
           <p class="note">ボスの報酬（ボスの部屋に現れた品）</p>${rewardList(C.reward.items)}
           <div class="kv"><span>復興支援金</span><span>${pend.funds ? pend.funds + 'G（村の資金へ）' : '受け取り済み'}</span>
-          <span>ヤナイの記録</span><span>${rec ? '「' + esc(rec.title) + '」が読めるようになった' : '-'}</span>
+          <span>ヤナイの記録</span><span>${recs.length ? recs.map((r) => '「' + esc(r.title) + '」').join('') + 'が読めるようになった' : '-'}</span>
           <span>次の章</span><span>${next ? esc(next.name + '「' + next.title + '」') + '　目標：地下' + next.goal + '階' : '-'}</span></div>
           <p class="note">村の人が増え、景色も少しずつ元に戻っていきます。記録は村のメニューから読めます。</p>`,
         onClose: finish, buttons: [{ label: 'OK', cls: 'primary' }] });
@@ -2669,13 +2674,23 @@
     finish();
     return false;
   }
+  /* ヤナイの記録（全8話の日記＋手紙）：開いた話だけ読める。1話ずつ折りたたみ、開いたら読んだ印（「新」が消える）。
+   * 後の話は「？？？」。手紙は受け取ったあとだけ、最後に別枠で並ぶ */
+  function recordHtml(r) {
+    const body = r.text.split('\n\n').map((p) => '<p>' + p.split('\n').map(esc).join('<br>') + '</p>').join('');
+    const nw = G.recordRead(UI.S.village, r.id) ? '' : '<span class="rec-new">新</span>';
+    return `<details class="rec${r.id === 'letter' ? ' rec-letter' : ''}" data-id="${r.id}"><summary><b>${esc(r.title)}</b>${nw}</summary><div class="rec-body">${body}</div></details>`;
+  }
   function showRecords() {
-    const st = UI.S.village.story, recs = D.STORY.records;
-    const html = recs.map((r, i) => i < st.records
-      ? `<details${i === st.records - 1 ? ' open' : ''}><summary><b>${esc(r.title)}</b></summary><p>${esc(r.text)}</p></details>`
-      : `<p class="note">？？？（章を進めると読める）</p>`).join('');
+    const V = UI.S.village, st = V.story, recs = D.STORY.records, open = G.openRecords(V).map((r) => r.id);
+    const html = '<div class="records">' + recs.map((r) => open.includes(r.id) ? recordHtml(r) : '<p class="note rec-lock">？？？（章を進めると読める）</p>').join('')
+      + (st.letter ? '<h3 class="rec-sep">ヤナイの手紙</h3>' + recordHtml(Object.assign({}, D.STORY.letter, { title: 'タケへ' })) : '') + '</div>';
     AU.startEventBgm('yanai');   // ヤナイの記録を読む間はヤナイのテーマ
-    modal({ title: 'マスターヤナイの記録', right: `${Math.min(st.records, recs.length)}/${recs.length}`, html, buttons: [{ label: '閉じる', cls: 'primary' }], onClose: () => AU.endEventBgm() });
+    const h = modal({ title: 'マスターヤナイの記録', right: `${open.length}/${recs.length}`, cls: 'records-modal', html, buttons: [{ label: '閉じる', cls: 'primary' }], onClose: () => AU.endEventBgm() });
+    h.el.querySelectorAll('details.rec').forEach((d) => d.addEventListener('toggle', () => {
+      if (!d.open || G.recordRead(V, d.dataset.id)) return;
+      G.markRecordRead(V, d.dataset.id); save(); const n = d.querySelector('.rec-new'); if (n) n.remove();
+    }));
   }
 
   // ================= 探索の終了 =================
@@ -2755,7 +2770,7 @@
   }
 
   // テスト用に一部を公開
-  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save, finalCutscene, openFinalPrep, showStoryPending, showRecords, updateVillageHud, statueTalk };
+  UI.debug = { handleRunOver, openDepart, depart, openItems, footAction, save, finalCutscene, openFinalPrep, showStoryPending, showRecords, updateVillageHud, statueTalk, tiwTalk: () => creatureTalk('tiw'), openDevelop };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(globalThis.TS = globalThis.TS || {});

@@ -424,3 +424,12 @@ details summary { cursor: pointer; margin: 4px 0; }
 .hint-list li { margin-bottom: 6px; }
 .help-more { margin: 4px 0; border-top: 1px solid rgba(255,255,255,.12); padding-top: 4px; }
 .help-more summary { cursor: pointer; font-weight: bold; color: var(--accent); padding: 4px 0; }
+/* ヤナイの記録（全8話の日記＋手紙）：スマホで読みやすい大きさと行間。1話ずつ折りたたむ */
+.records-modal .records { font-size: 16px; }
+.records details.rec { border-bottom: 1px solid rgba(255,255,255,.12); padding: 2px 0; }
+.records details.rec summary { padding: 8px 0; font-size: 17px; }
+.records .rec-body p { margin: 0 0 1em; line-height: 1.9; font-size: 16px; }
+.records .rec-new { display: inline-block; margin-left: 8px; padding: 0 6px; border-radius: 6px; background: #c0502a; color: #fff; font-size: 12px; vertical-align: 2px; }
+.records .rec-lock { margin: 10px 0; }
+.records .rec-sep { margin: 16px 0 2px; }
+.records .rec-letter .rec-body { background: rgba(255, 240, 200, .06); border-radius: 8px; padding: 10px 12px 2px; }

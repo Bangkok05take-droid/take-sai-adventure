@@ -36,7 +36,9 @@
       returnDone: flags(),        // 撃破後の帰還イベントが済んだか
       finalStage: 'none',         // 最終決戦の段階：none / battle1 / prep / battle2 / won
       endingDone: false,          // エンディングを見たか
-      records: 1,                 // 読めるマスターヤナイの記録の数
+      records: 1,                 // （旧）読めるマスターヤナイの記録の数。2026年11月6日からは G.openRecords が章の進み具合から決める（この値は使わない）
+      recordsRead: {},            // 読んだヤナイの記録（id → true）。読んでいない記録に「新」の印
+      letter: false,              // ヤナイの手紙を受け取ったか（全章クリアのあと、ティウから）
       seen: {},                   // 一度見た会話（2回目からスキップできる）
       pending: null,              // 村で見せる章のできごと（帰還イベント・エンディング）
       introDone: false,
@@ -2447,7 +2449,6 @@
     if (!C.final && ch === st.chapter && st.defeated[C.boss] && !st.returnDone[C.boss]) {
       if (!st.rewardClaimed[C.boss]) { st.rewardClaimed[C.boss] = true; V.funds += C.reward.funds; res.rewardFunds = C.reward.funds; }
       st.returnDone[C.boss] = true;
-      st.records = Math.max(st.records, st.chapter + 1);
       res.chapterClear = st.chapter;
       st.chapter++;
       st.pending = { type: 'chapterClear', chapter: res.chapterClear, funds: res.rewardFunds || 0 };
@@ -2456,7 +2457,6 @@
       res.finalClear = true;
       res.firstEnding = !st.endingDone;
       st.returnDone.truevearn = true;
-      st.records = D.STORY.records.length;
       st.finalStage = 'none';
       V.cleared = true; V.clears++;
       if (!st.endingDone) st.pending = { type: 'ending' };
@@ -2634,7 +2634,7 @@
   /* ---- オリハルコンと勇者の剣・盾（2026年10月21日） ----
    *  ティウ：30階の救援で持ち帰ったオリハルコンを、町で1回だけ渡す（V.story.oriTiw：'holding' → 'given'）
    *  コイ：オリハルコン（素材箱）を持って初めて話しかけると、上限なく鍛えられることを話す（1回だけ。V.story.koiOri）。強化そのものは鍛冶屋の画面で
-   *  モッチャン（こもれびの家）：お宝（展示室）を全部集め、村の飾りを全部作ったあと、勇者の剣を渡す（昔マスターヤナイが村に寄付した剣。V.story.heroSword）。1回だけ
+   *  モッチャン（こもれびの家）：お宝（展示室）を全部集め、村の飾りを全部作ったあと、勇者の剣を渡す（昔マスターヤナイが村に残した剣。V.story.heroSword）。1回だけ
    *    以前の版でコイに打ってもらった（V.story.heroForge）なら、もう持っているので渡さない
    *  ワーン：マスターヤナイの像があり、まだ受け取っていなければ勇者の盾を渡す（V.story.heroShield）。1回だけ
    *  剣・盾はバッグに入れる（いっぱいなら倉庫。倉庫もいっぱいでも、なくさないよう倉庫へ） */
@@ -2647,6 +2647,17 @@
     V.materials.orichalcum = (V.materials.orichalcum || 0) + D.ORICHALCUM.tiw;
     return { ok: true, n: D.ORICHALCUM.tiw };
   };
+  /* ヤナイの記録（2026年11月6日、全8話）：その章のボスを倒して村へ帰った（st.chapter が進んだ）ら開く。最初は ch 0 だけ。
+   * 進み具合から毎回決めるので、どの段階の古いセーブでも新しい解放表に合う（開いた数が減ることはない）。全章クリアでは全部 */
+  G.clearedChapters = (V) => { const st = V.story; return st.endingDone || V.cleared ? D.FINAL_CHAPTER : Math.max(0, (st.chapter || 1) - 1); };
+  G.openRecords = (V) => { const n = G.clearedChapters(V); return D.STORY.records.filter((r) => r.ch <= n); };
+  G.recordsOfChapter = (ch) => D.STORY.records.filter((r) => r.ch === ch);
+  G.recordRead = (V, id) => !!(V.story.recordsRead && V.story.recordsRead[id]);
+  G.markRecordRead = (V, id) => { V.story.recordsRead = V.story.recordsRead || {}; V.story.recordsRead[id] = true; };
+  G.unreadRecords = (V) => G.openRecords(V).filter((r) => !G.recordRead(V, r.id)).concat(V.story.letter && !G.recordRead(V, 'letter') ? [D.STORY.letter] : []);
+  // ヤナイの手紙：全章クリアのあと、町でティウに話しかけると1回だけ（オリハルコンを預けているときは、そちらが先）
+  G.canTakeLetter = (V) => !V.story.letter && !!V.story.endingDone && !G.canTakeTiwOri(V);
+  G.takeLetter = (V) => { if (!G.canTakeLetter(V)) return false; V.story.letter = true; return true; };
   G.canKoiOri = (V) => !V.story.koiOri && (V.smithLv || 0) >= 1 && (V.materials.orichalcum || 0) >= 1;
   G.markKoiOri = (V) => { V.story.koiOri = true; };
   // 勇者の剣の条件：展示室のお宝を全部、村の飾りを全部

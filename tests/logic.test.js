@@ -971,7 +971,7 @@ test('第1章：10階・14階にボスはいない。15階でクロコダイン�
   const res = G.finishRun(S);
   eq(res.chapterClear, 1); eq(S.village.story.chapter, 2); eq(S.village.funds, funds + res.gold + D.CHAPTERS[1].reward.funds);
   assert(S.village.story.rewardClaimed.croc && S.village.story.returnDone.croc);
-  eq(S.village.story.pending.type, 'chapterClear'); eq(S.village.story.records, 2);
+  eq(S.village.story.pending.type, 'chapterClear'); eq(G.openRecords(S.village).map((r) => r.id).join(), 'r1,r2');
   assert(!S.village.cleared);
 });
 test('次の章も1階から。第2章の20階はフレイザード。章の報酬は二重に受け取れない', () => {
@@ -1628,7 +1628,7 @@ test('最終決戦：バーンを倒すと準備（回復は1回だけ・時間�
   L2.run.player.x = L2.run.portal.x; L2.run.player.y = L2.run.portal.y; G.act(L2, { type: 'returnHome' });
   const res = G.finishRun(L2);
   assert(res.finalClear && res.firstEnding); assert(L2.village.story.endingDone && L2.village.cleared); eq(L2.village.story.pending.type, 'ending');
-  eq(L2.village.story.records, D.STORY.records.length);
+  eq(G.openRecords(L2.village).length, D.STORY.records.length); assert(!L2.village.story.letter && G.canTakeLetter(L2.village));
   // クリア後も探索・村の発展を続けられる（新しい探索は版3。どちらのボスも出ない）
   assert(departWithScroll(L2, 271).ok); eq(L2.run.chapter, 6); assert(L2.run.final.skip.vearn && L2.run.final.skip.truevearn);
 });
@@ -4097,6 +4097,29 @@ test('大魔王のローブ：装備している間、毒・闇の糸の拘束�
   const mist = G.makeEnemy(run, 'mist', p.x + 2, p.y); run.enemies.push(mist);
   const hp0 = p.hp; G.BOSS_RESOLVE.bind(S, mist, [], { tiles: [{ x: p.x, y: p.y }], mult: 1 }, G._H);
   eq(p.bound, 0, 'not bound'); assert(p.hp < hp0, 'damage still');
+});
+
+test('ヤナイの記録（2026年11月6日・全8話）：最初は記録一だけ。クロコダイン→二、フレイザード→三、キルバーン→四（バラン戦の前）、バラン→五、ミストバーン→六・七・八。後の話だけ先に開かない・古いセーブも進み具合で開く・手紙は全章クリア後にティウから1回', () => {
+  const recs = D.STORY.records;
+  eq(recs.length, 8); eq(recs.map((r) => r.ch).join(), '0,1,2,3,4,5,5,5');
+  for (let i = 1; i < recs.length; i++) assert(recs[i].ch >= recs[i - 1].ch, 'order');
+  eq(recs[3].title, '記録四　遠い街から');
+  const S = G.newState(), V = S.village, st = V.story;
+  const ids = () => G.openRecords(V).map((r) => r.id).join();
+  eq(ids(), 'r1');
+  const want = { 2: 'r1,r2', 3: 'r1,r2,r3', 4: 'r1,r2,r3,r4', 5: 'r1,r2,r3,r4,r5', 6: 'r1,r2,r3,r4,r5,r6,r7,r8' };
+  for (const ch of [2, 3, 4, 5, 6]) { st.chapter = ch; eq(ids(), want[ch], 'chapter ' + ch); }
+  // 古いセーブ（records の数だけ持っていた）：数は見ない。章の進み具合で開く。読んだ印が無くても動く
+  const old = G.newState(); old.village.story.chapter = 4; old.village.story.records = 4; delete old.village.story.recordsRead; delete old.village.story.letter;
+  eq(G.openRecords(old.village).length, 4); eq(G.unreadRecords(old.village).length, 4); assert(!G.canTakeLetter(old.village));
+  // 読んだ印
+  G.markRecordRead(old.village, 'r4'); assert(G.recordRead(old.village, 'r4')); eq(G.unreadRecords(old.village).length, 3);
+  // 手紙：全章クリアのあとだけ。オリハルコンを預けているときはそちらが先。1回だけ
+  st.chapter = 6; assert(!G.canTakeLetter(V)); st.endingDone = true; st.oriTiw = 'holding'; assert(!G.canTakeLetter(V));
+  st.oriTiw = 'given'; assert(G.takeLetter(V)); assert(st.letter && !G.takeLetter(V));
+  assert(G.unreadRecords(V).some((r) => r.id === 'letter'));
+  // 保存して読み込んでも残る
+  const L = TS.Save.deserialize(TS.Save.serialize(S)); assert(L.village.story.letter); eq(G.openRecords(L.village).length, 8);
 });
 
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
