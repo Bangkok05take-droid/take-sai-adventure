@@ -1846,7 +1846,7 @@
     const run = S.run, A = run.bossFight, p = run.player;
     if (!A || A.engaged || A.intro === 'pending' || !G.inArena(run, p.x, p.y)) return;
     const boss = run.enemies.find((e) => e.boss), id = boss ? boss.type : null, st = S.village.story;
-    if (id && D.BOSS_INTROS && D.BOSS_INTROS[id] && A.intro !== 'done' && !G.introSeen(S, id)) {
+    if (id && D.BOSS_INTROS && D.BOSS_INTROS[id] && A.intro !== 'done' && (!G.introSeen(S, id) || (D.INTRO_EVERY_TIME && D.INTRO_EVERY_TIME[id]))) {
       A.intro = 'pending';
       ev.push({ t: 'bossIntro', boss: id });
       return;

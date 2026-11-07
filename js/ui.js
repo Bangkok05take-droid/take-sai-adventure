@@ -1661,7 +1661,7 @@
   const introMovie = (id) => { const M = TS.ASSETS && TS.ASSETS.movies, n = id && D.BOSS_INTROS && D.BOSS_INTROS[id]; return (M && n && M[n]) || null; };
   function prepareBossIntro(id) {
     const m = introMovie(id), st = UI.S.village.story;
-    if (!m || G.introSeen(UI.S, id) || (UI.moviePre && UI.moviePre.id === id)) return;
+    if (!m || (G.introSeen(UI.S, id) && !(D.INTRO_EVERY_TIME && D.INTRO_EVERY_TIME[id])) || (UI.moviePre && UI.moviePre.id === id)) return;
     try { const v = document.createElement('video'); v.preload = 'auto'; v.muted = true; v.setAttribute('playsinline', ''); v.poster = m.poster; v.src = m.video; UI.moviePre = { id, v }; } catch (e) { UI.moviePre = null; }
   }
   function playBossIntro(id) {

@@ -13,13 +13,16 @@
   // vearn：最終章30階の大魔王バーン（2026年10月、名前テロップ入り完成版の動画で追加）
   // truevearn：最終章33階の真大魔王バーン（2026年10月、正式採用の動画 9667.mp4。老バーンとミストバーンが白い異空間で融合して覚醒する）。
   //   この動画だけは、ボス部屋に入ったときではなく、32階から33階へ着いた直後に流す（D.BOSS_ARRIVAL）
-  D.BOSS_INTROS = { croc: 'crocodine', flame: 'flazzard', kill: 'killvearn', baran: 'baran', mist: 'mistvearn', vearn: 'vearn', truevearn: 'trueVearnAwaken' };
+  D.BOSS_INTROS = { croc: 'crocodine', flame: 'flazzard', kill: 'killvearn', baran: 'baran', mist: 'mistvearn', vearn: 'vearn', truevearn: 'trueVearnAwaken', dragonbaran: 'dragonGodIntro' };
+  /* 登場ムービーを、見たことがあってもボス部屋に入るたびに流すボス（スキップできる）。2026年11月7日：竜魔神バラン（隠しダンジョン35階）は、
+   * 35階に着いたときではなく、部屋に入ってバランと対面したときに流す（ムービーのあと戦い。ほかのボスの登場ムービーと同じ流れ） */
+  D.INTRO_EVERY_TIME = { dragonbaran: true };
   /* 階に着いた直後に戦いが始まるボス（歩いてボス部屋に入る必要がない）。着いたら、たけをボス部屋の中（入口から3マス）に置き、
    * 登場ムービーをまだ見ていなければムービー → 戦い。見たことがあれば、着いたらすぐ戦い（G.arriveBossFloor） */
   D.BOSS_ARRIVAL = { truevearn: true };
   /* 階に着くたびに流すムービー（ボスID → TS.ASSETS.movies の名前）。見たことがあっても毎回流す（スキップできる）。戦いはいつもどおりボス部屋に入ってから。
    * 2026年10月28日：竜魔神バラン（隠しダンジョン35階） */
-  D.ARRIVAL_MOVIES = { dragonbaran: 'dragonGodIntro' };
+  D.ARRIVAL_MOVIES = {};   // 2026年11月7日：竜魔神バランは部屋に入ったとき（D.INTRO_EVERY_TIME）へ移したので、いまは無し
   /* ボスとの再戦（2026年10月29日）：大魔王バーンを倒すと、こもれびの家で「たけの日記」が開き、倒したボスと何度でも戦える。
    *  bosses：日記に載せる順。vearn は大魔王バーン（30階）と真大魔王バーン（33階）のセット（真大魔王バーンを倒したあとに選べる）。竜魔神バランは選べない
    *  そのボスの章のダンジョンを1階から（大魔王のローブなら21階から。ボスの階が21階より深い章だけ）。帰還の巻物を持っていける

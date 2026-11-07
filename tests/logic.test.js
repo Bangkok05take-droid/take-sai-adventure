@@ -2078,14 +2078,21 @@ test('隠しダンジョン：真大魔王バーン撃破後、30階の亀裂か
     }
     seen.push(run.floor);
     const rd = goDown(S);
-    // 35階に着くたびに登場ムービー（D.ARRIVAL_MOVIES）。ほかの階では流さない
-    eq(rd.events.filter((e) => e.t === 'arrivalMovie').map((e) => e.key).join(), run.floor === 35 ? 'dragonGodIntro' : '', 'arrival movie on ' + run.floor);
+    // 2026年11月7日：着いたときには流さない（竜魔神バランの登場ムービーは部屋に入ったとき）
+    eq(rd.events.filter((e) => e.t === 'arrivalMovie').length, 0, 'no arrival movie on ' + run.floor);
   }
   eq(seen.join(), '31,32,33,34');
   assert(!run.bossFight.engaged && run.bossFight.intro !== 'pending', 'the fight still starts in the boss room');
   // 35階：竜魔神バラン（ボス部屋は本編と同じ大きさ。部屋の数の倍率は使わない）。帰還の祠なし。倒すと帰還口
   eq(run.floor, 35); const b = run.enemies.find((e) => e.boss); eq(b && b.type, 'dragonbaran'); assert(!run.returnPoint);
   eq(run.bossFight.w * run.bossFight.h, 15 * 15, 'normal arena'); eq(run.map.w + 'x' + run.map.h, D.MAP.w + 'x' + D.MAP.h);
+  // 2026年11月7日：登場ムービーは部屋に入ってバランと対面したとき。見たことがあっても毎回（そのあと戦い）
+  { S.village.story.introSeen = Object.assign({}, S.village.story.introSeen, { [D.introSeenKey('dragonbaran')]: true });
+    const A = run.bossFight, px = run.player.x, py = run.player.y; assert(!G.inArena(run, px, py), 'outside first');
+    run.player.x = A.x + (A.w >> 1); run.player.y = A.y + A.h - 2; G.updateVision(run);
+    const ev = []; G.checkBossRoom(S, ev);
+    assert(ev.some((e) => e.t === 'bossIntro' && e.boss === 'dragonbaran') && A.intro === 'pending' && !A.engaged, 'intro on entering the room');
+    G.finishBossIntro(S); assert(A.engaged, 'fight after the movie'); }
   // 報酬はドラゴニックオーラの盾だけ（2026年10月23日）：盾が倉庫にあれば出さない（真魔剛竜剣・竜の紋章は報酬ではない）
   run.bag = run.bag.filter((i) => i.id !== 'shinma_sword' && i.id !== 'dragonic_shield' && i.id !== 'dragon_crest');
   S.village.storage = S.village.storage.filter((i) => !['shinma_sword', 'dragonic_shield', 'dragon_crest'].includes(i.id));
@@ -3036,7 +3043,7 @@ test('通常バラン戦：前室を足した版（D.BARAN_ROOM_EXT、確認用�
 });
 console.log('クロコダインの登場ムービー（2026年10月）');
 test('登場ムービー：クロコダイン（フレイザード・バランも同じ仕組み）。初めての入室で pending（戦いはまだ・ターンは入室の1回だけ）→ 終わりで1回だけ開始。保存・読み込み直し・次の探索', () => {
-  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'kill', 'baran', 'mist', 'vearn', 'truevearn']));
+  eq(JSON.stringify(Object.keys(D.BOSS_INTROS)), JSON.stringify(['croc', 'flame', 'kill', 'baran', 'mist', 'vearn', 'truevearn', 'dragonbaran']));   // 2026年11月7日：竜魔神バラン（部屋に入るたびに流す。D.INTRO_EVERY_TIME）
   const S = toBossFloor(1, 1401), run = S.run, A = run.bossFight, b = run.enemies.find((e) => e.boss);
   const door = doorOutside(run); run.player.x = door.x; run.player.y = door.y; G.updateVision(run);
   const t0 = run.turn, pos = [b.x, b.y, b.hp];

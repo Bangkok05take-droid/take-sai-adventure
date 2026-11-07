@@ -1,5 +1,5 @@
 // 竜魔神バランの画面確認：node tools/dragon-god-baran-check.js [リポジトリ] [出力フォルダ]（幅360・390・430。390は画像と録画も）
-// 隠しダンジョンの34階から階段で35階へ → 登場ムービー（着くたびに毎回）→ ボス部屋で戦う。
+// 隠しダンジョンの34階から階段で35階へ（着いたときはムービーなし）→ ボス部屋に入ってバランと対面すると登場ムービー（毎回）→ 戦う。
 // 確かめること：絵（待機・ドルオーラの構え・剣を頭上に・突進）と技の演出の絵が読める／技の予告と発動／演出の秒数でターンが増えない／エラーなし
 // 画像（shot_*）は見やすいよう、演出の時間だけを一時的に長くして撮る（slow）。録画（rec）はふだんの速さ
 const { chromium } = (() => { try { return require('playwright'); } catch (e) { return require('/opt/node22/lib/node_modules/playwright'); } })();
@@ -31,24 +31,25 @@ let ok = 0, ng = 0; const chk = (c, m) => { if (c) ok++; else ng++; console.log(
       const q = S.run; q.player.hp = q.player.maxhp = 5000; q.player.lvl = 40; q.enemies = []; q.player.x = q.stairs.x; q.player.y = q.stairs.y; G.updateVision(q); TS.Save.save(S); });
     await p.reload(); await p.waitForTimeout(600); await p.tap('#btn-continue'); await p.waitForTimeout(900); await closeAll(); await p.waitForTimeout(300);
     chk(await p.evaluate(() => TS.UI.S.run.hidden && TS.UI.S.run.floor === 34), `${w} 隠しダンジョン34階`);
-    // 35階へ：着いたら登場ムービー（毎回）。2回試す（34階のセーブに戻して、もう一度降りる。見たことがあっても流れる）
+    // 35階へ：着いたときはムービーなし。部屋に入ってバランと対面したら登場ムービー（毎回）→ スキップで戦い。2回試す（34階のセーブに戻して、もう一度。見たことがあっても流れる）
     const save34 = await p.evaluate(() => JSON.stringify(Object.assign({}, localStorage)));
     for (let k = 0; k < 2; k++) {
       if (k) { await p.evaluate((sv) => { localStorage.clear(); for (const [a, v] of Object.entries(JSON.parse(sv))) localStorage.setItem(a, v); }, save34);
-        await p.evaluate(() => { const S = TS.UI.S; }); await p.reload(); await p.waitForTimeout(600); await p.tap('#btn-continue'); await p.waitForTimeout(900); await closeAll(); }
+        await p.reload(); await p.waitForTimeout(600); await p.tap('#btn-continue'); await p.waitForTimeout(900); await closeAll(); }
       await p.evaluate(() => { const r = TS.UI.S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'descend' }); });
       await p.waitForTimeout(1500);
-      const m = await p.evaluate(() => ({ floor: TS.UI.S.run.floor, movie: TS.UI.movie && TS.UI.movie.id, video: !!document.querySelector('.movie video'), src: (document.querySelector('.movie video') || {}).src || '', seen: !!(TS.UI.S.village.story.moviesSeen || {}).dragonGodIntro }));
-      chk(m.floor === 35 && m.movie === 'dragonGodIntro' && m.video && m.src.includes('dragon-god-baran-intro'), `${w} 35階に着くと登場ムービー（${k + 1}回目） ${JSON.stringify(m)}`);
+      chk(await p.evaluate(() => TS.UI.S.run.floor === 35 && !TS.UI.movie && !document.querySelector('.movie')), `${w} 35階に着いたときはムービーなし（${k + 1}回目）`);
+      await closeAll();
+      // 部屋の中へ（次の行動の前に入室の判定）→ 登場ムービー
+      await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game, A = r.bossFight; r.player.x = A.x + (A.w >> 1); r.player.y = A.y + A.h - 2; G.updateVision(r); TS.UI.lockUntil = 0; TS.UI.doAct({ type: 'wait' }); });
+      await p.waitForTimeout(1500);
+      const m = await p.evaluate(() => ({ movie: TS.UI.movie && TS.UI.movie.id, video: !!document.querySelector('.movie video'), src: (document.querySelector('.movie video') || {}).src || '', engaged: !!TS.UI.S.run.bossFight.engaged }));
+      chk(m.movie === 'dragonbaran' && m.video && m.src.includes('dragon-god-baran-intro') && !m.engaged, `${w} 部屋に入ってバランと対面すると登場ムービー（${k + 1}回目） ${JSON.stringify(m)}`);
       if (main && !k) { await p.waitForTimeout(2500); await shot('0_movie'); }
       await p.evaluate(() => { const s = document.querySelector('.movie-skip'); if (s) s.click(); }); await p.waitForTimeout(1600);
-      chk(await p.evaluate(() => !TS.UI.movie && !document.querySelector('.movie') && !TS.UI.S.run.bossFight.engaged), `${w} スキップで戻る・戦いはまだ（${k + 1}回目）`);
+      chk(await p.evaluate(() => !TS.UI.movie && !document.querySelector('.movie') && TS.UI.S.run.bossFight.engaged), `${w} スキップで戦いが始まる（${k + 1}回目）`);
     }
     await closeAll();
-    // ボス部屋に入って戦いを始める
-    await p.evaluate(() => { const S = TS.UI.S, r = S.run, G = TS.Game, A = r.bossFight; r.player.x = A.x + (A.w >> 1); r.player.y = A.y + A.h - 2; G.updateVision(r); G.checkBossRoom(S, []); TS.UI.lockUntil = 0; });
-    await p.waitForTimeout(500); await closeAll();
-    chk(await p.evaluate(() => !!TS.UI.S.run.bossFight.engaged), `${w} 戦いが始まる（ムービーはボス部屋では流れない）`);
     const art = await p.evaluate(() => { const SP = TS.Sprites, P = SP.art.bossPoses.dragonbaran || {}, F = SP.art.fx; const fx = Object.keys(F).filter((k) => k.startsWith('db_') && F[k]); return { idle: !!(SP.art.bosses.dragonbaran && SP.art.bosses.dragonbaran.logical === 96), poses: ['doruora', 'sword', 'dash', 'dashL'].filter((k) => P[k]).join(), fx: fx.length }; });
     chk(art.idle && art.poses === 'doruora,sword,dash,dashL' && art.fx === 12, `${w} 絵と演出の絵 ${JSON.stringify(art)}`);
     // 場面の用意：バランを広間の中央に、たけを決めた所に。mode：doruora・giga・gigaPush・dora

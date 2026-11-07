@@ -141,7 +141,7 @@
       baranTaken: { video: 'assets/movies/baran-taken.mp4', poster: 'assets/movies/baran-taken-poster.jpg' },
       // 大魔王バーン（版3の30階）の撃破後ムービー（2026年10月、完成動画。ミストバーンが黒紫の煙でバーンを包み、時の裂け目へ連れ去る。720×1280・10秒・H.264＋AAC。再エンコードなし）
       vearnTaken: { video: 'assets/movies/vearn-taken.mp4', poster: 'assets/movies/vearn-taken-poster.jpg' },
-      // 竜魔神バランの登場（ZIP baran-images-v2 の動画をそのまま。再生を早く始められるよう情報の位置だけ前へ）。隠しダンジョン35階に着くたびに流す（D.ARRIVAL_MOVIES）
+      // 竜魔神バランの登場（ZIP baran-images-v2 の動画をそのまま。再生を早く始められるよう情報の位置だけ前へ）。隠しダンジョン35階で、部屋に入ってバランと対面するたびに流す（D.INTRO_EVERY_TIME）
       dragonGodIntro: { video: 'assets/movies/dragon-god-baran-intro.mp4', poster: 'assets/movies/dragon-god-baran-poster.jpg' } },
     /* 村の素材（assets/village/、2026年10月「サイの店〜ヤナイ像の広場」）。寸法と足元の位置は assets/village/manifest.json。
      * 建物・小物（店・像・木・花壇・屋台・ベンチ）は、見本の細かさが村のマスより細かいので 2/3 の大きさで描く（1マス32ドット）。
