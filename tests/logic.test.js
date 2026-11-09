@@ -4162,5 +4162,22 @@ test('攻撃ボタン（2026年11月）：向いている方へ攻撃。敵が�
   const h = e.hp; let tries = 0; while (e.hp === h && tries++ < 10) G.act(S, { type: 'move', dir: 'right' });
   assert(e.hp < h && p.x === x0, 'move-attack still works');
 });
+test('レベルの上限は99（2026年11月9日。以前は45）：45から先も経験値で上がり、最大HP・攻撃も伸びる。99で止まる', () => {
+  eq(D.EXP_TABLE.length - 1, 99);
+  for (let n = 2; n <= 99; n++) assert(D.EXP_TABLE[n] > D.EXP_TABLE[n - 1], 'increasing ' + n);
+  const S = newRun(4545), run = S.run, p = run.player;
+  p.lvl = 45; p.exp = D.EXP_TABLE[45]; p.maxhp = p.hp = G.maxHpFor(45, run); const a45 = G.playerAtk(run);
+  G.act(S, { type: 'wait' }); run.player.exp = D.EXP_TABLE[46] - 1;
+  const e = G.makeEnemy(run, 'frog', 0, 0); e.exp = 5; run.enemies = []; 
+  p.exp = D.EXP_TABLE[46]; p.lvl = 45;
+  // 経験値が足りたら46へ（gainExp は敵を倒したときと同じ処理）
+  run.enemies.push(Object.assign(e, { x: p.x + 1, y: p.y, hp: 1, maxhp: 1, def: 0, sleep: 99 })); G.updateVision(run);
+  for (let i = 0; i < 20 && run.enemies.includes(e); i++) G.act(S, { type: 'attack', dir: 'right' });
+  assert(p.lvl >= 46 && p.maxhp > G.maxHpFor(45, run) && G.playerAtk(run) > a45, 'level 46: ' + p.lvl);
+  p.lvl = 99; p.exp = D.EXP_TABLE[99] + 999999;
+  const e2 = G.makeEnemy(run, 'frog', 0, 0); run.enemies.push(Object.assign(e2, { x: p.x + 1, y: p.y, hp: 1, maxhp: 1, def: 0, sleep: 99 })); G.updateVision(run);
+  for (let i = 0; i < 20 && run.enemies.includes(e2); i++) G.act(S, { type: 'attack', dir: 'right' });
+  eq(p.lvl, 99, 'stops at 99');
+});
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);
