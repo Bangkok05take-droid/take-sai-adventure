@@ -1378,7 +1378,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#b-menu'); await p.waitForTimeout(150);
       await p.tap('.modal-buttons button >> text=音楽試聴・音量'); await p.waitForTimeout(200);
       const listed = await p.evaluate(() => [...document.querySelectorAll('[data-play]')].map((b) => b.dataset.play).join());
-      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,sealedEvil,crimsonThrone,fanfare,village,cursedCastle,dungeon,boss,fanfare_v1,yanai_v1', 'songs listed');
+      eq2(listed, 'overture,yanai,villageTheme,stoneLabyrinth,sunkenTemple,sealedEvil,crimsonThrone,fanfare,yanai2,village,cursedCastle,dungeon,boss,fanfare_v1,yanai_v1', 'songs listed');
       assert(await p.isVisible('text=第1版（比較用）'), 'old versions labelled');
       assert(await p.evaluate(() => TS.Audio.bgmHold && !TS.Audio.bgmTimer), 'scene bgm paused');
       await shot('48_music_room');
@@ -1397,7 +1397,7 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
       await p.tap('#m-stop'); await p.waitForTimeout(200);
       assert(await p.evaluate(() => !TS.Music.current && document.getElementById('m-now').textContent === '停止中'), 'stopped');
       // ループのつなぎ目：ループする3曲それぞれ、1周目の終わりの8拍前から → つなぎ目を越えて2周目（ループの頭）へ戻る
-      for (const id of ['yanai', 'village', 'dungeon']) {
+      for (const id of ['yanai2', 'village', 'dungeon']) {   // 合成の曲（ヤナイのテーマは11月10日から録音。以前の合成の曲 yanai2 で確かめる）
         await p.waitForTimeout(300);
         const inf = await p.evaluate((id) => TS.Music.info(id), id);
         const wait = (8 * 60 / inf.bpm + 1.2) * 1000;

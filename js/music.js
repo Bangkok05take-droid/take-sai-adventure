@@ -704,7 +704,11 @@
     // タイトルの音楽（2026年11月2日：届いた録音「Rising Kingdom Overture」。元のWAVは assets/reference/music/。ゲームはMP3 192kbps。約30秒・終わりは自然に消える・ループなし）
     overture: { title: 'タイトルの音楽', group: 'new', note: 'Rising Kingdom Overture（録音・約30秒・ループなし）', file: 'assets/music/rising-kingdom-overture.mp3', seconds: 30 },
     fanfare: { title: '冒険のファンファーレ', group: 'old', note: '以前のタイトル曲（第2版。比較用）', build: fanfare2 },
-    yanai: { title: 'マスターヤナイのテーマ', group: 'new', note: '第2版・英雄のテーマ（主題Aからループ）', build: yanai2 },
+    // マスターヤナイのテーマ（2026年11月10日：届いた録音「FULL_MIX」に差し替え。元の音源は assets/reference/music/yanai-theme-full-mix.mp3）。
+    //  約37秒。最後は音がぷつっと切れているので、36.57秒で切って最後の40ミリ秒だけ消していき、頭の4ミリ秒もなじませて頭へつなぐ。
+    //  前後0.5秒の余白つきで書き出し（tools/make-loop-mp3.py）、0.5〜37.07秒をループする。冒頭・ヤナイの記録・記念像で流れる
+    yanai: { title: 'マスターヤナイのテーマ', group: 'new', note: '録音・約37秒・ループ', file: 'assets/music/yanai-theme.mp3', seconds: 36.57, loop: true, loopStart: 0.5, loopEnd: 37.07 },
+    yanai2: { title: 'マスターヤナイのテーマ', group: 'old', note: '以前の曲（第2版・比較用）', build: yanai2 },
     // 村の音楽（2026年11月2日：届いた録音「Whimsical Village Theme」。約37秒の曲を最後まで流して頭に戻る（曲の終わりは音が消えて0.4秒ほど静か））
     villageTheme: { title: '村の音楽', group: 'new', note: 'Whimsical Village Theme（録音・約37秒・ループ）', file: 'assets/music/whimsical-village-theme.mp3', seconds: 37, loop: true },
     village: { title: '村の音楽', group: 'old', note: '以前の村の曲（お祭りのにぎわい。比較用）', build: village },
