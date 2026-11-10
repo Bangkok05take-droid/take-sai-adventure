@@ -679,9 +679,14 @@
     else creatureTalk(kind, id);
   }
   UI.approachCreature = approach;
+  /* 記念像：名札（台詞なし）と「ヤナイの記録を読む」（2026年11月10日）。曲はヤナイのテーマのまま記録へ（流し直さない）。閉じたら村の曲へ */
   function statueTalk() {
-    AU.startEventBgm('yanai');   // 記念像はヤナイのテーマで。閉じたら村の曲へ。台詞はなし（名札だけ）
-    talk([['narration', D.STORY.statue]], () => AU.endEventBgm(), { skip: false });
+    AU.startEventBgm('yanai');
+    let toRecords = false;
+    const unread = G.unreadRecords(UI.S.village).length;
+    modal({ html: `<div class="talk narration"><img alt="" style="display:none"><div><div class="who"></div><div class="txt">${esc(D.STORY.statue)}</div></div></div>`,
+      buttons: [{ label: 'ヤナイの記録を読む' + (unread ? '（新）' : ''), onClick: () => { toRecords = true; setTimeout(showRecords, 0); } }, { label: '閉じる', cls: 'primary' }],
+      onClose: () => { if (!toRecords) AU.endEventBgm(); } });
   }
   function updateVillageHud() {
     const V = UI.S.village;
