@@ -51,6 +51,7 @@
     document.addEventListener('keyup', onKeyUp);
     showTitle();
     AU.tryAutoplay();   // 操作なしで鳴らせるブラウザなら、タイトルのファンファーレをすぐ鳴らす
+    setupTitleGate();   // 鳴らせないとき（ほとんどのスマホ）：「画面をタップしてはじめる」を全面に。タップで音楽が始まる
     updateTitleHint();
     requestAnimationFrame(loop);
   }
@@ -423,11 +424,37 @@
     showScreen('title');
     updateTitleHint();
   }
-  /* 「タップで音楽を再生」：音がオンで、タイトルのファンファーレがまだ鳴っていないときだけ控えめに出す */
+  /* 「タップで音楽を再生」：音がオンで、タイトルのファンファーレがまだ鳴っていないときだけ控えめに出す（はじめの1タップの画面が出ている間は出さない） */
   function updateTitleHint() {
-    const h = $('title-sound-hint');
+    const h = $('title-sound-hint'), g = $('title-gate');
     if (!h || !UI.S) return;
-    h.hidden = !(UI.screen === 'title' && UI.S.settings.sound && !AU.fanfareDone);
+    // 音が鳴らせるようになった・音をオフにした・タイトルを離れた：はじめの1タップの画面は閉じる
+    if (g && !g.hidden && (!UI.S.settings.sound || UI.screen !== 'title' || (AU.ctx && AU.ctx.state === 'running'))) closeTitleGate();
+    h.hidden = !(UI.screen === 'title' && UI.S.settings.sound && !AU.fanfareDone) || !!(g && !g.hidden);
+  }
+  /* はじめの1タップ（2026年11月10日）：タイトルの曲をみんなに聞いてもらうため、最初から流す。
+   * ただしスマホのブラウザは、利用者が触る前に音を出させない（自動再生の制限）。そこで音がオンで鳴らせないときだけ、
+   * タイトルの上に「画面をタップしてはじめる」を全面に出し、そのタップで音楽を始めて閉じる（ボタンを押す前に必ず曲が流れる）。
+   * 鳴らせるブラウザ（PCなど）や音オフのときは出さない */
+  function setupTitleGate() {
+    const g = $('title-gate');
+    if (!g) return;
+    // 自動テスト（ブラウザを自動で動かしているとき）は出さない。案内そのものを確かめるテストだけ window.__titleGate で出す
+    const auto = navigator.webdriver && !window.__titleGate;
+    const open = !auto && UI.S.settings.sound && AU.enabled && !(AU.ctx && AU.ctx.state === 'running');
+    g.hidden = !open;
+    $('screen-title').classList.toggle('gated', open);   // 案内の間はボタンを隠す（最初のタップはボタンではなく音楽の開始）
+    if (!open) return;
+    const go = (e) => { e.preventDefault(); AU.titleQuiet = false; AU.unlock(); closeTitleGate(); };
+    g.addEventListener('click', go);
+    updateTitleHint();
+  }
+  function closeTitleGate() {
+    const g = $('title-gate');
+    if (!g || g.hidden || g.classList.contains('closing')) return;
+    g.classList.add('closing');
+    $('screen-title').classList.remove('gated');
+    setTimeout(() => { g.hidden = true; g.classList.remove('closing'); updateTitleHint(); }, 260);
   }
   function applyVolumes() {
     const st = UI.S.settings;

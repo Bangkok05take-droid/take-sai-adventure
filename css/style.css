@@ -444,3 +444,16 @@ details summary { cursor: pointer; margin: 4px 0; }
 .name-modal .nm-err { color: #ff9a8a; }
 .name-modal .nm-count { margin-left: auto; opacity: .75; }
 .name-modal .nm-field.bad input { border-color: #ff8a7a; }
+/* はじめの1タップ（タイトルの上に全面。タップで音楽が始まって消える） */
+.title-gate { position: fixed; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  padding: 0 16px calc(18vh + env(safe-area-inset-bottom)); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(rgba(5, 12, 10, 0) 35%, rgba(5, 12, 10, 0.55) 62%, rgba(5, 12, 10, 0.85)); transition: opacity .25s ease; }
+.title-gate[hidden] { display: none; }
+.title-gate.closing { opacity: 0; pointer-events: none; }
+.title-gate p { margin: 0; font-size: clamp(20px, 6vw, 28px); font-weight: bold; letter-spacing: 2px; color: #fff4d0;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .8); animation: gate-blink 1.6s ease-in-out infinite; }
+.title-gate small { margin-top: 8px; font-size: 15px; color: #e8d9a8; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
+@keyframes gate-blink { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .title-gate p { animation: none; } }
+#screen-title .title-buttons { transition: opacity .3s ease; }
+#screen-title.gated .title-buttons { opacity: 0; pointer-events: none; }

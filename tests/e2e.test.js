@@ -224,11 +224,12 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
     eq2(JSON.stringify(c1), JSON.stringify(c0), 'no duplicates after rebuild');
   });
 
-  await test('タイトルのファンファーレ（自動再生できないスマホ）：案内を表示→背景のタップで1回だけ再生。はじめから・つづきからは1タップで進み、曲が重ならない。音オフは勝手にオンにしない', async () => {
+  await test('タイトルのファンファーレ（自動再生できないスマホ）：「画面をタップしてはじめる」→どこをタップしても1回だけ再生。はじめから・つづきからは1タップで進み、曲が重ならない。音オフは勝手にオンにしない', async () => {
     const strict = await chromium.launch({ args: ['--autoplay-policy=document-user-activation-required'] });
     try {
       const open = async (save) => {
         const c = await strict.newContext(phone), q = await c.newPage();
+        await q.addInitScript(() => { window.__titleGate = true; });   // はじめの1タップの案内を出す（自動テストでは、ふだんは出さない）
         q.on('pageerror', (e) => errors.push(e.message));
         await q.addInitScript(() => { window.__plays = []; const iv = setInterval(() => { if (window.TS && TS.Music && !TS.Music.__w) { const o = TS.Music.play; TS.Music.play = function (id) { window.__plays.push(id); return o.apply(this, arguments); }; TS.Music.__w = 1; clearInterval(iv); } }, 2); });
         await q.goto(URL);
@@ -236,27 +237,31 @@ function eq2(a, b, m) { if (a !== b) throw new Error((m || 'eq') + ': ' + JSON.s
         await q.waitForTimeout(700);
         return { c, q };
       };
-      const st = (q) => q.evaluate(() => ({ ctx: TS.Audio.ctx && TS.Audio.ctx.state, cur: TS.Music.current && TS.Music.current.id, screen: TS.UI.screen, hint: !document.getElementById('title-sound-hint').hidden, plays: window.__plays.slice(), sound: TS.UI.S.settings.sound }));
+      const st = (q) => q.evaluate(() => ({ ctx: TS.Audio.ctx && TS.Audio.ctx.state, cur: TS.Music.current && TS.Music.current.id, screen: TS.UI.screen, hint: !document.getElementById('title-sound-hint').hidden, gate: !document.getElementById('title-gate').hidden, plays: window.__plays.slice(), sound: TS.UI.S.settings.sound }));
       const tapBg = async (q) => { const r = await q.evaluate(() => { const b = document.getElementById('title-scene').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height * 0.3 }; }); await q.touchscreen.tap(r.x, r.y); await q.waitForTimeout(600); };
-      // 初回表示：自動再生は止められる → 案内 → 背景（ロゴの下）をタップで1回だけ
+      // 初回表示：自動再生は止められる →「画面をタップしてはじめる」を全面に（2026年11月10日）→ どこをタップしても1回だけ流れ、消える
       let { c, q } = await open();
       let s = await st(q);
-      assert(s.ctx === 'suspended' && s.hint && !s.plays.length, 'blocked + hint ' + JSON.stringify(s));
+      assert(s.ctx === 'suspended' && s.gate && !s.hint && !s.plays.length, 'blocked + gate ' + JSON.stringify(s));
       await tapBg(q); s = await st(q);
-      assert(s.cur === 'overture' && !s.hint && s.plays.filter((x) => x === 'overture').length === 1, 'fanfare after tap ' + JSON.stringify(s));
+      assert(s.cur === 'overture' && !s.hint && !s.gate && s.plays.filter((x) => x === 'overture').length === 1, 'fanfare after tap ' + JSON.stringify(s));
       await tapBg(q); s = await st(q); eq2(s.plays.filter((x) => x === 'overture').length, 1, 'only once');
       await q.tap('#btn-newgame'); await q.waitForTimeout(300); await q.tap('.name-modal .modal-buttons button.primary'); await q.waitForTimeout(500); s = await st(q);   // 名前の入力（初期値のまま）
       assert(s.screen === 'village' && s.cur === 'yanai', 'newgame goes on, one song ' + JSON.stringify(s));
       await c.close();
-      // 最初のタップが「つづきから」：待たせずに村へ、ファンファーレは始めない。保存したBGM音量
+      // セーブがあっても、はじめの1タップでタイトルの曲 → つづきから：村の曲に切りかわる（重ならない）。保存したBGM音量
       ({ c, q } = await open({ sound: true, bgmVol: 0.4 }));
+      s = await st(q); assert(s.gate, 'gate with save');
+      { const bb = await q.evaluate(() => { const r = document.getElementById('btn-continue').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+        await q.touchscreen.tap(bb.x, bb.y); await q.waitForTimeout(500); s = await st(q); }   // 「つづきから」の位置の最初のタップは全面の画面が受ける（ボタンは押されない）
+      assert(s.screen === 'title' && s.cur === 'overture' && !s.gate, 'first tap = music ' + JSON.stringify(s));
       await q.tap('#btn-continue'); await q.waitForTimeout(700); s = await st(q);
-      assert(s.screen === 'village' && !s.plays.includes('overture') && s.cur === 'villageTheme' && s.plays.length === 1, 'continue first ' + JSON.stringify(s));
+      assert(s.screen === 'village' && s.cur === 'villageTheme', 'continue ' + JSON.stringify(s));
       assert(await q.evaluate(() => Math.abs(TS.Audio.musicBus.gain.value - 0.4) < 0.02), 'saved bgm volume');
       await c.close();
       // 音オフで保存：案内なし・鳴らない・オンにならない。オンに切り替えるとファンファーレ1回
       ({ c, q } = await open({ sound: false }));
-      s = await st(q); assert(!s.hint && !s.sound, 'sound off: no hint');
+      s = await st(q); assert(!s.hint && !s.gate && !s.sound, 'sound off: no hint, no gate');
       await tapBg(q); s = await st(q); assert(!s.sound && !s.plays.length, 'sound stays off ' + JSON.stringify(s));
       await q.tap('#btn-sound-title'); await q.waitForTimeout(600); s = await st(q);
       assert(s.sound && s.cur === 'overture' && !s.hint, 'sound on plays fanfare ' + JSON.stringify(s));
