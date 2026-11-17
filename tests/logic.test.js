@@ -4179,5 +4179,67 @@ test('レベルの上限は99（2026年11月9日。以前は45）：45から先�
   for (let i = 0; i < 20 && run.enemies.includes(e2); i++) G.act(S, { type: 'attack', dir: 'right' });
   eq(p.lvl, 99, 'stops at 99');
 });
+test('レア敵メタルキング（2026年11月17日）：出現（本編21〜30階・4%、隠し8%、ボスの階・モンスターハウス・開始部屋には出ない、1階に1匹、作り直しても同じ）', () => {
+  let floors = 0, found = 0, twice = 0;
+  for (let seed = 1; seed <= 160; seed++) {
+    const S = G.newState(); S.village.story.chapter = 6; G.depart(S, 900000 + seed);
+    while (S.run.floor < 29) {
+      const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; r.enemies = r.enemies.filter((e) => e.boss);
+      G.act(S, { type: 'descend' }); const q = S.run, F = G.F(q), ks = q.enemies.filter((e) => e.type === 'mking');
+      if (q.floor < 21) { eq(ks.length, 0, 'not before 21'); continue; }
+      if (F.boss) { eq(ks.length, 0, 'no king on boss floor'); continue; }
+      floors++; if (ks.length) found++; if (ks.length > 1) twice++;
+      for (const k of ks) { const rm = TS.Dungeon.roomAt(q.map, k.x, k.y); assert(rm && rm.id !== q.map.monsterHouse, 'not in monster house'); assert(k.exp === 3000 && k.hp >= 5 && k.hp <= 7, 'stats');
+        assert(q.rareNotice && q.log.some((l) => l.includes('ただならぬ気配')), 'notice'); }
+    }
+  }
+  eq(twice, 0); const rate = found / floors; assert(rate > 0.015 && rate < 0.075, 'about 4%: ' + found + '/' + floors);
+  // 同じ種なら同じ結果（読み込み直し・作り直しで量産できない）。抽選はその階の種から作る別の乱数（階の作りの乱数は変えない）
+  const make = () => { const S = G.newState(); S.village.story.chapter = 6; G.depart(S, 900007); while (S.run.floor < 24) { const r = S.run; r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(S, { type: 'descend' }); } return S; };
+  const A1 = make(), A2 = make(); eq(JSON.stringify(A1.run.enemies.map((e) => e.type)), JSON.stringify(A2.run.enemies.map((e) => e.type)));
+  const L = SV.deserialize(SV.serialize(A1)); eq(L.run.enemies.filter((e) => e.type === 'mking').length, A1.run.enemies.filter((e) => e.type === 'mking').length, 'reload keeps the same');
+});
+test('メタルキング：出会うまで動かない → 離れていれば「魔力が膨れ上がる」予告 → 1手番後にイオナズン（ダメージ1回・30〜40・届くのは見えて8マス以内）→ 5手番待つ。眠りで予告が消え、眠っている間は逃げない', () => {
+  const S = newRun(7711); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 999; run.floor = 22; run.enemies = [];
+  const K = D.RARE_KING;
+  const k = G.makeEnemy(run, 'mking', p.x + 4, p.y); run.enemies.push(k); G.updateVision(run);
+  assert(G.isVisible(run, k.x, k.y), 'visible');
+  const turn = () => { const ev = G.act(S, { type: 'wait' }).events; return ev; };
+  let ev = turn(); assert(k.met && !k.charge, 'met, waits first');
+  ev = turn(); assert(k.charge && k.charge.kind === 'iona' && ev.some((e) => e.t === 'telegraph'), 'warning');
+  assert(run.log.some((l) => l.includes('魔力が膨れ上がる')));
+  const hp0 = p.hp; ev = turn(); eq(p.hp, hp0, 'player gets a turn to react'); assert(k.charge, 'still charging');
+  ev = turn(); const io = ev.filter((e) => e.t === 'iona'); eq(io.length, 1); const hits = ev.filter((e) => e.t === 'hit' && e.target === 'player');
+  eq(hits.length, 1, 'damage once'); assert(hp0 - p.hp >= 30 && hp0 - p.hp <= 40, 'dmg ' + (hp0 - p.hp)); eq(k.cd, K.iona.cd);
+  for (let i = 0; i < K.iona.cd; i++) { ev = turn(); assert(!ev.some((e) => e.t === 'telegraph' || e.t === 'iona'), 'cooldown ' + i); }
+  ev = turn(); assert(k.charge, 'charges again after cooldown');
+  // 眠り：予告が消える。眠っている間は近づいても逃げない
+  k.sleep = 3; turn(); assert(!k.charge, 'sleep cancels');
+  p.x = k.x - 1; G.updateVision(run); for (let i = 0; i < 2; i++) { turn(); assert(run.enemies.includes(k), 'no escape while asleep'); }
+  // 隠れる（見えない）と届かない：発動しても当たらない
+  const S2 = newRun(7712); bigRoomFloor(S2); const r2 = S2.run, p2 = r2.player; p2.hp = p2.maxhp = 999; r2.enemies = [];
+  const k2 = G.makeEnemy(r2, 'mking', p2.x + 5, p2.y); k2.met = true; k2.cd = 0; k2.charge = { kind: 'iona', tiles: [], wait: 0, rest: 0 }; r2.enemies.push(k2);
+  p2.x = k2.x - 9; G.updateVision(r2); const h2 = p2.hp; const e2 = G.act(S2, { type: 'wait' }).events;
+  assert(e2.some((e) => e.t === 'iona' && !e.hit) && p2.hp === h2, 'out of range: no damage');
+});
+test('メタルキング：近づくと最初の1手番は逃げず、そのあと手番ごとに15%で光に包まれて消える（経験値・道具なし）。倒せば経験値3,000が1回だけ（複数レベルアップ）', () => {
+  let escaped = 0, first = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    const S = newRun(8800 + seed); bigRoomFloor(S); const run = S.run, p = run.player; p.hp = p.maxhp = 999; run.enemies = [];
+    const k = G.makeEnemy(run, 'mking', p.x + 2, p.y); run.enemies.push(k); G.updateVision(run);
+    const lv = p.lvl, exp = p.exp;
+    let ev = G.act(S, { type: 'wait' }).events; if (!run.enemies.includes(k)) first++;
+    ev = G.act(S, { type: 'wait' }).events;
+    if (!run.enemies.includes(k)) { escaped++; assert(ev.some((e) => e.t === 'kingWarp') && p.exp === exp && p.lvl === lv, 'no exp on escape'); }
+  }
+  eq(first, 0, 'never escapes on the first near turn'); assert(escaped > 20 && escaped < 75, 'about 15%: ' + escaped);
+  // 撃破：3,000が1回だけ
+  const S = newRun(8899); bigRoomFloor(S); const run = S.run, p = run.player; p.lvl = 5; p.exp = D.EXP_TABLE[5]; p.maxhp = p.hp = G.maxHpFor(5, run); run.enemies = [];
+  const k = G.makeEnemy(run, 'mking', p.x + 1, p.y); k.hp = 1; k.sleep = 99; run.enemies.push(k); G.updateVision(run);
+  for (let i = 0; i < 30 && run.enemies.includes(k); i++) G.act(S, { type: 'attack', dir: 'right' });
+  assert(!run.enemies.includes(k)); eq(p.exp, D.EXP_TABLE[5] + 3000); eq(p.lvl, 24); assert(run.log.some((l) => l.includes('メタルキングをたおした！ 経験値3000')));
+  // 雷の杖は効かない（メタル）
+  const k2 = G.makeEnemy(run, 'mking', p.x + 2, p.y); run.enemies.push(k2); const h = k2.hp; G._damageEnemy(S, k2, 50, [], 'x', 'magic'); eq(k2.hp, h, 'magic immune');
+});
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

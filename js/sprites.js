@@ -1235,7 +1235,7 @@
   /* 隠しダンジョンの強敵の**仮の見た目**（専用の絵はChatGPT側で制作中）：今の敵の絵に色を重ねただけ。
    * 絵（SP.s.enemy[名前]）が届いたら、そちらが使われる */
   SP.PLACEHOLDER = { dragon: ['lizard', '#ff4a20'], silverdevil: ['imp', '#e8eef8'], gigantes: ['guard', '#c08a50'],
-    bombrock: ['golem', '#6a6058'], madhand: ['jelly', '#9a5a30'], mimic: ['chest', '#e03030'] };
+    bombrock: ['golem', '#6a6058'], madhand: ['jelly', '#9a5a30'], mimic: ['chest', '#e03030'], mking: ['wisp', '#e8eef8'] };   // 絵が読めるまでの仮（今ある絵の色違い）
   const phCache = {};
   function placeholderFrames(sprite) {
     const P = SP.PLACEHOLDER[sprite];

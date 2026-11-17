@@ -223,6 +223,8 @@
     /* 真大魔王バーンの技の演出のコマ（ZIP truevearn_effects_v1。tools/make-truevearn-fx.py が assets/reference/truevearn-effects-v1/ からそのまま写す）。
      * 各4コマ・256×256 透過・中心が基準（切り抜かない）。全部そろっていればコマで描き、そろわなければ js/fx.js のコードで描く仮の演出 */
     fxFrames: {
+      // イオナズン（メタルキング）：6コマ（上段の左→右、下段の左→右）。tools/make-metal-king.py で 256×256 に
+      iona: [0, 1, 2, 3, 4, 5].map((i) => 'assets/fx/iona/iona_' + i + '.png'),
       calamityEnd: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_end_' + i + '.png'),
       calamityWall: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/calamity_wall_' + i + '.png'),
       tenchiMato: [0, 1, 2, 3].map((i) => 'assets/fx/truevearn/tenchi_mato_' + i + '.png'),
@@ -287,6 +289,8 @@
        * 1枚の静止画（歩きのコマは無い）。ミミックは正体を現した姿（化けている間は床の宝箱の絵） */
       dragon: 'assets/enemies/dragon.png', silverdevil: 'assets/enemies/silverdevil.png', gigantes: 'assets/enemies/gigantes.png',
       bombrock: 'assets/enemies/bombrock.png', mimic: 'assets/enemies/mimic.png', madhand: 'assets/enemies/madhand.png',
+      // レア敵メタルキング（2026年11月17日、ChatGPT制作。assets/reference/metal-king-v1/ を tools/make-metal-king.py で。描き直しはしない）。約2×2マスの大きさで描く（占有は1マス）
+      mking: 'assets/enemies/mking.png',
     },
     /* 通常の敵15種の絵（2026年10月、ZIP monster_sprites_v1。ChatGPT制作の生成画像を分割した素材。描き直しはしない）。
      * 1枚のシート 384×96 に 96×96 のコマが4つ：待機A・待機B・技の準備・技の発動（キーは js/data.js の敵の sprite 名。内部IDはそのまま）。
@@ -320,6 +324,6 @@
       },
     },
     enemyBox: { w: 64, h: 64, foot: 60 },
-    enemyArtScale: { dragon: 3, silverdevil: 3, gigantes: 3, bombrock: 3, mimic: 3, madhand: 3 },   // 枠（64×64）の何倍の細かさで持っているか
+    enemyArtScale: { dragon: 3, silverdevil: 3, gigantes: 3, bombrock: 3, mimic: 3, madhand: 3, mking: 3 },   // 枠（64×64）の何倍の細かさで持っているか
   };
 })(globalThis.TS = globalThis.TS || {});

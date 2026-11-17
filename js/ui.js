@@ -1979,6 +1979,8 @@
       const am = res.events.find((e) => e.t === 'arrivalMovie');
       if (boss && !arrival && !am) setTimeout(() => toast('奥の部屋に' + D.ENEMIES[boss].name + 'の気配…', 'danger'), 700);
       if (boss) prepareBossIntro(boss);   // 登場ムービーがあれば、ここで動画の読み込みだけ始める（起動時には読まない）
+      // レア敵（メタルキング）がいる階：一度だけ知らせる（階を作ったときに決まっている。読み込み直しても出し直さない）
+      if (S.run.rareNotice) { S.run.rareNotice = false; save(); setTimeout(() => toast('ただならぬ気配を感じる…', 'danger'), boss ? 1600 : 900); }
       // 着くたびに流すムービー（D.ARRIVAL_MOVIES。隠しダンジョン35階の竜魔神バラン）：見たことがあっても毎回。戦いの始まり方は今までどおり（ボス部屋に入ったら）
       if (am) {
         stopAllInput();
@@ -2150,7 +2152,18 @@
           if (/霧/.test(e.msg)) RD.addFx({ t: 'darkfog', x: p.x, y: p.y, dur: 800 });   // ミストバーンの暗い霧
           break;
         case 'telegraph': toast(e.name ? e.name : '！' + e.msg.replace(/！$/, ''), 'danger'); AU.sfx('warn'); break;   // name：技名だけを出す技（真大魔王バーン）
-        case 'blast': { const dl = blastFx(e, run, p); if (dl) hitD = Math.max(hitD, dl); break; }   // 飛ぶ技：たけへの命中の表示は届いてから
+        case 'blast': { const dl = blastFx(e, run, p); if (dl) hitD = Math.max(hitD, dl); break; }
+        // メタルキングのイオナズン：画面全体の爆発（見た目だけ）。たけへの命中の表示（ダメージは1回だけ）は爆発が広がってから
+        case 'iona': {
+          const HIT = 520, f = RD.addFx({ t: 'iona', x: e.x, y: e.y, dur: 1500, hitAt: HIT });
+          f.bursts = TS.FX.ionaBursts(f.seed);
+          if (e.hit) { f.px = p.x; f.py = p.y; hitD = Math.max(hitD, HIT); }
+          flash(true); TS.FX.shake(RD, 5, 700); AU.sfx('bolt'); setTimeout(() => AU.sfx('hit'), 260);
+          toast(e.hit ? 'イオナズン！' : 'イオナズン！……届かなかった', 'danger');
+          break;
+        }
+        // メタルキングの逃走：光に包まれて消える（この階からいなくなる。経験値なし）
+        case 'kingWarp': RD.addFx({ t: 'kingWarp', x: e.x, y: e.y, sprite: e.sprite, dur: 1200 }); AU.sfx('stairs'); toast('メタルキングは光に包まれて消えた…'); break;
         // メタルスライムが逃げた：逃走のコマ（見た目だけ）
         case 'eanim': { const en = run.enemies.find((q) => q.id === e.id); if (en) enemyActFx(en, e.kind, e.dx, UI.ENEMY_ACT.prep, UI.ENEMY_ACT.prep + UI.ENEMY_ACT.act); break; }
         // あくまのきしが盾を構えた（ポーズは render.js が e.guard で出す）

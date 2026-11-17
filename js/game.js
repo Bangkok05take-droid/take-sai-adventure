@@ -423,6 +423,7 @@
     }
     placeMonsterHouse(S, gen, occupied);
     placeMerchant(S, gen);
+    placeRareKing(S, gen, occupied);
     run.bossFight = null;
     if (F.boss) {
       /* ボス部屋：ボスは部屋の中央で待ち、たけが部屋の中へ初めて入ったときに戦いが始まる（run.bossFight.engaged）。
@@ -484,6 +485,29 @@
   /* 謎の旅商人：階を作るときに一度だけ決める（出現・場所・品ぞろえ・価格・在庫は run.merchant に保存。
    * 再読み込みや話しかけ直しで作り直さない）。この階の乱数とは別の乱数を使い、ほかの出現を変えない。
    * 場所：ふつうの部屋（3×3以上。モンスターハウス・開始部屋以外）の角のマス。入口（通路）のとなり・階段・帰還の祠・道具・敵の上には置かない。 */
+  /* レア敵メタルキング（D.RARE_KING）：階を作るときに一度だけ抽選（その階の種から作る別の乱数。階の作り方の乱数は変えない＝今までの階はそのまま）。
+   * 本編21〜30階（4%）・隠しダンジョン（8%）。ボスの階には出ない。モンスターハウスと、たけのいる部屋には置かない。1階に1匹まで */
+  function placeRareKing(S, gen, occupied) {
+    const run = S.run, f = run.floor, K = D.RARE_KING, F = G.F(run);
+    if (!K || F.boss) return;
+    const chance = run.hidden ? K.hiddenChance : (f >= K.main.from && f <= K.main.to ? K.main.chance : 0);
+    if (!chance) return;
+    const kr = R.create(((run.seed ^ Math.imul(f + 7, 0x85EBCA6B)) >>> 0) ^ 0x2545F491);
+    if (!R.chance(kr, chance)) return;
+    const m = run.map, rooms = m.rooms.filter((r) => r.id !== gen.startRoom && r.id !== m.monsterHouse);
+    for (let i = 0; i < 12 && rooms.length; i++) {
+      const pos = DG.freeTile(m, kr, occupied, R.pick(kr, rooms));
+      if (!pos || DG.same(pos, run.stairs) || (run.returnPoint && DG.same(pos, run.returnPoint))) continue;
+      const r = DG.roomAt(m, pos.x, pos.y);
+      if (!r || r.id === gen.startRoom || r.id === m.monsterHouse) continue;
+      occupied.push(pos);
+      const e = makeEnemy(run, K.type, pos.x, pos.y);
+      run.enemies.push(e);
+      run.rareNotice = true;   // 画面に「ただならぬ気配を感じる…」（一度だけ）
+      G.log(run, 'ただならぬ気配を感じる……。');
+      return;
+    }
+  }
   function placeMerchant(S, gen) {
     const run = S.run, f = run.floor, M = D.MERCHANT, F = G.F(run);
     run.merchant = null;
@@ -1973,6 +1997,7 @@
         moveEnemy(run, e);
         return;
       }
+      case 'king': kingAct(S, e, ev, sees); return;
       case 'area':
         if (sees && cheb(e, p) <= 1) { startCharge(S, e, ev, areaTiles(run, e, 1), E.heavy, 1, 'が地面を踏みならそうとしている！'); return; }
         break;
@@ -2136,6 +2161,46 @@
     return out;
   }
   // name：技名だけを出す技（真大魔王バーン。画面に技の説明文は出さない。範囲の予告はそのまま）
+  /* メタルキング（D.RARE_KING）：動かない。たけと出会う（互いに見える）と動き出す。
+   *  近い（near 以内）：最初の grace 回の手番は逃げない。そのあとは手番ごとに escape の確率で、光に包まれてこの階から消える（経験値・道具なし）。
+   *   眠り・鈍足・構えのあとの隙などで手番が来ないあいだは逃げられない（enemyAct の手前で止まる）。
+   *  離れている：イオナズン。待ち（cd）が0なら「魔力が膨れ上がる…」と予告（e.charge）し、warn 回の手番のあとで発動（resolveIona）。
+   *   予告の間に、眠らせる（予告が消える）・見えない所へ隠れる・届かない所へ離れる、で防げる。近づいて逃げられることもある */
+  function kingAct(S, e, ev, sees) {
+    const run = S.run, p = run.player, K = D.RARE_KING, E = D.ENEMIES[e.type];
+    if (sees && !e.met) { e.met = true; e.cd = K.iona.first; }
+    if (!e.met) return;
+    if (cheb(e, p) <= K.near) {
+      e.nearT = (e.nearT || 0) + 1;
+      if (e.nearT > K.grace && R.chance(run.rng, K.escape)) {
+        run.enemies.splice(run.enemies.indexOf(e), 1);
+        G.log(run, E.name + 'は光に包まれて消えた！（この階からいなくなった）');
+        ev.push({ t: 'kingWarp', id: e.id, x: e.x, y: e.y, sprite: E.sprite });
+        return;
+      }
+      e.dir = G.dirOf(p.x - e.x, p.y - e.y) || e.dir;
+      return;
+    }
+    e.nearT = 0;
+    if (e.cd > 0) { e.cd--; return; }
+    if (!sees || cheb(e, p) > K.iona.range) return;
+    e.charge = { kind: 'iona', tiles: [], wait: K.iona.warn, rest: 0 };
+    e.dir = G.dirOf(p.x - e.x, p.y - e.y) || e.dir;
+    G.log(run, '！ ' + E.name + 'の魔力が膨れ上がる……！（見えない所へ隠れるか、眠らせよう）');
+    ev.push({ t: 'telegraph', id: e.id, tiles: [], msg: E.name + 'の魔力が膨れ上がる……！', kind: 'iona' });
+  }
+  // イオナズンの発動：ダメージは1回だけ（演出の爆発がいくつあっても）。届くのは、互いに見えていて range 以内のとき
+  function resolveIona(S, e, ev) {
+    const run = S.run, p = run.player, K = D.RARE_KING.iona, E = D.ENEMIES[e.type];
+    e.cd = K.cd;
+    const hits = G.isVisible(run, e.x, e.y) && cheb(e, p) <= K.range;
+    let dmg = 0;
+    if (hits) { dmg = Math.round(R.int(run.rng, K.dmg[0], K.dmg[1]) * (run.hidden ? K.hiddenMul : 1)); }
+    G.log(run, E.name + 'はイオナズンを唱えた！');
+    ev.push({ t: 'iona', id: e.id, x: e.x, y: e.y, hit: hits, n: dmg });
+    if (!hits) { G.log(run, 'しかし、{take}には届かなかった。'); return; }
+    damagePlayer(S, e, dmg, ev, E.name + 'のイオナズン', { big: true, magic: true });
+  }
   function startCharge(S, e, ev, tiles, mult, rest, msg, name) {
     const run = S.run, E = D.ENEMIES[e.type];
     e.charge = { tiles, mult, rest };
@@ -2146,7 +2211,9 @@
   }
   function resolveCharge(S, e, ev) {
     const run = S.run, p = run.player, E = D.ENEMIES[e.type], c = e.charge;
+    if (c.wait > 0) { c.wait--; return; }   // 予告から発動までの残り（メタルキングのイオナズン）
     e.charge = null;
+    if (c.kind === 'iona') { resolveIona(S, e, ev); return; }
     e.rest = c.rest || 0;
     // あくまのきし：大技のあとは攻撃を休み、盾で防御（defend.after 行動のあいだ。次に動くまで受けるダメージ半分）
     if (E.defend && !c.kind) { e.rest = E.defend.after; e.guard = E.defend.after + 1; G.log(run, E.name + 'は盾を構え、守りを固めた！'); ev.push({ t: 'eguard', id: e.id }); }

@@ -682,4 +682,67 @@
   };
 
   TS.FX = FX;
+
+  /* ---------- メタルキング（レア敵。2026年11月17日） ----------
+   * イオナズン（見た目だけ）：画面のあちこちで、6コマの爆発（ZIP の絵。上段の左→右、下段の左→右）を時間差で重ねる。
+   *  ダメージの判定はゲーム側で1回だけ済んでいる（爆発の数とは関係ない）。爆発の位置は画面に対する割合（f.bursts）で、カメラが動いても画面全体。
+   *  スマホ向けに数を抑える（通常9か所・「演出：控えめ」5か所）。絵が読めていなければ、光の輪だけ */
+  const IONA_FRAME = 75;   // 1コマの長さ（ms）
+  FX.ionaBursts = function (seed) {
+    const n = FX.calm() ? 5 : 9, out = [];
+    for (let i = 0; i < n; i++) out.push({ fx: 0.12 + 0.76 * rnd(seed, i * 3 + 1), fy: 0.12 + 0.7 * rnd(seed, i * 3 + 2), d: Math.round(i * 95 + rnd(seed, i * 3 + 3) * 60), s: 0.8 + 0.6 * rnd(seed, i * 7 + 5) });
+    return out;
+  };
+  FX.draw.iona = function (g, f, a, v) {
+    const W = g.canvas.width, H = g.canvas.height, age = a * f.dur, fr = TS.Sprites && TS.Sprites.fxFrames && TS.Sprites.fxFrames('iona');
+    const unit = Math.min(W, H) * 0.42;
+    g.save(); g.globalCompositeOperation = 'lighter';
+    // 画面全体の光（はじめに強く、だんだん消える）
+    const glow = Math.max(0, 1 - age / 900) * 0.28;
+    if (glow > 0) { g.fillStyle = `rgba(255,170,80,${glow})`; g.fillRect(0, 0, W, H); }
+    const one = (x, y, size, t) => {
+      const i = Math.floor(t / IONA_FRAME);
+      if (t < 0 || i > 5) return;
+      if (fr) { g.drawImage(fr[i], x - size / 2, y - size / 2, size, size); return; }
+      const r = size * 0.5 * (0.3 + i / 6), al = 1 - i / 6;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,240,200,${al})`); gr.addColorStop(0.6, `rgba(255,140,40,${al * 0.7})`); gr.addColorStop(1, 'rgba(160,60,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    };
+    for (const b of f.bursts) one(b.fx * W, b.fy * H, unit * b.s, age - b.d);
+    // メタルキングの所と、当たったときはたけの所にも
+    if (f.x != null) one(v.ox + (f.x + 0.5) * v.ts, v.oy + (f.y + 0.5) * v.ts, v.ts * 3, age);
+    if (f.px != null) one(v.ox + (f.px + 0.5) * v.ts, v.oy + (f.py + 0.5) * v.ts, v.ts * 3.4, age - f.hitAt);
+    g.restore();
+  };
+  // 予告中（魔力が膨れ上がる）：体のまわりに脈打つ光（見た目だけ。判定はゲーム側）
+  FX.ionaAura = function (g, x, y, ts, now) {
+    const p = 0.5 + 0.5 * Math.sin(now / 110), r = ts * (1.1 + 0.25 * p);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    const gr = g.createRadialGradient(x, y, ts * 0.2, x, y, r);
+    gr.addColorStop(0, `rgba(255,220,140,${0.35 + 0.25 * p})`); gr.addColorStop(0.6, `rgba(255,120,40,${0.22 + 0.15 * p})`); gr.addColorStop(1, 'rgba(170,70,255,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore();
+  };
+  /* 逃走（ルーラのように光に包まれて消える）：足元から光の柱が立ち、絵が白く光りながら細く上へ消え、光の粒が上へ */
+  FX.draw.kingWarp = function (g, f, a, v) {
+    const x = v.ox + (f.x + 0.5) * v.ts, foot = v.oy + (f.y + 1) * v.ts, ts = v.ts;
+    const fr = TS.Sprites && TS.Sprites.enemyFrames && TS.Sprites.enemyFrames(f.sprite), img = fr && fr[0];
+    g.save();
+    if (img && a < 0.55) {
+      const b = a / 0.55, dw = ts * (img.logical || img.width) / 32, dh = dw * (1 - b * 0.4), w = dw * (1 - b * 0.85);
+      const top = foot - (img.footY ? dw * img.footY / img.height : dw) - b * ts * 1.2;
+      g.globalAlpha = 1 - b; g.drawImage(img, x - w / 2, top, w, dh);
+      g.globalAlpha = Math.min(1, b * 1.6) * (1 - b * 0.5); g.drawImage(TS.Sprites.tinted(img, '#ffffff'), x - w / 2, top, w, dh);
+    }
+    g.globalAlpha = 1; g.globalCompositeOperation = 'lighter';
+    const col = a < 0.7 ? 1 : (1 - a) / 0.3, cw = ts * (0.9 - a * 0.6);
+    const gr = g.createLinearGradient(x - cw / 2, 0, x + cw / 2, 0);
+    gr.addColorStop(0, 'rgba(160,220,255,0)'); gr.addColorStop(0.5, `rgba(235,250,255,${0.85 * col})`); gr.addColorStop(1, 'rgba(160,220,255,0)');
+    g.fillStyle = gr; g.fillRect(x - cw / 2, foot - ts * (1.5 + a * 6), cw, ts * (1.5 + a * 6));
+    const n = FX.n(14);
+    for (let i = 0; i < n; i++) {
+      const t = (a * 1.4 + rnd(f.seed, i)) % 1, px = x + (rnd(f.seed, i + 40) - 0.5) * ts * 1.4, py = foot - t * ts * 4;
+      g.fillStyle = `rgba(220,245,255,${(1 - t) * col})`; g.fillRect(px, py, v.k * 2, v.k * 2);
+    }
+    g.restore();
+  };
 })(globalThis.TS = globalThis.TS || {});

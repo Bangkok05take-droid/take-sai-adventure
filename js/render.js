@@ -618,8 +618,9 @@
       const bodyTop = img.sheet ? sy + ts - k - img.bodyH * k : sy + ts - dw;   // 本体のてっぺん（「！」・状態の印の位置）
       const isClone = !!D.ENEMIES[e.type].clone;
       // ボスの立っているマス（当たり判定）を足元の円で示す
-      if (e.boss || isClone) {
-        g.strokeStyle = e.boss ? 'rgba(255,214,90,0.85)' : 'rgba(255,214,90,0.5)'; g.lineWidth = k * 1.5;
+      const rare = !!D.ENEMIES[e.type].rare;   // レア敵（メタルキング）：大きな絵（約2×2マス）でも、立っているマス（当たり判定）が分かるよう足元に輪
+      if (e.boss || isClone || rare) {
+        g.strokeStyle = e.boss || rare ? 'rgba(255,214,90,0.85)' : 'rgba(255,214,90,0.5)'; g.lineWidth = k * 1.5;
         g.beginPath(); g.ellipse(sx + ts / 2, sy + ts * 0.82, ts * 0.46, ts * 0.17, 0, 0, Math.PI * 2); g.stroke();
       }
       // 分身には影がない（観察すると本体が分かる手がかり）。ゆらゆらと透ける
@@ -634,6 +635,7 @@
       // 天地魔闘の構えの間：控えめな光（tenchi_mato の 00）を体の後ろに
       if (e.stance > 0 && TS.FX && TS.FX.stanceGlow) TS.FX.stanceGlow(g, sx + ts / 2, ty0 + dw * 0.55, ts, k, now);
       if (kind === 'dragonbaran' && TS.FX && TS.FX.dragonBack) TS.FX.dragonBack(g, e, sx + ts / 2, sy + ts, ts, k, now);   // 竜闘気の炎（体の後ろ）
+      if (rare && e.charge && TS.FX && TS.FX.ionaAura) TS.FX.ionaAura(g, sx + ts / 2, ty0 + dw * 0.55, ts, now);   // イオナズンの予告中：魔力の光
       if (isClone) g.globalAlpha = 0.78 + 0.18 * Math.sin(now / 160 + e.id);
       g.drawImage(img, sx + (ts - dw) / 2 + shake, ty0 - lift, dw, dw);
       g.globalAlpha = 1;
