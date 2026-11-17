@@ -127,6 +127,12 @@
   D.TRUEVEARN_ROOM_PREVIEW = roomPreview('truevearnPreview', 785, 120, 385, 1600, 'void');
   D.CROC_ROOM_PREVIEW = roomPreview('crocPreview', 808, 108, 352, 1600, 'tiles');
   D.FLAME_ROOM_PREVIEW = roomPreview('flamePreview', 718, 150, 365, 1536, 'tiles', { hazardOutline: true });
+  /* 竜魔神バランの部屋（隠しダンジョン35階。2026年11月17日：承認済みの1枚絵 ZIP baran_boss_room_assets_v1）。
+   * 地図は今の共通のボスの階のまま（広間15×15 x9〜23・y1〜15、通路 x16・y16〜18、前室5×4 x14〜18・y19〜22、入口(16,21)、ボスは広間の中央(16,8)）。
+   * 絵の 52px を1マスにし、広間の左上(9,1)を絵の (122,330) に合わせる（広間＝絵の x122〜902・y330〜1110。壇と階段はその上の壁の所、下の柱の間の通路は前室の所）。
+   * 縦横比はそのまま（拡大・縮小だけ）。当たり判定は地図のとおりで、絵の石畳の線からは作らない。床の外（絵の外）は背景色 */
+  D.DRAGONBARAN_ROOM = roomPreview('dragonbaranBg', 780, 122, 330, 1536, null);
+  D.BOSS_ROOM_ART = { dragonbaran: 'DRAGONBARAN_ROOM' };   // 本番で使う1枚絵のボス部屋（ボスID → 対応の名前）
   D.BOSS_ROOM_PREVIEW = {};   // プレビューのときだけ { truevearn: 'TRUEVEARN_ROOM_PREVIEW' } など（確認の道具が切り替える）
   /* 通常ダンジョンの地域の背景の絵（ZIP dungeon_7themes_art_v1）を使う地域。{ brick: true } のように。
    * 2026年10月21日：レンガの回廊（1〜3階）を本番に反映。10月22日：木の根の遺跡（4〜6階）・地下の遺跡（7〜14階）も反映（1マス幅の正面の壁は仮の絵）。

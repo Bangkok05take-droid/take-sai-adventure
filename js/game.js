@@ -360,7 +360,9 @@
     // ボスの部屋の見た目（地域）は、作ったときのものを地図に残す。最終章のボスは倒すと階の定義からボスが外れ、地域が変わってしまうため
     //（例：33階の白い異空間が、真大魔王バーンを倒した直後に魔王の城の見た目になっていた）。見た目だけで、判定には使わない
     if (Fdef.boss) run.map.theme = Fdef.theme;
-    if (Fdef.boss && D.BOSS_ROOM_PREVIEW && D.BOSS_ROOM_PREVIEW[Fdef.boss] && !run.map.bg && G.layoutOf(run) >= 2) run.map.bg = D.BOSS_ROOM_PREVIEW[Fdef.boss];   // パーツ方式のプレビューだけ（本番は空）
+    if (Fdef.boss && D.BOSS_ROOM_PREVIEW && D.BOSS_ROOM_PREVIEW[Fdef.boss] && !run.map.bg && G.layoutOf(run) >= 2) run.map.bg = D.BOSS_ROOM_PREVIEW[Fdef.boss];
+    // 1枚絵のボス部屋（本番。D.BOSS_ROOM_ART：竜魔神バラン）。下から入る今の形の地図だけ（以前の左から入る形で作った階は今までの描き方）
+    if (Fdef.boss && D.BOSS_ROOM_ART && D.BOSS_ROOM_ART[Fdef.boss] && !run.map.bg && G.layoutOf(run) >= 2) run.map.bg = D.BOSS_ROOM_ART[Fdef.boss];   // パーツ方式のプレビューだけ（本番は空）
     run.stairs = gen.stairs;
     run.returnPoint = gen.returnPoint;
     run.crack = null;
