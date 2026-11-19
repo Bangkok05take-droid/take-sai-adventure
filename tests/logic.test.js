@@ -4241,5 +4241,16 @@ test('メタルキング：近づくと最初の1手番は逃げず、そのあ�
   // 雷の杖は効かない（メタル）
   const k2 = G.makeEnemy(run, 'mking', p.x + 2, p.y); run.enemies.push(k2); const h = k2.hp; G._damageEnemy(S, k2, 50, [], 'x', 'magic'); eq(k2.hp, h, 'magic immune');
 });
+test('臨時（2026年11月19日）：最終章の32階にも帰還の祠。祠まで行ける。隠しダンジョンの32階には置かない', () => {
+  for (const seed of [980, 981, 982]) {
+    const M = toBossFloor(6, seed); defeatBoss(M); G.commitRescue(M);
+    M.run.player.x = M.run.crack.x; M.run.player.y = M.run.crack.y; G.act(M, { type: 'descend' });
+    eq(M.run.floor, 31); assert(!M.run.returnPoint, 'not on 31');
+    M.run.player.x = M.run.stairs.x; M.run.player.y = M.run.stairs.y; G.act(M, { type: 'descend' });
+    const r = M.run; eq(r.floor, 32); assert(!r.hidden);
+    assert(r.returnPoint, 'shrine on 32F'); const d = DG.distances(r.map, r.player.x, r.player.y); assert(d[r.returnPoint.y * r.map.w + r.returnPoint.x] >= 0, 'reachable');
+    assert(!DG.same(r.returnPoint, r.stairs));
+  }
+});
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);
