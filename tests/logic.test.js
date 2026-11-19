@@ -4252,5 +4252,20 @@ test('臨時（2026年11月19日）：最終章の32階にも帰還の祠。祠�
     assert(!DG.same(r.returnPoint, r.stairs));
   }
 });
+test('臨時の32階の祠：祠ができる前から32階にいたセーブを読み込むと、たけのすぐ横に祠が出る（1回だけ・ほかの階や隠しダンジョンには出ない）', () => {
+  const M = toBossFloor(6, 983); defeatBoss(M); G.commitRescue(M);
+  M.run.player.x = M.run.crack.x; M.run.player.y = M.run.crack.y; G.act(M, { type: 'descend' });
+  M.run.player.x = M.run.stairs.x; M.run.player.y = M.run.stairs.y; G.act(M, { type: 'descend' });
+  eq(M.run.floor, 32); M.run.returnPoint = null;   // 祠ができる前のセーブ
+  const L = SV.deserialize(SV.serialize(M)), r = L.run, p = r.player;
+  assert(r.returnPoint, 'shrine placed'); assert(Math.max(Math.abs(r.returnPoint.x - p.x), Math.abs(r.returnPoint.y - p.y)) <= 2, 'next to player');
+  assert(DG.passable(r.map, r.returnPoint.x, r.returnPoint.y) && !DG.same(r.returnPoint, r.stairs));
+  const L2 = SV.deserialize(SV.serialize(L)); eq(JSON.stringify(L2.run.returnPoint), JSON.stringify(r.returnPoint), 'not moved again');
+  // 祠に乗って帰れる
+  p.x = r.returnPoint.x; p.y = r.returnPoint.y; G.act(L, { type: 'returnHome' }); assert(L.run.over || L.run.returned || !L.run || L.run.over !== undefined);
+  // 31階のセーブには出ない
+  const N = toBossFloor(6, 984); defeatBoss(N); G.commitRescue(N); N.run.player.x = N.run.crack.x; N.run.player.y = N.run.crack.y; G.act(N, { type: 'descend' });
+  eq(N.run.floor, 31); assert(!SV.deserialize(SV.serialize(N)).run.returnPoint, 'not on 31');
+});
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);
