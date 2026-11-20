@@ -99,8 +99,7 @@ test('多数のシードで各章のボスの階まで：入口から階段・�
       const boss = G.F(run, f).boss;
       if (!boss) { assert(run.stairs && reach(run.stairs), `stairs unreachable seed${seed} f${f}`); assert(!DG.same(run.stairs, p), 'stairs on start'); }
       else { assert(!run.stairs, 'no stairs before boss'); assert(run.enemies.some((e) => e.boss && e.type === boss), 'boss exists'); }
-      if (f === 25 && !boss) { assert(run.returnPoint && reach(run.returnPoint), 'return point'); assert(!DG.same(run.returnPoint, run.stairs)); }
-      eq(!!run.returnPoint, f === 25 && !boss, 'return point only on 25F (not on a boss floor)');
+      eq(!!run.returnPoint, false, 'no return shrine (2026-11-20)');
       if (boss) assert(run.enemies.every((e) => e.boss), 'no normal enemies on a boss floor');
       for (let i = 0; i < m.tiles.length; i++) if (m.tiles[i] !== DG.WALL) assert(dist[i] >= 0, `isolated tile seed${seed} f${f}`);
       const pos = new Set();
@@ -643,26 +642,20 @@ test('帰還の巻物：持ち物と探索中のお金を持ち帰り、巻物�
   assert(S.village.bag.some((i) => i.id === 'jade_elephant'));
   assert(!S.village.bag.some((i) => i.id === 'return_scroll'), 'scroll removed');
 });
-test('帰還の祠は地下25階に1か所だけ。ボスの階には置かない（第1・2章は25階に届かず、第3章は25階がボス）。祠から帰れる', () => {
-  const want = { 1: 0, 2: 0, 3: 0, 4: 1, 5: 1, 6: 1 };
+test('帰還の祠は置かない（2026年11月20日。以前は25階）。帰還の巻物で帰れる', () => {
   for (let s = 0; s < 30; s++) {
     const ch = (s % 6) + 1, T = newRun(300 + s, (S0) => { S0.village.story.chapter = ch; });
-    let count = 0;
     for (;;) {
       const r = T.run;
-      if (r.returnPoint) { count++; eq(r.floor, 25); assert(!DG.same(r.returnPoint, r.stairs)); }
-      if (r.floor === 25) eq(!!r.returnPoint, !G.F(r).boss, 'shrine on 25F unless boss floor');
+      assert(!r.returnPoint, 'no shrine on ' + r.floor);
       if (G.F(r).boss || r.floor >= 30) break;
       r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(T, { type: 'descend' });
     }
-    eq(count, want[ch], 'shrines in chapter ' + ch);
   }
   const S = newRun(22, (S0) => { S0.village.story.chapter = 4; });
   while (S.run.floor < 25) { const p = S.run.player; p.x = S.run.stairs.x; p.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
-  eq(S.run.floor, 25);
-  S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
-  G.act(S, { type: 'returnHome' });
-  assert(S.run.over); eq(S.run.result.type, 'return');
+  eq(S.run.floor, 25); assert(!S.run.returnPoint);
+  G.useReturnScroll(S); assert(S.run.over); eq(S.run.result.type, 'return');
   G.finishRun(S); eq(S.village.returns, 1); eq(S.village.bestFloor, 25);
 });
 
@@ -986,8 +979,7 @@ test('次の章も1階から。第2章の20階はフレイザード。章の報�
 });
 test('帰還して再出発すると1階から', () => {
   const S = newRun(43, (S0) => { S0.village.story.chapter = 4; }); goToFloor(S, 25);
-  S.run.player.x = S.run.returnPoint.x; S.run.player.y = S.run.returnPoint.y;
-  G.act(S, { type: 'returnHome' }); G.finishRun(S);
+  G.useReturnScroll(S); G.finishRun(S);
   departWithScroll(S, 44); eq(S.run.floor, 1);
 });
 test('素材は持ち帰ると素材箱に入り、売却・預入できない。倒れると失う', () => {
@@ -3024,7 +3016,7 @@ test('通常バラン戦：前室を足した版（D.BARAN_ROOM_EXT、確認用�
   assert(E.imgY + E.tile * E.h >= E.imgH && E.imgY + E.tile * (E.h - 1) < E.imgH, 'map height covers the extended picture');
   D.BARAN_ROOM_LAYOUT = 'BARAN_ROOM_EXT';
   try {
-    const S = toBossFloor(4, 2150), run = S.run, m = run.map, A = run.bossFight;
+    const S = toBossFloor(4, 2151), run = S.run, m = run.map, A = run.bossFight;   // 11月20日：帰還の祠をなくして乱数の流れが変わったので種を変更（この確認用の版は、種によって道具が広間に置かれることが以前からある）
     eq(m.bg, 'BARAN_ROOM_EXT'); eq(m.w + 'x' + m.h, '19x40'); eq(run.player.x + ',' + run.player.y, '9,38');
     checkBottomEntry(run, 'baran ext');
     // 前室（5×3）・通路（3マス幅）・出口側（3マス幅）。その外は壁
@@ -4240,32 +4232,6 @@ test('メタルキング：近づくと最初の1手番は逃げず、そのあ�
   assert(!run.enemies.includes(k)); eq(p.exp, D.EXP_TABLE[5] + 3000); eq(p.lvl, 24); assert(run.log.some((l) => l.includes('メタルキングをたおした！ 経験値3000')));
   // 雷の杖は効かない（メタル）
   const k2 = G.makeEnemy(run, 'mking', p.x + 2, p.y); run.enemies.push(k2); const h = k2.hp; G._damageEnemy(S, k2, 50, [], 'x', 'magic'); eq(k2.hp, h, 'magic immune');
-});
-test('臨時（2026年11月19日）：最終章の32階にも帰還の祠。祠まで行ける。隠しダンジョンの32階には置かない', () => {
-  for (const seed of [980, 981, 982]) {
-    const M = toBossFloor(6, seed); defeatBoss(M); G.commitRescue(M);
-    M.run.player.x = M.run.crack.x; M.run.player.y = M.run.crack.y; G.act(M, { type: 'descend' });
-    eq(M.run.floor, 31); assert(!M.run.returnPoint, 'not on 31');
-    M.run.player.x = M.run.stairs.x; M.run.player.y = M.run.stairs.y; G.act(M, { type: 'descend' });
-    const r = M.run; eq(r.floor, 32); assert(!r.hidden);
-    assert(r.returnPoint, 'shrine on 32F'); const d = DG.distances(r.map, r.player.x, r.player.y); assert(d[r.returnPoint.y * r.map.w + r.returnPoint.x] >= 0, 'reachable');
-    assert(!DG.same(r.returnPoint, r.stairs));
-  }
-});
-test('臨時の32階の祠：祠ができる前から32階にいたセーブを読み込むと、たけのすぐ横に祠が出る（1回だけ・ほかの階や隠しダンジョンには出ない）', () => {
-  const M = toBossFloor(6, 983); defeatBoss(M); G.commitRescue(M);
-  M.run.player.x = M.run.crack.x; M.run.player.y = M.run.crack.y; G.act(M, { type: 'descend' });
-  M.run.player.x = M.run.stairs.x; M.run.player.y = M.run.stairs.y; G.act(M, { type: 'descend' });
-  eq(M.run.floor, 32); M.run.returnPoint = null;   // 祠ができる前のセーブ
-  const L = SV.deserialize(SV.serialize(M)), r = L.run, p = r.player;
-  assert(r.returnPoint, 'shrine placed'); assert(Math.max(Math.abs(r.returnPoint.x - p.x), Math.abs(r.returnPoint.y - p.y)) <= 2, 'next to player');
-  assert(DG.passable(r.map, r.returnPoint.x, r.returnPoint.y) && !DG.same(r.returnPoint, r.stairs));
-  const L2 = SV.deserialize(SV.serialize(L)); eq(JSON.stringify(L2.run.returnPoint), JSON.stringify(r.returnPoint), 'not moved again');
-  // 祠に乗って帰れる
-  p.x = r.returnPoint.x; p.y = r.returnPoint.y; G.act(L, { type: 'returnHome' }); assert(L.run.over || L.run.returned || !L.run || L.run.over !== undefined);
-  // 31階のセーブには出ない
-  const N = toBossFloor(6, 984); defeatBoss(N); G.commitRescue(N); N.run.player.x = N.run.crack.x; N.run.player.y = N.run.crack.y; G.act(N, { type: 'descend' });
-  eq(N.run.floor, 31); assert(!SV.deserialize(SV.serialize(N)).run.returnPoint, 'not on 31');
 });
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);
