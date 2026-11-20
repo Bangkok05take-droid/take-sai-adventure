@@ -1236,6 +1236,7 @@
     let res;
     try { res = G.depart(UI.S, undefined, opts); } catch (err) { res = { ok: false, msg: '出発できませんでした。（' + (err && err.message || err) + '）' }; }
     if (!res.ok) { info('出発', '<p>' + esc(res.msg) + '</p>' + (res.error ? '<p class="note">ページを開き直してから、もう一度出発してください。</p>' : '')); updateVillageHud(); return; }
+    closeAllModals();   // 出発したら、後ろに残っている画面（たけの日記・村の発展など）も閉じる（ダンジョンの上に残らないように）
     RD.fx = [];
     save();
     showScreen('dungeon');
