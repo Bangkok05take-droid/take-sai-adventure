@@ -200,6 +200,20 @@
         fill(data.run.player, { poison: 0, poisonGuard: 0, bound: 0, bindGuard: 0 });
         fill(data.run, { hazards: [], fog: 0 });
         fixBossFight(data.run);
+        /* 臨時の帰還の祠（D.RETURN_POINT_FLOORS。2026年11月20日は5階）：祠を置く前から、その階にいたセーブ（階は作り直さない）には、
+         * 読み込んだときに、たけのすぐ横の床に祠を出す。隠しダンジョン・ボスの階・すでに祠がある階はそのまま */
+        try {
+          const r = data.run, DG = TS.Dungeon;
+          if (!r.over && !r.hidden && !r.returnPoint && !r.map.boss && (D.RETURN_POINT_FLOORS || []).includes(r.floor)) {
+            const p = r.player, busy = (x, y) => (r.stairs && r.stairs.x === x && r.stairs.y === y) || (r.enemies || []).some((e) => e.x === x && e.y === y)
+              || (r.floorItems || []).some((f) => f.x === x && f.y === y) || (r.merchant && r.merchant.x === x && r.merchant.y === y);
+            const around = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [-2, 0], [0, 2], [0, -2]];
+            for (const [dx, dy] of around) {
+              const x = p.x + dx, y = p.y + dy;
+              if (DG.passable(r.map, x, y) && !busy(x, y)) { r.returnPoint = { x, y }; r.log = (r.log || []).concat(['すぐそばに帰還の祠が現れた！']); break; }
+            }
+          }
+        } catch (e) { /* 置けなければそのまま */ }
         // ボスを倒したあとの帰還口が、ボス部屋の外（前室など）に出ていたセーブ（2026年10月まで）：ボス部屋の中央へ移す
         const r = data.run, A = r.bossFight;
         if (r.portal && A && A.won && r.map && r.map.boss && !G.inArena(r, r.portal.x, r.portal.y)) {

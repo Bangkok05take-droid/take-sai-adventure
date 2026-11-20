@@ -99,7 +99,7 @@ test('多数のシードで各章のボスの階まで：入口から階段・�
       const boss = G.F(run, f).boss;
       if (!boss) { assert(run.stairs && reach(run.stairs), `stairs unreachable seed${seed} f${f}`); assert(!DG.same(run.stairs, p), 'stairs on start'); }
       else { assert(!run.stairs, 'no stairs before boss'); assert(run.enemies.some((e) => e.boss && e.type === boss), 'boss exists'); }
-      eq(!!run.returnPoint, false, 'no return shrine (2026-11-20)');
+      eq(!!run.returnPoint, D.RETURN_POINT_FLOORS.includes(f) && !boss, 'return shrine only on D.RETURN_POINT_FLOORS');
       if (boss) assert(run.enemies.every((e) => e.boss), 'no normal enemies on a boss floor');
       for (let i = 0; i < m.tiles.length; i++) if (m.tiles[i] !== DG.WALL) assert(dist[i] >= 0, `isolated tile seed${seed} f${f}`);
       const pos = new Set();
@@ -647,14 +647,14 @@ test('帰還の祠は置かない（2026年11月20日。以前は25階）。帰�
     const ch = (s % 6) + 1, T = newRun(300 + s, (S0) => { S0.village.story.chapter = ch; });
     for (;;) {
       const r = T.run;
-      assert(!r.returnPoint, 'no shrine on ' + r.floor);
+      eq(!!r.returnPoint, D.RETURN_POINT_FLOORS.includes(r.floor) && !G.F(r).boss, 'shrine on ' + r.floor);
       if (G.F(r).boss || r.floor >= 30) break;
       r.player.x = r.stairs.x; r.player.y = r.stairs.y; G.act(T, { type: 'descend' });
     }
   }
   const S = newRun(22, (S0) => { S0.village.story.chapter = 4; });
   while (S.run.floor < 25) { const p = S.run.player; p.x = S.run.stairs.x; p.y = S.run.stairs.y; G.act(S, { type: 'descend' }); }
-  eq(S.run.floor, 25); assert(!S.run.returnPoint);
+  eq(S.run.floor, 25); assert(!S.run.returnPoint);   // 25階には置かない
   G.useReturnScroll(S); assert(S.run.over); eq(S.run.result.type, 'return');
   G.finishRun(S); eq(S.village.returns, 1); eq(S.village.bestFloor, 25);
 });
