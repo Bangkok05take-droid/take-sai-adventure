@@ -4233,5 +4233,16 @@ test('メタルキング：近づくと最初の1手番は逃げず、そのあ�
   // 雷の杖は効かない（メタル）
   const k2 = G.makeEnemy(run, 'mking', p.x + 2, p.y); run.enemies.push(k2); const h = k2.hp; G._damageEnemy(S, k2, 50, [], 'x', 'magic'); eq(k2.hp, h, 'magic immune');
 });
+test('出発は全部できるか何もしないか（2026年11月20日）：途中でエラーなら持ち物・料理はそのまま。読み込みで地図の無い探索は持ち物を村へ戻す', () => {
+  const S = G.newState(), V = S.village; V.bag.push(G.makeItem(S, 'herb'), G.makeItem(S, 'bronze_sword')); G.takeReturnScroll(S);
+  const n = V.bag.length, runs = V.runs;
+  const orig = G.F; G.F = () => { throw new Error('test'); };
+  let r; try { r = G.depart(S, 5); } finally { G.F = orig; }
+  assert(!r.ok && r.error && /持ち物はそのまま/.test(r.msg)); eq(V.bag.length, n); eq(V.runs, runs); assert(!S.run);
+  // 地図の無い探索が保存されていた（以前の不具合の跡）：読み込むと持ち物が村へ戻る
+  const T = G.newState(); T.village.bag = []; T.village.scrollTaken = true;
+  T.run = { bag: [G.makeItem(T, 'herb'), G.makeItem(T, 'return_scroll'), G.makeItem(T, 'golden_sword')], player: { x: 0, y: 0 }, map: null };
+  const L = SV.deserialize(JSON.stringify(T)); assert(!L.run); eq(L.village.bag.map((i) => i.id).sort().join(), 'golden_sword,herb'); assert(!L.village.scrollTaken);
+});
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

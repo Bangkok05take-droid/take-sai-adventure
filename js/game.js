@@ -292,6 +292,13 @@
     if (opts && opts.rematch && !(rm && rm.ok && G.rematchOpen(S))) return { ok: false, msg: 'そのボスとはまだ再戦できません。' };
     const deep = !!(opts && opts.deep && G.canDeepStart(S, rm ? rm.ch : null));
     const V = S.village;
+    // 出発は「全部できる」か「何もしない」か（2026年11月20日）：途中で失敗したら、持ち物・料理・回数を元に戻して失敗を返す（荷物が消えないように）
+    const before = { bag: V.bag, meal: V.meal, runs: V.runs, run: S.run };
+    try { return departBody(S, seed, opts, rm, deep); }
+    catch (err) { V.bag = before.bag; V.meal = before.meal; V.runs = before.runs; S.run = before.run; return { ok: false, msg: '出発の準備中にエラーが起きました。持ち物はそのままです。（' + (err && err.message || err) + '）', error: true }; }
+  };
+  function departBody(S, seed, opts, rm, deep) {
+    const V = S.village;
     V.runs++;
     if (seed === undefined) seed = (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
     const bag = V.bag;
@@ -327,8 +334,9 @@
     G.log(S.run, '{take}は遺跡へ出発した！' + (S.run.meal ? '（' + D.MEALS[S.run.meal].name + 'で元気いっぱい）' : ''));
     if (deep) G.log(S.run, '大魔王のローブの力で、' + G.DEEP_START + '階へ降り立った！');
     enterFloor(S, deep ? G.DEEP_START : 1);
+    if (!S.run.map || !S.run.player) throw new Error('階を作れませんでした');
     return { ok: true };
-  };
+  }
 
   G.log = function (run, msg) {
     run.log.push(msg);

@@ -189,7 +189,13 @@
     // 施設の段階（旧セーブの「村の発展」段階から倉庫・鍛冶屋の段階を引き継ぐ）
     G.applyFacilities(data.village);
     if (data.run) {
-      if (!data.run.map || !data.run.player) data.run = null;
+      if (!data.run.map || !data.run.player) {
+        // 出発の途中で止まった探索（2026年11月20日）：捨てる前に、持ち物を村へ戻す（バッグがいっぱいなら倉庫へ）。帰還の巻物は戻さない
+        const V = data.village, back = (data.run.bag || []).filter((i) => i && i.id && i.id !== 'return_scroll');
+        if (V && back.length) { V.bag = V.bag || []; V.storage = V.storage || []; for (const it of back) { if (V.bag.length < D.BAG_SIZE) V.bag.push(it); else V.storage.push(it); } }
+        if (V) V.scrollTaken = false;
+        data.run = null;
+      }
       else {
         fill(data.run.player, { poison: 0, poisonGuard: 0, bound: 0, bindGuard: 0 });
         fill(data.run, { hazards: [], fog: 0 });

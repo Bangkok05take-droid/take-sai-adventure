@@ -1233,8 +1233,9 @@
     modal({ title: `<span class="dp-title">${DP_ICON.compass}<span>${rm ? '再戦へ出発' : '遺跡へ出発'}</span></span>`, cls: 'depart-modal', html, buttons });
   }
   function depart(opts) {
-    const res = G.depart(UI.S, undefined, opts);
-    if (!res.ok) { info('出発', res.msg); return; }
+    let res;
+    try { res = G.depart(UI.S, undefined, opts); } catch (err) { res = { ok: false, msg: '出発できませんでした。（' + (err && err.message || err) + '）' }; }
+    if (!res.ok) { info('出発', '<p>' + esc(res.msg) + '</p>' + (res.error ? '<p class="note">ページを開き直してから、もう一度出発してください。</p>' : '')); updateVillageHud(); return; }
     RD.fx = [];
     save();
     showScreen('dungeon');
