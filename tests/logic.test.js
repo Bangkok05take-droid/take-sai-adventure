@@ -3524,7 +3524,8 @@ test('なくしたボスの報酬の買い戻し：対象と値段（ボスご�
   const want = { croc_tear: 1000, croc_axe: 1000, iceflame_shield: 2000, iceflame_crystal: 2000, phantom_shield: 3000, phantom_mask: 3000,
     shinma_sword: 4000, hero_sword: 5000, hero_shield: 5000, demon_robe: 6000 };
   for (const [id, pr] of Object.entries(want)) eq(G.buybackPrice(id).price, pr, id);
-  for (const id of ['golden_elephant', 'amber_shard', 'dragonic_shield', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
+  for (const id of ['golden_elephant', 'amber_shard', 'dream_crown']) eq(G.buybackPrice(id), null, id + ' not a target');
+  eq(G.buybackPrice('dragonic_shield').price, 8000, 'dragonic_shield (2026-11-20)');
   const S = findMerchant(8300, 3, 13), r = S.run, V = S.village;
   const ids = () => G.buybackList(S).map((x) => x.id).sort().join();
   // 倒しただけ・未入手：出ない
@@ -4243,6 +4244,14 @@ test('出発は全部できるか何もしないか（2026年11月20日）：途
   const T = G.newState(); T.village.bag = []; T.village.scrollTaken = true;
   T.run = { bag: [G.makeItem(T, 'herb'), G.makeItem(T, 'return_scroll'), G.makeItem(T, 'golden_sword')], player: { x: 0, y: 0 }, map: null };
   const L = SV.deserialize(JSON.stringify(T)); assert(!L.run); eq(L.village.bag.map((i) => i.id).sort().join(), 'golden_sword,herb'); assert(!L.village.scrollTaken);
+});
+test('旅商人の買い戻しにドラゴニックオーラの盾（2026年11月20日）：竜魔神バランを倒していて、今持っていなければ並ぶ（8,000G）。持っていれば並ばない', () => {
+  const S = G.newState(), V = S.village; G.depart(S, 31);
+  const has = () => G.buybackList(S).find((x) => x.id === 'dragonic_shield');
+  assert(!has(), 'not before defeating');
+  V.story.defeated.dragonbaran = true;
+  const b = has(); assert(b && b.price === 8000, JSON.stringify(b));
+  V.storage.push(G.makeItem(S, 'dragonic_shield')); assert(!has(), 'not while holding');
 });
 console.log(`\n結果: ${passed} 成功 / ${failed} 失敗`);
 process.exit(failed ? 1 : 0);

@@ -759,7 +759,9 @@
     //  勇者の剣・勇者の盾（10月29日）：モッチャン・ワーン（以前の版ではコイ）から受け取ったことがあれば（story：その記録の名前）。値段は仮
     buybackItems: { dragon_crest: { price: 5000, note: '一度手に入れた竜の紋章' },
       hero_sword_relic: { price: 8000, note: '一度手に入れた勇者の剣', story: ['heroSword', 'heroForge'] },
-      hero_shield_relic: { price: 8000, note: '一度手に入れた勇者の盾', story: ['heroShield'] } },
+      hero_shield_relic: { price: 8000, note: '一度手に入れた勇者の盾', story: ['heroShield'] },
+      // ドラゴニックオーラの盾（2026年11月20日）：竜魔神バランの報酬。倒したことがあれば（defeated：入手の記録の無い以前のセーブも、倒していれば並ぶ）。値段は仮
+      dragonic_shield: { price: 8000, note: '一度手に入れたドラゴニックオーラの盾', defeated: 'dragonbaran' } },
   };
   /* 商人の呼鈴（2026年10月確定）：町の建設・改修（村の発展の一覧 D.FACILITIES の施設と飾り）をすべて終えると、
    * こもれびの家（村の発展）で寄付できるようになる。1,000G 寄付するたびに1個。

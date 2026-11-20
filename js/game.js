@@ -627,7 +627,8 @@
     const found = (V.story || {}).found || {};
     for (const [id, X] of Object.entries(D.MERCHANT.buybackItems || {})) {
       const bp = G.buybackPrice(id), pk = Object.keys(D.VILLAGE_PICKUPS || {}).find((k) => D.VILLAGE_PICKUPS[k].item === id);
-      const got = (V.bossObtained || {})[id] || (pk && found[pk]) || (X.story || []).some((k) => (V.story || {})[k]);   // 勇者の剣・盾：村で受け取った記録
+      const got = (V.bossObtained || {})[id] || (pk && found[pk]) || (X.story || []).some((k) => (V.story || {})[k])   // 勇者の剣・盾：村で受け取った記録
+        || !!(X.defeated && ((V.story || {}).defeated || {})[X.defeated]);   // ドラゴニックオーラの盾：竜魔神バランを倒した
       if (out.some((x) => x.id === id) || !got || G.holdsItem(S, id)) continue;
       out.push({ id, boss: null, price: bp.price, note: bp.note });
     }
